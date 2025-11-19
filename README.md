@@ -2,9 +2,10 @@
 
 A powerful and efficient automation **bot** designed to streamline **VFS appointment checking** using **Python**, **Selenium**, **ChromeDriver** and **FFmpeg**. Built for reliability and ease of use, this bot automates repetitive **browser tasks**, **reduces manual effort** and speeds up the entire workflow with minimal setup.
 
-![Last Update](https://img.shields.io/badge/Last%20Update-22.12.2023-purple?style=for-the-badge)
-![Version](https://img.shields.io/badge/Version-VFSv2023.C3-blue?style=for-the-badge)
-![Built with Python](https://img.shields.io/badge/Built%20with-Python%203.x-yellow?style=for-the-badge)
+![Last Update](https://img.shields.io/badge/Last%20Update-22.12.2023-blueviolet?style=for-the-badge) 
+![Version](https://img.shields.io/badge/Version-VFSv2023.C3-blue?style=for-the-badge) 
+![Built with Python](https://img.shields.io/badge/Built%20with-Python%203.x-orange?style=for-the-badge)
+![Mode](https://img.shields.io/badge/Mode-Developer-green?style=for-the-badge)
 
 
 ## 📘 Overview
@@ -230,4 +231,5 @@ The [MIT](https://choosealicense.com/licenses/mit/) License (MIT)
 ## 💖 Thank You for Visiting!
 
 > “Good design is about making things simple yet significant”  
+
 > — *Md. Ariful Islam*
