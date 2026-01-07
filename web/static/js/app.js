@@ -117,7 +117,6 @@ class Dashboard {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    action: 'start',
                     config: {}
                 })
             });

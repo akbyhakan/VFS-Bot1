@@ -122,7 +122,7 @@ class NotificationService:
             <html>
                 <body>
                     <h2>{subject}</h2>
-                    <p>{body.replace(chr(10), '<br>')}</p>
+                    <p>{body.replace('\n', '<br>')}</p>
                     <hr>
                     <p><small>This is an automated message from VFS-Bot</small></p>
                 </body>

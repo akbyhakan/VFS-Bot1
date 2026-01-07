@@ -205,15 +205,22 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # Keep connection alive and receive messages
-            data = await websocket.receive_json()
-            logger.debug(f"Received WebSocket message: {data}")
-            
-            # Echo back (can add command handling here)
-            await websocket.send_json({
-                "type": "ack",
-                "data": {"message": "Message received"}
-            })
+            # Keep connection alive and receive messages with timeout
+            try:
+                data = await asyncio.wait_for(websocket.receive_json(), timeout=60.0)
+                logger.debug(f"Received WebSocket message: {data}")
+                
+                # Echo back (can add command handling here)
+                await websocket.send_json({
+                    "type": "ack",
+                    "data": {"message": "Message received"}
+                })
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive
+                await websocket.send_json({
+                    "type": "ping",
+                    "data": {}
+                })
     except WebSocketDisconnect:
         active_connections.remove(websocket)
         logger.info("WebSocket client disconnected")

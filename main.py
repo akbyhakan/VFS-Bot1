@@ -126,7 +126,7 @@ def main() -> None:
     
     try:
         # Load configuration
-        logger.info(f"Loading configuration from {args.config}")
+        logger.info("Loading configuration...")
         config = load_config(args.config)
         logger.info("Configuration loaded successfully")
         
