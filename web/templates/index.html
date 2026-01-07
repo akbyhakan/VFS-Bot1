@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VFS-Bot Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 VFS-Bot Dashboard</h1>
+            <div class="status-indicator">
+                <span id="status-text">Stopped</span>
+                <span id="status-dot" class="dot stopped"></span>
+            </div>
+        </header>
+
+        <main>
+            <section class="controls">
+                <button id="start-btn" class="btn btn-primary">▶️ Start Bot</button>
+                <button id="stop-btn" class="btn btn-secondary" disabled>⏹️ Stop Bot</button>
+            </section>
+
+            <section class="stats">
+                <div class="stat-card">
+                    <h3>Slots Found</h3>
+                    <p id="slots-found" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Appointments Booked</h3>
+                    <p id="appointments-booked" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Users</h3>
+                    <p id="active-users" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Last Check</h3>
+                    <p id="last-check" class="stat-value">Never</p>
+                </div>
+            </section>
+
+            <section class="logs-section">
+                <div class="logs-header">
+                    <h2>📋 Live Logs</h2>
+                    <button id="clear-logs-btn" class="btn btn-small">Clear</button>
+                </div>
+                <div id="logs-container" class="logs-container"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>VFS-Bot v2.0.0 | <a href="https://github.com/akbyhakan/VFS-Bot1" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

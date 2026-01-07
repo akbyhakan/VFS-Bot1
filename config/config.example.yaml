@@ -1,0 +1,44 @@
+vfs:
+  base_url: "https://visa.vfsglobal.com"
+  country: "tur"
+  language: "tr"
+  mission: "deu"
+  centres:
+    - "Istanbul"
+    - "Ankara"
+  category: "Schengen Visa"
+  subcategory: "Tourism"
+
+credentials:
+  email: "${VFS_EMAIL}"
+  password: "${VFS_PASSWORD}"
+
+notifications:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    sender: "${EMAIL_SENDER}"
+    password: "${EMAIL_PASSWORD}"
+    receiver: "${EMAIL_RECEIVER}"
+
+captcha:
+  provider: "2captcha"  # Options: 2captcha, anticaptcha, nopecha, manual
+  api_key: "${CAPTCHA_API_KEY}"
+  manual_timeout: 120
+
+bot:
+  check_interval: 30
+  headless: false
+  proxy: null
+  screenshot_on_error: true
+  max_retries: 3
+  
+appointments:
+  preferred_dates: []  # Leave empty for any date
+  preferred_times: []  # Leave empty for any time
+  random_selection: true
