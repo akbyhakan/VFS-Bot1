@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  vfs-bot:
+    build: .
+    container_name: vfs-bot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./screenshots:/app/screenshots
+      - vfs-bot-data:/app/data
+    environment:
+      - VFS_EMAIL=${VFS_EMAIL}
+      - VFS_PASSWORD=${VFS_PASSWORD}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - EMAIL_SENDER=${EMAIL_SENDER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_RECEIVER=${EMAIL_RECEIVER}
+      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  vfs-bot-data:
