@@ -1,7 +1,7 @@
 """TLS fingerprinting bypass using curl-cffi to mimic Chrome browser handshake."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 try:
     from curl_cffi.requests import AsyncSession

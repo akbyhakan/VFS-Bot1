@@ -5,7 +5,7 @@ import logging
 import random
 from typing import List, Tuple
 
-from playwright.async_api import Locator, Page
+from playwright.async_api import Page
 
 try:
     import numpy as np
