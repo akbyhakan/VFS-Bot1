@@ -23,8 +23,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-liberation \
+    fonts-noto-color-emoji \
+    fonts-freefont-ttf \
+    libglib2.0-0 \
     libnss3 \
     libnspr4 \
+    libdbus-1-3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
     libcups2 \
@@ -42,9 +46,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
-# Install Playwright Chromium only
-RUN playwright install chromium && \
-    playwright install-deps chromium
+# Install Playwright Chromium only (dependencies already installed manually above)
+RUN playwright install chromium
 
 # Copy application code
 COPY . .
