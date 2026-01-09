@@ -2,15 +2,18 @@
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Dict, Any, List
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+
+from src.core.security import verify_api_key, generate_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -198,12 +201,13 @@ def increment_metric(name: str, count: int = 1) -> None:
 
 
 @app.post("/api/bot/start")
-async def start_bot(command: BotCommand) -> Dict[str, str]:
+async def start_bot(command: BotCommand, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
-    Start the bot.
+    Start the bot - requires authentication.
 
     Args:
         command: Bot command with configuration
+        api_key: Verified API key metadata
 
     Returns:
         Response dictionary
@@ -221,14 +225,17 @@ async def start_bot(command: BotCommand) -> Dict[str, str]:
         }
     )
 
-    logger.info("Bot started via dashboard")
+    logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
     return {"status": "success", "message": "Bot started"}
 
 
 @app.post("/api/bot/stop")
-async def stop_bot() -> Dict[str, str]:
+async def stop_bot(api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
-    Stop the bot.
+    Stop the bot - requires authentication.
+
+    Args:
+        api_key: Verified API key metadata
 
     Returns:
         Response dictionary
@@ -246,7 +253,7 @@ async def stop_bot() -> Dict[str, str]:
         }
     )
 
-    logger.info("Bot stopped via dashboard")
+    logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
     return {"status": "success", "message": "Bot stopped"}
 
 
@@ -353,6 +360,32 @@ async def add_log(message: str, level: str = "INFO") -> None:
 
     await broadcast_message(
         {"type": "log", "data": {"message": log_entry, "level": level, "timestamp": timestamp}}
+    )
+
+
+@app.post("/api/auth/generate-key")
+async def create_api_key(secret: str) -> Dict[str, str]:
+    """
+    Generate API key with admin secret - one-time use endpoint.
+    
+    Args:
+        secret: Admin secret from environment
+        
+    Returns:
+        New API key
+        
+    Raises:
+        HTTPException: If admin secret is invalid
+    """
+    admin_secret = os.getenv("ADMIN_SECRET")
+    if not admin_secret or secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+    
+    new_key = generate_api_key()
+    return {
+        "api_key": new_key,
+        "note": "Save this key securely! It will not be shown again."
+    }
     )
 
 
