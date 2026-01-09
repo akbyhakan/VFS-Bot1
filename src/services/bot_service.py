@@ -136,7 +136,7 @@ class VFSBot:
             self.browser = await playwright.chromium.launch(**launch_options)
 
             # Create context with stealth settings
-            context_options = {
+            context_options: Dict[str, Any] = {
                 "viewport": {"width": 1920, "height": 1080},
                 "user_agent": user_agent,
             }
@@ -329,9 +329,10 @@ class VFSBot:
             captcha_present = await page.locator(".g-recaptcha").count() > 0
             if captcha_present:
                 site_key = await page.get_attribute(".g-recaptcha", "data-sitekey")
-                token = await self.captcha_solver.solve_recaptcha(page, site_key, page.url)
-                if token:
-                    await self.captcha_solver.inject_captcha_solution(page, token)
+                if site_key:
+                    token = await self.captcha_solver.solve_recaptcha(page, site_key, page.url)
+                    if token:
+                        await self.captcha_solver.inject_captcha_solution(page, token)
 
             # Submit login with human click
             if self.anti_detection_enabled and self.human_sim:
@@ -405,11 +406,14 @@ class VFSBot:
 
             if slots_available:
                 # Get first available slot
-                date = await page.locator(".slot-date").first.text_content()
-                time = await page.locator(".slot-time").first.text_content()
+                date_content = await page.locator(".slot-date").first.text_content()
+                time_content = await page.locator(".slot-time").first.text_content()
+                
+                date = date_content.strip() if date_content else ""
+                time = time_content.strip() if time_content else ""
 
                 logger.info(f"Slot found! Date: {date}, Time: {time}")
-                return {"date": date.strip(), "time": time.strip()}
+                return {"date": date, "time": time}
             else:
                 logger.info(f"No slots available for {centre}/{category}/{subcategory}")
                 return None
