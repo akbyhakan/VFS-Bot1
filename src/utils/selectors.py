@@ -65,6 +65,28 @@ class SelectorManager:
         
         return value if isinstance(value, str) else default
     
+    def get_fallbacks(self, path: str) -> List[str]:
+        """
+        Get fallback selectors for a given path.
+        
+        Args:
+            path: Dot-separated path
+            
+        Returns:
+            List of fallback selectors (without primary)
+        """
+        fallback_path = f"fallback.{path.split('.')[-1]}"
+        fallbacks = self.get(fallback_path)
+        
+        selectors = []
+        if fallbacks:
+            if isinstance(fallbacks, list):
+                selectors.extend(fallbacks)
+            else:
+                selectors.append(fallbacks)
+        
+        return selectors
+    
     def get_with_fallback(self, path: str) -> List[str]:
         """
         Get selector with fallback options.
@@ -76,17 +98,12 @@ class SelectorManager:
             List of selectors to try
         """
         primary = self.get(path)
-        fallback_path = f"fallback.{path.split('.')[-1]}"
-        fallbacks = self.get(fallback_path)
+        fallbacks = self.get_fallbacks(path)
         
         selectors = []
         if primary:
             selectors.append(primary)
-        if fallbacks:
-            if isinstance(fallbacks, list):
-                selectors.extend(fallbacks)
-            else:
-                selectors.append(fallbacks)
+        selectors.extend(fallbacks)
         
         return selectors
     

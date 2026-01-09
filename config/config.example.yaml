@@ -70,3 +70,11 @@ human_behavior:
 session:
   save_file: "data/session.json"
   token_refresh_buffer: 5
+
+selector_health_check:
+  enabled: true
+  interval: 3600  # Check every hour (in seconds)
+  critical_selectors:
+    - login.email_input
+    - login.password_input
+    - appointment.centre_dropdown
