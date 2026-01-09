@@ -25,7 +25,7 @@ class ErrorCapture:
         page: Page,
         error: Exception,
         context: Dict[str, Any],
-        element_selector: Optional[str] = None
+        element_selector: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Capture error with full context.
@@ -48,7 +48,7 @@ class ErrorCapture:
             "error_type": type(error).__name__,
             "error_message": str(error),
             "context": context,
-            "captures": {}
+            "captures": {},
         }
 
         try:
@@ -97,10 +97,7 @@ class ErrorCapture:
 
             # Save error record to JSON
             json_path = self.screenshots_dir / f"{error_id}.json"
-            json_path.write_text(
-                json.dumps(error_record, indent=2, default=str),
-                encoding="utf-8"
-            )
+            json_path.write_text(json.dumps(error_record, indent=2, default=str), encoding="utf-8")
 
             # Add to in-memory list (for dashboard)
             self.errors.append(error_record)
@@ -117,11 +114,7 @@ class ErrorCapture:
 
     def get_recent_errors(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent errors for dashboard."""
-        return sorted(
-            self.errors,
-            key=lambda x: x["timestamp"],
-            reverse=True
-        )[:limit]
+        return sorted(self.errors, key=lambda x: x["timestamp"], reverse=True)[:limit]
 
     def get_error_by_id(self, error_id: str) -> Optional[Dict[str, Any]]:
         """Get specific error details."""

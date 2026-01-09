@@ -37,7 +37,7 @@ async def run_bot_mode(config: dict) -> None:
 
     try:
         # Initialize notification service
-        notifier = NotificationService(config['notifications'])
+        notifier = NotificationService(config["notifications"])
 
         # Initialize and start bot
         bot = VFSBot(config, db, notifier)
@@ -45,7 +45,7 @@ async def run_bot_mode(config: dict) -> None:
         # Initialize selector health monitoring (if enabled)
         # Note: The health checker will be started within the bot's browser context
         # when the browser is available. See VFSBot.start() for implementation.
-        if config.get('selector_health_check', {}).get('enabled', True):
+        if config.get("selector_health_check", {}).get("enabled", True):
             from src.utils.selector_watcher import SelectorHealthCheck
             from src.utils.selectors import SelectorManager
 
@@ -53,7 +53,7 @@ async def run_bot_mode(config: dict) -> None:
             bot.health_checker = SelectorHealthCheck(
                 selector_manager,
                 notifier,
-                check_interval=config.get('selector_health_check', {}).get('interval', 3600)
+                check_interval=config.get("selector_health_check", {}).get("interval", 3600),
             )
             logger.info("Selector health monitoring initialized")
         else:
@@ -72,23 +72,18 @@ async def run_bot_mode(config: dict) -> None:
 async def run_web_mode(config: dict) -> None:
     """
     Run bot with web dashboard.
-    
+
     Args:
         config: Configuration dictionary
     """
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot with web dashboard...")
-    
+
     import uvicorn
     from web.app import app
-    
+
     # Run uvicorn server
-    config_uvicorn = uvicorn.Config(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
+    config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
     server = uvicorn.Server(config_uvicorn)
     await server.serve()
 
@@ -100,42 +95,38 @@ def main() -> None:
         "--mode",
         choices=["bot", "web", "both"],
         default="both",
-        help="Run mode: bot (automated), web (dashboard only), both (default)"
+        help="Run mode: bot (automated), web (dashboard only), both (default)",
     )
-    parser.add_argument(
-        "--config",
-        default="config/config.yaml",
-        help="Path to configuration file"
-    )
+    parser.add_argument("--config", default="config/config.yaml", help="Path to configuration file")
     parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Logging level"
+        help="Logging level",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Setup structured logging
     json_logging = os.getenv("JSON_LOGGING", "true").lower() == "true"
     setup_structured_logging(args.log_level, json_format=json_logging)
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Validate environment variables
         logger.info("Validating environment variables...")
         EnvValidator.validate(strict=True)
-        
+
         # Load configuration
         logger.info("Loading configuration...")
         config = load_config(args.config)
         logger.info("Configuration loaded successfully")
-        
+
         # Validate config
         if not ConfigValidator.validate(config):
             logger.error("Invalid configuration, exiting...")
             sys.exit(1)
-        
+
         # Run in selected mode
         if args.mode == "bot":
             asyncio.run(run_bot_mode(config))
@@ -146,7 +137,7 @@ def main() -> None:
             # For now, just run web mode
             # TODO: Implement concurrent bot + web execution
             asyncio.run(run_web_mode(config))
-            
+
     except FileNotFoundError as e:
         logger.error(f"Configuration file not found: {e}")
         logger.info("Please copy config/config.example.yaml to config/config.yaml and configure it")
