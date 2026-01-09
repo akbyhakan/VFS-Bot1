@@ -2,10 +2,6 @@
 
 import logging
 import json
-import tempfile
-from pathlib import Path
-
-import pytest
 
 from src.logger import JSONFormatter, setup_structured_logging
 
@@ -24,12 +20,12 @@ class TestJSONFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_func"
+            func="test_func",
         )
-        
+
         result = formatter.format(record)
         data = json.loads(result)
-        
+
         assert data["level"] == "INFO"
         assert data["logger"] == "test"
         assert data["message"] == "Test message"
@@ -49,15 +45,15 @@ class TestJSONFormatter:
             msg="Test message",
             args=(),
             exc_info=None,
-            func="test_func"
+            func="test_func",
         )
         record.user_id = "user123"
         record.centre = "Istanbul"
         record.action = "check_slot"
-        
+
         result = formatter.format(record)
         data = json.loads(result)
-        
+
         assert data["user_id"] == "user123"
         assert data["centre"] == "Istanbul"
         assert data["action"] == "check_slot"
@@ -65,13 +61,14 @@ class TestJSONFormatter:
     def test_format_with_exception(self):
         """Test formatting log record with exception info."""
         formatter = JSONFormatter()
-        
+
         try:
             raise ValueError("Test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
-            
+
             record = logging.LogRecord(
                 name="test",
                 level=logging.ERROR,
@@ -80,12 +77,12 @@ class TestJSONFormatter:
                 msg="Error occurred",
                 args=(),
                 exc_info=exc_info,
-                func="test_func"
+                func="test_func",
             )
-            
+
             result = formatter.format(record)
             data = json.loads(result)
-            
+
             assert "exception" in data
             assert "ValueError" in data["exception"]
             assert "Test error" in data["exception"]
@@ -97,9 +94,9 @@ class TestSetupStructuredLogging:
     def test_setup_creates_logs_directory(self, tmp_path, monkeypatch):
         """Test that setup creates logs directory."""
         monkeypatch.chdir(tmp_path)
-        
+
         setup_structured_logging(level="INFO", json_format=True)
-        
+
         logs_dir = tmp_path / "logs"
         assert logs_dir.exists()
         assert logs_dir.is_dir()
@@ -107,30 +104,30 @@ class TestSetupStructuredLogging:
     def test_setup_creates_log_file(self, tmp_path, monkeypatch):
         """Test that setup creates log file."""
         monkeypatch.chdir(tmp_path)
-        
+
         setup_structured_logging(level="INFO", json_format=True)
-        
+
         log_file = tmp_path / "logs" / "vfs_bot.jsonl"
         assert log_file.exists()
 
     def test_setup_with_json_format(self, tmp_path, monkeypatch):
         """Test setup with JSON format enabled."""
         monkeypatch.chdir(tmp_path)
-        
+
         # Clear handlers from previous tests
         logging.root.handlers = []
-        
+
         setup_structured_logging(level="INFO", json_format=True)
         logger = logging.getLogger("test")
         logger.info("Test message")
-        
+
         # Force flush
         for handler in logging.root.handlers:
             handler.flush()
-        
+
         log_file = tmp_path / "logs" / "vfs_bot.jsonl"
         content = log_file.read_text()
-        
+
         # Should contain JSON formatted logs
         assert "{" in content
         assert "timestamp" in content
@@ -138,32 +135,32 @@ class TestSetupStructuredLogging:
     def test_setup_without_json_format(self, tmp_path, monkeypatch):
         """Test setup with JSON format disabled."""
         monkeypatch.chdir(tmp_path)
-        
+
         # Clear handlers from previous tests
         logging.root.handlers = []
-        
+
         setup_structured_logging(level="INFO", json_format=False)
         logger = logging.getLogger("test")
         logger.info("Test message")
-        
+
         # Force flush
         for handler in logging.root.handlers:
             handler.flush()
-        
+
         log_file = tmp_path / "logs" / "vfs_bot.jsonl"
         content = log_file.read_text()
-        
+
         # Should contain human-readable logs
         assert "Test message" in content
 
     def test_setup_log_level(self, tmp_path, monkeypatch):
         """Test that log level is set correctly."""
         monkeypatch.chdir(tmp_path)
-        
+
         # Clear handlers and reset log level from previous tests
         logging.root.handlers = []
         logging.root.setLevel(logging.NOTSET)
-        
+
         setup_structured_logging(level="WARNING", json_format=False)
-        
+
         assert logging.root.level == logging.WARNING
