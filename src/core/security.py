@@ -4,14 +4,14 @@ import secrets
 import hashlib
 import os
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from fastapi import HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()
 
 # API Key management
-API_KEYS: Dict[str, Dict[str, any]] = {
+API_KEYS: Dict[str, Dict[str, Any]] = {
     # Format: "key_hash": {"name": "admin", "created": "2024-01-09", "scopes": ["read", "write"]}
 }
 
@@ -54,7 +54,7 @@ def load_api_keys() -> None:
 
 async def verify_api_key(
     credentials: HTTPAuthorizationCredentials = Security(security)
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Verify API key from Authorization header.
     
