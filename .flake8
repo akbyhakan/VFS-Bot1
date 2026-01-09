@@ -8,7 +8,7 @@ max-line-length = 100
 extend-ignore = E203, W503
 
 # Exclude directories
-exclude = 
+exclude =
     .git,
     __pycache__,
     venv,
