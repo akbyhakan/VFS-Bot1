@@ -48,27 +48,27 @@ class FingerprintBypass:
             const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
             const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
             const originalToBlob = HTMLCanvasElement.prototype.toBlob;
-            
+
             const noiseR = {r_shift};
             const noiseG = {g_shift};
             const noiseB = {b_shift};
             const noiseA = {a_shift};
-            
+
             // Override getImageData to add noise
             CanvasRenderingContext2D.prototype.getImageData = function() {{
                 const imageData = originalGetImageData.apply(this, arguments);
                 const data = imageData.data;
-                
+
                 for (let i = 0; i < data.length; i += 4) {{
                     data[i] = Math.min(255, Math.max(0, data[i] + noiseR));     // R
                     data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noiseG)); // G
                     data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noiseB)); // B
                     data[i + 3] = Math.min(255, Math.max(0, data[i + 3] + noiseA)); // A
                 }}
-                
+
                 return imageData;
             }};
-            
+
             // Override toDataURL
             HTMLCanvasElement.prototype.toDataURL = function() {{
                 const context = this.getContext('2d');
@@ -79,7 +79,7 @@ class FingerprintBypass:
                 }}
                 return originalToDataURL.apply(this, arguments);
             }};
-            
+
             // Override toBlob
             HTMLCanvasElement.prototype.toBlob = function() {{
                 const context = this.getContext('2d');
@@ -121,7 +121,7 @@ class FingerprintBypass:
                 }}
                 return getParameter.apply(this, arguments);
             }};
-            
+
             const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
             WebGL2RenderingContext.prototype.getParameter = function(parameter) {{
                 if (parameter === 37445) {{
@@ -144,19 +144,19 @@ class FingerprintBypass:
         await page.add_init_script(
             f"""
             const audioOffset = {offset};
-            
+
             const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
-            
+
             if (OriginalAudioContext) {{
                 const AudioContextProxy = new Proxy(OriginalAudioContext, {{
                     construct(target, args) {{
                         const context = new target(...args);
                         const originalGetChannelData = context.createBuffer.bind(context);
-                        
+
                         context.createBuffer = function() {{
                             const buffer = originalGetChannelData.apply(this, arguments);
                             const getChannelData = buffer.getChannelData.bind(buffer);
-                            
+
                             buffer.getChannelData = function(channel) {{
                                 const data = getChannelData.call(this, channel);
                                 for (let i = 0; i < data.length; i++) {{
@@ -164,14 +164,14 @@ class FingerprintBypass:
                                 }}
                                 return data;
                             }};
-                            
+
                             return buffer;
                         }};
-                        
+
                         return context;
                     }}
                 }});
-                
+
                 window.AudioContext = AudioContextProxy;
                 if (window.webkitAudioContext) {{
                     window.webkitAudioContext = AudioContextProxy;
