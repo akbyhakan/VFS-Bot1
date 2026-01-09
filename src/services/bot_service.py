@@ -309,11 +309,8 @@ class VFSBot:
                 await self.error_capture.capture(
                     page,
                     e,
-                    context={
-                        "step": "login",
-                        "action": "filling login form"
-                    },
-                    element_selector='input[name="email"]'
+                    context={"step": "login", "action": "filling login form"},
+                    element_selector='input[name="email"]',
                 )
                 raise
 
@@ -363,7 +360,7 @@ class VFSBot:
         try:
             # Apply rate limiting before making requests
             await self.rate_limiter.acquire()
-            
+
             # Navigate to appointment page
             appointment_url = f"{self.config['vfs']['base_url']}/{self.config['vfs']['country']}/{self.config['vfs']['mission']}/en/appointment"
             await page.goto(appointment_url, wait_until="networkidle", timeout=30000)
@@ -414,8 +411,8 @@ class VFSBot:
                     "centre": centre,
                     "category": category,
                     "subcategory": subcategory,
-                    "action": "checking availability"
-                }
+                    "action": "checking availability",
+                },
             )
             return None
 

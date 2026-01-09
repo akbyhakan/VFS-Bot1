@@ -15,28 +15,28 @@ class HeaderManager:
         {
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            "platform": "Windows"
+            "platform": "Windows",
         },
         {
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="121", "Google Chrome";v="121"',
-            "platform": "Windows"
+            "platform": "Windows",
         },
         {
             "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            "platform": "macOS"
+            "platform": "macOS",
         },
         {
             "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            "platform": "Linux"
+            "platform": "Linux",
         },
         {
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
-            "platform": "Windows"
-        }
+            "platform": "Windows",
+        },
     ]
 
     def __init__(self, base_url: str = "https://visa.vfsglobal.com", rotation_interval: int = 10):
@@ -91,7 +91,7 @@ class HeaderManager:
             "sec-ch-ua": self.current_ua["sec_ch_ua"],
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": f'"{self.current_ua["platform"]}"',
-            "Referer": referer or self.base_url
+            "Referer": referer or self.base_url,
         }
 
     def get_api_headers(
