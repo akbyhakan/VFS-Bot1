@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Optional, Tuple
+from typing import Optional
 
 from playwright.async_api import Page
 
@@ -56,9 +56,11 @@ class CloudflareHandler:
 
             # Check for Turnstile challenge
             # Note: Cloudflare may use different challenge domains
-            turnstile = await page.locator(
-                'iframe[src*="challenges.cloudflare.com"], iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
-            ).count()
+            turnstile_selector = (
+                'iframe[src*="challenges.cloudflare.com"], '
+                'iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
+            )
+            turnstile = await page.locator(turnstile_selector).count()
             if turnstile > 0:
                 logger.info("Detected Cloudflare Turnstile challenge")
                 return "turnstile"
@@ -212,9 +214,8 @@ class CloudflareHandler:
                 # No challenge detected
                 return True
 
-            logger.info(
-                f"Handling Cloudflare challenge: {self.CHALLENGE_TYPES.get(challenge_type, 'Unknown')}"
-            )
+            challenge_name = self.CHALLENGE_TYPES.get(challenge_type, 'Unknown')
+            logger.info(f"Handling Cloudflare challenge: {challenge_name}")
 
             # Handle based on type
             if challenge_type == "waiting_room":
