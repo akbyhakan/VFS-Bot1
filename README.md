@@ -23,6 +23,41 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - ⚙️ **YAML Configuration** - Simple configuration with environment variable support
 - 🔒 **Secure** - Credentials stored in environment variables
 
+## 🛡️ Anti-Detection Features
+
+### TLS Fingerprinting Bypass
+- Uses curl-cffi to mimic real Chrome TLS handshake
+- Bypasses JA3 fingerprint detection
+- Playwright stealth mode enabled
+
+### Browser Fingerprinting Protection
+- **Canvas**: Noise injection to randomize fingerprint
+- **WebGL**: Vendor/renderer spoofing
+- **Audio Context**: Timing randomization
+- **Navigator**: WebDriver flag hidden
+
+### Human Behavior Simulation
+- **Mouse**: Bézier curve movements (15-30 steps)
+- **Typing**: Variable speed (40-80 WPM)
+- **Clicking**: Random delays (0.1-0.5s) and position variance
+- **Scrolling**: Natural chunked scrolling
+
+### Cloudflare Bypass
+- Automatic Waiting Room handling (max 30s)
+- Turnstile challenge support
+- Browser check auto-pass
+- 403/503 error recovery with exponential backoff
+
+### Session & Token Management
+- JWT token auto-capture and refresh
+- Session persistence (data/session.json)
+- Token expiry prediction (5-min buffer)
+
+### Proxy Support (Optional)
+- Multi-proxy rotation from file
+- Automatic failover on errors
+- Supports http/socks5 with auth
+
 ## 📋 Requirements
 
 - Python 3.11 or higher
@@ -151,6 +186,52 @@ notifications:
     enabled: true
   email:
     enabled: false
+
+anti_detection:
+  enabled: true  # Master switch
+  tls_bypass: true
+  fingerprint_bypass: true
+  human_simulation: true
+
+cloudflare:
+  enabled: true
+  max_wait_time: 30  # seconds
+  
+proxy:
+  enabled: false  # Set true to use proxies
+  file: "config/proxies.txt"
+```
+
+All anti-detection features are configurable via `config/config.yaml`:
+
+```yaml
+anti_detection:
+  enabled: true  # Master switch
+  tls_bypass: true
+  fingerprint_bypass: true
+  human_simulation: true
+  stealth_mode: true
+
+cloudflare:
+  enabled: true
+  max_wait_time: 30
+  max_retries: 3
+  manual_captcha: false
+
+proxy:
+  enabled: false
+  file: "config/proxies.txt"
+  rotate_on_error: true
+
+human_behavior:
+  mouse_movement_steps: 20
+  typing_wpm_range: [40, 80]
+  click_delay_range: [0.1, 0.5]
+  random_actions: true
+
+session:
+  save_file: "data/session.json"
+  token_refresh_buffer: 5
 ```
 
 ## 📊 Web Dashboard

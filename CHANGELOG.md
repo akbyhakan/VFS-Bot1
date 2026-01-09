@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TLS fingerprinting bypass using curl-cffi
+- Canvas, WebGL, and Audio Context fingerprinting bypass
+- Human behavior simulation with Bézier curve mouse movements
+- Cloudflare challenge detection and bypass (Waiting Room, Turnstile, Browser Check)
+- JWT session management with auto-refresh
+- Dynamic header rotation with consistent User-Agent/Sec-CH-UA
+- Proxy rotation system with failure tracking
+- Anti-detection test suite
 - CI/CD pipeline with GitHub Actions
 - Security policy (SECURITY.md)
 - Contributing guidelines (CONTRIBUTING.md)
@@ -20,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated README.md with correct copyright information
 - Improved project structure documentation
+- Enhanced bot with anti-detection features integration
 
 ### Removed
 - Removed notes.txt from repository (development notes)
