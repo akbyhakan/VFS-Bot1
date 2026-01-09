@@ -1,39 +1,11 @@
 """VFS-Bot - Automated VFS appointment booking bot."""
 
-# Import for backward compatibility
-from .core.config_loader import load_config
-from .core.config_validator import ConfigValidator
-from .core.env_validator import EnvValidator
-from .core.logger import setup_structured_logging, JSONFormatter
-
-from .models.database import Database
-
-from .services.bot_service import VFSBot
-from .services.captcha_solver import CaptchaSolver, CaptchaProvider
-from .services.centre_fetcher import CentreFetcher
-from .services.notification import NotificationService
-
-from .utils.selectors import SelectorManager, get_selector_manager
-
-from .utils.anti_detection import (
-    CloudflareHandler,
-    FingerprintBypass,
-    HumanSimulator,
-    StealthConfig,
-    TLSHandler,
-)
-
-from .utils.security import (
-    HeaderManager,
-    ProxyManager,
-    SessionManager,
-    RateLimiter,
-    get_rate_limiter,
-)
-
 __version__ = "2.0.0"
 __author__ = "Md. Ariful Islam"
 __license__ = "MIT"
+
+# Lazy imports - modules can be imported when needed
+# This prevents circular dependencies and missing optional dependencies
 
 __all__ = [
     # Core
@@ -66,4 +38,35 @@ __all__ = [
     "RateLimiter",
     "get_rate_limiter",
 ]
+
+
+def __getattr__(name):
+    """Lazy import of modules."""
+    if name in __all__:
+        # Core
+        if name in ["load_config", "ConfigValidator", "EnvValidator", "setup_structured_logging", "JSONFormatter"]:
+            from . import core
+            return getattr(core, name)
+        # Models
+        elif name == "Database":
+            from .models import database
+            return database.Database
+        # Services
+        elif name in ["VFSBot", "CaptchaSolver", "CaptchaProvider", "CentreFetcher", "NotificationService"]:
+            from . import services
+            return getattr(services, name)
+        # Utils
+        elif name in ["SelectorManager", "get_selector_manager"]:
+            from .utils import selectors
+            return getattr(selectors, name)
+        # Anti-detection
+        elif name in ["CloudflareHandler", "FingerprintBypass", "HumanSimulator", "StealthConfig", "TLSHandler"]:
+            from .utils import anti_detection
+            return getattr(anti_detection, name)
+        # Security
+        elif name in ["HeaderManager", "ProxyManager", "SessionManager", "RateLimiter", "get_rate_limiter"]:
+            from .utils import security
+            return getattr(security, name)
+    
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
