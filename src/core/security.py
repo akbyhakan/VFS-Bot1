@@ -19,7 +19,7 @@ API_KEYS: Dict[str, Dict[str, Any]] = {
 def generate_api_key() -> str:
     """
     Generate a new API key.
-    
+
     Returns:
         Secure random API key
     """
@@ -29,10 +29,10 @@ def generate_api_key() -> str:
 def hash_api_key(api_key: str) -> str:
     """
     Hash API key for storage.
-    
+
     Args:
         api_key: API key to hash
-        
+
     Returns:
         SHA256 hash of the API key
     """
@@ -48,35 +48,35 @@ def load_api_keys() -> None:
         API_KEYS[key_hash] = {
             "name": "master",
             "created": datetime.now().isoformat(),
-            "scopes": ["read", "write", "admin"]
+            "scopes": ["read", "write", "admin"],
         }
 
 
 async def verify_api_key(
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    credentials: HTTPAuthorizationCredentials = Security(security),
 ) -> Dict[str, Any]:
     """
     Verify API key from Authorization header.
-    
+
     Args:
         credentials: HTTP authorization credentials
-        
+
     Returns:
         API key metadata
-        
+
     Raises:
         HTTPException: If API key is invalid
     """
     api_key = credentials.credentials
     key_hash = hash_api_key(api_key)
-    
+
     if key_hash not in API_KEYS:
         raise HTTPException(
             status_code=401,
             detail="Invalid API key",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return API_KEYS[key_hash]
 
 
