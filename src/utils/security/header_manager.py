@@ -1,56 +1,84 @@
-"""Dynamic header rotation with consistent User-Agent and Sec-CH-UA headers."""
+"""Enhanced User-Agent rotation with real browser versions."""
 
 import logging
 import random
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class HeaderManager:
-    """Manage HTTP headers with dynamic rotation."""
+    """Dynamic header management with UA rotation."""
 
-    # User-Agent strings for different browsers
-    USER_AGENTS = [
-        {
-            "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-            "sec_ch_ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-            "sec_ch_ua_platform": '"Windows"',
-            "sec_ch_ua_mobile": "?0",
-        },
+    # Updated user agents (Jan 2024)
+    USER_AGENTS: List[Dict[str, str]] = [
         {
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            "sec_ch_ua_platform": '"Windows"',
-            "sec_ch_ua_mobile": "?0",
+            "platform": "Windows"
+        },
+        {
+            "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="121", "Google Chrome";v="121"',
+            "platform": "Windows"
+        },
+        {
+            "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "platform": "macOS"
+        },
+        {
+            "ua": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "platform": "Linux"
         },
         {
             "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
-            "sec_ch_ua_platform": '"Windows"',
-            "sec_ch_ua_mobile": "?0",
-        },
+            "platform": "Windows"
+        }
     ]
 
-    def __init__(self):
-        """Initialize header manager with random User-Agent."""
-        self.current_ua_index = random.randint(0, len(self.USER_AGENTS) - 1)
-        self.current_ua = self.USER_AGENTS[self.current_ua_index]
-        logger.info(f"HeaderManager initialized with UA index {self.current_ua_index}")
+    def __init__(self, base_url: str = "https://visa.vfsglobal.com", rotation_interval: int = 10):
+        """
+        Initialize header manager.
+
+        Args:
+            base_url: Base URL for referer
+            rotation_interval: Rotate UA every N requests
+        """
+        self.base_url = base_url
+        self.rotation_interval = rotation_interval
+        self.request_count = 0
+        self.current_ua = random.choice(self.USER_AGENTS)
+        logger.info(f"HeaderManager initialized with {self.current_ua['platform']} UA")
+
+    def rotate_user_agent(self) -> None:
+        """Rotate to new user agent."""
+        old_ua = self.current_ua
+        # Ensure we get a different UA
+        available = [ua for ua in self.USER_AGENTS if ua != old_ua]
+        self.current_ua = random.choice(available)
+        logger.info(f"Rotated UA: {self.current_ua['platform']}")
 
     def get_headers(self, referer: Optional[str] = None) -> Dict[str, str]:
         """
-        Get complete header set with referer.
+        Get headers with automatic rotation.
 
         Args:
-            referer: Optional referer URL
+            referer: Custom referer URL
 
         Returns:
-            Dictionary of HTTP headers
+            Headers dictionary
         """
-        headers = {
+        # Auto-rotate based on interval
+        self.request_count += 1
+        if self.request_count % self.rotation_interval == 0:
+            self.rotate_user_agent()
+
+        return {
             "User-Agent": self.current_ua["ua"],
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
             "DNT": "1",
@@ -60,17 +88,11 @@ class HeaderManager:
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
-            "Sec-CH-UA-Mobile": self.current_ua["sec_ch_ua_mobile"],
-            "Sec-CH-UA-Platform": self.current_ua["sec_ch_ua_platform"],
-            "Cache-Control": "max-age=0",
+            "sec-ch-ua": self.current_ua["sec_ch_ua"],
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": f'"{self.current_ua["platform"]}"',
+            "Referer": referer or self.base_url
         }
-
-        if referer:
-            headers["Referer"] = referer
-            headers["Sec-Fetch-Site"] = "same-origin"
-
-        return headers
 
     def get_api_headers(
         self, token: Optional[str] = None, referer: Optional[str] = None
@@ -85,6 +107,11 @@ class HeaderManager:
         Returns:
             Dictionary of HTTP headers for API requests
         """
+        # Auto-rotate based on interval
+        self.request_count += 1
+        if self.request_count % self.rotation_interval == 0:
+            self.rotate_user_agent()
+
         headers = {
             "User-Agent": self.current_ua["ua"],
             "Accept": "application/json, text/plain, */*",
@@ -96,9 +123,9 @@ class HeaderManager:
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
-            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
-            "Sec-CH-UA-Mobile": self.current_ua["sec_ch_ua_mobile"],
-            "Sec-CH-UA-Platform": self.current_ua["sec_ch_ua_platform"],
+            "sec-ch-ua": self.current_ua["sec_ch_ua"],
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": f'"{self.current_ua["platform"]}"',
         }
 
         if token:
@@ -108,17 +135,6 @@ class HeaderManager:
             headers["Referer"] = referer
 
         return headers
-
-    def rotate_user_agent(self) -> None:
-        """Switch to new User-Agent."""
-        # Select a different UA
-        new_index = self.current_ua_index
-        while new_index == self.current_ua_index and len(self.USER_AGENTS) > 1:
-            new_index = random.randint(0, len(self.USER_AGENTS) - 1)
-
-        self.current_ua_index = new_index
-        self.current_ua = self.USER_AGENTS[self.current_ua_index]
-        logger.info(f"User-Agent rotated to index {self.current_ua_index}")
 
     def get_user_agent(self) -> str:
         """
