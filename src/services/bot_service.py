@@ -21,6 +21,7 @@ from ..utils.security.header_manager import HeaderManager
 from ..utils.security.proxy_manager import ProxyManager
 from ..utils.security.session_manager import SessionManager
 from ..utils.security.rate_limiter import get_rate_limiter
+from ..utils.error_capture import ErrorCapture
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,13 @@ class VFSBot:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.running = False
+        self.health_checker = None  # Will be set by main.py if enabled
 
         # Initialize rate limiter
         self.rate_limiter = get_rate_limiter()
+
+        # Initialize error capture
+        self.error_capture = ErrorCapture()
 
         # Initialize components
         self.captcha_solver = CaptchaSolver(
@@ -155,6 +160,11 @@ class VFSBot:
                 )
 
             try:
+                # Start health checker if configured
+                if self.health_checker and self.browser:
+                    asyncio.create_task(self.health_checker.run_continuous(self.browser))
+                    logger.info("Selector health monitoring started")
+
                 await self.run_bot_loop()
             finally:
                 await self.stop()
@@ -286,13 +296,26 @@ class VFSBot:
                     return False
 
             # Fill login form with human simulation
-            if self.anti_detection_enabled and self.human_sim:
-                await self.human_sim.human_type(page, 'input[name="email"]', email)
-                await asyncio.sleep(0.5)
-                await self.human_sim.human_type(page, 'input[name="password"]', password)
-            else:
-                await page.fill('input[name="email"]', email)
-                await page.fill('input[name="password"]', password)
+            try:
+                if self.anti_detection_enabled and self.human_sim:
+                    await self.human_sim.human_type(page, 'input[name="email"]', email)
+                    await asyncio.sleep(0.5)
+                    await self.human_sim.human_type(page, 'input[name="password"]', password)
+                else:
+                    await page.fill('input[name="email"]', email)
+                    await page.fill('input[name="password"]', password)
+            except Exception as e:
+                # Capture error with failed selector
+                await self.error_capture.capture(
+                    page,
+                    e,
+                    context={
+                        "step": "login",
+                        "action": "filling login form"
+                    },
+                    element_selector='input[name="email"]'
+                )
+                raise
 
             # Handle captcha if present
             captcha_present = await page.locator(".g-recaptcha").count() > 0
@@ -382,6 +405,18 @@ class VFSBot:
 
         except Exception as e:
             logger.error(f"Error checking slots: {e}")
+            # Capture error with context
+            await self.error_capture.capture(
+                page,
+                e,
+                context={
+                    "step": "check_slots",
+                    "centre": centre,
+                    "category": category,
+                    "subcategory": subcategory,
+                    "action": "checking availability"
+                }
+            )
             return None
 
     async def fill_personal_details(self, page: Page, details: Dict[str, Any]) -> bool:

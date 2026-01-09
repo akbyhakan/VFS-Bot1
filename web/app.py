@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -386,6 +386,114 @@ async def create_api_key(secret: str) -> Dict[str, str]:
         "api_key": new_key,
         "note": "Save this key securely! It will not be shown again."
     }
+
+
+@app.get("/api/selector-health")
+async def get_selector_health() -> Dict[str, Any]:
+    """
+    Get selector health status.
+    
+    Returns:
+        Current health check results
+    """
+    # Access from bot_state or global health checker
+    if hasattr(app.state, "selector_health"):
+        return app.state.selector_health
+    
+    return {
+        "status": "not_initialized",
+        "message": "Health monitoring not started yet"
+    }
+
+
+@app.get("/api/errors")
+async def get_errors(limit: int = 20) -> List[Dict[str, Any]]:
+    """
+    Get recent errors with captures.
+    
+    Args:
+        limit: Number of errors to return
+        
+    Returns:
+        List of recent errors
+    """
+    if hasattr(app.state, "error_capture"):
+        return app.state.error_capture.get_recent_errors(limit)
+    return []
+
+
+@app.get("/api/errors/{error_id}")
+async def get_error_detail(error_id: str) -> Dict[str, Any]:
+    """
+    Get detailed error information.
+    
+    Args:
+        error_id: Error ID
+        
+    Returns:
+        Full error details with captures
+    """
+    if hasattr(app.state, "error_capture"):
+        error = app.state.error_capture.get_error_by_id(error_id)
+        if error:
+            return error
+    
+    raise HTTPException(status_code=404, detail="Error not found")
+
+
+@app.get("/api/errors/{error_id}/screenshot")
+async def get_error_screenshot(error_id: str, type: str = "full"):
+    """
+    Get error screenshot.
+
+    Args:
+        error_id: Error ID
+        type: Screenshot type (full or element)
+
+    Returns:
+        Image file
+    """
+    if hasattr(app.state, "error_capture"):
+        error = app.state.error_capture.get_error_by_id(error_id)
+        if error and "captures" in error:
+            screenshot_key = f"{type}_screenshot"
+            if screenshot_key in error["captures"]:
+                screenshot_path = Path(error["captures"][screenshot_key])
+                # Security: Ensure screenshot path is within the expected directory
+                expected_dir = Path(app.state.error_capture.screenshots_dir).resolve()
+                try:
+                    resolved_path = screenshot_path.resolve()
+                    # Check if path is within expected directory
+                    if not str(resolved_path).startswith(str(expected_dir)):
+                        logger.warning(f"Path traversal attempt: {screenshot_path}")
+                        raise HTTPException(status_code=403, detail="Access denied")
+
+                    if resolved_path.exists():
+                        return FileResponse(
+                            resolved_path,
+                            media_type="image/png"
+                        )
+                except Exception as e:
+                    logger.error(f"Error accessing screenshot: {e}")
+                    raise HTTPException(status_code=500, detail="Error accessing screenshot")
+
+    raise HTTPException(status_code=404, detail="Screenshot not found")
+
+
+@app.get("/errors.html", response_class=HTMLResponse)
+async def errors_dashboard(request: Request):
+    """
+    Render errors dashboard page.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        HTML response with errors dashboard template
+    """
+    return templates.TemplateResponse(
+        "errors.html", {"request": request, "title": "Error Dashboard - VFS Bot"}
+    )
 
 
 if __name__ == "__main__":

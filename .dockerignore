@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+*.egg
+.pytest_cache
+.coverage
+htmlcov
+.mypy_cache
+.tox
+venv
+env
+
+# Documentation
+*.md
+docs
+screenshots
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Tests
+tests
+.pre-commit-config.yaml
+
+# Development files
+requirements-dev.txt
+pyproject.toml

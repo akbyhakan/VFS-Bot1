@@ -20,7 +20,8 @@ types-PyYAML==6.0.12.12
 pre-commit==3.6.0
 
 # Security
-safety==2.3.5
+safety>=3.2.11
+packaging>=22.0
 bandit==1.7.6
 
 # Documentation

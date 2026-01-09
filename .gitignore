@@ -22,6 +22,10 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.whl
+*-py3-none-any/
+*-py3.*.dist-info/
+telegram/
 
 # Environment variables - CRITICAL
 .env
