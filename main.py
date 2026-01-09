@@ -24,42 +24,43 @@ from src.core.config_validator import ConfigValidator
 async def run_bot_mode(config: dict) -> None:
     """
     Run bot in automated mode.
-    
+
     Args:
         config: Configuration dictionary
     """
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
-    
+
     # Initialize database
     db = Database()
     await db.connect()
-    
+
     try:
         # Initialize notification service
         notifier = NotificationService(config['notifications'])
-        
+
         # Initialize and start bot
         bot = VFSBot(config, db, notifier)
-        
-        # Start selector health monitoring in background (if enabled)
+
+        # Initialize selector health monitoring (if enabled)
+        # Note: The health checker will be started within the bot's browser context
+        # when the browser is available. See VFSBot.start() for implementation.
         if config.get('selector_health_check', {}).get('enabled', True):
             from src.utils.selector_watcher import SelectorHealthCheck
             from src.utils.selectors import SelectorManager
-            
+
             selector_manager = SelectorManager()
-            health_checker = SelectorHealthCheck(
+            bot.health_checker = SelectorHealthCheck(
                 selector_manager,
                 notifier,
                 check_interval=config.get('selector_health_check', {}).get('interval', 3600)
             )
-            
-            # Note: Health check requires browser from bot, so we'll start it after bot initialization
-            # For now, just log that it's enabled
-            logger.info("Selector health monitoring configured (will start with bot)")
-        
+            logger.info("Selector health monitoring initialized")
+        else:
+            bot.health_checker = None
+
         await bot.start()
-        
+
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
     except Exception as e:

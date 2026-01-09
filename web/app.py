@@ -445,11 +445,11 @@ async def get_error_detail(error_id: str) -> Dict[str, Any]:
 async def get_error_screenshot(error_id: str, type: str = "full"):
     """
     Get error screenshot.
-    
+
     Args:
         error_id: Error ID
         type: Screenshot type (full or element)
-        
+
     Returns:
         Image file
     """
@@ -459,12 +459,24 @@ async def get_error_screenshot(error_id: str, type: str = "full"):
             screenshot_key = f"{type}_screenshot"
             if screenshot_key in error["captures"]:
                 screenshot_path = Path(error["captures"][screenshot_key])
-                if screenshot_path.exists():
-                    return FileResponse(
-                        screenshot_path,
-                        media_type="image/png"
-                    )
-    
+                # Security: Ensure screenshot path is within the expected directory
+                expected_dir = Path(app.state.error_capture.screenshots_dir).resolve()
+                try:
+                    resolved_path = screenshot_path.resolve()
+                    # Check if path is within expected directory
+                    if not str(resolved_path).startswith(str(expected_dir)):
+                        logger.warning(f"Path traversal attempt: {screenshot_path}")
+                        raise HTTPException(status_code=403, detail="Access denied")
+
+                    if resolved_path.exists():
+                        return FileResponse(
+                            resolved_path,
+                            media_type="image/png"
+                        )
+                except Exception as e:
+                    logger.error(f"Error accessing screenshot: {e}")
+                    raise HTTPException(status_code=500, detail="Error accessing screenshot")
+
     raise HTTPException(status_code=404, detail="Screenshot not found")
 
 

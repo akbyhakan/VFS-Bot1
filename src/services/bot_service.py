@@ -44,10 +44,11 @@ class VFSBot:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.running = False
+        self.health_checker = None  # Will be set by main.py if enabled
 
         # Initialize rate limiter
         self.rate_limiter = get_rate_limiter()
-        
+
         # Initialize error capture
         self.error_capture = ErrorCapture()
 
@@ -159,6 +160,11 @@ class VFSBot:
                 )
 
             try:
+                # Start health checker if configured
+                if self.health_checker and self.browser:
+                    asyncio.create_task(self.health_checker.run_continuous(self.browser))
+                    logger.info("Selector health monitoring started")
+
                 await self.run_bot_loop()
             finally:
                 await self.stop()

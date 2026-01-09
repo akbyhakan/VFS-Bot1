@@ -72,9 +72,12 @@ class ErrorCapture:
 
             # 3. HTML snapshot
             html_path = self.screenshots_dir / f"{error_id}.html"
-            html_content = await page.content()
-            html_path.write_text(html_content, encoding="utf-8")
-            error_record["captures"]["html_snapshot"] = str(html_path)
+            try:
+                html_content = await page.content()
+                html_path.write_text(html_content, encoding="utf-8", errors="replace")
+                error_record["captures"]["html_snapshot"] = str(html_path)
+            except Exception as e:
+                logger.warning(f"Could not capture HTML snapshot: {e}")
 
             # 4. Console logs
             # Note: Console logs should be collected during page lifecycle

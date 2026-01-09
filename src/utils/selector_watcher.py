@@ -213,8 +213,7 @@ class SelectorHealthCheck:
 
     async def run_continuous(self, browser: Browser):
         """Run health checks continuously."""
-        interval_str = f"Starting continuous health monitoring (interval: {self.check_interval}s)"
-        logger.info(interval_str)
+        logger.info(f"Starting continuous health monitoring (interval: {self.check_interval}s)")
 
         while True:
             try:
