@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Health check endpoint (`/health`) for monitoring
+- Metrics endpoint (`/metrics`) for performance tracking
+- Structured JSON logging for production
+- Environment variables validation on startup
+- Configuration schema validation
+- Global rate limiting (60 req/min default)
+- Test coverage reporting with Codecov
+- Prometheus-compatible metrics
 - TLS fingerprinting bypass using curl-cffi
 - Canvas, WebGL, and Audio Context fingerprinting bypass
 - Human behavior simulation with Bézier curve mouse movements
@@ -26,9 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This CHANGELOG file
 
 ### Changed
+- Logging format supports both human-readable and JSON
+- Startup validation enforces required environment variables
 - Updated README.md with correct copyright information
 - Improved project structure documentation
 - Enhanced bot with anti-detection features integration
+
+### Fixed
+- Docker health check now uses `/health` endpoint
 
 ### Removed
 - Removed notes.txt from repository (development notes)

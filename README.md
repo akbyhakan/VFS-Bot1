@@ -280,6 +280,53 @@ curl -X POST http://localhost:8000/api/bot/start
 curl -X POST http://localhost:8000/api/bot/stop
 ```
 
+## 🏥 Health & Monitoring
+
+### Health Check
+The web dashboard exposes a health check endpoint for container orchestration:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-09T15:30:00Z",
+  "version": "2.0.0",
+  "components": {
+    "database": true,
+    "bot": true,
+    "notifications": true
+  }
+}
+```
+
+### Metrics
+Monitor bot performance via metrics endpoint:
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+### Structured Logging
+Enable JSON logging for production:
+
+```bash
+export JSON_LOGGING=true
+python main.py
+```
+
+Logs are written to `logs/vfs_bot.jsonl` in JSON format for easy parsing.
+
+### Rate Limiting
+Global rate limiting prevents overloading VFS servers:
+- Default: 60 requests per 60 seconds
+- Automatic backoff when limit reached
+- Configurable via `RateLimiter` class
+```
+
 ## 🧪 Testing
 
 Run the test suite:

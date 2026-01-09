@@ -20,6 +20,7 @@ from .notification import NotificationService
 from .proxy_manager import ProxyManager
 from .session_manager import SessionManager
 from .stealth_config import StealthConfig
+from .rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ class VFSBot:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.running = False
+
+        # Initialize rate limiter
+        self.rate_limiter = get_rate_limiter()
 
         # Initialize components
         self.captcha_solver = CaptchaSolver(
@@ -334,6 +338,9 @@ class VFSBot:
             Slot information if available, None otherwise
         """
         try:
+            # Apply rate limiting before making requests
+            await self.rate_limiter.acquire()
+            
             # Navigate to appointment page
             appointment_url = f"{self.config['vfs']['base_url']}/{self.config['vfs']['country']}/{self.config['vfs']['mission']}/en/appointment"
             await page.goto(appointment_url, wait_until="networkidle", timeout=30000)
