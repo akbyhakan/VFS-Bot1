@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Question or Discussion
+    url: https://github.com/akbyhakan/VFS-Bot1/discussions
+    about: Ask questions or discuss ideas
+  - name: 📖 Documentation
+    url: https://github.com/akbyhakan/VFS-Bot1#readme
+    about: Check the documentation
