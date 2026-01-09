@@ -2,6 +2,7 @@
 
 import logging
 import random
+
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
@@ -9,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 class FingerprintBypass:
     """Bypass browser fingerprinting techniques."""
-    
+
     @staticmethod
     async def apply_all(page: Page) -> None:
         """
         Apply all fingerprint bypass scripts to a page.
-        
+
         Args:
             page: Playwright page object
         """
@@ -25,7 +26,7 @@ class FingerprintBypass:
             logger.info("Fingerprint bypass scripts applied successfully")
         except Exception as e:
             logger.error(f"Error applying fingerprint bypass: {e}")
-    
+
     @staticmethod
     async def _inject_canvas_noise(page: Page) -> None:
         """Inject noise into Canvas to randomize fingerprint."""
@@ -34,8 +35,9 @@ class FingerprintBypass:
         g_shift = random.randint(-5, 5)
         b_shift = random.randint(-5, 5)
         a_shift = random.randint(-2, 2)
-        
-        await page.add_init_script(f"""
+
+        await page.add_init_script(
+            f"""
             const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
             const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
             const originalToBlob = HTMLCanvasElement.prototype.toBlob;
@@ -80,20 +82,28 @@ class FingerprintBypass:
                 }}
                 return originalToBlob.apply(this, arguments);
             }};
-        """)
-    
+        """
+        )
+
     @staticmethod
     async def _spoof_webgl(page: Page) -> None:
         """Spoof WebGL vendor and renderer."""
         # Random vendor/renderer combinations
         vendors = [
-            ("Google Inc. (Intel)", "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0)"),
-            ("Google Inc. (NVIDIA)", "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)"),
+            (
+                "Google Inc. (Intel)",
+                "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0)",
+            ),
+            (
+                "Google Inc. (NVIDIA)",
+                "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)",
+            ),
             ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)"),
         ]
         vendor, renderer = random.choice(vendors)
-        
-        await page.add_init_script(f"""
+
+        await page.add_init_script(
+            f"""
             const getParameter = WebGLRenderingContext.prototype.getParameter;
             WebGLRenderingContext.prototype.getParameter = function(parameter) {{
                 if (parameter === 37445) {{
@@ -115,15 +125,17 @@ class FingerprintBypass:
                 }}
                 return getParameter2.apply(this, arguments);
             }};
-        """)
-    
+        """
+        )
+
     @staticmethod
     async def _randomize_audio_context(page: Page) -> None:
         """Randomize Audio Context timing to prevent fingerprinting."""
         # Generate random offset for audio timing
         offset = random.uniform(0.0001, 0.001)
-        
-        await page.add_init_script(f"""
+
+        await page.add_init_script(
+            f"""
             const audioOffset = {offset};
             
             const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
@@ -158,4 +170,5 @@ class FingerprintBypass:
                     window.webkitAudioContext = AudioContextProxy;
                 }}
             }}
-        """)
+        """
+        )
