@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 from enum import Enum
+from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class CaptchaSolver:
         self.manual_timeout = manual_timeout
         logger.info(f"CaptchaSolver initialized with provider: {self.provider}")
 
-    async def solve_recaptcha(self, page, site_key: str, url: str) -> Optional[str]:
+    async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
         Solve reCAPTCHA v2/v3.
 
@@ -75,9 +76,10 @@ class CaptchaSolver:
             from twocaptcha import TwoCaptcha
 
             solver = TwoCaptcha(self.api_key)
-            result = solver.recaptcha(sitekey=site_key, url=url)
+            result: Any = solver.recaptcha(sitekey=site_key, url=url)
             logger.info("2captcha solved successfully")
-            return result["code"]
+            solution: str = result["code"]
+            return solution
         except Exception as e:
             logger.error(f"2captcha error: {e}")
             return None
@@ -101,8 +103,9 @@ class CaptchaSolver:
             solver.set_website_url(url)
             solver.set_website_key(site_key)
 
-            g_response = solver.solve_and_return_solution()
-            if g_response != 0:
+            g_response_result: Any = solver.solve_and_return_solution()
+            g_response: str = g_response_result if isinstance(g_response_result, str) else ""
+            if g_response != "0" and g_response:
                 logger.info("Anticaptcha solved successfully")
                 return g_response
             else:
@@ -112,7 +115,7 @@ class CaptchaSolver:
             logger.error(f"Anticaptcha error: {e}")
             return None
 
-    async def _solve_with_nopecha(self, page) -> Optional[str]:
+    async def _solve_with_nopecha(self, page: Page) -> Optional[str]:
         """
         Solve captcha using nopecha extension.
 
@@ -128,7 +131,7 @@ class CaptchaSolver:
             await asyncio.sleep(10)
 
             # Try to get the response token
-            token = await page.evaluate(
+            token_result = await page.evaluate(
                 """
                 () => {
                     const response = document.querySelector('[name="g-recaptcha-response"]');
@@ -137,6 +140,7 @@ class CaptchaSolver:
             """
             )
 
+            token: Optional[str] = token_result if isinstance(token_result, str) else None
             if token:
                 logger.info("NopeCHA solved successfully")
                 return token
@@ -147,7 +151,7 @@ class CaptchaSolver:
             logger.error(f"NopeCHA error: {e}")
             return None
 
-    async def _solve_manually(self, page) -> Optional[str]:
+    async def _solve_manually(self, page: Page) -> Optional[str]:
         """
         Wait for manual captcha solving.
 
@@ -162,7 +166,7 @@ class CaptchaSolver:
         try:
             # Wait for captcha response to be filled
             for i in range(self.manual_timeout):
-                token = await page.evaluate(
+                token_result = await page.evaluate(
                     """
                     () => {
                         const response = document.querySelector('[name="g-recaptcha-response"]');
@@ -171,6 +175,7 @@ class CaptchaSolver:
                 """
                 )
 
+                token: Optional[str] = token_result if isinstance(token_result, str) else None
                 if token:
                     logger.info("Manual captcha solved")
                     return token
@@ -213,14 +218,15 @@ class CaptchaSolver:
             recognizer = sr.Recognizer()
             with sr.AudioFile(wav_data) as source:
                 audio_listened = recognizer.record(source)
-                text = recognizer.recognize_google(audio_listened)
+                text_result: Any = recognizer.recognize_google(audio_listened)
+                text: str = text_result if isinstance(text_result, str) else ""
                 logger.info(f"Audio captcha solved: {text}")
-                return text
+                return text if text else None
         except Exception as e:
             logger.error(f"Audio captcha error: {e}")
             return None
 
-    async def inject_captcha_solution(self, page, token: str) -> bool:
+    async def inject_captcha_solution(self, page: Page, token: str) -> bool:
         """
         Inject captcha solution token into page.
 

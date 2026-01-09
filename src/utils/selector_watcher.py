@@ -119,7 +119,7 @@ class SelectorHealthCheck:
         """
         logger.info("Starting selector health check...")
 
-        results = {
+        results: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "total": 0,
             "valid": 0,
@@ -146,14 +146,18 @@ class SelectorHealthCheck:
             for selector_path in critical_selectors:
                 result = await self.validate_selector(page, selector_path)
                 results["selectors"][selector_path] = result
-                results["total"] += 1
+                total_count: int = results["total"]
+                results["total"] = total_count + 1
 
                 if result["valid"]:
-                    results["valid"] += 1
+                    valid_count: int = results["valid"]
+                    results["valid"] = valid_count + 1
                     if result["fallback_used"]:
-                        results["fallback_used"] += 1
+                        fallback_count: int = results["fallback_used"]
+                        results["fallback_used"] = fallback_count + 1
                 else:
-                    results["invalid"] += 1
+                    invalid_count: int = results["invalid"]
+                    results["invalid"] = invalid_count + 1
 
             # Update health status
             self.health_status = results
@@ -173,7 +177,7 @@ class SelectorHealthCheck:
 
         return results
 
-    async def _send_alert(self, message: str):
+    async def _send_alert(self, message: str) -> None:
         """Send alert notification."""
         if self.notifier:
             try:
@@ -181,7 +185,7 @@ class SelectorHealthCheck:
             except Exception as e:
                 logger.error(f"Failed to send alert: {e}")
 
-    async def _send_critical_alert(self, results: Dict[str, Any]):
+    async def _send_critical_alert(self, results: Dict[str, Any]) -> None:
         """Send critical alert for selector failures."""
         invalid_count = results["invalid"]
         total_count = results["total"]
@@ -198,7 +202,7 @@ class SelectorHealthCheck:
 
         await self._send_alert(message)
 
-    async def run_continuous(self, browser: Browser):
+    async def run_continuous(self, browser: Browser) -> None:
         """Run health checks continuously."""
         logger.info(f"Starting continuous health monitoring (interval: {self.check_interval}s)")
 

@@ -3,7 +3,7 @@
 import logging
 import random
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ProxyManager:
     """Manage proxy rotation with failure tracking."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
         Initialize proxy manager.
 
@@ -63,7 +63,7 @@ class ProxyManager:
             logger.error(f"Error loading proxies: {e}")
             return 0
 
-    def _parse_proxy(self, proxy_string: str) -> Optional[Dict[str, str]]:
+    def _parse_proxy(self, proxy_string: str) -> Optional[Dict[str, Any]]:
         """
         Parse proxy string to dictionary.
 
@@ -129,7 +129,7 @@ class ProxyManager:
             logger.error(f"Error parsing proxy '{proxy_string}': {e}")
             return None
 
-    def get_random_proxy(self) -> Optional[Dict[str, str]]:
+    def get_random_proxy(self) -> Optional[Dict[str, Any]]:
         """
         Select random proxy from available proxies.
 
@@ -151,7 +151,7 @@ class ProxyManager:
         logger.debug(f"Selected random proxy: {proxy['server']}")
         return proxy
 
-    def mark_proxy_failed(self, proxy: Dict[str, str]) -> None:
+    def mark_proxy_failed(self, proxy: Dict[str, Any]) -> None:
         """
         Track failed proxy.
 
@@ -164,7 +164,7 @@ class ProxyManager:
                 f"Marked proxy as failed: {proxy['server']} ({len(self.failed_proxies)} total)"
             )
 
-    def rotate_proxy(self) -> Optional[Dict[str, str]]:
+    def rotate_proxy(self) -> Optional[Dict[str, Any]]:
         """
         Switch to next proxy.
 
@@ -187,7 +187,7 @@ class ProxyManager:
         return proxy
 
     def get_playwright_proxy(
-        self, proxy: Optional[Dict[str, str]] = None
+        self, proxy: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, str]]:
         """
         Return Playwright-compatible proxy format.
@@ -207,7 +207,8 @@ class ProxyManager:
         if not proxy:
             return None
 
-        playwright_proxy = {"server": proxy["server"]}
+        # Only include fields that Playwright accepts
+        playwright_proxy: Dict[str, str] = {"server": proxy["server"]}
 
         if "username" in proxy and "password" in proxy:
             playwright_proxy["username"] = proxy["username"]
@@ -215,7 +216,7 @@ class ProxyManager:
 
         return playwright_proxy
 
-    def get_current_proxy(self) -> Optional[Dict[str, str]]:
+    def get_current_proxy(self) -> Optional[Dict[str, Any]]:
         """
         Get currently selected proxy.
 

@@ -6,7 +6,7 @@ from typing import Any, Optional
 try:
     from curl_cffi.requests import AsyncSession
 except ImportError:
-    AsyncSession = None
+    AsyncSession = None  # type: ignore[assignment, misc]
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class TLSHandler:
             return
 
         try:
-            self.session = AsyncSession(impersonate=self.impersonate)
+            self.session = AsyncSession(impersonate=self.impersonate)  # type: ignore[arg-type]
             logger.info(f"TLS session created with {self.impersonate} impersonation")
         except Exception as e:
             logger.error(f"Failed to create TLS session: {e}")
@@ -60,7 +60,7 @@ class TLSHandler:
             finally:
                 self.session = None
 
-    async def request(self, method: str, url: str, **kwargs) -> Optional[Any]:
+    async def request(self, method: str, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make HTTP request with TLS bypass.
 
@@ -77,14 +77,14 @@ class TLSHandler:
             return None
 
         try:
-            response = await self.session.request(method, url, **kwargs)
+            response = await self.session.request(method, url, **kwargs)  # type: ignore[arg-type]
             logger.debug(f"TLS request successful: {method} {url}")
             return response
         except Exception as e:
             logger.error(f"TLS request failed: {e}")
             return None
 
-    async def get(self, url: str, **kwargs) -> Optional[Any]:
+    async def get(self, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make GET request with TLS bypass.
 
@@ -97,7 +97,7 @@ class TLSHandler:
         """
         return await self.request("GET", url, **kwargs)
 
-    async def post(self, url: str, **kwargs) -> Optional[Any]:
+    async def post(self, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make POST request with TLS bypass.
 

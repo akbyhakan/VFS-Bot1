@@ -1,7 +1,7 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
 import logging
-from typing import List, Dict
+from typing import Any, List, Dict
 from playwright.async_api import Page
 import asyncio
 
@@ -23,7 +23,7 @@ class CentreFetcher:
         self.base_url = base_url
         self.country = country
         self.mission = mission
-        self.cache: Dict[str, any] = {}
+        self.cache: Dict[str, Any] = {}
         logger.info(f"CentreFetcher initialized for {country}/{mission}")
 
     async def get_available_centres(self, page: Page) -> List[str]:
@@ -39,7 +39,8 @@ class CentreFetcher:
         cache_key = "centres"
         if cache_key in self.cache:
             logger.info("Returning cached centres")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Navigate to appointment page
@@ -50,7 +51,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#centres", timeout=10000)
 
             # Extract centre options
-            centres = await page.evaluate(
+            centres_result = await page.evaluate(
                 """
                 () => {
                     const select = document.querySelector('select#centres');
@@ -62,6 +63,7 @@ class CentreFetcher:
             """
             )
 
+            centres: List[str] = centres_result if isinstance(centres_result, list) else []
             self.cache[cache_key] = centres
             logger.info(f"Fetched {len(centres)} centres: {centres}")
             return centres
@@ -83,7 +85,8 @@ class CentreFetcher:
         cache_key = f"categories_{centre}"
         if cache_key in self.cache:
             logger.info(f"Returning cached categories for {centre}")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Select the centre
@@ -94,7 +97,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#categories", timeout=10000)
 
             # Extract category options
-            categories = await page.evaluate(
+            categories_result = await page.evaluate(
                 """
                 () => {
                     const select = document.querySelector('select#categories');
@@ -106,6 +109,7 @@ class CentreFetcher:
             """
             )
 
+            categories: List[str] = categories_result if isinstance(categories_result, list) else []
             self.cache[cache_key] = categories
             logger.info(f"Fetched {len(categories)} categories for {centre}: {categories}")
             return categories
@@ -128,7 +132,8 @@ class CentreFetcher:
         cache_key = f"subcategories_{centre}_{category}"
         if cache_key in self.cache:
             logger.info(f"Returning cached subcategories for {centre}/{category}")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Select the centre and category
@@ -141,7 +146,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#subcategories", timeout=10000)
 
             # Extract subcategory options
-            subcategories = await page.evaluate(
+            subcategories_result = await page.evaluate(
                 """
                 () => {
                     const select = document.querySelector('select#subcategories');
@@ -153,6 +158,7 @@ class CentreFetcher:
             """
             )
 
+            subcategories: List[str] = subcategories_result if isinstance(subcategories_result, list) else []
             self.cache[cache_key] = subcategories
             logger.info(f"Fetched {len(subcategories)} subcategories: {subcategories}")
             return subcategories
@@ -165,7 +171,7 @@ class CentreFetcher:
         self.cache.clear()
         logger.info("Cache cleared")
 
-    async def fetch_all_data(self, page: Page) -> Dict[str, any]:
+    async def fetch_all_data(self, page: Page) -> Dict[str, Any]:
         """
         Fetch all available centres, categories, and subcategories.
 
@@ -175,7 +181,7 @@ class CentreFetcher:
         Returns:
             Dictionary with complete data structure
         """
-        data = {}
+        data: Dict[str, Dict[str, List[str]]] = {}
 
         # Fetch centres
         centres = await self.get_available_centres(page)

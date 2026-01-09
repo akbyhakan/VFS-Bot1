@@ -219,9 +219,9 @@ class Database:
         centre: str,
         category: str,
         subcategory: str,
-        date: str = None,
-        time: str = None,
-        reference: str = None,
+        date: Optional[str] = None,
+        time: Optional[str] = None,
+        reference: Optional[str] = None,
     ) -> int:
         """
         Add an appointment record.

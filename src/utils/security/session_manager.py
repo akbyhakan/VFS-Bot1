@@ -4,12 +4,12 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 try:
-    import jwt
+    import jwt as jwt_module
 except ImportError:
-    jwt = None
+    jwt_module = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class SessionManager:
         self.refresh_token: Optional[str] = None
         self.token_expiry: Optional[int] = None
 
-        if jwt is None:
+        if jwt_module is None:
             logger.warning("pyjwt not installed, JWT decoding will be disabled")
 
         # Load existing session if available
@@ -103,13 +103,13 @@ class SessionManager:
         self.refresh_token = refresh_token
 
         # Decode token to get expiry
-        if jwt is not None:
+        if jwt_module is not None:
             try:
                 # Decode without verification to extract claims
                 # Note: Signature verification is disabled because we're only
                 # reading the expiry time, not validating the token's authenticity.
                 # The token is already trusted as it comes from the service we're automating.
-                decoded = jwt.decode(access_token, options={"verify_signature": False})
+                decoded = jwt_module.decode(access_token, options={"verify_signature": False})
                 self.token_expiry = decoded.get("exp")
 
                 if self.token_expiry:
