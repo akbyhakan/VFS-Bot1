@@ -112,14 +112,22 @@ class TestSessionManager:
 
     def setup_method(self):
         """Setup test session file."""
-        self.test_session_file = "/tmp/test_session.json"
+        import tempfile
+
+        # Use temporary file for testing
+        fd, self.test_session_file = tempfile.mkstemp(suffix=".json")
+        import os
+
+        os.close(fd)  # Close the file descriptor
         self.manager = SessionManager(session_file=self.test_session_file)
 
     def teardown_method(self):
         """Clean up test session file."""
+        import os
+
         session_path = Path(self.test_session_file)
         if session_path.exists():
-            session_path.unlink()
+            os.unlink(self.test_session_file)
 
     def test_set_tokens(self):
         """Test token setting."""

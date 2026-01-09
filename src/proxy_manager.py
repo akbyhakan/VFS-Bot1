@@ -102,8 +102,12 @@ class ProxyManager:
 
             # Parse host and port
             if ":" in server:
-                host, port = server.rsplit(":", 1)
-                port = int(port)
+                host, port_str = server.rsplit(":", 1)
+                try:
+                    port = int(port_str)
+                except ValueError:
+                    logger.error(f"Invalid port number: {port_str}")
+                    return None
             else:
                 host = server
                 port = 8080 if protocol == "http" else 1080

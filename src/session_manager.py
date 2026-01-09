@@ -106,6 +106,9 @@ class SessionManager:
         if jwt is not None:
             try:
                 # Decode without verification to extract claims
+                # Note: Signature verification is disabled because we're only
+                # reading the expiry time, not validating the token's authenticity.
+                # The token is already trusted as it comes from the service we're automating.
                 decoded = jwt.decode(access_token, options={"verify_signature": False})
                 self.token_expiry = decoded.get("exp")
 

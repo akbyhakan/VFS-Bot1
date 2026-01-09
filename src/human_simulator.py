@@ -116,6 +116,8 @@ class HumanSimulator:
         """
         try:
             # Get current mouse position (start from a random point if unknown)
+            # Note: Playwright doesn't expose current mouse position,
+            # so we use a random starting point to simulate natural movement
             start_x = random.uniform(100, 500)
             start_y = random.uniform(100, 500)
 

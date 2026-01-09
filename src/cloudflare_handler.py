@@ -55,7 +55,10 @@ class CloudflareHandler:
                 return "browser_check"
 
             # Check for Turnstile challenge
-            turnstile = await page.locator('iframe[src*="challenges.cloudflare.com"]').count()
+            # Note: Cloudflare may use different challenge domains
+            turnstile = await page.locator(
+                'iframe[src*="challenges.cloudflare.com"], iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
+            ).count()
             if turnstile > 0:
                 logger.info("Detected Cloudflare Turnstile challenge")
                 return "turnstile"

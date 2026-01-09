@@ -31,10 +31,17 @@ class FingerprintBypass:
     async def _inject_canvas_noise(page: Page) -> None:
         """Inject noise into Canvas to randomize fingerprint."""
         # Generate random noise shift values (-5 to +5)
+        # These are safe integer values that cannot cause injection
         r_shift = random.randint(-5, 5)
         g_shift = random.randint(-5, 5)
         b_shift = random.randint(-5, 5)
         a_shift = random.randint(-2, 2)
+
+        # Validate values are within safe range
+        assert -5 <= r_shift <= 5
+        assert -5 <= g_shift <= 5
+        assert -5 <= b_shift <= 5
+        assert -2 <= a_shift <= 2
 
         await page.add_init_script(
             f"""
