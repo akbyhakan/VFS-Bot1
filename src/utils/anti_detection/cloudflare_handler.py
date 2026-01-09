@@ -214,7 +214,7 @@ class CloudflareHandler:
                 # No challenge detected
                 return True
 
-            challenge_name = self.CHALLENGE_TYPES.get(challenge_type, 'Unknown')
+            challenge_name = self.CHALLENGE_TYPES.get(challenge_type, "Unknown")
             logger.info(f"Handling Cloudflare challenge: {challenge_name}")
 
             # Handle based on type
