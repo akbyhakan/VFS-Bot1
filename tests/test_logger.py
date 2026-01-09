@@ -3,7 +3,7 @@
 import logging
 import json
 
-from src.logger import JSONFormatter, setup_structured_logging
+from src.core.logger import JSONFormatter, setup_structured_logging
 
 
 class TestJSONFormatter:

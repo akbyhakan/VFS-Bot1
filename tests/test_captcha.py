@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.captcha_solver import CaptchaSolver, CaptchaProvider
+from src.services.captcha_solver import CaptchaSolver, CaptchaProvider
 
 
 def test_captcha_solver_initialization():

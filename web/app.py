@@ -159,7 +159,7 @@ async def check_database_health() -> bool:
     try:
         # Try to import and check database module
         # This is a basic check - in production, you would do an actual query
-        from src.database import Database
+        from src.models.database import Database
 
         # For now, assume healthy if import works
         # TODO: Add actual database ping query when database is initialized
@@ -386,7 +386,6 @@ async def create_api_key(secret: str) -> Dict[str, str]:
         "api_key": new_key,
         "note": "Save this key securely! It will not be shown again."
     }
-    )
 
 
 if __name__ == "__main__":
