@@ -11,16 +11,15 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .captcha_solver import CaptchaSolver
 from .centre_fetcher import CentreFetcher
-from .cloudflare_handler import CloudflareHandler
 from .database import Database
-from .fingerprint_bypass import FingerprintBypass
-from .header_manager import HeaderManager
-from .human_simulator import HumanSimulator
 from .notification import NotificationService
-from .proxy_manager import ProxyManager
-from .session_manager import SessionManager
-from .stealth_config import StealthConfig
-from .rate_limiter import get_rate_limiter
+from .utils.anti_detection import (
+    CloudflareHandler,
+    FingerprintBypass,
+    HumanSimulator,
+    StealthConfig,
+)
+from .utils.security import HeaderManager, ProxyManager, SessionManager, get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
