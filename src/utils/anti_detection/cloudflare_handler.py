@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
@@ -19,7 +19,7 @@ class CloudflareHandler:
         "blocked": "Blocked",
     }
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
         Initialize Cloudflare handler.
 

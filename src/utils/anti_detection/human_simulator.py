@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from playwright.async_api import Page
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class HumanSimulator:
     """Simulate realistic human behavior patterns."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
         Initialize human simulator.
 

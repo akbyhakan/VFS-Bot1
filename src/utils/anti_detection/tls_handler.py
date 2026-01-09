@@ -60,7 +60,7 @@ class TLSHandler:
             finally:
                 self.session = None
 
-    async def request(self, method: str, url: str, **kwargs) -> Optional[Any]:
+    async def request(self, method: str, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make HTTP request with TLS bypass.
 
@@ -84,7 +84,7 @@ class TLSHandler:
             logger.error(f"TLS request failed: {e}")
             return None
 
-    async def get(self, url: str, **kwargs) -> Optional[Any]:
+    async def get(self, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make GET request with TLS bypass.
 
@@ -97,7 +97,7 @@ class TLSHandler:
         """
         return await self.request("GET", url, **kwargs)
 
-    async def post(self, url: str, **kwargs) -> Optional[Any]:
+    async def post(self, url: str, **kwargs: Any) -> Optional[Any]:
         """
         Make POST request with TLS bypass.
 

@@ -3,7 +3,7 @@
 import logging
 import random
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ProxyManager:
     """Manage proxy rotation with failure tracking."""
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
         Initialize proxy manager.
 
@@ -207,7 +207,8 @@ class ProxyManager:
         if not proxy:
             return None
 
-        playwright_proxy = {"server": proxy["server"]}
+        # Only include fields that Playwright accepts
+        playwright_proxy: Dict[str, str] = {"server": proxy["server"]}
 
         if "username" in proxy and "password" in proxy:
             playwright_proxy["username"] = proxy["username"]

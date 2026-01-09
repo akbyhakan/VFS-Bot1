@@ -65,31 +65,31 @@ class VFSBot:
 
         if self.anti_detection_enabled:
             # Human behavior simulator
-            self.human_sim = HumanSimulator(config.get("human_behavior", {}))
+            self.human_sim: Optional[HumanSimulator] = HumanSimulator(config.get("human_behavior", {}))
 
             # Header manager
-            self.header_manager = HeaderManager()
+            self.header_manager: Optional[HeaderManager] = HeaderManager()
 
             # Session manager
             session_config = config.get("session", {})
-            self.session_manager = SessionManager(
+            self.session_manager: Optional[SessionManager] = SessionManager(
                 session_file=session_config.get("save_file", "data/session.json"),
                 token_refresh_buffer=session_config.get("token_refresh_buffer", 5),
             )
 
             # Cloudflare handler
-            self.cloudflare_handler = CloudflareHandler(config.get("cloudflare", {}))
+            self.cloudflare_handler: Optional[CloudflareHandler] = CloudflareHandler(config.get("cloudflare", {}))
 
             # Proxy manager
-            self.proxy_manager = ProxyManager(config.get("proxy", {}))
+            self.proxy_manager: Optional[ProxyManager] = ProxyManager(config.get("proxy", {}))
 
             logger.info("Anti-detection features initialized")
         else:
-            self.human_sim = None
-            self.header_manager = None
-            self.session_manager = None
-            self.cloudflare_handler = None
-            self.proxy_manager = None
+            self.human_sim: Optional[HumanSimulator] = None
+            self.header_manager: Optional[HeaderManager] = None
+            self.session_manager: Optional[SessionManager] = None
+            self.cloudflare_handler: Optional[CloudflareHandler] = None
+            self.proxy_manager: Optional[ProxyManager] = None
             logger.info("Anti-detection features disabled")
 
         logger.info("VFSBot initialized")
@@ -205,6 +205,10 @@ class VFSBot:
             user: User dictionary from database
         """
         logger.info(f"Processing user: {user['email']}")
+
+        if self.context is None:
+            logger.error("Browser context is not initialized")
+            return
 
         page = await self.context.new_page()
 
@@ -473,10 +477,11 @@ class VFSBot:
             await page.wait_for_selector(".confirmation", timeout=10000)
 
             # Extract reference number
-            reference = await page.locator(".reference-number").text_content()
+            reference_text = await page.locator(".reference-number").text_content()
+            reference: str = reference_text.strip() if reference_text else ""
 
             logger.info(f"Appointment booked! Reference: {reference}")
-            return reference.strip()
+            return reference if reference else None
 
         except Exception as e:
             logger.error(f"Error booking appointment: {e}")
