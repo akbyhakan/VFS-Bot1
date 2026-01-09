@@ -9,7 +9,6 @@ import asyncio
 import logging
 import sys
 import os
-from pathlib import Path
 import argparse
 
 from src.core.config_loader import load_config

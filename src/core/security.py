@@ -4,8 +4,8 @@ import secrets
 import hashlib
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any
-from fastapi import HTTPException, Security, Depends
+from typing import Dict, Any
+from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 security = HTTPBearer()

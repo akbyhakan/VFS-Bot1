@@ -2,8 +2,6 @@
 
 import aiosqlite
 import logging
-from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
@@ -171,7 +169,7 @@ class Database:
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
-                INSERT INTO personal_details 
+                INSERT INTO personal_details
                 (user_id, first_name, last_name, passport_number, passport_expiry,
                  gender, mobile_code, mobile_number, email, nationality, date_of_birth,
                  address_line1, address_line2, state, city, postcode)
@@ -243,8 +241,8 @@ class Database:
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
-                INSERT INTO appointments 
-                (user_id, centre, category, subcategory, appointment_date, 
+                INSERT INTO appointments
+                (user_id, centre, category, subcategory, appointment_date,
                  appointment_time, reference_number)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,

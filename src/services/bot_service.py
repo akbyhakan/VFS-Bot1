@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -115,7 +115,11 @@ class VFSBot:
                     logger.info(f"Using proxy: {proxy_config['server']}")
 
             # Get User-Agent from header manager or use default
-            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            user_agent = (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            )
             if self.anti_detection_enabled and self.header_manager:
                 user_agent = self.header_manager.get_user_agent()
 
@@ -284,7 +288,10 @@ class VFSBot:
             True if login successful
         """
         try:
-            url = f"{self.config['vfs']['base_url']}/{self.config['vfs']['country']}/{self.config['vfs']['mission']}/en/login"
+            base = self.config["vfs"]["base_url"]
+            country = self.config["vfs"]["country"]
+            mission = self.config["vfs"]["mission"]
+            url = f"{base}/{country}/{mission}/en/login"
             logger.info(f"Navigating to login page: {url}")
 
             await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -362,7 +369,10 @@ class VFSBot:
             await self.rate_limiter.acquire()
 
             # Navigate to appointment page
-            appointment_url = f"{self.config['vfs']['base_url']}/{self.config['vfs']['country']}/{self.config['vfs']['mission']}/en/appointment"
+            base = self.config["vfs"]["base_url"]
+            country = self.config["vfs"]["country"]
+            mission = self.config["vfs"]["mission"]
+            appointment_url = f"{base}/{country}/{mission}/en/appointment"
             await page.goto(appointment_url, wait_until="networkidle", timeout=30000)
 
             # Check for Cloudflare challenge

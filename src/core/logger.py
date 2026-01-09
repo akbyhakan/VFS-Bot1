@@ -54,9 +54,15 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     logs_dir.mkdir(exist_ok=True)
 
     # Console handler - human readable
+    console_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>"
+    )
     logger.add(
         sys.stdout,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        format=console_format,
         level=level,
         colorize=True,
     )
@@ -73,9 +79,12 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
             serialize=True,  # JSON format
         )
     else:
+        text_format = (
+            "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | " "{name}:{function}:{line} - {message}"
+        )
         logger.add(
             logs_dir / "vfs_bot_{time:YYYY-MM-DD}.log",
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+            format=text_format,
             level=level,
             rotation="10 MB",  # Rotate when file reaches 10MB
             retention="30 days",
