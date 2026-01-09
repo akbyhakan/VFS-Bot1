@@ -20,7 +20,7 @@ class SelectorHealthCheck:
         self,
         selector_manager: SelectorManager,
         notifier: Optional[NotificationService] = None,
-        check_interval: int = 3600  # 1 hour default
+        check_interval: int = 3600,  # 1 hour default
     ):
         self.selector_manager = selector_manager
         self.notifier = notifier
@@ -29,10 +29,7 @@ class SelectorHealthCheck:
         self.last_check: Optional[datetime] = None
 
     async def validate_selector(
-        self,
-        page: Page,
-        selector_path: str,
-        timeout: int = 5000
+        self, page: Page, selector_path: str, timeout: int = 5000
     ) -> Dict[str, Any]:
         """
         Validate a single selector.
@@ -51,7 +48,7 @@ class SelectorHealthCheck:
             "found": False,
             "fallback_used": False,
             "error": None,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
@@ -64,11 +61,7 @@ class SelectorHealthCheck:
 
             # Try primary selector
             try:
-                element = await page.wait_for_selector(
-                    selector,
-                    timeout=timeout,
-                    state="attached"
-                )
+                element = await page.wait_for_selector(selector, timeout=timeout, state="attached")
                 if element:
                     result["valid"] = True
                     result["found"] = True
@@ -83,9 +76,7 @@ class SelectorHealthCheck:
                     for i, fallback in enumerate(fallbacks):
                         try:
                             element = await page.wait_for_selector(
-                                fallback,
-                                timeout=timeout,
-                                state="attached"
+                                fallback, timeout=timeout, state="attached"
                             )
                             if element:
                                 result["valid"] = True
@@ -114,9 +105,7 @@ class SelectorHealthCheck:
         return result
 
     async def check_all_selectors(
-        self,
-        browser: Browser,
-        vfs_url: str = "https://visa.vfsglobal.com/tur/en/deu"
+        self, browser: Browser, vfs_url: str = "https://visa.vfsglobal.com/tur/en/deu"
     ) -> Dict[str, Any]:
         """
         Check all selectors in config.
@@ -136,7 +125,7 @@ class SelectorHealthCheck:
             "valid": 0,
             "invalid": 0,
             "fallback_used": 0,
-            "selectors": {}
+            "selectors": {},
         }
 
         # Define critical selectors to check
@@ -146,7 +135,7 @@ class SelectorHealthCheck:
             "login.submit_button",
             "appointment.centre_dropdown",
             "appointment.date_picker",
-            "captcha.recaptcha_frame"
+            "captcha.recaptcha_frame",
         ]
 
         page = await browser.new_page()
@@ -174,9 +163,7 @@ class SelectorHealthCheck:
             if results["invalid"] > 0:
                 await self._send_critical_alert(results)
 
-            logger.info(
-                f"Health check complete: {results['valid']}/{results['total']} valid"
-            )
+            logger.info(f"Health check complete: {results['valid']}/{results['total']} valid")
 
         except Exception as e:
             logger.error(f"Health check failed: {e}")

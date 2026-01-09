@@ -28,38 +28,24 @@ async def database():
 def config():
     """Test configuration."""
     return {
-        'vfs': {
-            'base_url': 'https://visa.vfsglobal.com',
-            'country': 'tur',
-            'mission': 'deu',
-            'centres': ['Istanbul'],
-            'category': 'Schengen Visa',
-            'subcategory': 'Tourism'
+        "vfs": {
+            "base_url": "https://visa.vfsglobal.com",
+            "country": "tur",
+            "mission": "deu",
+            "centres": ["Istanbul"],
+            "category": "Schengen Visa",
+            "subcategory": "Tourism",
         },
-        'credentials': {
-            'email': 'test@example.com',
-            'password': 'testpass'
+        "credentials": {"email": "test@example.com", "password": "testpass"},
+        "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
+        "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
+        "bot": {
+            "check_interval": 5,
+            "headless": True,
+            "screenshot_on_error": False,
+            "max_retries": 1,
         },
-        'notifications': {
-            'telegram': {'enabled': False},
-            'email': {'enabled': False}
-        },
-        'captcha': {
-            'provider': 'manual',
-            'api_key': '',
-            'manual_timeout': 10
-        },
-        'bot': {
-            'check_interval': 5,
-            'headless': True,
-            'screenshot_on_error': False,
-            'max_retries': 1
-        },
-        'appointments': {
-            'preferred_dates': [],
-            'preferred_times': [],
-            'random_selection': True
-        }
+        "appointments": {"preferred_dates": [], "preferred_times": [], "random_selection": True},
     }
 
 
@@ -77,7 +63,7 @@ async def test_add_user(database):
         password="testpass",
         centre="Istanbul",
         category="Schengen Visa",
-        subcategory="Tourism"
+        subcategory="Tourism",
     )
     assert user_id > 0
 
@@ -90,12 +76,12 @@ async def test_get_active_users(database):
         password="testpass",
         centre="Istanbul",
         category="Schengen Visa",
-        subcategory="Tourism"
+        subcategory="Tourism",
     )
-    
+
     users = await database.get_active_users()
     assert len(users) == 1
-    assert users[0]['email'] == "test@example.com"
+    assert users[0]["email"] == "test@example.com"
 
 
 @pytest.mark.asyncio
@@ -106,21 +92,21 @@ async def test_add_personal_details(database):
         password="testpass",
         centre="Istanbul",
         category="Schengen Visa",
-        subcategory="Tourism"
+        subcategory="Tourism",
     )
-    
+
     details = {
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'passport_number': 'AB123456',
-        'email': 'test@example.com'
+        "first_name": "John",
+        "last_name": "Doe",
+        "passport_number": "AB123456",
+        "email": "test@example.com",
     }
-    
+
     details_id = await database.add_personal_details(user_id, details)
     assert details_id > 0
-    
+
     retrieved = await database.get_personal_details(user_id)
-    assert retrieved['first_name'] == 'John'
+    assert retrieved["first_name"] == "John"
 
 
 @pytest.mark.asyncio
@@ -131,9 +117,9 @@ async def test_add_appointment(database):
         password="testpass",
         centre="Istanbul",
         category="Schengen Visa",
-        subcategory="Tourism"
+        subcategory="Tourism",
     )
-    
+
     appointment_id = await database.add_appointment(
         user_id=user_id,
         centre="Istanbul",
@@ -141,21 +127,21 @@ async def test_add_appointment(database):
         subcategory="Tourism",
         date="2024-01-15",
         time="10:00",
-        reference="REF123"
+        reference="REF123",
     )
-    
+
     assert appointment_id > 0
-    
+
     appointments = await database.get_appointments(user_id)
     assert len(appointments) == 1
-    assert appointments[0]['reference_number'] == "REF123"
+    assert appointments[0]["reference_number"] == "REF123"
 
 
 def test_bot_initialization(config):
     """Test bot initialization."""
     db = Database("test.db")
-    notifier = NotificationService(config['notifications'])
+    notifier = NotificationService(config["notifications"])
     bot = VFSBot(config, db, notifier)
-    
+
     assert bot.config == config
     assert bot.running is False

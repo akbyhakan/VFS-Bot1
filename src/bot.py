@@ -340,7 +340,7 @@ class VFSBot:
         try:
             # Apply rate limiting before making requests
             await self.rate_limiter.acquire()
-            
+
             # Navigate to appointment page
             appointment_url = f"{self.config['vfs']['base_url']}/{self.config['vfs']['country']}/{self.config['vfs']['mission']}/en/appointment"
             await page.goto(appointment_url, wait_until="networkidle", timeout=30000)

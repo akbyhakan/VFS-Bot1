@@ -49,18 +49,18 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     """
     # Remove default handler
     logger.remove()
-    
+
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
-    
+
     # Console handler - human readable
     logger.add(
         sys.stdout,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
         level=level,
-        colorize=True
+        colorize=True,
     )
-    
+
     # File handler - JSON for production or text for development
     if json_format:
         logger.add(
@@ -70,7 +70,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
             rotation="00:00",  # Rotate daily
             retention="30 days",  # Keep for 30 days
             compression="zip",  # Compress old logs
-            serialize=True  # JSON format
+            serialize=True,  # JSON format
         )
     else:
         logger.add(
@@ -79,9 +79,9 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
             level=level,
             rotation="10 MB",  # Rotate when file reaches 10MB
             retention="30 days",
-            compression="zip"
+            compression="zip",
         )
-    
+
     # Error file - separate error logs
     logger.add(
         logs_dir / "errors_{time:YYYY-MM-DD}.log",
@@ -90,11 +90,11 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
         rotation="10 MB",
         retention="90 days",  # Keep errors longer
         backtrace=True,  # Include full traceback
-        diagnose=True  # Include variable values
+        diagnose=True,  # Include variable values
     )
-    
+
     logger.info(f"Logging initialized (level={level}, json={json_format})")
-    
+
     # Intercept standard logging and redirect to loguru
     class InterceptHandler(logging.Handler):
         def emit(self, record):
@@ -114,4 +114,3 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
 
     # Intercept all standard logging
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
-

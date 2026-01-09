@@ -367,53 +367,47 @@ async def add_log(message: str, level: str = "INFO") -> None:
 async def create_api_key(secret: str) -> Dict[str, str]:
     """
     Generate API key with admin secret - one-time use endpoint.
-    
+
     Args:
         secret: Admin secret from environment
-        
+
     Returns:
         New API key
-        
+
     Raises:
         HTTPException: If admin secret is invalid
     """
     admin_secret = os.getenv("ADMIN_SECRET")
     if not admin_secret or secret != admin_secret:
         raise HTTPException(status_code=403, detail="Invalid admin secret")
-    
+
     new_key = generate_api_key()
-    return {
-        "api_key": new_key,
-        "note": "Save this key securely! It will not be shown again."
-    }
+    return {"api_key": new_key, "note": "Save this key securely! It will not be shown again."}
 
 
 @app.get("/api/selector-health")
 async def get_selector_health() -> Dict[str, Any]:
     """
     Get selector health status.
-    
+
     Returns:
         Current health check results
     """
     # Access from bot_state or global health checker
     if hasattr(app.state, "selector_health"):
         return app.state.selector_health
-    
-    return {
-        "status": "not_initialized",
-        "message": "Health monitoring not started yet"
-    }
+
+    return {"status": "not_initialized", "message": "Health monitoring not started yet"}
 
 
 @app.get("/api/errors")
 async def get_errors(limit: int = 20) -> List[Dict[str, Any]]:
     """
     Get recent errors with captures.
-    
+
     Args:
         limit: Number of errors to return
-        
+
     Returns:
         List of recent errors
     """
@@ -426,10 +420,10 @@ async def get_errors(limit: int = 20) -> List[Dict[str, Any]]:
 async def get_error_detail(error_id: str) -> Dict[str, Any]:
     """
     Get detailed error information.
-    
+
     Args:
         error_id: Error ID
-        
+
     Returns:
         Full error details with captures
     """
@@ -437,7 +431,7 @@ async def get_error_detail(error_id: str) -> Dict[str, Any]:
         error = app.state.error_capture.get_error_by_id(error_id)
         if error:
             return error
-    
+
     raise HTTPException(status_code=404, detail="Error not found")
 
 
@@ -469,10 +463,7 @@ async def get_error_screenshot(error_id: str, type: str = "full"):
                         raise HTTPException(status_code=403, detail="Access denied")
 
                     if resolved_path.exists():
-                        return FileResponse(
-                            resolved_path,
-                            media_type="image/png"
-                        )
+                        return FileResponse(resolved_path, media_type="image/png")
                 except Exception as e:
                     logger.error(f"Error accessing screenshot: {e}")
                     raise HTTPException(status_code=500, detail="Error accessing screenshot")
@@ -484,10 +475,10 @@ async def get_error_screenshot(error_id: str, type: str = "full"):
 async def errors_dashboard(request: Request):
     """
     Render errors dashboard page.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         HTML response with errors dashboard template
     """
