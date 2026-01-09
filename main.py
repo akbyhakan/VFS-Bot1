@@ -12,13 +12,13 @@ import os
 from pathlib import Path
 import argparse
 
-from src.config_loader import load_config
-from src.database import Database
-from src.notification import NotificationService
-from src.bot import VFSBot
-from src.logger import setup_structured_logging
-from src.env_validator import EnvValidator
-from src.config_validator import ConfigValidator
+from src.core.config_loader import load_config
+from src.models.database import Database
+from src.services.notification import NotificationService
+from src.services.bot_service import VFSBot
+from src.core.logger import setup_structured_logging
+from src.core.env_validator import EnvValidator
+from src.core.config_validator import ConfigValidator
 
 
 async def run_bot_mode(config: dict) -> None:
