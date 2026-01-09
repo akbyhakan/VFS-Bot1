@@ -13,6 +13,8 @@ from .services.captcha_solver import CaptchaSolver, CaptchaProvider
 from .services.centre_fetcher import CentreFetcher
 from .services.notification import NotificationService
 
+from .utils.selectors import SelectorManager, get_selector_manager
+
 from .utils.anti_detection import (
     CloudflareHandler,
     FingerprintBypass,
@@ -48,6 +50,9 @@ __all__ = [
     "CaptchaProvider",
     "CentreFetcher",
     "NotificationService",
+    # Utils
+    "SelectorManager",
+    "get_selector_manager",
     # Anti-detection
     "CloudflareHandler",
     "FingerprintBypass",

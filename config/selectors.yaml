@@ -1,0 +1,42 @@
+# VFS Global Selectors - Update when website changes
+version: "2024.01"
+last_updated: "2024-01-09"
+
+# Login page selectors
+login:
+  email_input: "input#mat-input-0"
+  password_input: "input#mat-input-1"
+  submit_button: "button.mat-button-base[type='submit']"
+  error_message: "div.mat-error"
+  
+# Appointment booking selectors
+appointment:
+  centre_dropdown: "select#SelectLoc"
+  category_dropdown: "select#SelectVisaCategory"
+  subcategory_dropdown: "select#SelectVisaSubCategory"
+  date_picker: "input#mat-datepicker-input"
+  time_slot: "button.time-slot-btn"
+  submit_button: "button#submit-appointment"
+  
+# Captcha selectors
+captcha:
+  recaptcha_frame: "iframe[src*='recaptcha']"
+  recaptcha_checkbox: "div.recaptcha-checkbox"
+  recaptcha_response: "textarea#g-recaptcha-response"
+  
+# Common elements
+common:
+  loading_spinner: "div.mat-progress-spinner"
+  error_toast: "div.mat-snack-bar-container"
+  success_toast: "div.success-message"
+  
+# Fallback selectors (if primary fails)
+fallback:
+  email_input: 
+    - "input[type='email']"
+    - "input[name='email']"
+    - "#email"
+  password_input: 
+    - "input[type='password']"
+    - "input[name='password']"
+    - "#password"

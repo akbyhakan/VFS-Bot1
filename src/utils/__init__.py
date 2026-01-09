@@ -1,3 +1,8 @@
 """Utility functions module."""
 
-__all__ = []
+from .selectors import SelectorManager, get_selector_manager
+
+__all__ = [
+    "SelectorManager",
+    "get_selector_manager",
+]
