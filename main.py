@@ -8,6 +8,7 @@ Main entry point for the application.
 import asyncio
 import logging
 import sys
+import os
 from pathlib import Path
 import argparse
 
@@ -15,32 +16,9 @@ from src.config_loader import load_config
 from src.database import Database
 from src.notification import NotificationService
 from src.bot import VFSBot
-
-
-def setup_logging(level: str = "INFO") -> None:
-    """
-    Setup logging configuration.
-    
-    Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR)
-    """
-    # Create logs directory
-    logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
-    
-    # Configure logging
-    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format=log_format,
-        handlers=[
-            logging.FileHandler(logs_dir / "vfs_bot.log"),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    
-    logger = logging.getLogger(__name__)
-    logger.info("Logging initialized")
+from src.logger import setup_structured_logging
+from src.env_validator import EnvValidator
+from src.config_validator import ConfigValidator
 
 
 async def run_bot_mode(config: dict) -> None:
@@ -120,15 +98,25 @@ def main() -> None:
     
     args = parser.parse_args()
     
-    # Setup logging
-    setup_logging(args.log_level)
+    # Setup structured logging
+    json_logging = os.getenv("JSON_LOGGING", "true").lower() == "true"
+    setup_structured_logging(args.log_level, json_format=json_logging)
     logger = logging.getLogger(__name__)
     
     try:
+        # Validate environment variables
+        logger.info("Validating environment variables...")
+        EnvValidator.validate(strict=True)
+        
         # Load configuration
         logger.info("Loading configuration...")
         config = load_config(args.config)
         logger.info("Configuration loaded successfully")
+        
+        # Validate config
+        if not ConfigValidator.validate(config):
+            logger.error("Invalid configuration, exiting...")
+            sys.exit(1)
         
         # Run in selected mode
         if args.mode == "bot":

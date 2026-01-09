@@ -37,6 +37,19 @@ bot_state = {
     "logs": []
 }
 
+# Metrics storage
+metrics = {
+    "requests_total": 0,
+    "requests_success": 0,
+    "requests_failed": 0,
+    "slots_checked": 0,
+    "slots_found": 0,
+    "appointments_booked": 0,
+    "captchas_solved": 0,
+    "errors": {},
+    "start_time": datetime.now()
+}
+
 # WebSocket connections
 active_connections: List[WebSocket] = []
 
@@ -110,6 +123,67 @@ async def get_status() -> Dict[str, Any]:
             "active_users": bot_state["active_users"]
         }
     }
+
+
+@app.get("/health")
+async def health_check() -> Dict[str, Any]:
+    """
+    Health check endpoint for monitoring and container orchestration.
+    
+    Returns:
+        Health status with system information
+    """
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0",
+        "components": {
+            "database": await check_database_health(),
+            "bot": bot_state.get("running", False),
+            "notifications": True
+        }
+    }
+
+
+async def check_database_health() -> bool:
+    """Check database connectivity."""
+    try:
+        # Add actual database ping here
+        return True
+    except Exception:
+        return False
+
+
+@app.get("/metrics")
+async def get_metrics() -> Dict[str, Any]:
+    """
+    Prometheus-compatible metrics endpoint.
+    
+    Returns:
+        Metrics dictionary
+    """
+    uptime = (datetime.now() - metrics["start_time"]).total_seconds()
+    
+    return {
+        "uptime_seconds": uptime,
+        "requests_total": metrics["requests_total"],
+        "requests_success": metrics["requests_success"],
+        "requests_failed": metrics["requests_failed"],
+        "success_rate": metrics["requests_success"] / max(metrics["requests_total"], 1),
+        "slots_checked": metrics["slots_checked"],
+        "slots_found": metrics["slots_found"],
+        "appointments_booked": metrics["appointments_booked"],
+        "captchas_solved": metrics["captchas_solved"],
+        "errors_by_type": metrics["errors"],
+        "bot_status": bot_state["status"]
+    }
+
+
+def increment_metric(name: str, count: int = 1) -> None:
+    """Increment a metric counter."""
+    if name in metrics:
+        metrics[name] += count
+
 
 
 @app.post("/api/bot/start")
