@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -24,7 +24,8 @@ class NotificationService:
         self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
         self.email_enabled = config.get("email", {}).get("enabled", False)
         logger.info(
-            f"NotificationService initialized (Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
+            f"NotificationService initialized "
+            f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
         )
 
     async def send_notification(self, title: str, message: str, priority: str = "normal") -> None:

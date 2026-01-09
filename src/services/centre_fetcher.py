@@ -1,7 +1,7 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict
 from playwright.async_api import Page
 import asyncio
 
