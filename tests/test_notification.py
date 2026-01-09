@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.notification import NotificationService
+from src.services.notification import NotificationService
 
 
 def test_notification_service_initialization():

@@ -8,9 +8,9 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.bot import VFSBot
-from src.database import Database
-from src.notification import NotificationService
+from src.services.bot_service import VFSBot
+from src.models.database import Database
+from src.services.notification import NotificationService
 
 
 @pytest.fixture

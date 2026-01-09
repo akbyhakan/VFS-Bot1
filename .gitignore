@@ -23,9 +23,23 @@ wheels/
 .installed.cfg
 *.egg
 
-# Environment
+# Environment variables - CRITICAL
 .env
+.env.local
+.env.production
+.env.*.local
+*.env
 .venv
+
+# API Keys and secrets
+config/api_keys.json
+config/secrets/
+
+# Session data
+data/
+*.db
+*.sqlite
+*.sqlite3
 
 # IDE
 .vscode/
@@ -37,12 +51,10 @@ wheels/
 
 # Project specific
 logs/
-screenshots/
-*.db
-*.sqlite
-*.sqlite3
-config/config.yaml
 *.log
+*.jsonl
+screenshots/
+config/config.yaml
 
 # Docker
 .docker/
@@ -76,10 +88,6 @@ notes.txt
 
 # Pre-commit
 .secrets.baseline
-
-# Session data
-data/
-*.json
 
 # Proxy files
 config/proxies.txt
