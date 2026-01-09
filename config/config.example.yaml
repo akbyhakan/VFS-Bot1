@@ -42,3 +42,31 @@ appointments:
   preferred_dates: []  # Leave empty for any date
   preferred_times: []  # Leave empty for any time
   random_selection: true
+
+anti_detection:
+  enabled: true
+  tls_bypass: true
+  fingerprint_bypass: true
+  human_simulation: true
+  stealth_mode: true
+
+cloudflare:
+  enabled: true
+  max_wait_time: 30
+  max_retries: 3
+  manual_captcha: false
+
+proxy:
+  enabled: false
+  file: "config/proxies.txt"
+  rotate_on_error: true
+
+human_behavior:
+  mouse_movement_steps: 20
+  typing_wpm_range: [40, 80]
+  click_delay_range: [0.1, 0.5]
+  random_actions: true
+
+session:
+  save_file: "data/session.json"
+  token_refresh_buffer: 5
