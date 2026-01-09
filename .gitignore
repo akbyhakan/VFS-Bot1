@@ -76,3 +76,10 @@ notes.txt
 
 # Pre-commit
 .secrets.baseline
+
+# Session data
+data/
+*.json
+
+# Proxy files
+config/proxies.txt

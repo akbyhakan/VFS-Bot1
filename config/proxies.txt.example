@@ -1,0 +1,14 @@
+# Proxy configuration examples
+# Format: host:port or username:password@host:port
+
+# Example without auth:
+# 192.168.1.1:8080
+
+# Example with auth:
+# user:pass@proxy.example.com:8080
+
+# Example with protocol:
+# http://192.168.1.1:8080
+# socks5://192.168.1.1:1080
+
+# Add your proxies below:
