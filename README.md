@@ -3,6 +3,10 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Playwright](https://img.shields.io/badge/automation-Playwright-green.svg)](https://playwright.dev/)
+[![CI](https://github.com/akbyhakan/VFS-Bot1/workflows/CI/badge.svg)](https://github.com/akbyhakan/VFS-Bot1/actions)
+[![codecov](https://codecov.io/gh/akbyhakan/VFS-Bot1/branch/main/graph/badge.svg)](https://codecov.io/gh/akbyhakan/VFS-Bot1)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 An advanced, modern automated bot for checking and booking VFS Global visa appointment slots. Built with **Python 3.11+**, **Playwright**, and **FastAPI** for a robust, efficient, and user-friendly experience.
 
@@ -263,7 +267,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ```
 MIT License
 
-Copyright (c) 2025 Md. Ariful Islam
+Copyright (c) 2025 akbyhakan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -278,7 +282,7 @@ copies or substantial portions of the Software.
 
 ## 📧 Contact & Support
 
-- **Author**: Md. Ariful Islam
+- **Author**: akbyhakan
 - **GitHub**: [akbyhakan/VFS-Bot1](https://github.com/akbyhakan/VFS-Bot1)
 - **Issues**: [Report a bug](https://github.com/akbyhakan/VFS-Bot1/issues)
 

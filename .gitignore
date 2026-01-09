@@ -54,6 +54,8 @@ htmlcov/
 .pytest_cache/
 .tox/
 .hypothesis/
+coverage.xml
+*.cover
 
 # Jupyter
 .ipynb_checkpoints
@@ -67,3 +69,10 @@ dmypy.json
 playwright/.auth/
 test-results/
 playwright-report/
+
+# Development notes
+notes.txt
+*.notes
+
+# Pre-commit
+.secrets.baseline
