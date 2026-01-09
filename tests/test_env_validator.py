@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.env_validator import EnvValidator
+from src.core.env_validator import EnvValidator
 
 
 class TestEnvValidator:

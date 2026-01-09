@@ -1,6 +1,6 @@
 """Tests for configuration validator module."""
 
-from src.config_validator import ConfigValidator
+from src.core.config_validator import ConfigValidator
 
 
 class TestConfigValidator:
