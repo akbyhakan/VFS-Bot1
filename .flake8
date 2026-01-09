@@ -22,4 +22,8 @@ exclude =
 
 # Per-file ignores
 # F401: Allow unused imports in __init__.py files
-per-file-ignores = __init__.py: F401
+# E402: Allow module level imports not at top in test files (due to sys.path.insert)
+# F401: Allow unused imports in test files (e.g., pytest fixtures)
+per-file-ignores =
+    __init__.py: F401
+    tests/*.py: E402, F401

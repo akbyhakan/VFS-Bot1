@@ -72,8 +72,8 @@ class TestHeaderManager:
         """Test User-Agent rotation."""
         manager = HeaderManager()
 
-        original_ua = manager.get_user_agent()
-        original_sec_ch = manager.get_sec_ch_ua()
+        _ = manager.get_user_agent()
+        _ = manager.get_sec_ch_ua()
 
         # Rotate (may or may not change if only one UA)
         manager.rotate_user_agent()

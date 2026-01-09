@@ -159,7 +159,7 @@ async def check_database_health() -> bool:
     try:
         # Try to import and check database module
         # This is a basic check - in production, you would do an actual query
-        from src.models.database import Database
+        from src.models.database import Database  # noqa: F401
 
         # For now, assume healthy if import works
         # TODO: Add actual database ping query when database is initialized
