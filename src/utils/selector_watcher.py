@@ -3,11 +3,9 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
-from pathlib import Path
+from typing import Dict, Optional, Any
 
 from playwright.async_api import Page, Browser
-import yaml
 
 from src.utils.selectors import SelectorManager
 from src.services.notification import NotificationService
@@ -17,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class SelectorHealthCheck:
     """Monitor selector health and detect changes."""
-    
+
     def __init__(
         self,
         selector_manager: SelectorManager,
@@ -29,7 +27,7 @@ class SelectorHealthCheck:
         self.check_interval = check_interval
         self.health_status: Dict[str, Any] = {}
         self.last_check: Optional[datetime] = None
-        
+
     async def validate_selector(
         self,
         page: Page,
@@ -38,12 +36,12 @@ class SelectorHealthCheck:
     ) -> Dict[str, Any]:
         """
         Validate a single selector.
-        
+
         Args:
             page: Playwright page object
             selector_path: Selector path (e.g., "login.email_input")
             timeout: Timeout in milliseconds
-            
+
         Returns:
             Validation result with status and details
         """
@@ -55,15 +53,15 @@ class SelectorHealthCheck:
             "error": None,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        
+
         try:
             # Get primary selector
             selector = self.selector_manager.get(selector_path)
-            
+
             if not selector:
                 result["error"] = "Selector not found in config"
                 return result
-            
+
             # Try primary selector
             try:
                 element = await page.wait_for_selector(
@@ -78,7 +76,7 @@ class SelectorHealthCheck:
                     return result
             except Exception as e:
                 logger.warning(f"Primary selector failed: {selector_path} - {e}")
-                
+
                 # Try fallback selectors
                 fallbacks = self.selector_manager.get_fallbacks(selector_path)
                 if fallbacks:
@@ -95,26 +93,26 @@ class SelectorHealthCheck:
                                 result["fallback_used"] = True
                                 result["fallback_index"] = i
                                 logger.info(f"✓ Fallback {i} worked: {selector_path}")
-                                
+
                                 # Send alert about primary selector failure
                                 await self._send_alert(
                                     f"⚠️ Selector changed: {selector_path}\n"
                                     f"Primary selector failed, fallback #{i} is working.\n"
-                                    f"Please update config/selectors.yaml"
+                                    "Please update config/selectors.yaml"
                                 )
                                 return result
                         except Exception:
                             continue
-                
+
                 result["error"] = f"All selectors failed: {str(e)}"
                 return result
-                
+
         except Exception as e:
             result["error"] = str(e)
             logger.error(f"Validation error for {selector_path}: {e}")
-            
+
         return result
-    
+
     async def check_all_selectors(
         self,
         browser: Browser,
@@ -122,16 +120,16 @@ class SelectorHealthCheck:
     ) -> Dict[str, Any]:
         """
         Check all selectors in config.
-        
+
         Args:
             browser: Playwright browser instance
             vfs_url: VFS website URL
-            
+
         Returns:
             Health check results
         """
         logger.info("Starting selector health check...")
-        
+
         results = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "total": 0,
@@ -140,7 +138,7 @@ class SelectorHealthCheck:
             "fallback_used": 0,
             "selectors": {}
         }
-        
+
         # Define critical selectors to check
         critical_selectors = [
             "login.email_input",
@@ -150,44 +148,44 @@ class SelectorHealthCheck:
             "appointment.date_picker",
             "captcha.recaptcha_frame"
         ]
-        
+
         page = await browser.new_page()
-        
+
         try:
             await page.goto(vfs_url, wait_until="networkidle")
-            
+
             for selector_path in critical_selectors:
                 result = await self.validate_selector(page, selector_path)
                 results["selectors"][selector_path] = result
                 results["total"] += 1
-                
+
                 if result["valid"]:
                     results["valid"] += 1
                     if result["fallback_used"]:
                         results["fallback_used"] += 1
                 else:
                     results["invalid"] += 1
-            
+
             # Update health status
             self.health_status = results
             self.last_check = datetime.now(timezone.utc)
-            
+
             # Send alert if critical failures
             if results["invalid"] > 0:
                 await self._send_critical_alert(results)
-            
+
             logger.info(
                 f"Health check complete: {results['valid']}/{results['total']} valid"
             )
-            
+
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             results["error"] = str(e)
         finally:
             await page.close()
-        
+
         return results
-    
+
     async def _send_alert(self, message: str):
         """Send alert notification."""
         if self.notifier:
@@ -195,28 +193,29 @@ class SelectorHealthCheck:
                 await self.notifier.send_notification("Selector Alert", message)
             except Exception as e:
                 logger.error(f"Failed to send alert: {e}")
-    
+
     async def _send_critical_alert(self, results: Dict[str, Any]):
         """Send critical alert for selector failures."""
         invalid_count = results["invalid"]
         total_count = results["total"]
-        
-        message = f"🚨 CRITICAL: Selector Health Check Failed\n\n"
+
+        message = "🚨 CRITICAL: Selector Health Check Failed\n\n"
         message += f"Invalid selectors: {invalid_count}/{total_count}\n\n"
         message += "Failed selectors:\n"
-        
+
         for path, result in results["selectors"].items():
             if not result["valid"]:
                 message += f"  ❌ {path}: {result.get('error', 'Unknown')}\n"
-        
+
         message += "\n⚠️ Bot may fail! Update selectors immediately."
-        
+
         await self._send_alert(message)
-    
+
     async def run_continuous(self, browser: Browser):
         """Run health checks continuously."""
-        logger.info(f"Starting continuous health monitoring (interval: {self.check_interval}s)")
-        
+        interval_str = f"Starting continuous health monitoring (interval: {self.check_interval}s)"
+        logger.info(interval_str)
+
         while True:
             try:
                 await self.check_all_selectors(browser)
