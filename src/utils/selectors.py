@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import yaml
 
+from playwright.async_api import Page, Locator
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,7 +109,7 @@ class SelectorManager:
 
         return selectors
 
-    async def wait_for_selector(self, page, path: str, timeout: int = 10000):
+    async def wait_for_selector(self, page: Page, path: str, timeout: int = 10000) -> Optional[Locator]:
         """
         Wait for selector with fallback support.
 

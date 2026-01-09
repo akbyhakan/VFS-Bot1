@@ -91,11 +91,11 @@ class VFSBot:
 
             logger.info("Anti-detection features initialized")
         else:
-            self.human_sim: Optional[HumanSimulator] = None
-            self.header_manager: Optional[HeaderManager] = None
-            self.session_manager: Optional[SessionManager] = None
-            self.cloudflare_handler: Optional[CloudflareHandler] = None
-            self.proxy_manager: Optional[ProxyManager] = None
+            self.human_sim = None
+            self.header_manager = None
+            self.session_manager = None
+            self.cloudflare_handler = None
+            self.proxy_manager = None
             logger.info("Anti-detection features disabled")
 
         logger.info("VFSBot initialized")

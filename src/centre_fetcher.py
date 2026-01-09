@@ -39,7 +39,8 @@ class CentreFetcher:
         cache_key = "centres"
         if cache_key in self.cache:
             logger.info("Returning cached centres")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Navigate to appointment page
@@ -84,7 +85,8 @@ class CentreFetcher:
         cache_key = f"categories_{centre}"
         if cache_key in self.cache:
             logger.info(f"Returning cached categories for {centre}")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Select the centre
@@ -130,7 +132,8 @@ class CentreFetcher:
         cache_key = f"subcategories_{centre}_{category}"
         if cache_key in self.cache:
             logger.info(f"Returning cached subcategories for {centre}/{category}")
-            return self.cache[cache_key]
+            cached_value = self.cache[cache_key]
+            return cached_value if isinstance(cached_value, list) else []
 
         try:
             # Select the centre and category

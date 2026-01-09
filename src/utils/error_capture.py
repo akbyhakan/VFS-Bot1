@@ -42,20 +42,21 @@ class ErrorCapture:
         timestamp = datetime.now(timezone.utc)
         error_id = timestamp.strftime("%Y%m%d_%H%M%S_%f")
 
-        error_record = {
+        captures: Dict[str, str] = {}
+        error_record: Dict[str, Any] = {
             "id": error_id,
             "timestamp": timestamp.isoformat(),
             "error_type": type(error).__name__,
             "error_message": str(error),
             "context": context,
-            "captures": {},
+            "captures": captures,
         }
 
         try:
             # 1. Full page screenshot
             screenshot_path = self.screenshots_dir / f"{error_id}_full.png"
             await page.screenshot(path=str(screenshot_path), full_page=True)
-            error_record["captures"]["full_screenshot"] = str(screenshot_path)
+            captures["full_screenshot"] = str(screenshot_path)
             logger.info(f"Captured full screenshot: {screenshot_path}")
 
             # 2. Element screenshot (if selector provided)
@@ -65,7 +66,7 @@ class ErrorCapture:
                     if element:
                         element_path = self.screenshots_dir / f"{error_id}_element.png"
                         await element.screenshot(path=str(element_path))
-                        error_record["captures"]["element_screenshot"] = str(element_path)
+                        captures["element_screenshot"] = str(element_path)
                         error_record["failed_selector"] = element_selector
                 except Exception as e:
                     logger.warning(f"Could not capture element screenshot: {e}")
@@ -75,7 +76,7 @@ class ErrorCapture:
             try:
                 html_content = await page.content()
                 html_path.write_text(html_content, encoding="utf-8", errors="replace")
-                error_record["captures"]["html_snapshot"] = str(html_path)
+                captures["html_snapshot"] = str(html_path)
             except Exception as e:
                 logger.warning(f"Could not capture HTML snapshot: {e}")
 
@@ -125,6 +126,7 @@ class ErrorCapture:
         # Try loading from disk
         json_path = self.screenshots_dir / f"{error_id}.json"
         if json_path.exists():
-            return json.loads(json_path.read_text(encoding="utf-8"))
+            loaded_data: Any = json.loads(json_path.read_text(encoding="utf-8"))
+            return loaded_data if isinstance(loaded_data, dict) else None
 
         return None
