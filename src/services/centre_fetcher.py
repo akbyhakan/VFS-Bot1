@@ -158,7 +158,9 @@ class CentreFetcher:
             """
             )
 
-            subcategories: List[str] = subcategories_result if isinstance(subcategories_result, list) else []
+            subcategories: List[str] = (
+                subcategories_result if isinstance(subcategories_result, list) else []
+            )
             self.cache[cache_key] = subcategories
             logger.info(f"Fetched {len(subcategories)} subcategories: {subcategories}")
             return subcategories

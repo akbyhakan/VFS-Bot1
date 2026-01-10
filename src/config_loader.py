@@ -73,7 +73,9 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
         config_data: Any = yaml.safe_load(f)
 
     # Substitute environment variables
-    config: Dict[str, Any] = substitute_env_vars(config_data) if isinstance(config_data, dict) else {}
+    config: Dict[str, Any] = (
+        substitute_env_vars(config_data) if isinstance(config_data, dict) else {}
+    )
 
     return config
 
