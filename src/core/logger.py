@@ -4,7 +4,8 @@ import logging
 import json
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from types import FrameType
 from pathlib import Path
 from loguru import logger
 
@@ -114,8 +115,9 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
                 level = record.levelno
 
             # Find caller from where originated the logged message
-            frame, depth = logging.currentframe(), 2
-            while frame.f_code.co_filename == logging.__file__:
+            frame: Optional[FrameType] = logging.currentframe()
+            depth = 2
+            while frame and frame.f_code.co_filename == logging.__file__:
                 frame = frame.f_back
                 depth += 1
 
