@@ -108,9 +108,9 @@ class HeaderManager:
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-            "sec-ch-ua": self.current_ua["sec_ch_ua"],
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": f'"{self.current_ua["platform"]}"',
+            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": f'"{self.current_ua["platform"]}"',
             "Referer": referer or self.base_url,
         }
 
@@ -143,9 +143,9 @@ class HeaderManager:
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
-            "sec-ch-ua": self.current_ua["sec_ch_ua"],
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": f'"{self.current_ua["platform"]}"',
+            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": f'"{self.current_ua["platform"]}"',
         }
 
         if token:

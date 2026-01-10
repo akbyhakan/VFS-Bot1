@@ -1,6 +1,7 @@
 """Tests for VFS bot functionality."""
 
 import pytest
+import pytest_asyncio
 import asyncio
 from pathlib import Path
 import sys
@@ -13,7 +14,7 @@ from src.models.database import Database
 from src.services.notification import NotificationService
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def database():
     """Create a test database."""
     db = Database("test.db")
