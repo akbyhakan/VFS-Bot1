@@ -125,6 +125,6 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
 
     # Intercept all standard logging
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
-    
+
     # Set the root logger level to match the configured level
     logging.root.setLevel(getattr(logging, level))
