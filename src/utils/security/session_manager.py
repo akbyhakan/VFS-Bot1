@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional
 
 try:
     import jwt as jwt_module
