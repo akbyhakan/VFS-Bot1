@@ -50,6 +50,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     logs_dir.mkdir(exist_ok=True)
 
     # Choose formatter
+    formatter: logging.Formatter
     if json_format:
         formatter = JSONFormatter()
     else:

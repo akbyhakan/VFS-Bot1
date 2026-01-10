@@ -35,6 +35,8 @@ class Database:
 
     async def _create_tables(self) -> None:
         """Create database tables if they don't exist."""
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             # Users table
             await cursor.execute(
@@ -112,8 +114,8 @@ class Database:
             """
             )
 
-            await self.conn.commit()
-            logger.info("Database tables created/verified")
+        await self.conn.commit()
+        logger.info("Database tables created/verified")
 
     async def add_user(
         self, email: str, password: str, centre: str, category: str, subcategory: str
@@ -131,6 +133,8 @@ class Database:
         Returns:
             User ID
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
@@ -141,7 +145,10 @@ class Database:
             )
             await self.conn.commit()
             logger.info(f"User added: {email}")
-            return cursor.lastrowid
+            last_id = cursor.lastrowid
+            if last_id is None:
+                raise RuntimeError("Failed to fetch lastrowid after insert")
+            return int(last_id)
 
     async def get_active_users(self) -> List[Dict[str, Any]]:
         """
@@ -150,6 +157,8 @@ class Database:
         Returns:
             List of user dictionaries
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute("SELECT * FROM users WHERE active = 1")
             rows = await cursor.fetchall()
@@ -166,6 +175,8 @@ class Database:
         Returns:
             Personal details ID
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
@@ -196,7 +207,10 @@ class Database:
             )
             await self.conn.commit()
             logger.info(f"Personal details added for user {user_id}")
-            return cursor.lastrowid
+            last_id = cursor.lastrowid
+            if last_id is None:
+                raise RuntimeError("Failed to fetch lastrowid after insert")
+            return int(last_id)
 
     async def get_personal_details(self, user_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -208,6 +222,8 @@ class Database:
         Returns:
             Personal details dictionary or None
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
             row = await cursor.fetchone()
@@ -238,6 +254,8 @@ class Database:
         Returns:
             Appointment ID
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
@@ -250,7 +268,10 @@ class Database:
             )
             await self.conn.commit()
             logger.info(f"Appointment added for user {user_id}")
-            return cursor.lastrowid
+            last_id = cursor.lastrowid
+            if last_id is None:
+                raise RuntimeError("Failed to fetch lastrowid after insert")
+            return int(last_id)
 
     async def get_appointments(self, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
@@ -262,6 +283,8 @@ class Database:
         Returns:
             List of appointment dictionaries
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             if user_id:
                 await cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
@@ -279,6 +302,8 @@ class Database:
             message: Log message
             user_id: Optional user ID
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
@@ -299,6 +324,8 @@ class Database:
         Returns:
             List of log dictionaries
         """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             await cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,))
             rows = await cursor.fetchall()
