@@ -52,7 +52,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     logger.remove()
 
     logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
 
     # Console handler - human readable
     console_format = (
@@ -71,10 +71,10 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     # File handler - JSON for production or text for development
     if json_format:
         logger.add(
-            logs_dir / "vfs_bot_{time:YYYY-MM-DD}.jsonl",
+            logs_dir / "vfs_bot.jsonl",
             format="{message}",
             level=level,
-            rotation="00:00",  # Rotate daily
+            rotation="10 MB",  # Rotate when file reaches 10MB
             retention="30 days",  # Keep for 30 days
             compression="zip",  # Compress old logs
             serialize=True,  # JSON format
@@ -84,7 +84,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
             "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | " "{name}:{function}:{line} - {message}"
         )
         logger.add(
-            logs_dir / "vfs_bot_{time:YYYY-MM-DD}.log",
+            logs_dir / "vfs_bot.jsonl",
             format=text_format,
             level=level,
             rotation="10 MB",  # Rotate when file reaches 10MB
@@ -125,3 +125,6 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
 
     # Intercept all standard logging
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+    
+    # Set the root logger level to match the configured level
+    logging.root.setLevel(getattr(logging, level))

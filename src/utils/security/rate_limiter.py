@@ -28,28 +28,31 @@ class RateLimiter:
 
     async def acquire(self) -> None:
         """Wait until rate limit allows a request."""
-        async with self._lock:
-            current_time = time.time()
+        while True:
+            async with self._lock:
+                current_time = time.time()
 
-            # Remove requests outside time window
-            while self.requests and self.requests[0] < current_time - self.time_window:
-                self.requests.popleft()
+                # Remove requests outside time window
+                while self.requests and self.requests[0] < current_time - self.time_window:
+                    self.requests.popleft()
 
-            # Check if we can make a request
-            if len(self.requests) >= self.max_requests:
+                # Check if we can make a request
+                if len(self.requests) < self.max_requests:
+                    # Add current request and return
+                    self.requests.append(current_time)
+                    return
+
                 # Calculate wait time
                 oldest_request = self.requests[0]
                 wait_time = (oldest_request + self.time_window) - current_time
 
-                if wait_time > 0:
-                    logger.warning(f"Rate limit reached, waiting {wait_time:.2f}s")
-                    await asyncio.sleep(wait_time)
-
-                # Remove old request
-                self.requests.popleft()
-
-            # Add current request
-            self.requests.append(current_time)
+            # Wait outside the lock so other requests can proceed
+            if wait_time > 0:
+                logger.warning(f"Rate limit reached, waiting {wait_time:.2f}s")
+                await asyncio.sleep(wait_time)
+            else:
+                # Small delay to avoid busy waiting
+                await asyncio.sleep(0.01)
 
     def get_stats(self) -> dict:
         """Get rate limiter statistics."""
