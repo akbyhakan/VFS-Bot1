@@ -71,7 +71,9 @@ class VFSBot:
 
         if self.anti_detection_enabled:
             # Human behavior simulator
-            self.human_sim: Optional[HumanSimulator] = HumanSimulator(config.get("human_behavior", {}))
+            self.human_sim: Optional[HumanSimulator] = HumanSimulator(
+                config.get("human_behavior", {})
+            )
 
             # Header manager
             self.header_manager: Optional[HeaderManager] = HeaderManager()
@@ -84,7 +86,9 @@ class VFSBot:
             )
 
             # Cloudflare handler
-            self.cloudflare_handler: Optional[CloudflareHandler] = CloudflareHandler(config.get("cloudflare", {}))
+            self.cloudflare_handler: Optional[CloudflareHandler] = CloudflareHandler(
+                config.get("cloudflare", {})
+            )
 
             # Proxy manager
             self.proxy_manager: Optional[ProxyManager] = ProxyManager(config.get("proxy", {}))
@@ -408,7 +412,7 @@ class VFSBot:
                 # Get first available slot
                 date_content = await page.locator(".slot-date").first.text_content()
                 time_content = await page.locator(".slot-time").first.text_content()
-                
+
                 date = date_content.strip() if date_content else ""
                 time = time_content.strip() if time_content else ""
 

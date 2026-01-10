@@ -109,7 +109,9 @@ class SelectorManager:
 
         return selectors
 
-    async def wait_for_selector(self, page: Page, path: str, timeout: int = 10000) -> Optional[Locator]:
+    async def wait_for_selector(
+        self, page: Page, path: str, timeout: int = 10000
+    ) -> Optional[Locator]:
         """
         Wait for selector with fallback support.
 
