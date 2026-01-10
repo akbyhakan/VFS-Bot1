@@ -114,8 +114,8 @@ class Database:
             """
             )
 
-        await self.conn.commit()
-        logger.info("Database tables created/verified")
+            await self.conn.commit()
+            logger.info("Database tables created/verified")
 
     async def add_user(
         self, email: str, password: str, centre: str, category: str, subcategory: str
