@@ -1,11 +1,15 @@
 """Pytest configuration and common fixtures."""
 
+import os
 import pytest
 import pytest_asyncio
 from pathlib import Path
 import sys
 from typing import Dict, Any
 from unittest.mock import AsyncMock, MagicMock
+
+# Set test environment variables before imports
+os.environ["API_SECRET_KEY"] = "test-secret-key-for-testing-min-32-characters"
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

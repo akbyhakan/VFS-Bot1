@@ -150,8 +150,8 @@ class SelectorManager:
                 logger.debug(f"Selector failed: {selector}")
                 continue
 
-        # All selectors failed - raise exception
-        logger.error(f"All selectors failed for path: {path}")
+        # All selectors failed - raise exception with detailed info
+        logger.error(f"All selectors failed for path: {path}. Tried: {', '.join(selectors)}")
         raise SelectorNotFoundError(selector_name=path, tried_selectors=selectors)
 
     def reload(self) -> None:

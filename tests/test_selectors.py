@@ -1,7 +1,6 @@
 """Tests for selector loading and fallback functionality."""
 
 import pytest
-import pytest_asyncio
 from pathlib import Path
 import yaml
 from unittest.mock import AsyncMock, patch

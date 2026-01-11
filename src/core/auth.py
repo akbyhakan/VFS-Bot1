@@ -12,7 +12,13 @@ from fastapi import HTTPException, status
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings from environment
-SECRET_KEY = os.getenv("API_SECRET_KEY", "dev-secret-key-change-in-production")
+_secret_key = os.getenv("API_SECRET_KEY")
+if not _secret_key:
+    raise ValueError(
+        "API_SECRET_KEY environment variable must be set. "
+        "Generate a secure random key with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+    )
+SECRET_KEY = _secret_key
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 
