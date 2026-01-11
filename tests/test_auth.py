@@ -112,7 +112,7 @@ def test_hash_password_different_each_time():
 
 def test_hash_password_long_password():
     """Test that passwords longer than 72 bytes are truncated."""
-    # Create a password longer than 72 bytes
+    # Create a password longer than 72 bytes (using ASCII chars = 1 byte each)
     long_password = "a" * 100
     hashed = hash_password(long_password)
 
@@ -123,21 +123,21 @@ def test_hash_password_long_password():
     # Verify with the same long password
     assert verify_password(long_password, hashed) is True
 
-    # Verify that only the first 72 bytes matter
+    # Verify that only the first 72 bytes matter (ASCII: 72 chars = 72 bytes)
     truncated_password = long_password[:72]
     assert verify_password(truncated_password, hashed) is True
 
 
 def test_verify_password_long_password():
     """Test that verify_password handles passwords longer than 72 bytes."""
-    # Hash a long password
+    # Hash a long password (using ASCII chars = 1 byte each)
     long_password = "b" * 100
     hashed = hash_password(long_password)
 
     # Verify with the full password
     assert verify_password(long_password, hashed) is True
 
-    # Verify with password truncated to 72 bytes
+    # Verify with password truncated to 72 bytes (ASCII: 72 chars = 72 bytes)
     truncated = long_password[:72]
     assert verify_password(truncated, hashed) is True
 
