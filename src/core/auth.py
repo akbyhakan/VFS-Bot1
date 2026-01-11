@@ -26,10 +26,15 @@ ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 try:
     ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 except (ValueError, TypeError):
-    raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
+    raise ValueError(
+        "JWT_EXPIRY_HOURS environment variable must be a valid integer"
+    )
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    data: Dict[str, Any],
+    expires_delta: Optional[timedelta] = None,
+) -> str:
     """
     Create JWT access token.
 
@@ -39,12 +44,15 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
     Returns:
         Encoded JWT token
+
     """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        expire = datetime.now(timezone.utc) + timedelta(
+            hours=ACCESS_TOKEN_EXPIRE_HOURS
+        )
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
