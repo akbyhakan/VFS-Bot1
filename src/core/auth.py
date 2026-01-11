@@ -11,6 +11,9 @@ from fastapi import HTTPException, status
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Bcrypt has a maximum password length of 72 bytes
+MAX_PASSWORD_BYTES = 72
+
 # JWT settings from environment
 _secret_key = os.getenv("API_SECRET_KEY")
 if not _secret_key:
@@ -27,6 +30,29 @@ try:
     ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 except (ValueError, TypeError):
     raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
+
+
+def _truncate_password(password: str) -> str:
+    """
+    Truncate password to 72 bytes for bcrypt, handling UTF-8 safely.
+
+    Bcrypt has a maximum password length of 72 bytes. Passwords longer than
+    this are silently truncated, which can lead to security issues and
+    inconsistent behavior. This function explicitly truncates passwords
+    to 72 bytes, ensuring that multi-byte UTF-8 characters are handled
+    correctly by discarding incomplete byte sequences.
+
+    Args:
+        password: Plain text password
+
+    Returns:
+        Truncated password (max 72 bytes)
+    """
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > MAX_PASSWORD_BYTES:
+        truncated_bytes = password_bytes[:MAX_PASSWORD_BYTES]
+        return truncated_bytes.decode("utf-8", errors="ignore")
+    return password
 
 
 def create_access_token(
@@ -91,7 +117,8 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password
     """
-    result = pwd_context.hash(password)
+    truncated = _truncate_password(password)
+    result = pwd_context.hash(truncated)
     return str(result)
 
 
@@ -106,4 +133,5 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches
     """
-    return bool(pwd_context.verify(plain_password, hashed_password))
+    truncated = _truncate_password(plain_password)
+    return bool(pwd_context.verify(truncated, hashed_password))

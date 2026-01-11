@@ -108,3 +108,57 @@ def test_hash_password_different_each_time():
     assert hash1 != hash2
     assert verify_password(password, hash1) is True
     assert verify_password(password, hash2) is True
+
+
+def test_hash_password_long_password():
+    """Test password hashing with password longer than 72 bytes."""
+    # Create a password that's longer than 72 bytes (ASCII)
+    long_password = "a" * 100
+    assert len(long_password.encode("utf-8")) > 72
+
+    # Should hash without error
+    hashed = hash_password(long_password)
+    assert hashed is not None
+    assert len(hashed) > 0
+
+    # Should verify correctly
+    assert verify_password(long_password, hashed) is True
+
+    # Passwords differing only after 72 bytes should verify as same
+    long_password_variant = "a" * 72 + "b" * 28
+    assert verify_password(long_password_variant, hashed) is True
+
+
+def test_verify_password_long_password():
+    """Test password verification with long passwords."""
+    # Create two passwords that are identical in first 72 bytes
+    password1 = "a" * 80
+    password2 = "a" * 72 + "b" * 8
+
+    # Hash the first password
+    hashed = hash_password(password1)
+
+    # Both should verify as same since only first 72 bytes are used
+    assert verify_password(password1, hashed) is True
+    assert verify_password(password2, hashed) is True
+
+
+def test_hash_password_multibyte_characters():
+    """Test password hashing with multi-byte UTF-8 characters."""
+    # Use Chinese characters which are 3 bytes each in UTF-8
+    # 25 characters * 3 bytes = 75 bytes (> 72 bytes)
+    multibyte_password = "测试密码" * 7  # 28 chars, 84 bytes
+    assert len(multibyte_password.encode("utf-8")) > 72
+
+    # Should hash without error
+    hashed = hash_password(multibyte_password)
+    assert hashed is not None
+    assert len(hashed) > 0
+
+    # Should verify correctly with same password
+    assert verify_password(multibyte_password, hashed) is True
+
+    # Should handle truncation at character boundary correctly
+    # The password is truncated to 72 bytes, which might cut off a multi-byte char
+    # Verification should still work with the full password
+    assert verify_password(multibyte_password, hashed) is True
