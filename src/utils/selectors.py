@@ -7,6 +7,8 @@ import yaml
 
 from playwright.async_api import Page, Locator
 
+from src.core.exceptions import SelectorNotFoundError
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,6 +67,10 @@ class SelectorManager:
                 logger.warning(f"Selector not found: {path}, using default: {default}")
                 return default
 
+        # Handle new structure: if value is a dict with 'primary' key, return primary
+        if isinstance(value, dict) and "primary" in value:
+            return value["primary"]
+
         return value if isinstance(value, str) else default
 
     def get_fallbacks(self, path: str) -> List[str]:
@@ -77,17 +83,24 @@ class SelectorManager:
         Returns:
             List of fallback selectors (without primary)
         """
-        fallback_path = f"fallback.{path.split('.')[-1]}"
-        fallbacks = self.get(fallback_path)
+        keys = path.split(".")
+        value = self._selectors
 
-        selectors = []
-        if fallbacks:
-            if isinstance(fallbacks, list):
-                selectors.extend(fallbacks)
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
             else:
-                selectors.append(fallbacks)
+                return []
 
-        return selectors
+        # Handle new structure: if value is a dict with 'fallbacks' key
+        if isinstance(value, dict) and "fallbacks" in value:
+            fallbacks = value["fallbacks"]
+            if isinstance(fallbacks, list):
+                return fallbacks
+            else:
+                return [fallbacks]
+
+        return []
 
     def get_with_fallback(self, path: str) -> List[str]:
         """
@@ -122,6 +135,9 @@ class SelectorManager:
 
         Returns:
             Element locator or None
+
+        Raises:
+            SelectorNotFoundError: If all selectors fail
         """
         selectors = self.get_with_fallback(path)
 
@@ -134,8 +150,9 @@ class SelectorManager:
                 logger.debug(f"Selector failed: {selector}")
                 continue
 
+        # All selectors failed - raise exception
         logger.error(f"All selectors failed for path: {path}")
-        return None
+        raise SelectorNotFoundError(selector_name=path, tried_selectors=selectors)
 
     def reload(self) -> None:
         """Reload selectors from file."""
