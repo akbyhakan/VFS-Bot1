@@ -16,7 +16,8 @@ _secret_key = os.getenv("API_SECRET_KEY")
 if not _secret_key:
     raise ValueError(
         "API_SECRET_KEY environment variable must be set. "
-        "Generate a secure random key with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        "Generate a secure random key with: "
+        "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
     )
 SECRET_KEY = _secret_key
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
