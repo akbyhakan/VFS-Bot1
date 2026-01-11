@@ -69,7 +69,9 @@ class SelectorManager:
 
         # Handle new structure: if value is a dict with 'primary' key, return primary
         if isinstance(value, dict) and "primary" in value:
-            return value["primary"]
+            primary = value["primary"]
+            # Ensure primary is a string, otherwise use default
+            return primary if isinstance(primary, str) else default
 
         return value if isinstance(value, str) else default
 

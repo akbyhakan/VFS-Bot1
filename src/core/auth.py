@@ -11,6 +11,9 @@ from fastapi import HTTPException, status
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Bcrypt has a maximum password length of 72 bytes
+MAX_PASSWORD_BYTES = 72
+
 # JWT settings from environment
 _secret_key = os.getenv("API_SECRET_KEY")
 if not _secret_key:
@@ -26,9 +29,7 @@ ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 try:
     ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 except (ValueError, TypeError):
-    raise ValueError(
-        "JWT_EXPIRY_HOURS environment variable must be a valid integer"
-    )
+    raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
 
 
 def create_access_token(
@@ -50,13 +51,12 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            hours=ACCESS_TOKEN_EXPIRE_HOURS
-        )
+        expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    # Ensure we return a str (jwt.encode should return str, but cast for mypy)
+    return str(encoded_jwt)
 
 
 def verify_token(token: str) -> Dict[str, Any]:
@@ -74,7 +74,8 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        # Cast to Dict[str, Any] for type safety
+        return dict(payload)
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,7 +94,12 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password
     """
-    return pwd_context.hash(password)
+    # Truncate password to 72 bytes to comply with bcrypt limitations
+    password_bytes = password.encode("utf-8")[:MAX_PASSWORD_BYTES]
+    truncated_password = password_bytes.decode("utf-8", errors="ignore")
+    hashed = pwd_context.hash(truncated_password)
+    # Ensure we return a str (pwd_context.hash should return str, but cast for mypy)
+    return str(hashed)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -107,4 +113,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Truncate password to 72 bytes to comply with bcrypt limitations
+    password_bytes = plain_password.encode("utf-8")[:MAX_PASSWORD_BYTES]
+    truncated_password = password_bytes.decode("utf-8", errors="ignore")
+    result = pwd_context.verify(truncated_password, hashed_password)
+    # Ensure we return a bool (pwd_context.verify should return bool, but cast for mypy)
+    return bool(result)
