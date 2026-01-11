@@ -20,42 +20,42 @@ class VFSBotError(Exception):
 
 
 class LoginError(VFSBotError):
-    """Login işlemi başarısız."""
+    """Login operation failed."""
 
     def __init__(self, message: str = "Login failed", recoverable: bool = True):
         super().__init__(message, recoverable)
 
 
 class CaptchaError(VFSBotError):
-    """Captcha çözülemedi."""
+    """Captcha verification failed."""
 
     def __init__(self, message: str = "Captcha verification failed", recoverable: bool = True):
         super().__init__(message, recoverable)
 
 
 class SlotCheckError(VFSBotError):
-    """Slot kontrolü başarısız."""
+    """Slot availability check failed."""
 
     def __init__(self, message: str = "Slot check failed", recoverable: bool = True):
         super().__init__(message, recoverable)
 
 
 class BookingError(VFSBotError):
-    """Randevu rezervasyonu başarısız."""
+    """Appointment booking failed."""
 
     def __init__(self, message: str = "Booking failed", recoverable: bool = False):
         super().__init__(message, recoverable)
 
 
 class NetworkError(VFSBotError):
-    """Ağ bağlantısı hatası."""
+    """Network connection error occurred."""
 
     def __init__(self, message: str = "Network error occurred", recoverable: bool = True):
         super().__init__(message, recoverable)
 
 
 class SelectorNotFoundError(VFSBotError):
-    """Selector bulunamadı - site yapısı değişmiş olabilir."""
+    """Selector not found - website structure may have changed."""
 
     def __init__(self, selector_name: str, tried_selectors: Optional[List[str]] = None):
         """
@@ -74,7 +74,7 @@ class SelectorNotFoundError(VFSBotError):
 
 
 class RateLimitError(VFSBotError):
-    """Rate limit aşıldı."""
+    """Rate limit exceeded."""
 
     def __init__(self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None):
         """
@@ -91,14 +91,14 @@ class RateLimitError(VFSBotError):
 
 
 class ConfigurationError(VFSBotError):
-    """Konfigürasyon hatası."""
+    """Configuration error occurred."""
 
     def __init__(self, message: str = "Configuration error", recoverable: bool = False):
         super().__init__(message, recoverable)
 
 
 class AuthenticationError(VFSBotError):
-    """Kimlik doğrulama hatası."""
+    """Authentication failed."""
 
     def __init__(self, message: str = "Authentication failed", recoverable: bool = False):
         super().__init__(message, recoverable)

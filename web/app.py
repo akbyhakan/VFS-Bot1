@@ -437,12 +437,17 @@ async def login(credentials: LoginRequest) -> TokenResponse:
         JWT access token
 
     Raises:
-        HTTPException: If credentials are invalid
+        HTTPException: If credentials are invalid or environment not configured
     """
-    # Simple authentication - in production, validate against database
-    # For now, use environment variable or default credentials
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin")
+    # Get credentials from environment - fail if not set
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+
+    if not admin_username or not admin_password:
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
+        )
 
     if credentials.username != admin_username or credentials.password != admin_password:
         raise HTTPException(
