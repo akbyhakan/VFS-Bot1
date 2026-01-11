@@ -95,8 +95,16 @@ def hash_password(password: str) -> str:
         Hashed password
     """
     # Truncate password to 72 bytes to comply with bcrypt limitations
-    password_bytes = password.encode("utf-8")[:MAX_PASSWORD_BYTES]
-    truncated_password = password_bytes.decode("utf-8", errors="ignore")
+    # We need to ensure we don't split multi-byte UTF-8 characters
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > MAX_PASSWORD_BYTES:
+        # Truncate bytes, then find the last valid UTF-8 character boundary
+        truncated_bytes = password_bytes[:MAX_PASSWORD_BYTES]
+        # Decode with 'ignore' to drop incomplete trailing characters
+        truncated_password = truncated_bytes.decode("utf-8", errors="ignore")
+    else:
+        truncated_password = password
+
     hashed = pwd_context.hash(truncated_password)
     # Ensure we return a str (pwd_context.hash should return str, but cast for mypy)
     return str(hashed)
@@ -114,8 +122,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         True if password matches
     """
     # Truncate password to 72 bytes to comply with bcrypt limitations
-    password_bytes = plain_password.encode("utf-8")[:MAX_PASSWORD_BYTES]
-    truncated_password = password_bytes.decode("utf-8", errors="ignore")
+    # We need to ensure we don't split multi-byte UTF-8 characters
+    password_bytes = plain_password.encode("utf-8")
+    if len(password_bytes) > MAX_PASSWORD_BYTES:
+        # Truncate bytes, then find the last valid UTF-8 character boundary
+        truncated_bytes = password_bytes[:MAX_PASSWORD_BYTES]
+        # Decode with 'ignore' to drop incomplete trailing characters
+        truncated_password = truncated_bytes.decode("utf-8", errors="ignore")
+    else:
+        truncated_password = plain_password
+
     result = pwd_context.verify(truncated_password, hashed_password)
     # Ensure we return a bool (pwd_context.verify should return bool, but cast for mypy)
     return bool(result)

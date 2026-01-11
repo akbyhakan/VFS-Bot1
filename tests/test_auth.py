@@ -144,3 +144,25 @@ def test_verify_password_long_password():
     # Verify that bytes beyond 72 don't matter
     different_tail = long_password[:72] + "xyz"
     assert verify_password(different_tail, hashed) is True
+
+
+def test_hash_password_multibyte_characters():
+    """Test password hashing with multi-byte UTF-8 characters."""
+    # Use emoji and other multi-byte characters
+    # Each emoji is typically 4 bytes in UTF-8
+    multibyte_password = "password" + "🔒" * 20  # Should exceed 72 bytes
+
+    hashed = hash_password(multibyte_password)
+
+    # Should hash successfully
+    assert hashed is not None
+    assert isinstance(hashed, str)
+
+    # Should verify correctly with the same password
+    assert verify_password(multibyte_password, hashed) is True
+
+    # Test that truncation is consistent between hash and verify
+    # Hash a password that's exactly at the boundary
+    boundary_password = "a" * 70 + "🔒"  # 70 ASCII + 4-byte emoji = 74 bytes
+    hashed2 = hash_password(boundary_password)
+    assert verify_password(boundary_password, hashed2) is True
