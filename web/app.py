@@ -11,9 +11,13 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, H
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from src.core.security import verify_api_key, generate_api_key
+from src.core.auth import create_access_token, verify_token
+
+security_scheme = HTTPBearer()
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +74,39 @@ class StatusUpdate(BaseModel):
     status: str
     message: str
     timestamp: str
+
+
+class LoginRequest(BaseModel):
+    """Login request model."""
+
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    """Token response model."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
+async def verify_jwt_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+) -> Dict[str, Any]:
+    """
+    Verify JWT token from Authorization header.
+
+    Args:
+        credentials: HTTP authorization credentials
+
+    Returns:
+        Decoded token payload
+
+    Raises:
+        HTTPException: If token is invalid
+    """
+    token = credentials.credentials
+    return verify_token(token)
 
 
 async def broadcast_message(message: Dict[str, Any]) -> None:
@@ -258,12 +295,15 @@ async def stop_bot(api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
 
 
 @app.get("/api/logs")
-async def get_logs(limit: int = 100) -> Dict[str, List[str]]:
+async def get_logs(
+    limit: int = 100, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+) -> Dict[str, List[str]]:
     """
-    Get recent logs.
+    Get recent logs - requires authentication.
 
     Args:
         limit: Maximum number of logs to return
+        token_data: Verified token data
 
     Returns:
         Dictionary with logs list
@@ -383,6 +423,65 @@ async def create_api_key(secret: str) -> Dict[str, str]:
 
     new_key = generate_api_key()
     return {"api_key": new_key, "note": "Save this key securely! It will not be shown again."}
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def login(credentials: LoginRequest) -> TokenResponse:
+    """
+    Login endpoint - returns JWT token.
+
+    Args:
+        credentials: Username and password
+
+    Returns:
+        JWT access token
+
+    Raises:
+        HTTPException: If credentials are invalid or environment not configured
+    """
+    from src.core.auth import verify_password
+
+    # Get credentials from environment - fail if not set
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+
+    if not admin_username or not admin_password:
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
+        )
+
+    # Check username
+    if credentials.username != admin_username:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check password - support both plaintext (for simple setups) and hashed passwords
+    password_valid = False
+    if admin_password.startswith("$2b$"):
+        # Hashed password (bcrypt format)
+        password_valid = verify_password(credentials.password, admin_password)
+    else:
+        # Plaintext password (for development/testing)
+        # Note: In production, passwords should be hashed
+        password_valid = credentials.password == admin_password
+
+    if not password_valid:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": credentials.username, "name": credentials.username}
+    )
+
+    return TokenResponse(access_token=access_token)
 
 
 @app.get("/api/selector-health")
