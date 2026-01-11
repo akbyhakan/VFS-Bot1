@@ -141,10 +141,11 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
     bot.context.new_page = AsyncMock(return_value=mock_page)
 
     # Mock successful flow
-    with patch.object(bot, "login_vfs", return_value=True), patch.object(
-        bot, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}
-    ), patch.object(bot, "fill_personal_details", return_value=True), patch.object(
-        bot, "book_appointment", return_value="REF-123456"
+    with (
+        patch.object(bot, "login_vfs", return_value=True),
+        patch.object(bot, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}),
+        patch.object(bot, "fill_personal_details", return_value=True),
+        patch.object(bot, "book_appointment", return_value="REF-123456"),
     ):
         mock_db.get_personal_details.return_value = {
             "first_name": "John",
