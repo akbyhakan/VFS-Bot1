@@ -439,6 +439,8 @@ async def login(credentials: LoginRequest) -> TokenResponse:
     Raises:
         HTTPException: If credentials are invalid or environment not configured
     """
+    from src.core.auth import verify_password
+
     # Get credentials from environment - fail if not set
     admin_username = os.getenv("ADMIN_USERNAME")
     admin_password = os.getenv("ADMIN_PASSWORD")
@@ -449,7 +451,25 @@ async def login(credentials: LoginRequest) -> TokenResponse:
             detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
         )
 
-    if credentials.username != admin_username or credentials.password != admin_password:
+    # Check username
+    if credentials.username != admin_username:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check password - support both plaintext (for simple setups) and hashed passwords
+    password_valid = False
+    if admin_password.startswith("$2b$"):
+        # Hashed password (bcrypt format)
+        password_valid = verify_password(credentials.password, admin_password)
+    else:
+        # Plaintext password (for development/testing)
+        # Note: In production, passwords should be hashed
+        password_valid = credentials.password == admin_password
+
+    if not password_valid:
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
