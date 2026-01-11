@@ -146,7 +146,8 @@ def test_verify_password_long_password():
 def test_hash_password_multibyte_characters():
     """Test password hashing with multi-byte UTF-8 characters."""
     # Use Chinese characters which are 3 bytes each in UTF-8
-    # 25 characters * 3 bytes = 75 bytes (> 72 bytes)
+    # "测试密码" = 4 chars * 3 bytes = 12 bytes per repetition
+    # 7 repetitions = 28 chars, 84 bytes (> 72 bytes)
     multibyte_password = "测试密码" * 7  # 28 chars, 84 bytes
     assert len(multibyte_password.encode("utf-8")) > 72
 
