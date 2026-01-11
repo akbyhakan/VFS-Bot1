@@ -29,9 +29,7 @@ class LoginError(VFSBotError):
 class CaptchaError(VFSBotError):
     """Captcha çözülemedi."""
 
-    def __init__(
-        self, message: str = "Captcha verification failed", recoverable: bool = True
-    ):
+    def __init__(self, message: str = "Captcha verification failed", recoverable: bool = True):
         super().__init__(message, recoverable)
 
 
@@ -78,9 +76,7 @@ class SelectorNotFoundError(VFSBotError):
 class RateLimitError(VFSBotError):
     """Rate limit aşıldı."""
 
-    def __init__(
-        self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None
-    ):
+    def __init__(self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None):
         """
         Initialize rate limit error.
 
@@ -104,7 +100,5 @@ class ConfigurationError(VFSBotError):
 class AuthenticationError(VFSBotError):
     """Kimlik doğrulama hatası."""
 
-    def __init__(
-        self, message: str = "Authentication failed", recoverable: bool = False
-    ):
+    def __init__(self, message: str = "Authentication failed", recoverable: bool = False):
         super().__init__(message, recoverable)
