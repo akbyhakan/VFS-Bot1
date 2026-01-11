@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -26,9 +26,7 @@ ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 try:
     ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
 except (ValueError, TypeError):
-    raise ValueError(
-        "JWT_EXPIRY_HOURS environment variable must be a valid integer"
-    )
+    raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
 
 
 def create_access_token(
@@ -50,13 +48,13 @@ def create_access_token(
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            hours=ACCESS_TOKEN_EXPIRE_HOURS
-        )
+        expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    if isinstance(encoded_jwt, bytes):
+        return encoded_jwt.decode()
+    return str(encoded_jwt)
 
 
 def verify_token(token: str) -> Dict[str, Any]:
@@ -74,7 +72,7 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return cast(dict[str, Any], payload)
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,7 +91,8 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password
     """
-    return pwd_context.hash(password)
+    result = pwd_context.hash(password)
+    return str(result)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -107,4 +106,4 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    return bool(pwd_context.verify(plain_password, hashed_password))
