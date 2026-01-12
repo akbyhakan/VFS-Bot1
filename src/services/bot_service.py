@@ -435,7 +435,7 @@ class VFSBot:
             logger.info(f"Navigating to login page: {url}")
 
             if not await safe_navigate(page, url, timeout=Timeouts.NAVIGATION):
-                logger.error("Failed to navigate to login page")
+                logger.error(f"Failed to navigate to login page: {url}")
                 return False
 
             # Check for Cloudflare challenge

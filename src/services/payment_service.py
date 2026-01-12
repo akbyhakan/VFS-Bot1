@@ -192,16 +192,29 @@ class PaymentService:
 
         try:
             # SECURITY: Decrypt card details in memory only
-            # This is a placeholder - implement proper decryption
+            # ⚠️  WARNING: This is a placeholder implementation
+            # TODO: Implement actual decryption using secure key management
+            # This code path should NOT be used in production until decryption is implemented!
+            
+            logger.error(
+                "❌ AUTOMATED PAYMENT DECRYPTION NOT IMPLEMENTED - This feature is incomplete!"
+            )
+            logger.error(
+                "The encrypted card details need to be decrypted before use. "
+                "Implement decrypt_payment_details() or use manual payment mode."
+            )
+            return False
+            
+            # Placeholder for future implementation:
+            # from src.utils.encryption import decrypt_payment_details
+            # card_number = decrypt_payment_details(encrypted_card_details["encrypted_number"])
+            # card_expiry = decrypt_payment_details(encrypted_card_details["encrypted_expiry"])
+            # card_cvv = decrypt_payment_details(encrypted_card_details["encrypted_cvv"])
+            
+            # This is a placeholder - DO NOT USE WITH ENCRYPTED DATA
             card_number = encrypted_card_details.get("encrypted_number", "")
             card_expiry = encrypted_card_details.get("encrypted_expiry", "")
             card_cvv = encrypted_card_details.get("encrypted_cvv", "")
-
-            # TODO: Implement actual decryption using secure key management
-            # from src.utils.encryption import decrypt_payment_details
-            # card_number = decrypt_payment_details(card_number)
-            # card_expiry = decrypt_payment_details(card_expiry)
-            # card_cvv = decrypt_payment_details(card_cvv)
 
             logger.info("🔒 Decrypted card details (in memory only)")
 

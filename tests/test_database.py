@@ -106,9 +106,10 @@ async def test_get_active_users_with_decrypted_passwords(test_db):
     
     assert len(users) == 3
     
-    # Check passwords are decrypted
-    for i, user in enumerate(users):
-        assert user["password"] == users_data[i][1]
+    # Check passwords are decrypted (order may vary)
+    emails_and_passwords = {user["email"]: user["password"] for user in users}
+    for email, password in users_data:
+        assert emails_and_passwords[email] == password
 
 
 @pytest.mark.asyncio

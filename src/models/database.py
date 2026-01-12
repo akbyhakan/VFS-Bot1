@@ -255,6 +255,7 @@ class Database:
                 await cursor.execute("SELECT * FROM users WHERE active = 1")
                 rows = await cursor.fetchall()
                 users = []
+                failed_users = []
                 for row in rows:
                     user = dict(row)
                     # Decrypt password for VFS login
@@ -262,9 +263,19 @@ class Database:
                         user["password"] = decrypt_password(user["password"])
                         users.append(user)
                     except Exception as e:
-                        logger.error(f"Failed to decrypt password for user {user['id']}: {e}")
-                        # Skip users with decryption errors
-                        continue
+                        logger.error(
+                            f"Failed to decrypt password for user {user['id']} ({user['email']}): {e}. "
+                            "User needs to re-register with new password."
+                        )
+                        failed_users.append(user["email"])
+                
+                # Alert if users failed decryption
+                if failed_users:
+                    logger.warning(
+                        f"⚠️  {len(failed_users)} user(s) have invalid encrypted passwords and will be skipped: "
+                        f"{', '.join(failed_users)}. They need to re-register."
+                    )
+                
                 return users
 
     async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:

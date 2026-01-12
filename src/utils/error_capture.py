@@ -116,13 +116,16 @@ class ErrorCapture:
                 self.errors.pop(0)
 
             logger.info(f"Error captured successfully: {error_id}")
-            
-            # Periodic cleanup
-            await self._cleanup_old_errors()
 
         except Exception as e:
             logger.error(f"Failed to capture error context: {e}")
             error_record["capture_error"] = str(e)
+
+        # Periodic cleanup (outside try-except to not block error return)
+        try:
+            await self._cleanup_old_errors()
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
 
         return error_record
     
@@ -138,25 +141,16 @@ class ErrorCapture:
         cutoff_time = datetime.now(timezone.utc) - timedelta(days=self.cleanup_days)
         
         deleted_count = 0
-        try:
-            for file_path in self.screenshots_dir.glob("*"):
-                if file_path.is_file():
-                    # Check file modification time
-                    file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
-                    if file_mtime < cutoff_time:
-                        file_path.unlink()
-                        deleted_count += 1
-            
-            if deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days)")
-        except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
-
-        except Exception as e:
-            logger.error(f"Failed to capture error context: {e}")
-            error_record["capture_error"] = str(e)
-
-        return error_record
+        for file_path in self.screenshots_dir.glob("*"):
+            if file_path.is_file():
+                # Check file modification time
+                file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
+                if file_mtime < cutoff_time:
+                    file_path.unlink()
+                    deleted_count += 1
+        
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days)")
 
     def get_recent_errors(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent errors for dashboard."""
