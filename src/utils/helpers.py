@@ -93,7 +93,9 @@ async def wait_for_selector_smart(
         raise
 
 
-async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optional[float] = None) -> None:
+async def random_delay(
+    min_seconds: Optional[float] = None, max_seconds: Optional[float] = None
+) -> None:
     """
     Add a random delay to simulate human behavior.
 

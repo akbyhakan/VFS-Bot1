@@ -329,7 +329,7 @@ class VFSBot:
             async def _record_trip():
                 metrics = await get_metrics()
                 await metrics.record_circuit_breaker_trip()
-            
+
             asyncio.create_task(_record_trip())
 
     def _reset_circuit_breaker(self) -> None:
