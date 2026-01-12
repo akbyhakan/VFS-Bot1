@@ -8,6 +8,7 @@ from src.utils.encryption import (
     PasswordEncryption,
     encrypt_password,
     decrypt_password,
+    reset_encryption,
 )
 
 
@@ -159,3 +160,48 @@ def test_global_functions(encryption_key, monkeypatch):
     decrypted = decrypt_password(encrypted)
 
     assert decrypted == password
+
+
+def test_reset_encryption(encryption_key, monkeypatch):
+    """Test that reset_encryption clears the global instance."""
+    monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
+    
+    # Use global functions to create singleton
+    password = "test_password"
+    encrypted = encrypt_password(password)
+    
+    # Reset the singleton
+    reset_encryption()
+    
+    # Should still work with same key
+    decrypted = decrypt_password(encrypted)
+    assert decrypted == password
+
+
+def test_key_change_detection(monkeypatch):
+    """Test that changing ENCRYPTION_KEY resets the singleton."""
+    # Set first key and encrypt
+    key1 = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", key1)
+    reset_encryption()
+    
+    password = "test_password"
+    encrypted1 = encrypt_password(password)
+    
+    # Change to second key
+    key2 = Fernet.generate_key().decode()
+    monkeypatch.setenv("ENCRYPTION_KEY", key2)
+    
+    # Should use new key automatically
+    encrypted2 = encrypt_password(password)
+    
+    # Encrypted values should be different (different keys)
+    assert encrypted1 != encrypted2
+    
+    # Should be able to decrypt with current key
+    decrypted2 = decrypt_password(encrypted2)
+    assert decrypted2 == password
+    
+    # But trying to decrypt old value with new key should fail
+    with pytest.raises(ValueError, match="Invalid encryption key or corrupted password"):
+        decrypt_password(encrypted1)
