@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  vfs-bot-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vfs-bot-test
+    volumes:
+      - .:/app
+      - pip-cache:/root/.cache/pip
+      - playwright-cache:/root/.cache/ms-playwright
+    environment:
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - PYTHONUNBUFFERED=1
+    command: pytest tests/ --cov=src --cov-report=term-missing
+
+  vfs-bot-lint:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vfs-bot-lint
+    volumes:
+      - .:/app
+      - pip-cache:/root/.cache/pip
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "black --check . &&
+             flake8 . &&
+             mypy src/"
+
+volumes:
+  pip-cache:
+  playwright-cache:

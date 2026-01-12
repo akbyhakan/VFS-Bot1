@@ -9,16 +9,30 @@ from typing import Dict, Any
 from unittest.mock import AsyncMock, MagicMock
 from cryptography.fernet import Fernet
 
-# Set test environment variables before imports
-os.environ["API_SECRET_KEY"] = "test-secret-key-for-testing-min-32-characters"
+
+def pytest_configure(config):
+    """Configure pytest environment before tests run."""
+    # Set test environment variables before any imports
+    os.environ["API_SECRET_KEY"] = "test-secret-key-for-testing-min-32-characters"
+    if not os.getenv("ENCRYPTION_KEY"):
+        os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+
+@pytest.fixture(scope="session")
+def session_encryption_key():
+    """Session-scoped encryption key for tests."""
+    return os.getenv("ENCRYPTION_KEY")
 
 
 @pytest.fixture(autouse=True)
-def setup_encryption_key(monkeypatch):
-    """Automatically set ENCRYPTION_KEY for all tests if not already set."""
+def setup_test_environment(monkeypatch):
+    """Automatically set up test environment for all tests."""
+    # Ensure ENCRYPTION_KEY is set
     if not os.getenv("ENCRYPTION_KEY"):
         test_key = Fernet.generate_key().decode()
         monkeypatch.setenv("ENCRYPTION_KEY", test_key)
+    yield
+    # Cleanup after test if needed
 
 
 # Add parent directory to path for imports
@@ -29,14 +43,14 @@ from src.services.notification import NotificationService
 
 
 @pytest_asyncio.fixture
-async def database():
+async def database(tmp_path):
     """Create a test database."""
-    db = Database("test.db")
+    db_path = tmp_path / "test.db"
+    db = Database(str(db_path))
     await db.connect()
     yield db
     await db.close()
-    # Cleanup
-    Path("test.db").unlink(missing_ok=True)
+    # Cleanup is automatic with tmp_path
 
 
 @pytest.fixture
