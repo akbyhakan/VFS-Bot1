@@ -231,18 +231,20 @@ async def health_check() -> Dict[str, Any]:
     """
     from src.utils.metrics import get_metrics
     from src.constants import CircuitBreaker
-    
+
     db_healthy = await check_database_health()
     bot_metrics = await get_metrics()
-    
+
     # Check if bot is experiencing errors
     snapshot = await bot_metrics.get_snapshot()
-    
+
     # Configurable health threshold (default 50%)
     health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
     bot_healthy = snapshot.success_rate > health_threshold
-    
-    circuit_breaker_healthy = not (snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False))
+
+    circuit_breaker_healthy = not (
+        snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False)
+    )
 
     # Determine overall status based on component health
     if db_healthy and bot_healthy and circuit_breaker_healthy:
@@ -307,7 +309,7 @@ async def get_bot_metrics() -> Dict[str, Any]:
         Comprehensive metrics dictionary
     """
     from src.utils.metrics import get_metrics
-    
+
     bot_metrics = await get_metrics()
     return await bot_metrics.get_metrics_dict()
 
@@ -321,10 +323,10 @@ async def get_metrics() -> Dict[str, Any]:
         Metrics dictionary
     """
     from src.utils.metrics import get_metrics as get_bot_metrics_instance
-    
+
     bot_metrics = await get_bot_metrics_instance()
     snapshot = await bot_metrics.get_snapshot()
-    
+
     # Legacy compatibility with existing metrics structure
     uptime = (datetime.now(timezone.utc) - metrics["start_time"]).total_seconds()
 
@@ -357,7 +359,7 @@ async def get_prometheus_metrics() -> str:
         Prometheus-formatted metrics
     """
     from src.utils.metrics import get_metrics
-    
+
     bot_metrics = await get_metrics()
     return await bot_metrics.get_prometheus_metrics()
 

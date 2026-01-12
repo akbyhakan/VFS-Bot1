@@ -18,13 +18,13 @@ class Intervals:
     CHECK_SLOTS_MIN = 10  # Minimum slot check interval
     CHECK_SLOTS_DEFAULT = 30  # Default slot check interval
     CHECK_SLOTS_MAX = 3600  # Maximum slot check interval (1 hour)
-    
+
     HUMAN_DELAY_MIN = 0.1  # Minimum human-like delay
     HUMAN_DELAY_MAX = 0.5  # Maximum human-like delay
-    
+
     TYPING_DELAY_MIN = 0.05  # Minimum typing delay
     TYPING_DELAY_MAX = 0.15  # Maximum typing delay
-    
+
     ERROR_RECOVERY = 60  # Error recovery wait time
     CIRCUIT_BREAKER_RECOVERY = 300  # Circuit breaker recovery time (5 minutes)
 
@@ -35,7 +35,7 @@ class Retries:
     MAX_PROCESS_USER_ATTEMPTS = 3  # Max retries for processing single user
     MAX_LOGIN_ATTEMPTS = 3  # Max login attempts
     MAX_BOOKING_ATTEMPTS = 2  # Max booking attempts
-    
+
     EXPONENTIAL_MULTIPLIER = 1  # Exponential backoff multiplier
     EXPONENTIAL_MIN = 4  # Minimum exponential backoff (seconds)
     EXPONENTIAL_MAX = 10  # Maximum exponential backoff (seconds)
@@ -46,7 +46,7 @@ class RateLimits:
 
     MAX_REQUESTS = 60  # Maximum requests per time window
     TIME_WINDOW = 60  # Time window in seconds
-    
+
     CONCURRENT_USERS = 5  # Maximum concurrent user processing
 
 
@@ -56,7 +56,7 @@ class CircuitBreaker:
     MAX_CONSECUTIVE_ERRORS = 5  # Maximum consecutive errors before opening circuit
     MAX_TOTAL_ERRORS_PER_HOUR = 20  # Maximum total errors per hour
     ERROR_TRACKING_WINDOW = 3600  # Error tracking window in seconds (1 hour)
-    
+
     # Exponential backoff: min(60 * 2^(errors-1), 600)
     BACKOFF_BASE = 60  # Base backoff time in seconds
     BACKOFF_MAX = 600  # Maximum backoff time in seconds (10 minutes)

@@ -103,9 +103,7 @@ class BotMetrics:
             self.appointments_booked += 1
         logger.info(f"📊 Metrics: Appointment booked for user {user_id}")
 
-    async def record_error(
-        self, user_id: Optional[int], error_type: str
-    ) -> None:
+    async def record_error(self, user_id: Optional[int], error_type: str) -> None:
         """
         Record an error.
 
@@ -163,7 +161,7 @@ class BotMetrics:
         if total == 0:
             return 0.0
         errors = self.total_errors
-        return ((total - errors) / total * 100)
+        return (total - errors) / total * 100
 
     def get_requests_per_minute(self) -> float:
         """

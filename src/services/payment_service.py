@@ -34,9 +34,7 @@ class PaymentService:
 
         # Security warning for automated payments
         if self.method == PaymentMethod.AUTOMATED_CARD:
-            logger.warning(
-                "⚠️  AUTOMATED CARD PAYMENT ENABLED - ENSURE PCI-DSS COMPLIANCE!"
-            )
+            logger.warning("⚠️  AUTOMATED CARD PAYMENT ENABLED - ENSURE PCI-DSS COMPLIANCE!")
             logger.warning(
                 "Card details must be encrypted with strong encryption (AES-256 minimum)"
             )
@@ -70,9 +68,7 @@ class PaymentService:
             return await self._process_manual_payment(page, user_id, amount)
         elif self.method == PaymentMethod.AUTOMATED_CARD:
             if not card_details:
-                raise ValueError(
-                    "Automated card payment requires encrypted card details"
-                )
+                raise ValueError("Automated card payment requires encrypted card details")
             return await self._process_automated_payment(page, user_id, card_details)
         else:
             logger.error(f"Unknown payment method: {self.method}")
@@ -113,9 +109,7 @@ class PaymentService:
         try:
             # Wait for confirmation page or success message
             # This is VFS-specific - adjust selectors as needed
-            await asyncio.wait_for(
-                self._wait_for_payment_confirmation(page), timeout=self.timeout
-            )
+            await asyncio.wait_for(self._wait_for_payment_confirmation(page), timeout=self.timeout)
 
             logger.info(f"✅ Payment confirmed for user {user_id}")
             payment_record["status"] = "success"
@@ -123,9 +117,7 @@ class PaymentService:
             return True
 
         except asyncio.TimeoutError:
-            logger.error(
-                f"❌ Payment timeout after {self.timeout}s for user {user_id}"
-            )
+            logger.error(f"❌ Payment timeout after {self.timeout}s for user {user_id}")
             payment_record["status"] = "timeout"
             return False
         except Exception as e:
@@ -170,7 +162,7 @@ class PaymentService:
         Process automated card payment.
 
         ⚠️  WARNING: This is a framework implementation only!
-        
+
         BEFORE USING IN PRODUCTION:
         1. Ensure PCI-DSS Level 1 compliance
         2. Use secure card vault (e.g., Stripe, Braintree)
@@ -193,10 +185,8 @@ class PaymentService:
         try:
             # ⚠️  AUTOMATED PAYMENT NOT IMPLEMENTED
             # This is a framework/placeholder for future PCI-DSS compliant implementation
-            
-            logger.error(
-                "❌ AUTOMATED PAYMENT NOT IMPLEMENTED - Use manual payment mode instead!"
-            )
+
+            logger.error("❌ AUTOMATED PAYMENT NOT IMPLEMENTED - Use manual payment mode instead!")
             logger.error(
                 "Automated payment requires: "
                 "1. PCI-DSS Level 1 compliance "
@@ -204,10 +194,10 @@ class PaymentService:
                 "3. Proper encryption/decryption "
                 "4. Security audit certification"
             )
-            
+
             # Return false to prevent accidental usage
             return False
-            
+
             # TODO: Future implementation should:
             # 1. Use secure payment gateway (Stripe, Braintree, etc.)
             # 2. Never store card details locally
@@ -220,9 +210,7 @@ class PaymentService:
             logger.error(f"❌ Automated payment failed for user {user_id}: {e}")
             return False
 
-    def validate_card_details(
-        self, encrypted_card_details: Dict[str, str]
-    ) -> bool:
+    def validate_card_details(self, encrypted_card_details: Dict[str, str]) -> bool:
         """
         Validate encrypted card details structure.
 

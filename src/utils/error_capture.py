@@ -128,21 +128,21 @@ class ErrorCapture:
             logger.error(f"Error during cleanup: {e}")
 
         return error_record
-    
+
     async def _cleanup_old_errors(self) -> None:
         """Clean up error files older than cleanup_days."""
         from ..constants import ErrorCapture as ErrorCaptureConstants
-        
+
         current_time = time.time()
-        
+
         # Only cleanup once per interval (default: 1 hour)
         cleanup_interval = ErrorCaptureConstants.CLEANUP_INTERVAL_SECONDS
         if current_time - self._last_cleanup < cleanup_interval:
             return
-        
+
         self._last_cleanup = current_time
         cutoff_time = datetime.now(timezone.utc) - timedelta(days=self.cleanup_days)
-        
+
         deleted_count = 0
         for file_path in self.screenshots_dir.glob("*"):
             if file_path.is_file():
@@ -151,7 +151,7 @@ class ErrorCapture:
                 if file_mtime < cutoff_time:
                     file_path.unlink()
                     deleted_count += 1
-        
+
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days)")
 

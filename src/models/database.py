@@ -35,14 +35,14 @@ class Database:
         self.conn = await aiosqlite.connect(self.db_path)
         self.conn.row_factory = aiosqlite.Row
         await self._create_tables()
-        
+
         # Initialize connection pool
         for _ in range(self.pool_size):
             conn = await aiosqlite.connect(self.db_path)
             conn.row_factory = aiosqlite.Row
             self._pool.append(conn)
             await self._available_connections.put(conn)
-        
+
         logger.info(f"Database connected with pool size {self.pool_size}: {self.db_path}")
 
     async def close(self) -> None:
@@ -51,24 +51,24 @@ class Database:
         for conn in self._pool:
             await conn.close()
         self._pool.clear()
-        
+
         # Clear the queue
         while not self._available_connections.empty():
             try:
                 self._available_connections.get_nowait()
             except asyncio.QueueEmpty:
                 break
-        
+
         # Close main connection
         if self.conn:
             await self.conn.close()
         logger.info("Database connection pool closed")
-    
+
     @asynccontextmanager
     async def get_connection(self):
         """
         Get a connection from the pool.
-        
+
         Yields:
             Database connection from pool
         """
@@ -213,7 +213,7 @@ class Database:
                 await cursor.execute("SELECT * FROM users WHERE active = 1")
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
-    
+
     async def get_user_with_decrypted_password(self, user_id: int) -> Optional[Dict[str, Any]]:
         """
         Get user with decrypted password for VFS login.
@@ -240,7 +240,7 @@ class Database:
                         raise
                     return user
                 return None
-    
+
     async def get_active_users_with_decrypted_passwords(self) -> List[Dict[str, Any]]:
         """
         Get all active users with decrypted passwords for VFS login.
@@ -268,14 +268,14 @@ class Database:
                             "User needs to re-register with new password."
                         )
                         failed_users.append(user["email"])
-                
+
                 # Alert if users failed decryption
                 if failed_users:
                     logger.warning(
                         f"⚠️  {len(failed_users)} user(s) have invalid encrypted passwords and will be skipped: "
                         f"{', '.join(failed_users)}. They need to re-register."
                     )
-                
+
                 return users
 
     async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:
