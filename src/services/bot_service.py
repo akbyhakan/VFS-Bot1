@@ -104,6 +104,30 @@ class VFSBot:
 
         logger.info("VFSBot initialized")
 
+    async def __aenter__(self):
+        """
+        Async context manager entry.
+
+        Returns:
+            Self instance
+        """
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Async context manager exit - ensure cleanup.
+
+        Args:
+            exc_type: Exception type if any
+            exc_val: Exception value if any
+            exc_tb: Exception traceback if any
+
+        Returns:
+            False to propagate exceptions
+        """
+        await self.stop()
+        return False
+
     async def start(self) -> None:
         """Start the bot."""
         self.running = True

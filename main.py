@@ -10,6 +10,7 @@ import logging
 import sys
 import os
 import argparse
+import signal
 
 from src.core.config_loader import load_config
 from src.models.database import Database
@@ -18,6 +19,24 @@ from src.services.bot_service import VFSBot
 from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
+
+
+def setup_signal_handlers():
+    """
+    Setup graceful shutdown handlers.
+    
+    Note: Uses sys.exit(0) for immediate shutdown. asyncio.run() will handle
+    cleanup of running tasks, and the bot/web modes have their own cleanup
+    logic in finally blocks.
+    """
+    logger = logging.getLogger(__name__)
+
+    def handle_signal(signum, frame):
+        logger.info(f"Received signal {signum}, initiating graceful shutdown...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
 
 
 async def run_bot_mode(config: dict) -> None:
@@ -87,6 +106,34 @@ async def run_web_mode(config: dict) -> None:
     await server.serve()
 
 
+async def run_both_mode(config: dict) -> None:
+    """
+    Run both bot and web dashboard concurrently.
+
+    Args:
+        config: Configuration dictionary
+    """
+    logger = logging.getLogger(__name__)
+    logger.info("Starting VFS-Bot in combined mode (bot + web)...")
+
+    # Create tasks for both modes
+    web_task = asyncio.create_task(run_web_mode(config))
+    bot_task = asyncio.create_task(run_bot_mode(config))
+
+    # Run both concurrently and handle exceptions
+    try:
+        results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
+        
+        # Check for exceptions in results
+        for i, result in enumerate(results):
+            task_name = "web" if i == 0 else "bot"
+            if isinstance(result, Exception):
+                logger.error(f"Task '{task_name}' failed with exception: {result}", exc_info=result)
+    except Exception as e:
+        logger.error(f"Error in combined mode: {e}", exc_info=True)
+        raise
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="VFS-Bot - Automated appointment booking")
@@ -111,6 +158,9 @@ def main() -> None:
     setup_structured_logging(args.log_level, json_format=json_logging)
     logger = logging.getLogger(__name__)
 
+    # Setup signal handlers for graceful shutdown
+    setup_signal_handlers()
+
     try:
         # Validate environment variables
         logger.info("Validating environment variables...")
@@ -132,10 +182,7 @@ def main() -> None:
         elif args.mode == "web":
             asyncio.run(run_web_mode(config))
         else:  # both
-            logger.info("Running in combined mode (bot + web)")
-            # For now, just run web mode
-            # TODO: Implement concurrent bot + web execution
-            asyncio.run(run_web_mode(config))
+            asyncio.run(run_both_mode(config))
 
     except FileNotFoundError as e:
         logger.error(f"Configuration file not found: {e}")

@@ -4,7 +4,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
@@ -13,6 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from src.core.security import verify_api_key, generate_api_key
 from src.core.auth import create_access_token, verify_token
@@ -23,6 +26,11 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Mount static files
 static_dir = Path(__file__).parent / "static"
@@ -58,7 +66,63 @@ metrics = {
 }
 
 # WebSocket connections
-active_connections: List[WebSocket] = []
+class ConnectionManager:
+    """Thread-safe WebSocket connection manager."""
+
+    def __init__(self):
+        """Initialize connection manager."""
+        self._connections: Set[WebSocket] = set()
+        self._lock = asyncio.Lock()
+
+    async def connect(self, websocket: WebSocket):
+        """
+        Connect a new WebSocket client.
+
+        Args:
+            websocket: WebSocket connection
+        """
+        await websocket.accept()
+        async with self._lock:
+            self._connections.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket):
+        """
+        Disconnect a WebSocket client.
+
+        Args:
+            websocket: WebSocket connection
+        """
+        async with self._lock:
+            self._connections.discard(websocket)
+
+    async def broadcast(self, message: dict):
+        """
+        Broadcast message to all connected clients.
+
+        Args:
+            message: Message dictionary to broadcast
+        """
+        async with self._lock:
+            connections = self._connections.copy()
+
+        disconnected = []
+        for connection in connections:
+            try:
+                await connection.send_json(message)
+            except (WebSocketDisconnect, RuntimeError, ConnectionError) as e:
+                logger.debug(f"WebSocket connection closed during broadcast: {e}")
+                disconnected.append(connection)
+            except Exception as e:
+                logger.error(f"Unexpected error broadcasting to WebSocket client: {e}")
+                disconnected.append(connection)
+
+        if disconnected:
+            async with self._lock:
+                for conn in disconnected:
+                    self._connections.discard(conn)
+
+
+manager = ConnectionManager()
 
 
 class BotCommand(BaseModel):
@@ -116,18 +180,7 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
     Args:
         message: Message dictionary to broadcast
     """
-    disconnected = []
-    for connection in active_connections:
-        try:
-            await connection.send_json(message)
-        except Exception as e:
-            logger.error(f"Error broadcasting to client: {e}")
-            disconnected.append(connection)
-
-    # Remove disconnected clients
-    for conn in disconnected:
-        if conn in active_connections:
-            active_connections.remove(conn)
+    await manager.broadcast(message)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -238,11 +291,13 @@ def increment_metric(name: str, count: int = 1) -> None:
 
 
 @app.post("/api/bot/start")
-async def start_bot(command: BotCommand, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+@limiter.limit("5/minute")
+async def start_bot(request: Request, command: BotCommand, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
     Start the bot - requires authentication.
 
     Args:
+        request: FastAPI request object (required for rate limiter)
         command: Bot command with configuration
         api_key: Verified API key metadata
 
@@ -267,11 +322,13 @@ async def start_bot(command: BotCommand, api_key: dict = Depends(verify_api_key)
 
 
 @app.post("/api/bot/stop")
-async def stop_bot(api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+@limiter.limit("5/minute")
+async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
     Stop the bot - requires authentication.
 
     Args:
+        request: FastAPI request object (required for rate limiter)
         api_key: Verified API key metadata
 
     Returns:
@@ -319,8 +376,7 @@ async def websocket_endpoint(websocket: WebSocket):
     Args:
         websocket: WebSocket connection
     """
-    await websocket.accept()
-    active_connections.append(websocket)
+    await manager.connect(websocket)
 
     # Send initial status
     await websocket.send_json(
@@ -340,12 +396,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Send ping to keep connection alive
                 await websocket.send_json({"type": "ping", "data": {}})
     except WebSocketDisconnect:
-        active_connections.remove(websocket)
+        await manager.disconnect(websocket)
         logger.info("WebSocket client disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        if websocket in active_connections:
-            active_connections.remove(websocket)
+        await manager.disconnect(websocket)
 
 
 async def update_bot_stats(
@@ -426,11 +481,13 @@ async def create_api_key(secret: str) -> Dict[str, str]:
 
 
 @app.post("/api/auth/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest) -> TokenResponse:
+@limiter.limit("10/minute")
+async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
     """
     Login endpoint - returns JWT token.
 
     Args:
+        request: FastAPI request object (required for rate limiter)
         credentials: Username and password
 
     Returns:
