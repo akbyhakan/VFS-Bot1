@@ -5,14 +5,34 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import HTTPException, status
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Bcrypt has a maximum password length of 72 bytes
 MAX_PASSWORD_BYTES = 72
+
+# Monkey-patch passlib to handle bcrypt 5.0.0 compatibility
+# passlib 1.7.4's detect_wrap_bug creates a 200-char test password which exceeds
+# bcrypt 5.0.0's strict 72-byte limit. We patch it to truncate test passwords.
+import passlib.handlers.bcrypt as _pbcrypt  # noqa: E402
+
+
+_original_calc_checksum = _pbcrypt._BcryptBackend._calc_checksum
+
+
+def _patched_calc_checksum(self, secret):
+    """Patched _calc_checksum that truncates passwords to 72 bytes for bcrypt 5.0.0."""
+    if isinstance(secret, bytes) and len(secret) > MAX_PASSWORD_BYTES:
+        secret = secret[:MAX_PASSWORD_BYTES]
+    return _original_calc_checksum(self, secret)
+
+
+_pbcrypt._BcryptBackend._calc_checksum = _patched_calc_checksum
+
+# Now we can safely import and create the password context
+from passlib.context import CryptContext  # noqa: E402
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings from environment
 _secret_key = os.getenv("API_SECRET_KEY")
@@ -36,21 +56,27 @@ def _truncate_password(password: str) -> str:
     """
     Truncate password to 72 bytes for bcrypt, handling UTF-8 safely.
 
-    Bcrypt has a maximum password length of 72 bytes. Passwords longer than
-    this are silently truncated, which can lead to security issues and
-    inconsistent behavior. This function explicitly truncates passwords
-    to 72 bytes, ensuring that multi-byte UTF-8 characters are handled
-    correctly by discarding incomplete byte sequences.
+    Bcrypt has a maximum password length of 72 bytes. This function explicitly
+    truncates passwords to 72 bytes, ensuring that multi-byte UTF-8 characters
+    are handled correctly by finding valid character boundaries.
 
     Args:
         password: Plain text password
 
     Returns:
-        Truncated password (max 72 bytes)
+        Truncated password (max 72 bytes when encoded as UTF-8)
     """
     password_bytes = password.encode("utf-8")
     if len(password_bytes) > MAX_PASSWORD_BYTES:
+        # Only take complete characters that fit into MAX_PASSWORD_BYTES
         truncated_bytes = password_bytes[:MAX_PASSWORD_BYTES]
+        # If decoding fails at the boundary, move back until we hit a valid boundary
+        for i in range(MAX_PASSWORD_BYTES, 0, -1):
+            try:
+                return truncated_bytes[:i].decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+        # As last resort, ignore errors (shouldn't usually occur)
         return truncated_bytes.decode("utf-8", errors="ignore")
     return password
 
