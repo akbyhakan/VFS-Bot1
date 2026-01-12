@@ -144,7 +144,10 @@ class PaymentService:
         ]
 
         # Wait for any of these selectors
-        tasks = [asyncio.create_task(page.wait_for_selector(sel, timeout=self.timeout * 1000)) for sel in selectors]
+        tasks = [
+            asyncio.create_task(page.wait_for_selector(sel, timeout=self.timeout * 1000))
+            for sel in selectors
+        ]
 
         try:
             # Race - first one to complete wins
