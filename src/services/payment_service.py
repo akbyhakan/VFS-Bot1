@@ -191,51 +191,30 @@ class PaymentService:
         logger.warning("⚠️  AUTOMATED PAYMENT ATTEMPTED - ENSURE PCI-DSS COMPLIANCE!")
 
         try:
-            # SECURITY: Decrypt card details in memory only
-            # ⚠️  WARNING: This is a placeholder implementation
-            # TODO: Implement actual decryption using secure key management
-            # This code path should NOT be used in production until decryption is implemented!
+            # ⚠️  AUTOMATED PAYMENT NOT IMPLEMENTED
+            # This is a framework/placeholder for future PCI-DSS compliant implementation
             
             logger.error(
-                "❌ AUTOMATED PAYMENT DECRYPTION NOT IMPLEMENTED - This feature is incomplete!"
+                "❌ AUTOMATED PAYMENT NOT IMPLEMENTED - Use manual payment mode instead!"
             )
             logger.error(
-                "The encrypted card details need to be decrypted before use. "
-                "Implement decrypt_payment_details() or use manual payment mode."
+                "Automated payment requires: "
+                "1. PCI-DSS Level 1 compliance "
+                "2. Secure card vault integration "
+                "3. Proper encryption/decryption "
+                "4. Security audit certification"
             )
+            
+            # Return false to prevent accidental usage
             return False
             
-            # Placeholder for future implementation:
-            # from src.utils.encryption import decrypt_payment_details
-            # card_number = decrypt_payment_details(encrypted_card_details["encrypted_number"])
-            # card_expiry = decrypt_payment_details(encrypted_card_details["encrypted_expiry"])
-            # card_cvv = decrypt_payment_details(encrypted_card_details["encrypted_cvv"])
-            
-            # This is a placeholder - DO NOT USE WITH ENCRYPTED DATA
-            card_number = encrypted_card_details.get("encrypted_number", "")
-            card_expiry = encrypted_card_details.get("encrypted_expiry", "")
-            card_cvv = encrypted_card_details.get("encrypted_cvv", "")
-
-            logger.info("🔒 Decrypted card details (in memory only)")
-
-            # Fill payment form (VFS-specific selectors - adjust as needed)
-            await page.fill("input#card_number", card_number)
-            await page.fill("input#card_expiry", card_expiry)
-            await page.fill("input#card_cvv", card_cvv)
-
-            # SECURITY: Clear variables from memory
-            card_number = ""
-            card_expiry = ""
-            card_cvv = ""
-
-            # Submit payment
-            await page.click("button#submit-payment")
-
-            # Wait for confirmation
-            await self._wait_for_payment_confirmation(page)
-
-            logger.info(f"✅ Automated payment successful for user {user_id}")
-            return True
+            # TODO: Future implementation should:
+            # 1. Use secure payment gateway (Stripe, Braintree, etc.)
+            # 2. Never store card details locally
+            # 3. Use tokenization for card data
+            # 4. Implement 3D Secure authentication
+            # 5. Get PCI-DSS certification
+            # 6. Security audit before deployment
 
         except Exception as e:
             logger.error(f"❌ Automated payment failed for user {user_id}: {e}")

@@ -230,13 +230,18 @@ async def health_check() -> Dict[str, Any]:
         Health status with system information
     """
     from src.utils.metrics import get_metrics
+    from src.constants import CircuitBreaker
     
     db_healthy = await check_database_health()
-    bot_metrics = get_metrics()
+    bot_metrics = await get_metrics()
     
     # Check if bot is experiencing errors
     snapshot = await bot_metrics.get_snapshot()
-    bot_healthy = snapshot.success_rate > 50.0  # Healthy if >50% success rate
+    
+    # Configurable health threshold (default 50%)
+    health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
+    bot_healthy = snapshot.success_rate > health_threshold
+    
     circuit_breaker_healthy = not (snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False))
 
     # Determine overall status based on component health
@@ -303,7 +308,7 @@ async def get_bot_metrics() -> Dict[str, Any]:
     """
     from src.utils.metrics import get_metrics
     
-    bot_metrics = get_metrics()
+    bot_metrics = await get_metrics()
     return await bot_metrics.get_metrics_dict()
 
 
@@ -317,7 +322,7 @@ async def get_metrics() -> Dict[str, Any]:
     """
     from src.utils.metrics import get_metrics as get_bot_metrics_instance
     
-    bot_metrics = get_bot_metrics_instance()
+    bot_metrics = await get_bot_metrics_instance()
     snapshot = await bot_metrics.get_snapshot()
     
     # Legacy compatibility with existing metrics structure
@@ -353,7 +358,7 @@ async def get_prometheus_metrics() -> str:
     """
     from src.utils.metrics import get_metrics
     
-    bot_metrics = get_metrics()
+    bot_metrics = await get_metrics()
     return await bot_metrics.get_prometheus_metrics()
 
 

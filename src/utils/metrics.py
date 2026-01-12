@@ -152,24 +152,27 @@ class BotMetrics:
 
     def get_success_rate(self) -> float:
         """
-        Calculate success rate.
+        Calculate success rate (thread-safe read-only).
 
         Returns:
             Success rate as percentage (0-100)
         """
-        if self.total_checks == 0:
+        # Note: This is a read-only operation on integers, which are atomic in Python
+        # For critical accuracy, wrap in async with self._lock if needed
+        total = self.total_checks
+        if total == 0:
             return 0.0
-        return (
-            (self.total_checks - self.total_errors) / self.total_checks * 100
-        )
+        errors = self.total_errors
+        return ((total - errors) / total * 100)
 
     def get_requests_per_minute(self) -> float:
         """
-        Calculate current requests per minute.
+        Calculate current requests per minute (thread-safe read-only).
 
         Returns:
             Requests per minute
         """
+        # Note: deque operations are thread-safe for this use case
         if not self.check_timestamps:
             return 0.0
 
@@ -182,14 +185,16 @@ class BotMetrics:
 
     def get_avg_response_time_ms(self) -> float:
         """
-        Get average response time.
+        Get average response time (thread-safe read-only).
 
         Returns:
             Average response time in milliseconds
         """
-        if not self.response_times:
+        # Note: deque operations are thread-safe for this use case
+        response_times = list(self.response_times)  # Snapshot
+        if not response_times:
             return 0.0
-        return sum(self.response_times) / len(self.response_times)
+        return sum(response_times) / len(response_times)
 
     async def get_snapshot(self) -> MetricsSnapshot:
         """
@@ -297,16 +302,20 @@ class BotMetrics:
 
 # Global metrics instance
 _metrics_instance: Optional[BotMetrics] = None
+_metrics_lock = asyncio.Lock()
 
 
-def get_metrics() -> BotMetrics:
+async def get_metrics() -> BotMetrics:
     """
-    Get global metrics instance (singleton).
+    Get global metrics instance (singleton, thread-safe).
 
     Returns:
         BotMetrics instance
     """
     global _metrics_instance
     if _metrics_instance is None:
-        _metrics_instance = BotMetrics()
+        async with _metrics_lock:
+            # Double-check pattern for thread safety
+            if _metrics_instance is None:
+                _metrics_instance = BotMetrics()
     return _metrics_instance

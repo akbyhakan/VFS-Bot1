@@ -131,10 +131,13 @@ class ErrorCapture:
     
     async def _cleanup_old_errors(self) -> None:
         """Clean up error files older than cleanup_days."""
+        from ..constants import ErrorCapture as ErrorCaptureConstants
+        
         current_time = time.time()
         
-        # Only cleanup once per hour
-        if current_time - self._last_cleanup < 3600:
+        # Only cleanup once per interval (default: 1 hour)
+        cleanup_interval = ErrorCaptureConstants.CLEANUP_INTERVAL_SECONDS
+        if current_time - self._last_cleanup < cleanup_interval:
             return
         
         self._last_cleanup = current_time

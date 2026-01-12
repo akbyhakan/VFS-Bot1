@@ -67,6 +67,7 @@ class ErrorCapture:
 
     MAX_ERRORS_IN_MEMORY = 100  # Maximum errors to keep in memory
     CLEANUP_DAYS = 7  # Days to keep error files before cleanup
+    CLEANUP_INTERVAL_SECONDS = 3600  # Cleanup check interval (1 hour)
     SCREENSHOTS_DIR = "screenshots/errors"  # Directory for error screenshots
 
 

@@ -313,6 +313,10 @@ class VFSBot:
                 f"consecutive: {self.consecutive_errors}, "
                 f"total in hour: {recent_errors}"
             )
+            
+            # Record circuit breaker trip in metrics
+            from ..utils.metrics import get_metrics
+            asyncio.create_task(get_metrics().record_circuit_breaker_trip())
 
     def _reset_circuit_breaker(self) -> None:
         """Reset circuit breaker state."""
