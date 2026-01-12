@@ -55,7 +55,7 @@ class TestHeaderManager:
     @staticmethod
     def _get_chrome_ua(manager: HeaderManager):
         """Helper method to get a Chrome-based user agent."""
-        chrome_uas = [ua for ua in manager.USER_AGENTS if ua["sec_ch_ua"] is not None]
+        chrome_uas = [ua for ua in manager.USER_AGENTS if ua.get("sec_ch_ua") is not None]
         assert chrome_uas, "No Chrome-based user agents found in USER_AGENTS"
         return chrome_uas[0]
 
