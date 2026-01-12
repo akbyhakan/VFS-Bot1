@@ -62,7 +62,7 @@ class TestHeaderManager:
     def test_user_agent_consistency(self):
         """Test that User-Agent and Sec-CH-UA headers are consistent."""
         manager = HeaderManager()
-        
+
         # Force a Chrome-based UA for consistent testing
         # (Firefox/Safari don't support Sec-CH-UA headers)
         manager.current_ua = self._get_chrome_ua(manager)
@@ -82,7 +82,7 @@ class TestHeaderManager:
     def test_header_rotation(self):
         """Test User-Agent rotation."""
         manager = HeaderManager()
-        
+
         # Force a Chrome-based UA for consistent testing
         # (Firefox/Safari don't support Sec-CH-UA headers)
         manager.current_ua = self._get_chrome_ua(manager)
