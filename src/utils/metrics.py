@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from collections import deque, defaultdict
 from dataclasses import dataclass, asdict
