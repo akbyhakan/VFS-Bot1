@@ -6,7 +6,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -243,7 +243,8 @@ class VFSBot:
                 # Get active users with decrypted passwords
                 users = await self.db.get_active_users_with_decrypted_passwords()
                 logger.info(
-                    f"Processing {len(users)} active users (max {RateLimits.CONCURRENT_USERS} concurrent)"
+                    f"Processing {len(users)} active users "
+                    f"(max {RateLimits.CONCURRENT_USERS} concurrent)"
                 )
 
                 if not users:

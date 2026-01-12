@@ -264,15 +264,17 @@ class Database:
                         users.append(user)
                     except Exception as e:
                         logger.error(
-                            f"Failed to decrypt password for user {user['id']} ({user['email']}): {e}. "
-                            "User needs to re-register with new password."
+                            f"Failed to decrypt password for user "
+                            f"{user['id']} ({user['email']}): {e}. "
+                            f"User needs to re-register with new password."
                         )
                         failed_users.append(user["email"])
 
                 # Alert if users failed decryption
                 if failed_users:
                     logger.warning(
-                        f"⚠️  {len(failed_users)} user(s) have invalid encrypted passwords and will be skipped: "
+                        f"⚠️  {len(failed_users)} user(s) have invalid "
+                        f"encrypted passwords and will be skipped: "
                         f"{', '.join(failed_users)}. They need to re-register."
                     )
 

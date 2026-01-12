@@ -230,7 +230,6 @@ async def health_check() -> Dict[str, Any]:
         Health status with system information
     """
     from src.utils.metrics import get_metrics
-    from src.constants import CircuitBreaker
 
     db_healthy = await check_database_health()
     bot_metrics = await get_metrics()
