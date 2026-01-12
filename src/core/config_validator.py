@@ -25,7 +25,7 @@ class VFSConfig(BaseModel):
     @model_validator(mode="after")
     def check_centres(self):
         """Validate that centres list contains at least one centre."""
-        if not self.centres or len(self.centres) < 1:
+        if not self.centres:
             raise ValueError("List of VFS centres must contain at least one centre")
         return self
 
