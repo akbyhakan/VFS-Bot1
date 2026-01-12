@@ -31,9 +31,9 @@ async def smart_fill(
     """
     if delay:
         await asyncio.sleep(delay)
-    
+
     try:
-        if human_sim and hasattr(human_sim, 'human_type'):
+        if human_sim and hasattr(human_sim, "human_type"):
             await human_sim.human_type(page, selector, text)
         else:
             await page.fill(selector, text)
@@ -59,9 +59,9 @@ async def smart_click(
     """
     if delay:
         await asyncio.sleep(delay)
-    
+
     try:
-        if human_sim and hasattr(human_sim, 'human_click'):
+        if human_sim and hasattr(human_sim, "human_click"):
             await human_sim.human_click(page, selector)
         else:
             await page.click(selector)

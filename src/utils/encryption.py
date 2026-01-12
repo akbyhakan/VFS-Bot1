@@ -26,8 +26,8 @@ class PasswordEncryption:
         if not key:
             raise ValueError(
                 "ENCRYPTION_KEY must be set in environment variables. "
-                "Generate one with: python -c \"from cryptography.fernet import Fernet; "
-                "print(Fernet.generate_key().decode())\""
+                'Generate one with: python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"'
             )
 
         try:

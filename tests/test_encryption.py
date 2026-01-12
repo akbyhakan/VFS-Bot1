@@ -42,7 +42,7 @@ def test_password_encryption_init_no_key():
     old_key = os.environ.get("ENCRYPTION_KEY")
     if "ENCRYPTION_KEY" in os.environ:
         del os.environ["ENCRYPTION_KEY"]
-    
+
     try:
         with pytest.raises(ValueError, match="ENCRYPTION_KEY must be set"):
             PasswordEncryption()
@@ -61,19 +61,19 @@ def test_password_encryption_init_invalid_key():
 def test_encrypt_decrypt_roundtrip(encryption_instance):
     """Test encrypting and decrypting password."""
     original_password = "MyS3cur3P@ssw0rd!"
-    
+
     # Encrypt
     encrypted = encryption_instance.encrypt_password(original_password)
-    
+
     # Should be different from original
     assert encrypted != original_password
-    
+
     # Should be base64-encoded (no special chars except allowed ones)
     assert all(c.isalnum() or c in "=-_" for c in encrypted)
-    
+
     # Decrypt
     decrypted = encryption_instance.decrypt_password(encrypted)
-    
+
     # Should match original
     assert decrypted == original_password
 
@@ -82,23 +82,23 @@ def test_encrypt_different_passwords_different_output(encryption_instance):
     """Test that different passwords produce different encrypted values."""
     password1 = "password1"
     password2 = "password2"
-    
+
     encrypted1 = encryption_instance.encrypt_password(password1)
     encrypted2 = encryption_instance.encrypt_password(password2)
-    
+
     assert encrypted1 != encrypted2
 
 
 def test_encrypt_same_password_different_output(encryption_instance):
     """Test that same password encrypted twice produces different output (nonce)."""
     password = "test_password"
-    
+
     encrypted1 = encryption_instance.encrypt_password(password)
     encrypted2 = encryption_instance.encrypt_password(password)
-    
+
     # Fernet includes a timestamp, so same password encrypted twice is different
     assert encrypted1 != encrypted2
-    
+
     # But both should decrypt to same value
     decrypted1 = encryption_instance.decrypt_password(encrypted1)
     decrypted2 = encryption_instance.decrypt_password(encrypted2)
@@ -109,13 +109,13 @@ def test_decrypt_with_wrong_key():
     """Test that decrypting with wrong key fails."""
     key1 = Fernet.generate_key().decode()
     key2 = Fernet.generate_key().decode()
-    
+
     enc1 = PasswordEncryption(key1)
     enc2 = PasswordEncryption(key2)
-    
+
     password = "test_password"
     encrypted = enc1.encrypt_password(password)
-    
+
     # Should fail with wrong key
     with pytest.raises(ValueError, match="Invalid encryption key or corrupted password"):
         enc2.decrypt_password(encrypted)
@@ -153,9 +153,9 @@ def test_encrypt_long_password(encryption_instance):
 def test_global_functions(encryption_key, monkeypatch):
     """Test global encrypt/decrypt functions."""
     monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
-    
+
     password = "test_password"
     encrypted = encrypt_password(password)
     decrypted = decrypt_password(encrypted)
-    
+
     assert decrypted == password

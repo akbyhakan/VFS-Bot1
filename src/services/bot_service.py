@@ -242,11 +242,15 @@ class VFSBot:
 
                 # Get active users with decrypted passwords
                 users = await self.db.get_active_users_with_decrypted_passwords()
-                logger.info(f"Processing {len(users)} active users (max {RateLimits.CONCURRENT_USERS} concurrent)")
+                logger.info(
+                    f"Processing {len(users)} active users (max {RateLimits.CONCURRENT_USERS} concurrent)"
+                )
 
                 if not users:
                     logger.info("No active users to process")
-                    check_interval = self.config["bot"].get("check_interval", Intervals.CHECK_SLOTS_DEFAULT)
+                    check_interval = self.config["bot"].get(
+                        "check_interval", Intervals.CHECK_SLOTS_DEFAULT
+                    )
                     await asyncio.sleep(check_interval)
                     continue
 
@@ -264,7 +268,9 @@ class VFSBot:
                     self.consecutive_errors = 0
 
                 # Wait before next check
-                check_interval = self.config["bot"].get("check_interval", Intervals.CHECK_SLOTS_DEFAULT)
+                check_interval = self.config["bot"].get(
+                    "check_interval", Intervals.CHECK_SLOTS_DEFAULT
+                )
                 logger.info(f"Waiting {check_interval}s before next check...")
                 await asyncio.sleep(check_interval)
 
@@ -272,7 +278,7 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 self._record_error()
-                
+
                 # If circuit breaker open, wait longer
                 if self.circuit_breaker_open:
                     wait_time = self._get_circuit_breaker_wait_time()
@@ -303,9 +309,11 @@ class VFSBot:
 
         # Check if circuit breaker should open
         recent_errors = len(self.total_errors)
-        
-        if (self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS or 
-            recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR):
+
+        if (
+            self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS
+            or recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR
+        ):
             self.circuit_breaker_open = True
             self.circuit_breaker_open_time = current_time
             logger.error(
@@ -313,9 +321,10 @@ class VFSBot:
                 f"consecutive: {self.consecutive_errors}, "
                 f"total in hour: {recent_errors}"
             )
-            
+
             # Record circuit breaker trip in metrics
             from ..utils.metrics import get_metrics
+
             asyncio.create_task(get_metrics().record_circuit_breaker_trip())
 
     def _reset_circuit_breaker(self) -> None:
@@ -334,10 +343,7 @@ class VFSBot:
         """
         # Exponential backoff: min(60 * 2^(errors-1), 600)
         errors = min(self.consecutive_errors, 10)  # Cap for calculation
-        backoff = min(
-            CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)),
-            CircuitBreaker.BACKOFF_MAX
-        )
+        backoff = min(CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)), CircuitBreaker.BACKOFF_MAX)
         return backoff
 
     @retry(
@@ -345,8 +351,8 @@ class VFSBot:
         wait=wait_exponential(
             multiplier=Retries.EXPONENTIAL_MULTIPLIER,
             min=Retries.EXPONENTIAL_MIN,
-            max=Retries.EXPONENTIAL_MAX
-        )
+            max=Retries.EXPONENTIAL_MAX,
+        ),
     )
     async def process_user(self, user: Dict[str, Any]) -> None:
         """
@@ -512,7 +518,7 @@ class VFSBot:
             country = self.config["vfs"]["country"]
             mission = self.config["vfs"]["mission"]
             appointment_url = f"{base}/{country}/{mission}/en/appointment"
-            
+
             if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
                 logger.error("Failed to navigate to appointment page")
                 return None
@@ -584,16 +590,24 @@ class VFSBot:
             await wait_for_selector_smart(page, "input#first_name", timeout=Timeouts.SELECTOR_WAIT)
 
             # Fill form fields with human simulation
-            await smart_fill(page, "input#first_name", details.get("first_name", ""), self.human_sim)
+            await smart_fill(
+                page, "input#first_name", details.get("first_name", ""), self.human_sim
+            )
             await smart_fill(page, "input#last_name", details.get("last_name", ""), self.human_sim)
-            await smart_fill(page, "input#passport_number", details.get("passport_number", ""), self.human_sim)
+            await smart_fill(
+                page, "input#passport_number", details.get("passport_number", ""), self.human_sim
+            )
             await smart_fill(page, "input#email", details.get("email", ""), self.human_sim)
 
             if details.get("mobile_number"):
-                await smart_fill(page, "input#mobile", details.get("mobile_number", ""), self.human_sim)
+                await smart_fill(
+                    page, "input#mobile", details.get("mobile_number", ""), self.human_sim
+                )
 
             if details.get("date_of_birth"):
-                await smart_fill(page, "input#dob", details.get("date_of_birth", ""), self.human_sim)
+                await smart_fill(
+                    page, "input#dob", details.get("date_of_birth", ""), self.human_sim
+                )
 
             logger.info("Personal details filled successfully")
             return True

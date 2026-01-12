@@ -107,7 +107,7 @@ class EnvValidator:
             True if valid email format
         """
         # Basic email regex pattern
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         return bool(re.match(pattern, email))
 
     @staticmethod
@@ -127,6 +127,7 @@ class EnvValidator:
                 return False
             # Try to decode as base64
             import base64
+
             decoded = base64.urlsafe_b64decode(key.encode())
             # Fernet key should be 32 bytes
             return len(decoded) == 32
