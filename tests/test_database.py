@@ -5,15 +5,19 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 
 from src.models.database import Database
-from src.utils.encryption import PasswordEncryption
+from src.utils.encryption import PasswordEncryption, reset_encryption
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True, scope="function")
 def encryption_key(monkeypatch):
-    """Set up encryption key for tests."""
+    """Set up encryption key for tests and reset global encryption instance."""
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("ENCRYPTION_KEY", key)
-    return key
+    # Reset global encryption instance to ensure it uses the new key
+    reset_encryption()
+    yield key
+    # Cleanup: reset encryption instance after test
+    reset_encryption()
 
 
 @pytest.fixture

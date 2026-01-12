@@ -9,6 +9,24 @@ from cryptography.fernet import Fernet, InvalidToken
 logger = logging.getLogger(__name__)
 
 
+def _normalize_key(key: Optional[str | bytes]) -> str:
+    """
+    Normalize encryption key to string format.
+
+    Args:
+        key: Encryption key as string or bytes
+
+    Returns:
+        Key as string
+    """
+    if isinstance(key, bytes):
+        return key.decode()
+    elif isinstance(key, str):
+        return key
+    else:
+        raise ValueError("Encryption key must be string or bytes")
+
+
 class PasswordEncryption:
     """Handles password encryption and decryption using Fernet."""
 
@@ -31,7 +49,11 @@ class PasswordEncryption:
             )
 
         try:
-            self.cipher = Fernet(key.encode() if isinstance(key, str) else key)
+            # Normalize and store key for comparison
+            self._key = _normalize_key(key)
+            # Create cipher with normalized key
+            cipher_key = key.encode() if isinstance(key, str) else key
+            self.cipher = Fernet(cipher_key)
             logger.info("Password encryption initialized successfully")
         except Exception as e:
             raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
@@ -81,16 +103,38 @@ class PasswordEncryption:
 _encryption_instance: Optional[PasswordEncryption] = None
 
 
+def reset_encryption() -> None:
+    """
+    Reset the global encryption instance.
+
+    This is useful for testing or when the encryption key changes.
+    """
+    global _encryption_instance
+    _encryption_instance = None
+
+
 def get_encryption() -> PasswordEncryption:
     """
     Get global encryption instance (singleton).
+
+    If the ENCRYPTION_KEY environment variable has changed since the
+    singleton was created, the instance is reset to use the new key.
 
     Returns:
         PasswordEncryption instance
     """
     global _encryption_instance
+
+    current_key = os.getenv("ENCRYPTION_KEY")
+
+    # Reset if instance doesn't exist
     if _encryption_instance is None:
         _encryption_instance = PasswordEncryption()
+    # Reset if key has changed (and current_key is not None)
+    elif current_key is not None and _encryption_instance._key != current_key:
+        # Key has changed, reset the instance
+        _encryption_instance = PasswordEncryption()
+
     return _encryption_instance
 
 
