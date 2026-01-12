@@ -3,37 +3,80 @@
 import aiosqlite
 import logging
 from typing import Dict, List, Optional, Any
+from contextlib import asynccontextmanager
+import asyncio
 
-from src.core.auth import hash_password
+from src.utils.encryption import encrypt_password, decrypt_password
 
 logger = logging.getLogger(__name__)
 
 
 class Database:
-    """SQLite database manager for VFS-Bot."""
+    """SQLite database manager for VFS-Bot with connection pooling."""
 
-    def __init__(self, db_path: str = "vfs_bot.db"):
+    def __init__(self, db_path: str = "vfs_bot.db", pool_size: int = 5):
         """
-        Initialize database connection.
+        Initialize database connection pool.
 
         Args:
             db_path: Path to SQLite database file
+            pool_size: Maximum number of concurrent connections
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
+        self.pool_size = pool_size
+        self._pool: List[aiosqlite.Connection] = []
+        self._pool_lock = asyncio.Lock()
+        self._available_connections: asyncio.Queue = asyncio.Queue(maxsize=pool_size)
 
     async def connect(self) -> None:
-        """Establish database connection and create tables."""
+        """Establish database connection pool and create tables."""
+        # Create main connection for schema management
         self.conn = await aiosqlite.connect(self.db_path)
         self.conn.row_factory = aiosqlite.Row
         await self._create_tables()
-        logger.info(f"Database connected: {self.db_path}")
+        
+        # Initialize connection pool
+        for _ in range(self.pool_size):
+            conn = await aiosqlite.connect(self.db_path)
+            conn.row_factory = aiosqlite.Row
+            self._pool.append(conn)
+            await self._available_connections.put(conn)
+        
+        logger.info(f"Database connected with pool size {self.pool_size}: {self.db_path}")
 
     async def close(self) -> None:
-        """Close database connection."""
+        """Close database connection pool."""
+        # Close pooled connections
+        for conn in self._pool:
+            await conn.close()
+        self._pool.clear()
+        
+        # Clear the queue
+        while not self._available_connections.empty():
+            try:
+                self._available_connections.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+        
+        # Close main connection
         if self.conn:
             await self.conn.close()
-            logger.info("Database connection closed")
+        logger.info("Database connection pool closed")
+    
+    @asynccontextmanager
+    async def get_connection(self):
+        """
+        Get a connection from the pool.
+        
+        Yields:
+            Database connection from pool
+        """
+        conn = await self._available_connections.get()
+        try:
+            yield conn
+        finally:
+            await self._available_connections.put(conn)
 
     async def _create_tables(self) -> None:
         """Create database tables if they don't exist."""
@@ -127,7 +170,7 @@ class Database:
 
         Args:
             email: User email
-            password: User password (will be hashed before storage)
+            password: User password (will be encrypted before storage)
             centre: VFS centre
             category: Visa category
             subcategory: Visa subcategory
@@ -138,8 +181,8 @@ class Database:
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
 
-        # Hash password before storing
-        hashed_password = hash_password(password)
+        # Encrypt password before storing (NOT hashing - we need plaintext for VFS login)
+        encrypted_password = encrypt_password(password)
 
         async with self.conn.cursor() as cursor:
             await cursor.execute(
@@ -147,7 +190,7 @@ class Database:
                 INSERT INTO users (email, password, centre, category, subcategory)
                 VALUES (?, ?, ?, ?, ?)
             """,
-                (email, hashed_password, centre, category, subcategory),
+                (email, encrypted_password, centre, category, subcategory),
             )
             await self.conn.commit()
             logger.info(f"User added: {email}")
@@ -165,10 +208,75 @@ class Database:
         """
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM users WHERE active = 1")
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE active = 1")
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+    
+    async def get_user_with_decrypted_password(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get user with decrypted password for VFS login.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            User dictionary with decrypted password or None
+        """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+                row = await cursor.fetchone()
+                if row:
+                    user = dict(row)
+                    # Decrypt password for VFS login
+                    try:
+                        user["password"] = decrypt_password(user["password"])
+                    except Exception as e:
+                        logger.error(f"Failed to decrypt password for user {user_id}: {e}")
+                        raise
+                    return user
+                return None
+    
+    async def get_active_users_with_decrypted_passwords(self) -> List[Dict[str, Any]]:
+        """
+        Get all active users with decrypted passwords for VFS login.
+
+        Returns:
+            List of user dictionaries with decrypted passwords
+        """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE active = 1")
+                rows = await cursor.fetchall()
+                users = []
+                failed_users = []
+                for row in rows:
+                    user = dict(row)
+                    # Decrypt password for VFS login
+                    try:
+                        user["password"] = decrypt_password(user["password"])
+                        users.append(user)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to decrypt password for user {user['id']} ({user['email']}): {e}. "
+                            "User needs to re-register with new password."
+                        )
+                        failed_users.append(user["email"])
+                
+                # Alert if users failed decryption
+                if failed_users:
+                    logger.warning(
+                        f"⚠️  {len(failed_users)} user(s) have invalid encrypted passwords and will be skipped: "
+                        f"{', '.join(failed_users)}. They need to re-register."
+                    )
+                
+                return users
 
     async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:
         """

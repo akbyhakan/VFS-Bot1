@@ -3,6 +3,7 @@
 import os
 import sys
 import logging
+import re
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ class EnvValidator:
     REQUIRED_VARS = {
         "VFS_EMAIL": "VFS account email",
         "VFS_PASSWORD": "VFS account password",
+        "ENCRYPTION_KEY": "Password encryption key (Fernet)",
     }
 
     OPTIONAL_VARS = {
@@ -38,23 +40,46 @@ class EnvValidator:
         """
         missing_required: List[str] = []
         missing_optional: List[str] = []
+        validation_errors: List[str] = []
 
         # Check required
         for var, description in cls.REQUIRED_VARS.items():
-            if not os.getenv(var):
+            value = os.getenv(var)
+            if not value:
                 missing_required.append(f"{var} ({description})")
+            else:
+                # Validate specific formats
+                if var == "VFS_EMAIL":
+                    if not cls._validate_email(value):
+                        validation_errors.append(f"{var}: Invalid email format")
+                elif var == "ENCRYPTION_KEY":
+                    if not cls._validate_encryption_key(value):
+                        validation_errors.append(
+                            f"{var}: Invalid encryption key (must be base64-encoded Fernet key)"
+                        )
 
         # Check optional
         for var, description in cls.OPTIONAL_VARS.items():
-            if not os.getenv(var):
+            value = os.getenv(var)
+            if not value:
                 missing_optional.append(f"{var} ({description})")
+            else:
+                # Validate optional var formats
+                if var == "CAPTCHA_API_KEY" and len(value) < 16:
+                    validation_errors.append(f"{var}: API key too short (minimum 16 characters)")
 
-        # Report
+        # Report errors
         if missing_required:
             logger.error("❌ Missing required environment variables:")
             for var in missing_required:
                 logger.error(f"  - {var}")
 
+        if validation_errors:
+            logger.error("❌ Environment variable validation errors:")
+            for error in validation_errors:
+                logger.error(f"  - {error}")
+
+        if missing_required or validation_errors:
             if strict:
                 logger.error("\nPlease set these variables in .env file or environment.")
                 logger.error("See .env.example for reference.")
@@ -69,6 +94,44 @@ class EnvValidator:
 
         logger.info("✅ Environment validation passed")
         return True
+
+    @staticmethod
+    def _validate_email(email: str) -> bool:
+        """
+        Validate email format.
+
+        Args:
+            email: Email address to validate
+
+        Returns:
+            True if valid email format
+        """
+        # Basic email regex pattern
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+
+    @staticmethod
+    def _validate_encryption_key(key: str) -> bool:
+        """
+        Validate encryption key format (Fernet key).
+
+        Args:
+            key: Encryption key to validate
+
+        Returns:
+            True if valid Fernet key format
+        """
+        try:
+            # Fernet keys are 44 characters of base64-encoded data
+            if len(key) != 44:
+                return False
+            # Try to decode as base64
+            import base64
+            decoded = base64.urlsafe_b64decode(key.encode())
+            # Fernet key should be 32 bytes
+            return len(decoded) == 32
+        except Exception:
+            return False
 
     @classmethod
     def get_masked_summary(cls) -> Dict[str, str]:

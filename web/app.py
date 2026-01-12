@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -228,19 +229,56 @@ async def health_check() -> Dict[str, Any]:
     Returns:
         Health status with system information
     """
+    from src.utils.metrics import get_metrics
+    from src.constants import CircuitBreaker
+    
     db_healthy = await check_database_health()
+    bot_metrics = await get_metrics()
+    
+    # Check if bot is experiencing errors
+    snapshot = await bot_metrics.get_snapshot()
+    
+    # Configurable health threshold (default 50%)
+    health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
+    bot_healthy = snapshot.success_rate > health_threshold
+    
+    circuit_breaker_healthy = not (snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False))
 
     # Determine overall status based on component health
-    overall_status = "healthy" if db_healthy else "degraded"
+    if db_healthy and bot_healthy and circuit_breaker_healthy:
+        overall_status = "healthy"
+    elif db_healthy:
+        overall_status = "degraded"
+    else:
+        overall_status = "unhealthy"
 
     return {
         "status": overall_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "2.0.0",
+        "version": "2.1.0",
+        "uptime_seconds": snapshot.uptime_seconds,
         "components": {
-            "database": db_healthy,
-            "bot": bot_state.get("running", False),
-            "notifications": True,
+            "database": {
+                "status": "healthy" if db_healthy else "unhealthy",
+            },
+            "bot": {
+                "status": "healthy" if bot_healthy else "degraded",
+                "running": bot_state.get("running", False),
+                "success_rate": snapshot.success_rate,
+            },
+            "circuit_breaker": {
+                "status": "healthy" if circuit_breaker_healthy else "open",
+                "trips": snapshot.circuit_breaker_trips,
+            },
+            "notifications": {
+                "status": "healthy",
+            },
+        },
+        "metrics": {
+            "total_checks": snapshot.total_checks,
+            "slots_found": snapshot.slots_found,
+            "appointments_booked": snapshot.appointments_booked,
+            "active_users": snapshot.active_users,
         },
     }
 
@@ -260,6 +298,20 @@ async def check_database_health() -> bool:
         return False
 
 
+@app.get("/api/metrics")
+async def get_bot_metrics() -> Dict[str, Any]:
+    """
+    Get detailed bot metrics.
+
+    Returns:
+        Comprehensive metrics dictionary
+    """
+    from src.utils.metrics import get_metrics
+    
+    bot_metrics = await get_metrics()
+    return await bot_metrics.get_metrics_dict()
+
+
 @app.get("/metrics")
 async def get_metrics() -> Dict[str, Any]:
     """
@@ -268,6 +320,12 @@ async def get_metrics() -> Dict[str, Any]:
     Returns:
         Metrics dictionary
     """
+    from src.utils.metrics import get_metrics as get_bot_metrics_instance
+    
+    bot_metrics = await get_bot_metrics_instance()
+    snapshot = await bot_metrics.get_snapshot()
+    
+    # Legacy compatibility with existing metrics structure
     uptime = (datetime.now(timezone.utc) - metrics["start_time"]).total_seconds()
 
     return {
@@ -276,13 +334,32 @@ async def get_metrics() -> Dict[str, Any]:
         "requests_success": metrics["requests_success"],
         "requests_failed": metrics["requests_failed"],
         "success_rate": metrics["requests_success"] / max(metrics["requests_total"], 1),
-        "slots_checked": metrics["slots_checked"],
-        "slots_found": metrics["slots_found"],
-        "appointments_booked": metrics["appointments_booked"],
+        "slots_checked": snapshot.total_checks,
+        "slots_found": snapshot.slots_found,
+        "appointments_booked": snapshot.appointments_booked,
         "captchas_solved": metrics["captchas_solved"],
         "errors_by_type": metrics["errors"],
         "bot_status": bot_state["status"],
+        # New metrics from BotMetrics
+        "circuit_breaker_trips": snapshot.circuit_breaker_trips,
+        "active_users": snapshot.active_users,
+        "avg_response_time_ms": snapshot.avg_response_time_ms,
+        "requests_per_minute": snapshot.requests_per_minute,
     }
+
+
+@app.get("/metrics/prometheus", response_class=PlainTextResponse)
+async def get_prometheus_metrics() -> str:
+    """
+    Prometheus text format metrics.
+
+    Returns:
+        Prometheus-formatted metrics
+    """
+    from src.utils.metrics import get_metrics
+    
+    bot_metrics = await get_metrics()
+    return await bot_metrics.get_prometheus_metrics()
 
 
 def increment_metric(name: str, count: int = 1) -> None:

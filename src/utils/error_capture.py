@@ -2,7 +2,8 @@
 
 import logging
 import json
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -14,11 +15,20 @@ logger = logging.getLogger(__name__)
 class ErrorCapture:
     """Capture comprehensive error context."""
 
-    def __init__(self, screenshots_dir: str = "screenshots/errors"):
+    def __init__(self, screenshots_dir: str = "screenshots/errors", cleanup_days: int = 7):
+        """
+        Initialize error capture.
+
+        Args:
+            screenshots_dir: Directory for error screenshots
+            cleanup_days: Days to keep error files before cleanup
+        """
         self.screenshots_dir = Path(screenshots_dir)
         self.screenshots_dir.mkdir(parents=True, exist_ok=True)
         self.errors: List[Dict[str, Any]] = []
         self.max_errors = 100  # Keep last 100 errors
+        self.cleanup_days = cleanup_days
+        self._last_cleanup = time.time()
 
     async def capture(
         self,
@@ -111,7 +121,39 @@ class ErrorCapture:
             logger.error(f"Failed to capture error context: {e}")
             error_record["capture_error"] = str(e)
 
+        # Periodic cleanup (outside try-except to not block error return)
+        try:
+            await self._cleanup_old_errors()
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+
         return error_record
+    
+    async def _cleanup_old_errors(self) -> None:
+        """Clean up error files older than cleanup_days."""
+        from ..constants import ErrorCapture as ErrorCaptureConstants
+        
+        current_time = time.time()
+        
+        # Only cleanup once per interval (default: 1 hour)
+        cleanup_interval = ErrorCaptureConstants.CLEANUP_INTERVAL_SECONDS
+        if current_time - self._last_cleanup < cleanup_interval:
+            return
+        
+        self._last_cleanup = current_time
+        cutoff_time = datetime.now(timezone.utc) - timedelta(days=self.cleanup_days)
+        
+        deleted_count = 0
+        for file_path in self.screenshots_dir.glob("*"):
+            if file_path.is_file():
+                # Check file modification time
+                file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
+                if file_mtime < cutoff_time:
+                    file_path.unlink()
+                    deleted_count += 1
+        
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days)")
 
     def get_recent_errors(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent errors for dashboard."""

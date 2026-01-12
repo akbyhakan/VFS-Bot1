@@ -378,6 +378,326 @@ VFS-Bot1/
 4. **Run in Docker** - Isolate the bot environment
 5. **Update regularly** - Keep dependencies up to date
 
+## 🔒 Security Best Practices
+
+### Password Encryption
+
+VFS-Bot v2.1.0+ uses **Fernet symmetric encryption** for storing VFS account passwords. This is critical because:
+
+- ❌ **Hashing doesn't work** - The bot needs the actual password to log into VFS
+- ✅ **Encryption is secure** - Passwords are encrypted at rest with AES-128 in CBC mode
+- 🔑 **Key management** - The encryption key must be kept secure
+
+#### Generating an Encryption Key
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Add the generated key to your `.env` file:
+
+```env
+ENCRYPTION_KEY=your-generated-key-here
+```
+
+#### Key Security Guidelines
+
+- ⚠️ **Never commit** the encryption key to version control
+- 🔒 **Rotate keys** periodically (requires re-encrypting all passwords)
+- 💾 **Backup safely** - Store the key in a secure password manager or vault
+- 🏢 **Production** - Use environment variables or secrets management (AWS Secrets Manager, Azure Key Vault, etc.)
+
+### Environment Variable Validation
+
+The bot validates all required environment variables on startup:
+
+- **Email format** - Must be a valid email address
+- **Encryption key** - Must be a valid 44-character Fernet key
+- **API keys** - Minimum length validation
+
+If validation fails in strict mode, the bot will not start.
+
+### Database Security
+
+- **Connection pooling** - Prevents race conditions with concurrent operations
+- **Encrypted passwords** - All VFS passwords are encrypted before storage
+- **SQL injection protection** - Uses parameterized queries throughout
+
+### Rate Limiting
+
+- **Global rate limiter** - 60 requests per 60 seconds (default)
+- **Per-endpoint limits** - Web API endpoints have additional rate limits
+- **Circuit breaker** - Prevents infinite error loops
+
+## 🧪 Testing
+
+VFS-Bot includes a comprehensive test suite with >70% code coverage.
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/test_encryption.py
+
+# Run tests matching pattern
+pytest -k "test_encrypt"
+
+# Run only unit tests
+pytest -m unit
+
+# Run with verbose output
+pytest -v
+```
+
+### Test Coverage
+
+```bash
+# Generate coverage report
+pytest --cov=src --cov-report=term-missing
+
+# View HTML coverage report
+pytest --cov=src --cov-report=html
+open htmlcov/index.html  # macOS/Linux
+start htmlcov/index.html  # Windows
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py              # Shared fixtures
+├── test_database.py         # Database with encryption tests
+├── test_encryption.py       # Password encryption tests
+├── test_validators.py       # Environment validation tests
+├── test_bot.py             # Bot logic tests
+├── test_rate_limiter.py    # Rate limiting tests
+└── ...
+```
+
+### Writing Tests
+
+```python
+import pytest
+from src.models.database import Database
+
+@pytest.mark.asyncio
+async def test_add_user(test_db):
+    """Test adding a user with encrypted password."""
+    user_id = await test_db.add_user(
+        email="test@example.com",
+        password="secure_password",
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay"
+    )
+    assert user_id > 0
+```
+
+## 📊 Monitoring & Metrics
+
+VFS-Bot v2.1.0 includes comprehensive metrics tracking and monitoring.
+
+### Metrics Endpoints
+
+#### `/api/metrics` - Detailed Metrics
+
+```bash
+curl http://localhost:8000/api/metrics
+```
+
+Response:
+```json
+{
+  "current": {
+    "timestamp": "2025-01-12T02:00:00Z",
+    "uptime_seconds": 3600.5,
+    "total_checks": 120,
+    "slots_found": 5,
+    "appointments_booked": 2,
+    "total_errors": 3,
+    "success_rate": 97.5,
+    "requests_per_minute": 2.0,
+    "avg_response_time_ms": 1250.5,
+    "circuit_breaker_trips": 0,
+    "active_users": 5
+  },
+  "status": "running",
+  "errors": {
+    "by_type": {"LoginError": 2, "NetworkError": 1},
+    "by_user": {"1": 1, "2": 2}
+  }
+}
+```
+
+#### `/metrics/prometheus` - Prometheus Format
+
+```bash
+curl http://localhost:8000/metrics/prometheus
+```
+
+Response (Prometheus text format):
+```
+# HELP vfs_bot_uptime_seconds Bot uptime in seconds
+# TYPE vfs_bot_uptime_seconds gauge
+vfs_bot_uptime_seconds 3600.5
+
+# HELP vfs_bot_checks_total Total slot checks performed
+# TYPE vfs_bot_checks_total counter
+vfs_bot_checks_total 120
+...
+```
+
+#### `/health` - Enhanced Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-12T02:00:00Z",
+  "version": "2.1.0",
+  "uptime_seconds": 3600.5,
+  "components": {
+    "database": {"status": "healthy"},
+    "bot": {
+      "status": "healthy",
+      "running": true,
+      "success_rate": 97.5
+    },
+    "circuit_breaker": {
+      "status": "healthy",
+      "trips": 0
+    },
+    "notifications": {"status": "healthy"}
+  },
+  "metrics": {
+    "total_checks": 120,
+    "slots_found": 5,
+    "appointments_booked": 2,
+    "active_users": 5
+  }
+}
+```
+
+### Prometheus Integration
+
+Add to `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'vfs-bot'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/metrics/prometheus'
+```
+
+### Grafana Dashboard
+
+Import metrics into Grafana:
+
+1. Add Prometheus as data source
+2. Create dashboard with panels for:
+   - Uptime and success rate
+   - Slots found vs. appointments booked
+   - Circuit breaker trips
+   - Error rates by type
+   - Response time trends
+
+### Circuit Breaker Monitoring
+
+The circuit breaker prevents infinite error loops:
+
+- **Opens when:**
+  - 5 consecutive errors, OR
+  - 20 total errors in 1 hour
+- **Exponential backoff:**
+  - Wait time: `min(60 * 2^(errors-1), 600)` seconds
+  - Max wait: 10 minutes
+- **Auto-recovery:**
+  - Circuit closes after successful operation
+
+Monitor via `/health` endpoint - status will be "degraded" when circuit is open.
+
+## 🔄 Migration Guide (v2.0.0 → v2.1.0)
+
+### Breaking Changes
+
+1. **Password Storage** - Passwords are now encrypted instead of hashed
+
+### Migration Steps
+
+1. **Update dependencies:**
+
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+2. **Generate encryption key:**
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+3. **Add to `.env`:**
+
+```env
+ENCRYPTION_KEY=<generated-key>
+```
+
+4. **Re-add users** - Existing users must be re-registered:
+
+```python
+# The old hashed passwords cannot be decrypted
+# Users need to update their passwords through the dashboard
+# Or use a migration script (see below)
+```
+
+5. **Optional: Migration script for existing users:**
+
+If you have users and know their original passwords:
+
+```python
+import asyncio
+from src.models.database import Database
+from src.utils.encryption import encrypt_password
+
+async def migrate_user(db, user_id, plaintext_password):
+    """Migrate a single user to encrypted password."""
+    encrypted = encrypt_password(plaintext_password)
+    # Update user password directly
+    async with db.conn.cursor() as cursor:
+        await cursor.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (encrypted, user_id)
+        )
+    await db.conn.commit()
+
+# Run migration
+async def main():
+    db = Database()
+    await db.connect()
+    # Update each user with their original password
+    await migrate_user(db, user_id=1, plaintext_password="original_password")
+    await db.close()
+
+asyncio.run(main())
+```
+
+⚠️ **Important:** Without the original plaintext passwords, users must re-register.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

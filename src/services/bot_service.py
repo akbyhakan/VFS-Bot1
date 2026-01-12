@@ -2,9 +2,11 @@
 
 import asyncio
 import logging
+import time
+from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -12,6 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from .captcha_solver import CaptchaSolver
 from .centre_fetcher import CentreFetcher
 from .notification import NotificationService
+from ..constants import Timeouts, Intervals, Retries, CircuitBreaker, RateLimits
 from ..models.database import Database
 from ..utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ..utils.anti_detection.fingerprint_bypass import FingerprintBypass
@@ -22,6 +25,7 @@ from ..utils.security.proxy_manager import ProxyManager
 from ..utils.security.session_manager import SessionManager
 from ..utils.security.rate_limiter import get_rate_limiter
 from ..utils.error_capture import ErrorCapture
+from ..utils.helpers import smart_fill, smart_click, wait_for_selector_smart, safe_navigate
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,15 @@ class VFSBot:
         self.context: Optional[BrowserContext] = None
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
+
+        # Circuit breaker state
+        self.consecutive_errors = 0
+        self.total_errors: deque = deque()  # Track error timestamps
+        self.circuit_breaker_open = False
+        self.circuit_breaker_open_time: Optional[float] = None
+
+        # Concurrent processing semaphore
+        self.user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
 
         # Initialize rate limiter
         self.rate_limiter = get_rate_limiter()
@@ -212,30 +225,129 @@ class VFSBot:
         logger.info("VFS-Bot stopped")
 
     async def run_bot_loop(self) -> None:
-        """Main bot loop to check for slots."""
+        """Main bot loop to check for slots with circuit breaker and parallel processing."""
         while self.running:
             try:
-                # Get active users
-                users = await self.db.get_active_users()
-                logger.info(f"Processing {len(users)} active users")
+                # Check circuit breaker
+                if self.circuit_breaker_open:
+                    wait_time = self._get_circuit_breaker_wait_time()
+                    logger.warning(
+                        f"Circuit breaker OPEN - waiting {wait_time}s before retry "
+                        f"(consecutive errors: {self.consecutive_errors})"
+                    )
+                    await asyncio.sleep(wait_time)
+                    # Try to close circuit breaker
+                    self._reset_circuit_breaker()
+                    continue
 
-                for user in users:
-                    if not self.running:
-                        break
+                # Get active users with decrypted passwords
+                users = await self.db.get_active_users_with_decrypted_passwords()
+                logger.info(f"Processing {len(users)} active users (max {RateLimits.CONCURRENT_USERS} concurrent)")
 
-                    await self.process_user(user)
+                if not users:
+                    logger.info("No active users to process")
+                    check_interval = self.config["bot"].get("check_interval", Intervals.CHECK_SLOTS_DEFAULT)
+                    await asyncio.sleep(check_interval)
+                    continue
+
+                # Process users in parallel with semaphore limit
+                tasks = [self._process_user_with_semaphore(user) for user in users]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Check results and update circuit breaker
+                errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
+                if errors_in_batch > 0:
+                    logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
+                    self._record_error()
+                else:
+                    # Successful batch - reset consecutive errors
+                    self.consecutive_errors = 0
 
                 # Wait before next check
-                check_interval = self.config["bot"].get("check_interval", 30)
+                check_interval = self.config["bot"].get("check_interval", Intervals.CHECK_SLOTS_DEFAULT)
                 logger.info(f"Waiting {check_interval}s before next check...")
                 await asyncio.sleep(check_interval)
 
             except Exception as e:
-                logger.error(f"Error in bot loop: {e}")
+                logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
-                await asyncio.sleep(60)
+                self._record_error()
+                
+                # If circuit breaker open, wait longer
+                if self.circuit_breaker_open:
+                    wait_time = self._get_circuit_breaker_wait_time()
+                    await asyncio.sleep(wait_time)
+                else:
+                    await asyncio.sleep(Intervals.ERROR_RECOVERY)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    async def _process_user_with_semaphore(self, user: Dict[str, Any]) -> None:
+        """
+        Process user with semaphore for concurrency control.
+
+        Args:
+            user: User dictionary from database
+        """
+        async with self.user_semaphore:
+            await self.process_user(user)
+
+    def _record_error(self) -> None:
+        """Record error for circuit breaker tracking."""
+        current_time = time.time()
+        self.consecutive_errors += 1
+        self.total_errors.append(current_time)
+
+        # Clean old errors outside tracking window
+        cutoff_time = current_time - CircuitBreaker.ERROR_TRACKING_WINDOW
+        while self.total_errors and self.total_errors[0] < cutoff_time:
+            self.total_errors.popleft()
+
+        # Check if circuit breaker should open
+        recent_errors = len(self.total_errors)
+        
+        if (self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS or 
+            recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR):
+            self.circuit_breaker_open = True
+            self.circuit_breaker_open_time = current_time
+            logger.error(
+                f"🚨 CIRCUIT BREAKER OPENED - "
+                f"consecutive: {self.consecutive_errors}, "
+                f"total in hour: {recent_errors}"
+            )
+            
+            # Record circuit breaker trip in metrics
+            from ..utils.metrics import get_metrics
+            asyncio.create_task(get_metrics().record_circuit_breaker_trip())
+
+    def _reset_circuit_breaker(self) -> None:
+        """Reset circuit breaker state."""
+        self.circuit_breaker_open = False
+        self.circuit_breaker_open_time = None
+        self.consecutive_errors = 0
+        logger.info("Circuit breaker CLOSED - resuming normal operation")
+
+    def _get_circuit_breaker_wait_time(self) -> float:
+        """
+        Calculate wait time for circuit breaker with exponential backoff.
+
+        Returns:
+            Wait time in seconds
+        """
+        # Exponential backoff: min(60 * 2^(errors-1), 600)
+        errors = min(self.consecutive_errors, 10)  # Cap for calculation
+        backoff = min(
+            CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)),
+            CircuitBreaker.BACKOFF_MAX
+        )
+        return backoff
+
+    @retry(
+        stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
+        wait=wait_exponential(
+            multiplier=Retries.EXPONENTIAL_MULTIPLIER,
+            min=Retries.EXPONENTIAL_MIN,
+            max=Retries.EXPONENTIAL_MAX
+        )
+    )
     async def process_user(self, user: Dict[str, Any]) -> None:
         """
         Process a single user's appointment booking.
@@ -314,7 +426,7 @@ class VFSBot:
         Args:
             page: Playwright page object
             email: User email
-            password: User password
+            password: User password (plaintext - decrypted from database)
 
         Returns:
             True if login successful
@@ -326,7 +438,9 @@ class VFSBot:
             url = f"{base}/{country}/{mission}/en/login"
             logger.info(f"Navigating to login page: {url}")
 
-            await page.goto(url, wait_until="networkidle", timeout=30000)
+            if not await safe_navigate(page, url, timeout=Timeouts.NAVIGATION):
+                logger.error(f"Failed to navigate to login page: {url}")
+                return False
 
             # Check for Cloudflare challenge
             if self.anti_detection_enabled and self.cloudflare_handler:
@@ -336,13 +450,9 @@ class VFSBot:
 
             # Fill login form with human simulation
             try:
-                if self.anti_detection_enabled and self.human_sim:
-                    await self.human_sim.human_type(page, 'input[name="email"]', email)
-                    await asyncio.sleep(0.5)
-                    await self.human_sim.human_type(page, 'input[name="password"]', password)
-                else:
-                    await page.fill('input[name="email"]', email)
-                    await page.fill('input[name="password"]', password)
+                await smart_fill(page, 'input[name="email"]', email, self.human_sim)
+                await asyncio.sleep(0.5)
+                await smart_fill(page, 'input[name="password"]', password, self.human_sim)
             except Exception as e:
                 # Capture error with failed selector
                 await self.error_capture.capture(
@@ -363,12 +473,8 @@ class VFSBot:
                         await self.captcha_solver.inject_captcha_solution(page, token)
 
             # Submit login with human click
-            if self.anti_detection_enabled and self.human_sim:
-                await self.human_sim.human_click(page, 'button[type="submit"]')
-            else:
-                await page.click('button[type="submit"]')
-
-            await page.wait_for_load_state("networkidle", timeout=30000)
+            await smart_click(page, 'button[type="submit"]', self.human_sim)
+            await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
 
             # Check if login successful
             if "dashboard" in page.url or "appointment" in page.url:
@@ -406,7 +512,10 @@ class VFSBot:
             country = self.config["vfs"]["country"]
             mission = self.config["vfs"]["mission"]
             appointment_url = f"{base}/{country}/{mission}/en/appointment"
-            await page.goto(appointment_url, wait_until="networkidle", timeout=30000)
+            
+            if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
+                logger.error("Failed to navigate to appointment page")
+                return None
 
             # Check for Cloudflare challenge
             if self.anti_detection_enabled and self.cloudflare_handler:
@@ -423,10 +532,7 @@ class VFSBot:
             await asyncio.sleep(2)
 
             # Click to check slots with human simulation
-            if self.anti_detection_enabled and self.human_sim:
-                await self.human_sim.human_click(page, "button#check-slots")
-            else:
-                await page.click("button#check-slots")
+            await smart_click(page, "button#check-slots", self.human_sim)
             await asyncio.sleep(3)
 
             # Check if slots are available
@@ -475,41 +581,19 @@ class VFSBot:
         """
         try:
             # Wait for form to load
-            await page.wait_for_selector("input#first_name", timeout=10000)
+            await wait_for_selector_smart(page, "input#first_name", timeout=Timeouts.SELECTOR_WAIT)
 
             # Fill form fields with human simulation
-            if self.anti_detection_enabled and self.human_sim:
-                await self.human_sim.human_type(
-                    page, "input#first_name", details.get("first_name", "")
-                )
-                await self.human_sim.human_type(
-                    page, "input#last_name", details.get("last_name", "")
-                )
-                await self.human_sim.human_type(
-                    page, "input#passport_number", details.get("passport_number", "")
-                )
-                await self.human_sim.human_type(page, "input#email", details.get("email", ""))
+            await smart_fill(page, "input#first_name", details.get("first_name", ""), self.human_sim)
+            await smart_fill(page, "input#last_name", details.get("last_name", ""), self.human_sim)
+            await smart_fill(page, "input#passport_number", details.get("passport_number", ""), self.human_sim)
+            await smart_fill(page, "input#email", details.get("email", ""), self.human_sim)
 
-                if details.get("mobile_number"):
-                    await self.human_sim.human_type(
-                        page, "input#mobile", details.get("mobile_number", "")
-                    )
+            if details.get("mobile_number"):
+                await smart_fill(page, "input#mobile", details.get("mobile_number", ""), self.human_sim)
 
-                if details.get("date_of_birth"):
-                    await self.human_sim.human_type(
-                        page, "input#dob", details.get("date_of_birth", "")
-                    )
-            else:
-                await page.fill("input#first_name", details.get("first_name", ""))
-                await page.fill("input#last_name", details.get("last_name", ""))
-                await page.fill("input#passport_number", details.get("passport_number", ""))
-                await page.fill("input#email", details.get("email", ""))
-
-                if details.get("mobile_number"):
-                    await page.fill("input#mobile", details.get("mobile_number", ""))
-
-                if details.get("date_of_birth"):
-                    await page.fill("input#dob", details.get("date_of_birth", ""))
+            if details.get("date_of_birth"):
+                await smart_fill(page, "input#dob", details.get("date_of_birth", ""), self.human_sim)
 
             logger.info("Personal details filled successfully")
             return True
@@ -532,14 +616,11 @@ class VFSBot:
         """
         try:
             # Click continue/book button with human simulation
-            if self.anti_detection_enabled and self.human_sim:
-                await self.human_sim.human_click(page, "button#book-appointment")
-            else:
-                await page.click("button#book-appointment")
-            await page.wait_for_load_state("networkidle", timeout=30000)
+            await smart_click(page, "button#book-appointment", self.human_sim)
+            await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
 
             # Wait for confirmation page
-            await page.wait_for_selector(".confirmation", timeout=10000)
+            await wait_for_selector_smart(page, ".confirmation", timeout=Timeouts.SELECTOR_WAIT)
 
             # Extract reference number
             reference_text = await page.locator(".reference-number").text_content()
