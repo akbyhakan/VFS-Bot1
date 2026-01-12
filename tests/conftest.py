@@ -7,9 +7,18 @@ from pathlib import Path
 import sys
 from typing import Dict, Any
 from unittest.mock import AsyncMock, MagicMock
+from cryptography.fernet import Fernet
 
 # Set test environment variables before imports
 os.environ["API_SECRET_KEY"] = "test-secret-key-for-testing-min-32-characters"
+
+
+@pytest.fixture(autouse=True)
+def setup_encryption_key(monkeypatch):
+    """Automatically set ENCRYPTION_KEY for all tests if not already set."""
+    if not os.getenv("ENCRYPTION_KEY"):
+        test_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", test_key)
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

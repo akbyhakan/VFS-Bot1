@@ -10,11 +10,16 @@ class TestEnvValidator:
 
     def test_validate_with_all_required_vars(self, monkeypatch):
         """Test validation passes with all required vars set."""
+        # Set all required environment variables
+        from cryptography.fernet import Fernet
+        test_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", test_key)
         monkeypatch.setenv("VFS_EMAIL", "test@example.com")
         monkeypatch.setenv("VFS_PASSWORD", "password123")
 
         result = EnvValidator.validate(strict=False)
 
+        # Should return True when all required vars are set
         assert result is True
 
     def test_validate_with_missing_required_vars(self, monkeypatch):
@@ -39,6 +44,10 @@ class TestEnvValidator:
 
     def test_validate_with_optional_vars_missing(self, monkeypatch, caplog):
         """Test validation warns about missing optional vars."""
+        # Set only required vars
+        from cryptography.fernet import Fernet
+        test_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", test_key)
         monkeypatch.setenv("VFS_EMAIL", "test@example.com")
         monkeypatch.setenv("VFS_PASSWORD", "password123")
         monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
@@ -46,6 +55,7 @@ class TestEnvValidator:
 
         result = EnvValidator.validate(strict=False)
 
+        # Should pass even without optional vars
         assert result is True
         assert "Missing optional environment variables" in caplog.text
 

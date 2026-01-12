@@ -41,7 +41,14 @@ jobs:
         mypy src/
     
     - name: Run tests with coverage
+      env:
+        # Generate test encryption key if not in GitHub Secrets
+        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
       run: |
+        # Generate test key if secret not set
+        if [ -z "$ENCRYPTION_KEY" ]; then
+          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+        fi
         pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
     
     - name: Upload coverage to Codecov

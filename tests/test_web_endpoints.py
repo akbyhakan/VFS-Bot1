@@ -71,7 +71,7 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
 
-        assert data["version"] == "2.0.0"
+        assert data["version"] == "2.1.0"
 
     def test_health_endpoint_components(self, client, reset_state):
         """Test health endpoint includes component status."""
@@ -89,7 +89,11 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
 
-        assert data["components"]["bot"] is True
+        # Bot status is now a dict, not a boolean
+        assert isinstance(data["components"]["bot"], dict)
+        assert data["components"]["bot"]["running"] is True
+        assert "status" in data["components"]["bot"]
+        assert "success_rate" in data["components"]["bot"]
 
     def test_health_endpoint_bot_stopped(self, client, reset_state):
         """Test health endpoint reflects bot stopped state."""
@@ -98,7 +102,11 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
 
-        assert data["components"]["bot"] is False
+        # Bot status is now a dict, not a boolean
+        assert isinstance(data["components"]["bot"], dict)
+        assert data["components"]["bot"]["running"] is False
+        assert "status" in data["components"]["bot"]
+        assert "success_rate" in data["components"]["bot"]
 
 
 class TestMetricsEndpoint:
