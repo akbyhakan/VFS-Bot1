@@ -22,7 +22,16 @@ _original_calc_checksum = _pbcrypt._BcryptBackend._calc_checksum
 def _patched_calc_checksum(self, secret):
     """Patched _calc_checksum that truncates passwords to 72 bytes for bcrypt 5.0.0."""
     if isinstance(secret, bytes) and len(secret) > MAX_PASSWORD_BYTES:
-        secret = secret[:MAX_PASSWORD_BYTES]
+        # Truncate at UTF-8 character boundaries to avoid corruption
+        truncated = secret[:MAX_PASSWORD_BYTES]
+        # Find valid UTF-8 boundary by stepping back if needed
+        for i in range(len(truncated), 0, -1):
+            try:
+                truncated[:i].decode("utf-8")
+                secret = truncated[:i]
+                break
+            except UnicodeDecodeError:
+                continue
     return _original_calc_checksum(self, secret)
 
 
@@ -71,13 +80,14 @@ def _truncate_password(password: str) -> str:
         # Only take complete characters that fit into MAX_PASSWORD_BYTES
         truncated_bytes = password_bytes[:MAX_PASSWORD_BYTES]
         # If decoding fails at the boundary, move back until we hit a valid boundary
-        for i in range(MAX_PASSWORD_BYTES, 0, -1):
+        for i in range(len(truncated_bytes), 0, -1):
             try:
                 return truncated_bytes[:i].decode("utf-8")
             except UnicodeDecodeError:
                 continue
-        # As last resort, ignore errors (shouldn't usually occur)
-        return truncated_bytes.decode("utf-8", errors="ignore")
+        # Fallback: return empty string if no valid boundary found (should never happen)
+        # This would only occur if the entire password is invalid UTF-8
+        return ""
     return password
 
 
