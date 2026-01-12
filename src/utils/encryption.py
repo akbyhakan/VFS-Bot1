@@ -86,7 +86,7 @@ _encryption_instance: Optional[PasswordEncryption] = None
 def reset_encryption() -> None:
     """
     Reset the global encryption instance.
-    
+
     This is useful for testing or when the encryption key changes.
     """
     global _encryption_instance
@@ -96,7 +96,7 @@ def reset_encryption() -> None:
 def get_encryption() -> PasswordEncryption:
     """
     Get global encryption instance (singleton).
-    
+
     If the ENCRYPTION_KEY environment variable has changed since the
     singleton was created, the instance is reset to use the new key.
 
@@ -104,16 +104,16 @@ def get_encryption() -> PasswordEncryption:
         PasswordEncryption instance
     """
     global _encryption_instance
-    
+
     current_key = os.getenv("ENCRYPTION_KEY")
-    
+
     # Reset if key has changed or instance doesn't exist
     if _encryption_instance is None:
         _encryption_instance = PasswordEncryption()
     elif current_key and _encryption_instance._key != current_key:
         # Key has changed, reset the instance
         _encryption_instance = PasswordEncryption()
-    
+
     return _encryption_instance
 
 
