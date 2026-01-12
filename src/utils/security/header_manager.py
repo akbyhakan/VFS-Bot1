@@ -2,7 +2,7 @@
 
 import logging
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ class HeaderManager:
     """Dynamic header management with UA rotation."""
 
     # Updated user agents (Jan 2024)
-    USER_AGENTS: List[Dict[str, str]] = [
+    USER_AGENTS: List[Dict[str, Optional[str]]] = [
         {
             "ua": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -114,7 +114,7 @@ class HeaderManager:
             self.rotate_user_agent()
 
         headers = {
-            "User-Agent": self.current_ua["ua"],
+            "User-Agent": cast(str, self.current_ua["ua"]),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
@@ -132,7 +132,7 @@ class HeaderManager:
         if self.current_ua["sec_ch_ua"]:
             headers["Sec-CH-UA"] = self.current_ua["sec_ch_ua"]
             headers["Sec-CH-UA-Mobile"] = "?0"
-            headers["Sec-CH-UA-Platform"] = f'"{self.current_ua["platform"]}"'
+            headers["Sec-CH-UA-Platform"] = f'"{cast(str, self.current_ua["platform"])}"'
 
         return headers
 
@@ -155,7 +155,7 @@ class HeaderManager:
             self.rotate_user_agent()
 
         headers = {
-            "User-Agent": self.current_ua["ua"],
+            "User-Agent": cast(str, self.current_ua["ua"]),
             "Accept": "application/json, text/plain, */*",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
@@ -171,7 +171,7 @@ class HeaderManager:
         if self.current_ua["sec_ch_ua"]:
             headers["Sec-CH-UA"] = self.current_ua["sec_ch_ua"]
             headers["Sec-CH-UA-Mobile"] = "?0"
-            headers["Sec-CH-UA-Platform"] = f'"{self.current_ua["platform"]}"'
+            headers["Sec-CH-UA-Platform"] = f'"{cast(str, self.current_ua["platform"])}"'
 
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -188,7 +188,7 @@ class HeaderManager:
         Returns:
             Current User-Agent string
         """
-        return self.current_ua["ua"]
+        return cast(str, self.current_ua["ua"])
 
     def get_sec_ch_ua(self) -> Optional[str]:
         """
