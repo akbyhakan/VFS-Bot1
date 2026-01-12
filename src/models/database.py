@@ -4,7 +4,7 @@ import aiosqlite
 import logging
 from typing import Dict, List, Optional, Any
 
-from src.core.auth import hash_password, verify_password
+from src.core.auth import hash_password
 
 logger = logging.getLogger(__name__)
 
