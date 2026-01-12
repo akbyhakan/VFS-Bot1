@@ -326,7 +326,11 @@ class VFSBot:
             # Record circuit breaker trip in metrics
             from ..utils.metrics import get_metrics
 
-            asyncio.create_task(get_metrics().record_circuit_breaker_trip())
+            async def _record_trip():
+                metrics = await get_metrics()
+                await metrics.record_circuit_breaker_trip()
+            
+            asyncio.create_task(_record_trip())
 
     def _reset_circuit_breaker(self) -> None:
         """Reset circuit breaker state."""
@@ -345,7 +349,7 @@ class VFSBot:
         # Exponential backoff: min(60 * 2^(errors-1), 600)
         errors = min(self.consecutive_errors, 10)  # Cap for calculation
         backoff = min(CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)), CircuitBreaker.BACKOFF_MAX)
-        return backoff
+        return float(backoff)
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),

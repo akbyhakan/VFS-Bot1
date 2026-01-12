@@ -192,7 +192,7 @@ class BotMetrics:
         response_times = list(self.response_times)  # Snapshot
         if not response_times:
             return 0.0
-        return sum(response_times) / len(response_times)
+        return float(sum(response_times) / len(response_times))
 
     async def get_snapshot(self) -> MetricsSnapshot:
         """
