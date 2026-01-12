@@ -20,6 +20,7 @@ def setup_encryption_key(monkeypatch):
         test_key = Fernet.generate_key().decode()
         monkeypatch.setenv("ENCRYPTION_KEY", test_key)
 
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
