@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 100
-target-version = ['py311']
+target-version = ['py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -13,6 +13,9 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  | __pycache__
+  | \.pytest_cache
+  | htmlcov
 )/
 '''
 
@@ -28,6 +31,12 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
+timeout = 60
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["src"]

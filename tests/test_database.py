@@ -8,9 +8,9 @@ from src.models.database import Database
 from src.utils.encryption import PasswordEncryption, reset_encryption
 
 
-@pytest.fixture(autouse=True, scope="function")
-def encryption_key(monkeypatch):
-    """Set up encryption key for tests and reset global encryption instance."""
+@pytest.fixture(scope="function")
+def unique_encryption_key(monkeypatch):
+    """Set up unique encryption key for each test and reset global encryption instance."""
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("ENCRYPTION_KEY", key)
     # Reset global encryption instance to ensure it uses the new key
@@ -21,19 +21,18 @@ def encryption_key(monkeypatch):
 
 
 @pytest.fixture
-async def test_db(encryption_key):
+async def test_db(tmp_path, unique_encryption_key):
     """Create a test database."""
-    db_path = "test_database.db"
-    db = Database(db_path)
+    db_path = tmp_path / "test_database.db"
+    db = Database(str(db_path))
     await db.connect()
     yield db
     await db.close()
-    # Cleanup
-    Path(db_path).unlink(missing_ok=True)
+    # Cleanup is automatic with tmp_path
 
 
 @pytest.mark.asyncio
-async def test_add_user_encrypts_password(test_db, encryption_key):
+async def test_add_user_encrypts_password(test_db, unique_encryption_key):
     """Test that add_user encrypts passwords."""
     email = "test@example.com"
     password = "MyPassword123"
@@ -59,7 +58,7 @@ async def test_add_user_encrypts_password(test_db, encryption_key):
     assert user["password"] != password
 
     # But should be decryptable
-    enc = PasswordEncryption(encryption_key)
+    enc = PasswordEncryption(unique_encryption_key)
     decrypted = enc.decrypt_password(user["password"])
     assert decrypted == password
 

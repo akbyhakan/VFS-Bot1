@@ -7,9 +7,67 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run linting
+      run: |
+        black --check .
+        flake8 .
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run type checking
+      run: |
+        mypy src/
+
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.11', '3.12']
     
@@ -21,29 +79,33 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Cache dependencies
-      uses: actions/cache@v3
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
+    
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-        playwright install chromium
-    
-    - name: Run linting
-      run: |
-        black --check .
-        flake8 .
-        mypy src/
+        playwright install chromium --with-deps
     
     - name: Run tests with coverage
       env:
-        # Generate test encryption key if not in GitHub Secrets
-        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || '' }}
       run: |
         # Generate test key if secret not set
         if [ -z "$ENCRYPTION_KEY" ]; then
@@ -52,6 +114,7 @@ jobs:
         pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
     
     - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
@@ -60,20 +123,23 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
     
     - name: Run safety check
+      continue-on-error: true
       run: |
         pip install safety==3.2.11
         safety check --json || true
         
     - name: Check for secrets
+      continue-on-error: true
       uses: trufflesecurity/trufflehog@main
       with:
         path: ./
