@@ -4,12 +4,15 @@ import sys
 from pathlib import Path
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.security.header_manager import HeaderManager
 from src.utils.anti_detection.human_simulator import HumanSimulator
+from src.utils.anti_detection.fingerprint_bypass import FingerprintBypass
+from src.utils.anti_detection.stealth_config import StealthConfig
 from src.utils.security.proxy_manager import ProxyManager
 from src.utils.security.session_manager import SessionManager
 
@@ -272,6 +275,158 @@ class TestProxyManager:
 
         assert manager.get_random_proxy() is None
         assert manager.get_playwright_proxy() is None
+
+
+class TestFingerprintBypass:
+    """Test fingerprint bypass functionality."""
+
+    @pytest.mark.asyncio
+    async def test_apply_all(self):
+        """Test applying all fingerprint bypasses."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await FingerprintBypass.apply_all(page)
+
+        # Should call add_init_script at least 3 times (canvas, webgl, audio)
+        assert page.add_init_script.call_count >= 3
+
+    @pytest.mark.asyncio
+    async def test_inject_canvas_noise(self):
+        """Test canvas noise injection."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await FingerprintBypass._inject_canvas_noise(page)
+
+        page.add_init_script.assert_awaited_once()
+        # Verify script contains canvas override code
+        script = page.add_init_script.call_args[0][0]
+        assert "CanvasRenderingContext2D" in script
+        assert "getImageData" in script
+
+    @pytest.mark.asyncio
+    async def test_spoof_webgl(self):
+        """Test WebGL spoofing."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await FingerprintBypass._spoof_webgl(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "WebGLRenderingContext" in script
+        assert "37445" in script  # UNMASKED_VENDOR_WEBGL
+        assert "37446" in script  # UNMASKED_RENDERER_WEBGL
+
+    @pytest.mark.asyncio
+    async def test_randomize_audio_context(self):
+        """Test audio context randomization."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await FingerprintBypass._randomize_audio_context(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "AudioContext" in script
+        assert "audioOffset" in script
+
+    @pytest.mark.asyncio
+    async def test_apply_all_exception_handling(self):
+        """Test apply_all handles exceptions gracefully."""
+        page = AsyncMock()
+        page.add_init_script.side_effect = Exception("Script error")
+
+        # Should not raise exception
+        await FingerprintBypass.apply_all(page)
+
+
+class TestStealthConfig:
+    """Test stealth configuration functionality."""
+
+    @pytest.mark.asyncio
+    async def test_apply_stealth(self):
+        """Test applying all stealth configurations."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig.apply_stealth(page)
+
+        # Should call add_init_script at least 5 times
+        assert page.add_init_script.call_count >= 5
+
+    @pytest.mark.asyncio
+    async def test_override_webdriver(self):
+        """Test webdriver override."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig._override_webdriver(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "webdriver" in script
+
+    @pytest.mark.asyncio
+    async def test_spoof_plugins(self):
+        """Test plugin spoofing."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig._spoof_plugins(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "plugins" in script
+        assert "Chrome PDF Plugin" in script
+
+    @pytest.mark.asyncio
+    async def test_spoof_languages(self):
+        """Test language spoofing."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig._spoof_languages(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "languages" in script
+        assert "en-US" in script
+
+    @pytest.mark.asyncio
+    async def test_add_chrome_runtime(self):
+        """Test adding chrome runtime."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig._add_chrome_runtime(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "window.chrome" in script
+        assert "runtime" in script
+
+    @pytest.mark.asyncio
+    async def test_override_permissions(self):
+        """Test permissions override."""
+        page = AsyncMock()
+        page.add_init_script = AsyncMock()
+
+        await StealthConfig._override_permissions(page)
+
+        page.add_init_script.assert_awaited_once()
+        script = page.add_init_script.call_args[0][0]
+        assert "navigator.permissions" in script
+
+    @pytest.mark.asyncio
+    async def test_apply_stealth_exception_handling(self):
+        """Test apply_stealth handles exceptions gracefully."""
+        page = AsyncMock()
+        page.add_init_script.side_effect = Exception("Script error")
+
+        # Should not raise exception
+        await StealthConfig.apply_stealth(page)
 
 
 if __name__ == "__main__":
