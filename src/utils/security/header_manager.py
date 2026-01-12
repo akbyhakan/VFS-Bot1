@@ -2,16 +2,24 @@
 
 import logging
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypedDict
 
 logger = logging.getLogger(__name__)
+
+
+class UserAgentConfig(TypedDict):
+    """Type definition for user agent configuration."""
+
+    ua: str
+    sec_ch_ua: Optional[str]
+    platform: str
 
 
 class HeaderManager:
     """Dynamic header management with UA rotation."""
 
     # Updated user agents (Jan 2024)
-    USER_AGENTS: List[Dict[str, str]] = [
+    USER_AGENTS: List[UserAgentConfig] = [
         {
             "ua": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
