@@ -52,14 +52,20 @@ class TestBezierCurve:
 class TestHeaderManager:
     """Test header manager functionality."""
 
+    @staticmethod
+    def _get_chrome_ua(manager: HeaderManager):
+        """Helper method to get a Chrome-based user agent."""
+        chrome_uas = [ua for ua in manager.USER_AGENTS if ua["sec_ch_ua"] is not None]
+        assert chrome_uas, "No Chrome-based user agents found in USER_AGENTS"
+        return chrome_uas[0]
+
     def test_user_agent_consistency(self):
         """Test that User-Agent and Sec-CH-UA headers are consistent."""
         manager = HeaderManager()
         
         # Force a Chrome-based UA for consistent testing
         # (Firefox/Safari don't support Sec-CH-UA headers)
-        chrome_uas = [ua for ua in manager.USER_AGENTS if ua["sec_ch_ua"] is not None]
-        manager.current_ua = chrome_uas[0]
+        manager.current_ua = self._get_chrome_ua(manager)
 
         headers = manager.get_headers()
 
@@ -79,8 +85,7 @@ class TestHeaderManager:
         
         # Force a Chrome-based UA for consistent testing
         # (Firefox/Safari don't support Sec-CH-UA headers)
-        chrome_uas = [ua for ua in manager.USER_AGENTS if ua["sec_ch_ua"] is not None]
-        manager.current_ua = chrome_uas[0]
+        manager.current_ua = self._get_chrome_ua(manager)
 
         _ = manager.get_user_agent()
         _ = manager.get_sec_ch_ua()
