@@ -57,6 +57,23 @@ class HeaderManager:
             "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
             "platform": "Windows",
         },
+        {
+            "ua": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) "
+                "Gecko/20100101 Firefox/121.0"
+            ),
+            "sec_ch_ua": None,  # Firefox doesn't use sec-ch-ua
+            "platform": "Windows",
+        },
+        {
+            "ua": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                "Version/17.2 Safari/605.1.15"
+            ),
+            "sec_ch_ua": None,  # Safari doesn't use sec-ch-ua
+            "platform": "macOS",
+        },
     ]
 
     def __init__(self, base_url: str = "https://visa.vfsglobal.com", rotation_interval: int = 10):
@@ -96,7 +113,7 @@ class HeaderManager:
         if self.request_count % self.rotation_interval == 0:
             self.rotate_user_agent()
 
-        return {
+        headers = {
             "User-Agent": self.current_ua["ua"],
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
@@ -108,11 +125,16 @@ class HeaderManager:
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
-            "Sec-CH-UA-Mobile": "?0",
-            "Sec-CH-UA-Platform": f'"{self.current_ua["platform"]}"',
             "Referer": referer or self.base_url,
         }
+        
+        # Add Sec-CH-UA headers only for Chromium-based browsers
+        if self.current_ua["sec_ch_ua"]:
+            headers["Sec-CH-UA"] = self.current_ua["sec_ch_ua"]
+            headers["Sec-CH-UA-Mobile"] = "?0"
+            headers["Sec-CH-UA-Platform"] = f'"{self.current_ua["platform"]}"'
+        
+        return headers
 
     def get_api_headers(
         self, token: Optional[str] = None, referer: Optional[str] = None
@@ -143,10 +165,13 @@ class HeaderManager:
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
-            "Sec-CH-UA": self.current_ua["sec_ch_ua"],
-            "Sec-CH-UA-Mobile": "?0",
-            "Sec-CH-UA-Platform": f'"{self.current_ua["platform"]}"',
         }
+
+        # Add Sec-CH-UA headers only for Chromium-based browsers
+        if self.current_ua["sec_ch_ua"]:
+            headers["Sec-CH-UA"] = self.current_ua["sec_ch_ua"]
+            headers["Sec-CH-UA-Mobile"] = "?0"
+            headers["Sec-CH-UA-Platform"] = f'"{self.current_ua["platform"]}"'
 
         if token:
             headers["Authorization"] = f"Bearer {token}"
@@ -165,11 +190,11 @@ class HeaderManager:
         """
         return self.current_ua["ua"]
 
-    def get_sec_ch_ua(self) -> str:
+    def get_sec_ch_ua(self) -> Optional[str]:
         """
         Get current Sec-CH-UA header.
 
         Returns:
-            Current Sec-CH-UA header value
+            Current Sec-CH-UA header value or None for non-Chromium browsers
         """
         return self.current_ua["sec_ch_ua"]

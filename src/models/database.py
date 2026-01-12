@@ -4,6 +4,8 @@ import aiosqlite
 import logging
 from typing import Dict, List, Optional, Any
 
+from src.core.auth import hash_password, verify_password
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,7 +127,7 @@ class Database:
 
         Args:
             email: User email
-            password: User password
+            password: User password (will be hashed before storage)
             centre: VFS centre
             category: Visa category
             subcategory: Visa subcategory
@@ -135,13 +137,17 @@ class Database:
         """
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
+        
+        # Hash password before storing
+        hashed_password = hash_password(password)
+        
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """
                 INSERT INTO users (email, password, centre, category, subcategory)
                 VALUES (?, ?, ?, ?, ?)
             """,
-                (email, password, centre, category, subcategory),
+                (email, hashed_password, centre, category, subcategory),
             )
             await self.conn.commit()
             logger.info(f"User added: {email}")
