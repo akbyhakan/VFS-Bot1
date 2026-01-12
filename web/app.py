@@ -4,7 +4,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
@@ -71,7 +71,6 @@ class ConnectionManager:
 
     def __init__(self):
         """Initialize connection manager."""
-        from typing import Set
         self._connections: Set[WebSocket] = set()
         self._lock = asyncio.Lock()
 
@@ -110,7 +109,11 @@ class ConnectionManager:
         for connection in connections:
             try:
                 await connection.send_json(message)
-            except Exception:
+            except (WebSocketDisconnect, RuntimeError, ConnectionError) as e:
+                logger.debug(f"WebSocket connection closed during broadcast: {e}")
+                disconnected.append(connection)
+            except Exception as e:
+                logger.error(f"Unexpected error broadcasting to WebSocket client: {e}")
                 disconnected.append(connection)
 
         if disconnected:

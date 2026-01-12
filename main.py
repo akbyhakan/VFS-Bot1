@@ -22,7 +22,13 @@ from src.core.config_validator import ConfigValidator
 
 
 def setup_signal_handlers():
-    """Setup graceful shutdown handlers."""
+    """
+    Setup graceful shutdown handlers.
+    
+    Note: Uses sys.exit(0) for immediate shutdown. asyncio.run() will handle
+    cleanup of running tasks, and the bot/web modes have their own cleanup
+    logic in finally blocks.
+    """
     logger = logging.getLogger(__name__)
 
     def handle_signal(signum, frame):
@@ -114,8 +120,18 @@ async def run_both_mode(config: dict) -> None:
     web_task = asyncio.create_task(run_web_mode(config))
     bot_task = asyncio.create_task(run_bot_mode(config))
 
-    # Run both concurrently
-    await asyncio.gather(web_task, bot_task, return_exceptions=True)
+    # Run both concurrently and handle exceptions
+    try:
+        results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
+        
+        # Check for exceptions in results
+        for i, result in enumerate(results):
+            task_name = "web" if i == 0 else "bot"
+            if isinstance(result, Exception):
+                logger.error(f"Task '{task_name}' failed with exception: {result}", exc_info=result)
+    except Exception as e:
+        logger.error(f"Error in combined mode: {e}", exc_info=True)
+        raise
 
 
 def main() -> None:
