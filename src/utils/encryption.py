@@ -31,7 +31,8 @@ class PasswordEncryption:
             )
 
         try:
-            self._key = key  # Store key for comparison
+            # Normalize key to string for consistent comparison
+            self._key = key if isinstance(key, str) else key.decode()
             self.cipher = Fernet(key.encode() if isinstance(key, str) else key)
             logger.info("Password encryption initialized successfully")
         except Exception as e:

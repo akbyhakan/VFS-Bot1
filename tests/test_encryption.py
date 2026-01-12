@@ -205,3 +205,19 @@ def test_key_change_detection(monkeypatch):
     # But trying to decrypt old value with new key should fail
     with pytest.raises(ValueError, match="Invalid encryption key or corrupted password"):
         decrypt_password(encrypted1)
+
+
+def test_encryption_with_bytes_key():
+    """Test that PasswordEncryption works with bytes keys."""
+    # Generate bytes key
+    key_bytes = Fernet.generate_key()
+    enc = PasswordEncryption(key_bytes)
+    
+    password = "test_password"
+    encrypted = enc.encrypt_password(password)
+    decrypted = enc.decrypt_password(encrypted)
+    
+    assert decrypted == password
+    # Verify key is stored as string for comparison
+    assert isinstance(enc._key, str)
+    assert enc._key == key_bytes.decode()
