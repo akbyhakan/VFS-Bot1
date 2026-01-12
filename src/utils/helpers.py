@@ -3,7 +3,7 @@
 import asyncio
 import random
 import logging
-from typing import Optional
+from typing import Optional, Literal
 
 from playwright.async_api import Page
 
@@ -74,7 +74,7 @@ async def wait_for_selector_smart(
     page: Page,
     selector: str,
     timeout: Optional[int] = None,
-    state: str = "visible",
+    state: Optional[Literal["attached", "detached", "hidden", "visible"]] = "visible",
 ) -> None:
     """
     Wait for selector with smart timeout.
@@ -112,7 +112,9 @@ async def random_delay(
 async def safe_navigate(
     page: Page,
     url: str,
-    wait_until: str = "networkidle",
+    wait_until: Optional[
+        Literal["commit", "domcontentloaded", "load", "networkidle"]
+    ] = "networkidle",
     timeout: Optional[int] = None,
 ) -> bool:
     """

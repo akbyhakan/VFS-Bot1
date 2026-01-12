@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, Field, HttpUrl, validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class VFSConfig(BaseModel):
     base_url: HttpUrl = Field(..., description="VFS base URL (must be HTTPS)")
     country: str = Field(..., min_length=2, max_length=3, description="Country code")
     mission: str = Field(..., min_length=2, max_length=3, description="Mission code")
-    centres: List[str] = Field(..., min_items=1, description="List of VFS centres")
+    centres: List[str] = Field(..., description="List of VFS centres")
 
     @validator("base_url")
     def validate_https(cls, v):
@@ -21,6 +21,13 @@ class VFSConfig(BaseModel):
         if not str(v).startswith("https://"):
             raise ValueError("VFS base_url must use HTTPS")
         return v
+
+    @model_validator(mode="after")
+    def check_centres(self):
+        """Validate that centres list contains at least one centre."""
+        if not self.centres or len(self.centres) < 1:
+            raise ValueError("List of VFS centres must contain at least one centre")
+        return self
 
 
 class BotConfig(BaseModel):
