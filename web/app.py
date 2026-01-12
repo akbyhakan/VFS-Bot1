@@ -65,6 +65,7 @@ metrics = {
     "start_time": datetime.now(timezone.utc),
 }
 
+
 # WebSocket connections
 class ConnectionManager:
     """Thread-safe WebSocket connection manager."""
@@ -292,7 +293,9 @@ def increment_metric(name: str, count: int = 1) -> None:
 
 @app.post("/api/bot/start")
 @limiter.limit("5/minute")
-async def start_bot(request: Request, command: BotCommand, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+async def start_bot(
+    request: Request, command: BotCommand, api_key: dict = Depends(verify_api_key)
+) -> Dict[str, str]:
     """
     Start the bot - requires authentication.
 

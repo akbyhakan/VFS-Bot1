@@ -24,7 +24,7 @@ from src.core.config_validator import ConfigValidator
 def setup_signal_handlers():
     """
     Setup graceful shutdown handlers.
-    
+
     Note: Uses sys.exit(0) for immediate shutdown. asyncio.run() will handle
     cleanup of running tasks, and the bot/web modes have their own cleanup
     logic in finally blocks.
@@ -123,7 +123,7 @@ async def run_both_mode(config: dict) -> None:
     # Run both concurrently and handle exceptions
     try:
         results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
-        
+
         # Check for exceptions in results
         for i, result in enumerate(results):
             task_name = "web" if i == 0 else "bot"

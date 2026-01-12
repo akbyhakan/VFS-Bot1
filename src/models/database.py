@@ -137,10 +137,10 @@ class Database:
         """
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
-        
+
         # Hash password before storing
         hashed_password = hash_password(password)
-        
+
         async with self.conn.cursor() as cursor:
             await cursor.execute(
                 """

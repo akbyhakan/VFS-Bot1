@@ -127,13 +127,13 @@ class HeaderManager:
             "Sec-Fetch-User": "?1",
             "Referer": referer or self.base_url,
         }
-        
+
         # Add Sec-CH-UA headers only for Chromium-based browsers
         if self.current_ua["sec_ch_ua"]:
             headers["Sec-CH-UA"] = self.current_ua["sec_ch_ua"]
             headers["Sec-CH-UA-Mobile"] = "?0"
             headers["Sec-CH-UA-Platform"] = f'"{self.current_ua["platform"]}"'
-        
+
         return headers
 
     def get_api_headers(
