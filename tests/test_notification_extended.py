@@ -17,7 +17,7 @@ class TestSendTelegram:
         }
         service = NotificationService(config)
 
-        with patch("src.services.notification.Bot") as mock_bot_class:
+        with patch("telegram.Bot") as mock_bot_class:
             mock_bot = AsyncMock()
             mock_bot.send_message = AsyncMock()
             mock_bot_class.return_value = mock_bot
@@ -43,7 +43,7 @@ class TestSendTelegram:
         }
         service = NotificationService(config)
 
-        with patch("src.services.notification.Bot") as mock_bot_class:
+        with patch("telegram.Bot") as mock_bot_class:
             mock_bot_class.side_effect = Exception("Telegram error")
 
             result = await service.send_telegram("Test Title", "Test message")
