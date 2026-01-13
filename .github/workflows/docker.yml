@@ -47,8 +47,8 @@ jobs:
         cache-to: type=gha,mode=max
     
     - name: Push to Docker Hub
-      # Only push when on main branch with valid credentials
-      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != ''
+      # Only push when on main branch (credentials checked via continue-on-error)
+      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
       uses: docker/build-push-action@v5
       with:
         context: .
