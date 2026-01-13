@@ -66,26 +66,21 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11', '3.12']
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.12'
     
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
           ${{ runner.os }}-pip-
     
     - name: Cache Playwright browsers
@@ -101,7 +96,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-        playwright install chromium --with-deps
+    
+    - name: Install system dependencies for Playwright
+      run: |
+        sudo apt-get update
+        # Ubuntu 24.04 uses libasound2t64 instead of libasound2
+        sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+        
+    - name: Install Playwright browsers
+      run: playwright install chromium --with-deps
     
     - name: Run tests with coverage
       env:
@@ -114,7 +117,6 @@ jobs:
         pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
     
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
