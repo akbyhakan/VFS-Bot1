@@ -1,19 +1,37 @@
 """Pytest configuration and common fixtures."""
 
 import os
+import sys
+from pathlib import Path
+
+# Test constants
+TEST_API_SECRET_KEY = "test-secret-key-for-testing-minimum-32-characters-long"
+
+# CRITICAL: Set environment variables BEFORE any src imports
+# These must be set before importing any modules that check for them at import time
+os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
+
+from cryptography.fernet import Fernet
+if not os.getenv("ENCRYPTION_KEY"):
+    os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# NOW it's safe to import from src
 import pytest
 import pytest_asyncio
-from pathlib import Path
-import sys
 from typing import Dict, Any
 from unittest.mock import AsyncMock, MagicMock
-from cryptography.fernet import Fernet
+
+from src.models.database import Database
+from src.services.notification import NotificationService
 
 
 def pytest_configure(config):
     """Configure pytest environment before tests run."""
-    # Set test environment variables before any imports
-    os.environ["API_SECRET_KEY"] = "test-secret-key-for-testing-min-32-characters"
+    # Environment variables already set above, but ensure they're still set
+    os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
     if not os.getenv("ENCRYPTION_KEY"):
         os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
@@ -33,13 +51,6 @@ def setup_test_environment(monkeypatch):
         monkeypatch.setenv("ENCRYPTION_KEY", test_key)
     yield
     # Cleanup after test if needed
-
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.models.database import Database
-from src.services.notification import NotificationService
 
 
 @pytest_asyncio.fixture
