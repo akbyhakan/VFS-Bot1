@@ -39,11 +39,7 @@ def test_captcha_solver_nopecha_provider():
 
 def test_centre_fetcher_initialization():
     """Test CentreFetcher initialization."""
-    fetcher = CentreFetcher(
-        base_url="https://visa.vfsglobal.com",
-        country="tur",
-        mission="deu"
-    )
+    fetcher = CentreFetcher(base_url="https://visa.vfsglobal.com", country="tur", mission="deu")
     assert fetcher is not None
     assert fetcher.base_url == "https://visa.vfsglobal.com"
     assert fetcher.country == "tur"
@@ -54,7 +50,7 @@ def test_payment_service_initialization_manual():
     """Test PaymentService initialization with manual payment."""
     config = {"method": "manual", "timeout": 300}
     service = PaymentService(config)
-    
+
     assert service is not None
     assert service.method == PaymentMethod.MANUAL
     assert service.timeout == 300
@@ -64,7 +60,7 @@ def test_payment_service_initialization_defaults():
     """Test PaymentService initialization with defaults."""
     config = {}
     service = PaymentService(config)
-    
+
     assert service.method == PaymentMethod.MANUAL
     assert service.timeout == 300
 
@@ -73,7 +69,7 @@ def test_payment_service_initialization_automated():
     """Test PaymentService initialization with automated payment."""
     config = {"method": "automated_card", "timeout": 600}
     service = PaymentService(config)
-    
+
     assert service.method == PaymentMethod.AUTOMATED_CARD
     assert service.timeout == 600
 
@@ -88,6 +84,6 @@ def test_payment_method_enum_from_string():
     """Test creating PaymentMethod from string."""
     method = PaymentMethod("manual")
     assert method == PaymentMethod.MANUAL
-    
+
     method2 = PaymentMethod("automated_card")
     assert method2 == PaymentMethod.AUTOMATED_CARD

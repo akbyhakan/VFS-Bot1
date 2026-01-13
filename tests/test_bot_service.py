@@ -71,7 +71,7 @@ def mock_notifier():
 def test_bot_initialization(bot_config, mock_db, mock_notifier):
     """Test VFSBot initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.config == bot_config
     assert bot.db == mock_db
     assert bot.notifier == mock_notifier
@@ -86,7 +86,7 @@ def test_bot_initialization_with_anti_detection_disabled(bot_config, mock_db, mo
     """Test VFSBot initialization with anti-detection disabled."""
     bot_config["anti_detection"]["enabled"] = False
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.anti_detection_enabled is False
 
 
@@ -94,7 +94,7 @@ def test_bot_initialization_with_anti_detection_enabled(bot_config, mock_db, moc
     """Test VFSBot initialization with anti-detection enabled."""
     bot_config["anti_detection"]["enabled"] = True
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.anti_detection_enabled is True
     assert bot.human_sim is not None
     assert bot.header_manager is not None
@@ -104,7 +104,7 @@ def test_bot_initialization_with_anti_detection_enabled(bot_config, mock_db, moc
 def test_bot_circuit_breaker_state(bot_config, mock_db, mock_notifier):
     """Test circuit breaker initial state."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.consecutive_errors == 0
     assert bot.circuit_breaker_open is False
     assert bot.circuit_breaker_open_time is None
@@ -113,7 +113,7 @@ def test_bot_circuit_breaker_state(bot_config, mock_db, mock_notifier):
 def test_bot_captcha_solver_initialization(bot_config, mock_db, mock_notifier):
     """Test captcha solver initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.captcha_solver is not None
     assert bot.captcha_solver.provider == "manual"
 
@@ -121,21 +121,21 @@ def test_bot_captcha_solver_initialization(bot_config, mock_db, mock_notifier):
 def test_bot_centre_fetcher_initialization(bot_config, mock_db, mock_notifier):
     """Test centre fetcher initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.centre_fetcher is not None
 
 
 def test_bot_error_capture_initialization(bot_config, mock_db, mock_notifier):
     """Test error capture initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.error_capture is not None
 
 
 def test_bot_rate_limiter_initialization(bot_config, mock_db, mock_notifier):
     """Test rate limiter initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.rate_limiter is not None
 
 
@@ -143,30 +143,30 @@ def test_bot_rate_limiter_initialization(bot_config, mock_db, mock_notifier):
 async def test_bot_start_sets_running_flag(bot_config, mock_db, mock_notifier):
     """Test that start sets running flag."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Mock browser initialization
-    with patch('src.services.bot_service.async_playwright') as mock_playwright:
+    with patch("src.services.bot_service.async_playwright") as mock_playwright:
         mock_playwright_instance = AsyncMock()
         mock_playwright.return_value.__aenter__.return_value = mock_playwright_instance
-        
+
         mock_browser = AsyncMock()
         mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
-        
+
         mock_context = AsyncMock()
         mock_browser.new_context = AsyncMock(return_value=mock_context)
-        
+
         # Mock get_active_users to return empty list to stop the loop
         mock_db.get_active_users = AsyncMock(return_value=[])
-        
+
         # Start bot in background task
         task = asyncio.create_task(bot.start())
-        
+
         # Give it a moment to set running flag
         await asyncio.sleep(0.1)
-        
+
         # Stop the bot
         await bot.stop()
-        
+
         # Wait for task to complete
         try:
             await asyncio.wait_for(task, timeout=2.0)
@@ -179,9 +179,9 @@ async def test_bot_stop_clears_running_flag(bot_config, mock_db, mock_notifier):
     """Test that stop clears running flag."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
     bot.running = True
-    
+
     await bot.stop()
-    
+
     assert bot.running is False
 
 
@@ -190,9 +190,9 @@ async def test_bot_stop_calls_notifier(bot_config, mock_db, mock_notifier):
     """Test that stop calls notifier."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
     bot.running = True
-    
+
     await bot.stop()
-    
+
     mock_notifier.notify_bot_stopped.assert_called_once()
 
 
@@ -200,13 +200,13 @@ async def test_bot_stop_calls_notifier(bot_config, mock_db, mock_notifier):
 async def test_bot_stop_closes_browser(bot_config, mock_db, mock_notifier):
     """Test that stop closes browser."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     mock_browser = AsyncMock()
     mock_browser.close = AsyncMock()
     bot.browser = mock_browser
-    
+
     await bot.stop()
-    
+
     mock_browser.close.assert_called_once()
 
 
@@ -215,7 +215,7 @@ async def test_bot_stop_handles_browser_none(bot_config, mock_db, mock_notifier)
     """Test that stop handles None browser gracefully."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
     bot.browser = None
-    
+
     # Should not raise exception
     await bot.stop()
 
@@ -223,7 +223,7 @@ async def test_bot_stop_handles_browser_none(bot_config, mock_db, mock_notifier)
 def test_bot_config_access(bot_config, mock_db, mock_notifier):
     """Test accessing bot configuration."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.config["vfs"]["country"] == "tur"
     assert bot.config["vfs"]["mission"] == "deu"
     assert bot.config["bot"]["check_interval"] == 5
@@ -232,7 +232,7 @@ def test_bot_config_access(bot_config, mock_db, mock_notifier):
 def test_bot_user_semaphore(bot_config, mock_db, mock_notifier):
     """Test user semaphore initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.user_semaphore is not None
     # Semaphore should have a value from RateLimits.CONCURRENT_USERS
 
@@ -240,7 +240,7 @@ def test_bot_user_semaphore(bot_config, mock_db, mock_notifier):
 def test_bot_health_checker_default(bot_config, mock_db, mock_notifier):
     """Test health checker default value."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     assert bot.health_checker is None
 
 
@@ -248,7 +248,7 @@ def test_bot_health_checker_default(bot_config, mock_db, mock_notifier):
 async def test_bot_circuit_breaker_tracking(bot_config, mock_db, mock_notifier):
     """Test circuit breaker error tracking."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     initial_errors = bot.consecutive_errors
     assert initial_errors == 0
     assert len(bot.total_errors) == 0
@@ -273,9 +273,9 @@ def test_bot_with_custom_captcha_config(mock_db, mock_notifier):
         "appointments": {"preferred_dates": [], "preferred_times": []},
         "anti_detection": {"enabled": False},
     }
-    
+
     bot = VFSBot(config, mock_db, mock_notifier)
-    
+
     assert bot.captcha_solver.provider == "2captcha"
 
 
@@ -298,7 +298,7 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
             "token_refresh_buffer": 10,
         },
     }
-    
+
     bot = VFSBot(config, mock_db, mock_notifier)
-    
+
     assert bot.session_manager is not None

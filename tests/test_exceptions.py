@@ -119,7 +119,7 @@ def test_selector_not_found_error_with_tried_selectors():
     """Test SelectorNotFoundError with tried selectors."""
     tried = ["#login", ".login-btn", "button[type='submit']"]
     error = SelectorNotFoundError("login_button", tried_selectors=tried)
-    
+
     assert error.selector_name == "login_button"
     assert error.tried_selectors == tried
     assert "Tried:" in error.message
@@ -172,31 +172,31 @@ def test_exceptions_are_raisable():
     with pytest.raises(VFSBotError) as exc_info:
         raise VFSBotError("Test")
     assert exc_info.value.message == "Test"
-    
+
     with pytest.raises(LoginError):
         raise LoginError()
-    
+
     with pytest.raises(CaptchaError):
         raise CaptchaError()
-    
+
     with pytest.raises(SlotCheckError):
         raise SlotCheckError()
-    
+
     with pytest.raises(BookingError):
         raise BookingError()
-    
+
     with pytest.raises(NetworkError):
         raise NetworkError()
-    
+
     with pytest.raises(SelectorNotFoundError):
         raise SelectorNotFoundError("test")
-    
+
     with pytest.raises(RateLimitError):
         raise RateLimitError()
-    
+
     with pytest.raises(ConfigurationError):
         raise ConfigurationError()
-    
+
     with pytest.raises(AuthenticationError):
         raise AuthenticationError()
 
