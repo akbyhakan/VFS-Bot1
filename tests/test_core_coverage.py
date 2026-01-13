@@ -83,12 +83,14 @@ class TestConfigLoader:
     def test_load_config_with_file(self, tmp_path):
         """Test loading config from file."""
         config_file = tmp_path / "config.yaml"
-        config_file.write_text("""
+        config_file.write_text(
+            """
 vfs:
   base_url: https://test.com
 credentials:
   email: test@example.com
-""")
+"""
+        )
 
         config = load_config(str(config_file))
         assert "vfs" in config
@@ -99,10 +101,12 @@ credentials:
         monkeypatch.setenv("BASE_URL", "https://from-env.com")
 
         config_file = tmp_path / "config.yaml"
-        config_file.write_text("""
+        config_file.write_text(
+            """
 vfs:
   base_url: ${BASE_URL}
-""")
+"""
+        )
 
         config = load_config(str(config_file))
         assert config["vfs"]["base_url"] == "https://from-env.com"
@@ -152,13 +156,15 @@ class TestProxyManager:
         from src.utils.security.proxy_manager import ProxyManager
 
         proxy_file = tmp_path / "proxies.txt"
-        proxy_file.write_text("""
+        proxy_file.write_text(
+            """
 # This is a comment
 192.168.1.1:8080
 192.168.1.2:8080
 
 192.168.1.3:8080
-""")
+"""
+        )
 
         config = {"enabled": True, "file": str(proxy_file)}
         manager = ProxyManager(config=config)
@@ -285,7 +291,7 @@ class TestRateLimiter:
 
         limiter = RateLimiter()
         assert limiter is not None
-        
+
         # Test singleton
         singleton = get_rate_limiter()
         assert singleton is not None
