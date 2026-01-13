@@ -300,7 +300,7 @@ class TestCleanupOldErrors:
 
         # Create an error
         error = Exception("Old error")
-        error_record = await error_capture.capture(page, error, {})
+        await error_capture.capture(page, error, {})
 
         # Manually age the files
         old_time = (datetime.now(timezone.utc) - timedelta(days=2)).timestamp()

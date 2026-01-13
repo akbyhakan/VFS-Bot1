@@ -11,9 +11,7 @@ class TestCentreFetcherBasics:
 
     def test_init(self):
         """Test centre fetcher initialization."""
-        fetcher = CentreFetcher(
-            base_url="https://visa.vfsglobal.com", country="tur", mission="deu"
-        )
+        fetcher = CentreFetcher(base_url="https://visa.vfsglobal.com", country="tur", mission="deu")
         assert fetcher.base_url == "https://visa.vfsglobal.com"
         assert fetcher.country == "tur"
         assert fetcher.mission == "deu"
@@ -21,9 +19,7 @@ class TestCentreFetcherBasics:
 
     def test_cache_initialized(self):
         """Test cache is properly initialized."""
-        fetcher = CentreFetcher(
-            base_url="https://visa.vfsglobal.com", country="tur", mission="deu"
-        )
+        fetcher = CentreFetcher(base_url="https://visa.vfsglobal.com", country="tur", mission="deu")
         assert isinstance(fetcher.cache, dict)
 
 
@@ -33,9 +29,7 @@ class TestCentreFetcherMethods:
 
     async def test_get_available_centres_cache(self):
         """Test getting centres from cache."""
-        fetcher = CentreFetcher(
-            base_url="https://visa.vfsglobal.com", country="tur", mission="deu"
-        )
+        fetcher = CentreFetcher(base_url="https://visa.vfsglobal.com", country="tur", mission="deu")
         page = AsyncMock(spec=Page)
 
         # Pre-populate cache

@@ -12,9 +12,7 @@ class TestSendTelegram:
 
     async def test_send_telegram_success(self):
         """Test successful telegram notification."""
-        config = {
-            "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123456"}
-        }
+        config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123456"}}
         service = NotificationService(config)
 
         with patch("telegram.Bot") as mock_bot_class:
@@ -38,9 +36,7 @@ class TestSendTelegram:
 
     async def test_send_telegram_exception(self):
         """Test telegram notification with exception."""
-        config = {
-            "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123456"}
-        }
+        config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123456"}}
         service = NotificationService(config)
 
         with patch("telegram.Bot") as mock_bot_class:
@@ -204,9 +200,7 @@ class TestNotifySlotFound:
         service = NotificationService(config)
 
         with patch.object(service, "send_notification") as mock_send:
-            await service.notify_slot_found(
-                centre="Istanbul", date="2024-01-15", time="10:00 AM"
-            )
+            await service.notify_slot_found(centre="Istanbul", date="2024-01-15", time="10:00 AM")
 
             mock_send.assert_called_once()
             call_args = mock_send.call_args

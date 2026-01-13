@@ -249,7 +249,7 @@ class TestGetActiveUsers:
         await db.connect()
 
         # Add active user
-        active_user_id = await db.add_user(
+        await db.add_user(
             email="active@example.com",
             password="password123",
             centre="Istanbul",
