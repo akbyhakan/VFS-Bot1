@@ -12,6 +12,7 @@ TEST_API_SECRET_KEY = "test-secret-key-for-testing-minimum-32-characters-long"
 os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
 
 from cryptography.fernet import Fernet
+
 if not os.getenv("ENCRYPTION_KEY"):
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
