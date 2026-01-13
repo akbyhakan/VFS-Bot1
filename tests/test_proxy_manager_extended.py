@@ -173,8 +173,18 @@ def test_get_random_proxy_success():
     """Test successful random proxy selection."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
 
     proxy = manager.get_random_proxy()
@@ -186,8 +196,18 @@ def test_get_random_proxy_skip_failed():
     """Test that random proxy skips failed ones."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.failed_proxies = ["http://proxy1.com:8080"]
 
@@ -201,7 +221,12 @@ def test_get_random_proxy_all_failed():
     """Test get_random_proxy when all proxies failed."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.failed_proxies = ["http://proxy1.com:8080"]
 
@@ -214,7 +239,12 @@ def test_get_random_proxy_all_failed():
 def test_mark_proxy_failed():
     """Test marking proxy as failed."""
     manager = ProxyManager()
-    proxy = {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"}
+    proxy = {
+        "server": "http://proxy1.com:8080",
+        "host": "proxy1.com",
+        "port": 8080,
+        "protocol": "http",
+    }
 
     manager.mark_proxy_failed(proxy)
     assert "http://proxy1.com:8080" in manager.failed_proxies
@@ -223,7 +253,12 @@ def test_mark_proxy_failed():
 def test_mark_proxy_failed_duplicate():
     """Test that marking same proxy twice doesn't duplicate."""
     manager = ProxyManager()
-    proxy = {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"}
+    proxy = {
+        "server": "http://proxy1.com:8080",
+        "host": "proxy1.com",
+        "port": 8080,
+        "protocol": "http",
+    }
 
     manager.mark_proxy_failed(proxy)
     manager.mark_proxy_failed(proxy)
@@ -259,8 +294,18 @@ def test_rotate_proxy_success():
     """Test successful proxy rotation."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.current_proxy_index = 0
 
@@ -273,12 +318,22 @@ def test_rotate_proxy_wraps_around():
     """Test that rotation wraps around to beginning."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.current_proxy_index = 1
 
-    proxy = manager.rotate_proxy()
+    manager.rotate_proxy()
     assert manager.current_proxy_index == 0
 
 
@@ -286,8 +341,18 @@ def test_rotate_proxy_skip_failed():
     """Test that rotation skips failed proxies."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.current_proxy_index = 0
     manager.failed_proxies = ["http://proxy2.com:8080"]
@@ -343,7 +408,12 @@ def test_get_playwright_proxy_auto_select():
     """Test get_playwright_proxy with automatic selection."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
 
     result = manager.get_playwright_proxy()
@@ -355,8 +425,18 @@ def test_get_current_proxy():
     """Test get_current_proxy."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
-        {"server": "http://proxy1.com:8080", "host": "proxy1.com", "port": 8080, "protocol": "http"},
-        {"server": "http://proxy2.com:8080", "host": "proxy2.com", "port": 8080, "protocol": "http"},
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
     ]
     manager.current_proxy_index = 1
 

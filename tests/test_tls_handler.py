@@ -49,7 +49,9 @@ async def test_create_session_without_curl_cffi():
 @pytest.mark.asyncio
 async def test_create_session_with_curl_cffi(mock_async_session):
     """Test session creation with curl-cffi available."""
-    with patch("src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session):
+    with patch(
+        "src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session
+    ):
         handler = TLSHandler(impersonate="chrome120")
         await handler.create_session()
         assert handler.session == mock_async_session
@@ -98,7 +100,9 @@ async def test_close_session_error_handling(mock_async_session):
 @pytest.mark.asyncio
 async def test_context_manager_entry(mock_async_session):
     """Test async context manager entry."""
-    with patch("src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session):
+    with patch(
+        "src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session
+    ):
         async with TLSHandler() as handler:
             assert handler.session == mock_async_session
 
@@ -106,7 +110,9 @@ async def test_context_manager_entry(mock_async_session):
 @pytest.mark.asyncio
 async def test_context_manager_exit(mock_async_session):
     """Test async context manager exit."""
-    with patch("src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session):
+    with patch(
+        "src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session
+    ):
         async with TLSHandler() as handler:
             pass
         assert handler.session is None

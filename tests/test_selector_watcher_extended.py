@@ -86,9 +86,7 @@ async def test_validate_selector_not_in_config(mock_selector_manager, mock_page)
 async def test_validate_selector_fallback_used(mock_selector_manager, mock_page, mock_notifier):
     """Test validation using fallback selector."""
     # Primary selector fails, fallback succeeds
-    mock_page.wait_for_selector = AsyncMock(
-        side_effect=[Exception("Primary failed"), MagicMock()]
-    )
+    mock_page.wait_for_selector = AsyncMock(side_effect=[Exception("Primary failed"), MagicMock()])
 
     checker = SelectorHealthCheck(mock_selector_manager, mock_notifier)
     result = await checker.validate_selector(mock_page, "login.email_input")
@@ -183,7 +181,7 @@ async def test_health_status_tracking(mock_selector_manager, mock_page):
     mock_page.wait_for_selector = AsyncMock(return_value=MagicMock())
 
     checker = SelectorHealthCheck(mock_selector_manager)
-    result = await checker.validate_selector(mock_page, "login.email_input")
+    await checker.validate_selector(mock_page, "login.email_input")
 
     # Health status should be accessible
     assert isinstance(checker.health_status, dict)

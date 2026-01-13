@@ -30,9 +30,7 @@ def mock_element():
     """Mock Playwright element."""
     element = AsyncMock()
     element.wait_for = AsyncMock()
-    element.bounding_box = AsyncMock(
-        return_value={"x": 100, "y": 100, "width": 200, "height": 50}
-    )
+    element.bounding_box = AsyncMock(return_value={"x": 100, "y": 100, "width": 200, "height": 50})
     return element
 
 
@@ -305,7 +303,11 @@ async def test_random_human_action_performs_action(mock_page):
     total_calls = (
         mock_page.mouse.wheel.call_count
         + mock_page.mouse.move.call_count
-        + (1 if mock_page.mouse.wheel.call_count == 0 and mock_page.mouse.move.call_count == 0 else 0)
+        + (
+            1
+            if mock_page.mouse.wheel.call_count == 0 and mock_page.mouse.move.call_count == 0
+            else 0
+        )
     )
     assert total_calls >= 0  # At least tried to perform an action
 
