@@ -139,6 +139,7 @@ jobs:
     - name: Run tests with coverage
       env:
         ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || '' }}
+        API_SECRET_KEY: "ci-test-secret-key-for-testing-minimum-32-characters"
       run: |
         # Generate test key if secret not set
         if [ -z "$ENCRYPTION_KEY" ]; then
