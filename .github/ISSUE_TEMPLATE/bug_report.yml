@@ -70,7 +70,7 @@ body:
     id: python
     attributes:
       label: Python Version
-      placeholder: e.g., 3.11.5
+      placeholder: e.g., 3.12.5
     validations:
       required: true
   

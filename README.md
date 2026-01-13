@@ -1,6 +1,6 @@
 # 🤖 VFS-Bot - Automated VFS Appointment Booking
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Playwright](https://img.shields.io/badge/automation-Playwright-green.svg)](https://playwright.dev/)
 [![CI](https://github.com/akbyhakan/VFS-Bot1/workflows/CI/badge.svg)](https://github.com/akbyhakan/VFS-Bot1/actions)
@@ -8,7 +8,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
-An advanced, modern automated bot for checking and booking VFS Global visa appointment slots. Built with **Python 3.11+**, **Playwright**, and **FastAPI** for a robust, efficient, and user-friendly experience.
+An advanced, modern automated bot for checking and booking VFS Global visa appointment slots. Built with **Python 3.12+**, **Playwright**, and **FastAPI** for a robust, efficient, and user-friendly experience.
 
 ## ✨ Features
 
@@ -60,7 +60,7 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 
 ## 📋 Requirements
 
-- Python 3.11 or higher
+- Python 3.12 or higher
 - Modern web browser (Chromium installed automatically by Playwright)
 - Internet connection
 - VFS Global account
