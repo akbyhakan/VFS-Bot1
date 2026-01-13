@@ -4,9 +4,12 @@ import os
 import sys
 from pathlib import Path
 
+# Test constants
+TEST_API_SECRET_KEY = "test-secret-key-for-testing-minimum-32-characters-long"
+
 # CRITICAL: Set environment variables BEFORE any src imports
 # These must be set before importing any modules that check for them at import time
-os.environ.setdefault("API_SECRET_KEY", "test-secret-key-for-testing-minimum-32-characters-long")
+os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
 
 from cryptography.fernet import Fernet
 if not os.getenv("ENCRYPTION_KEY"):
@@ -28,7 +31,7 @@ from src.services.notification import NotificationService
 def pytest_configure(config):
     """Configure pytest environment before tests run."""
     # Environment variables already set above, but ensure they're still set
-    os.environ.setdefault("API_SECRET_KEY", "test-secret-key-for-testing-minimum-32-characters-long")
+    os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
     if not os.getenv("ENCRYPTION_KEY"):
         os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
