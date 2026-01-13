@@ -18,11 +18,13 @@ jobs:
       uses: docker/setup-buildx-action@v3
     
     - name: Login to Docker Hub
-      if: github.event_name != 'pull_request'
+      # Only login when pushing to main and credentials are available
+      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_TOKEN }}
+      continue-on-error: true  # Don't fail if credentials not set
     
     - name: Extract metadata
       id: meta
@@ -34,12 +36,25 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
     
-    - name: Build and push
+    - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: ${{ github.event_name != 'pull_request' }}
+        push: false  # Just build, don't push
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+    
+    - name: Push to Docker Hub
+      # Only push when on main branch (credentials checked via continue-on-error)
+      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+      continue-on-error: true  # Don't fail CI if push fails

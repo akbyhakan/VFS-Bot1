@@ -42,6 +42,10 @@ RUN apt-get update && \
     libxfixes3 \
     libxrandr2 \
     libgbm1 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libpango-1.0-0 \
+    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
