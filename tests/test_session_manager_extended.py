@@ -1,5 +1,6 @@
 """Extended tests for session manager functionality."""
 
+import base64
 import json
 import sys
 import tempfile
@@ -85,8 +86,6 @@ class TestSessionManagerExtended:
     def test_set_tokens_with_jwt(self):
         """Test set_tokens with valid JWT token."""
         # Create a mock JWT token (not cryptographically valid, just for testing)
-        import base64
-
         # JWT format: header.payload.signature
         header = base64.b64encode(b'{"alg":"HS256","typ":"JWT"}').decode()
         # Set expiry to 1 hour from now
