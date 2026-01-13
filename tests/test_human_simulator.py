@@ -120,10 +120,13 @@ class TestHumanSimulator:
         """Test human click success."""
         simulator = HumanSimulator()
         mock_page = AsyncMock()
-        mock_element = AsyncMock()
-        mock_element.bounding_box.return_value = {"x": 100, "y": 100, "width": 50, "height": 30}
+        mock_element = MagicMock()
+        mock_element.wait_for = AsyncMock()
+        mock_element.bounding_box = AsyncMock(
+            return_value={"x": 100, "y": 100, "width": 50, "height": 30}
+        )
 
-        mock_page.locator.return_value = mock_element
+        mock_page.locator = MagicMock(return_value=mock_element)
 
         result = await simulator.human_click(mock_page, "#button")
 
@@ -136,10 +139,11 @@ class TestHumanSimulator:
         """Test human click when bounding box is not available."""
         simulator = HumanSimulator()
         mock_page = AsyncMock()
-        mock_element = AsyncMock()
-        mock_element.bounding_box.return_value = None
+        mock_element = MagicMock()
+        mock_element.wait_for = AsyncMock()
+        mock_element.bounding_box = AsyncMock(return_value=None)
 
-        mock_page.locator.return_value = mock_element
+        mock_page.locator = MagicMock(return_value=mock_element)
 
         result = await simulator.human_click(mock_page, "#button")
 
@@ -150,10 +154,10 @@ class TestHumanSimulator:
         """Test human click handles errors."""
         simulator = HumanSimulator()
         mock_page = AsyncMock()
-        mock_element = AsyncMock()
-        mock_element.wait_for.side_effect = Exception("Element not found")
+        mock_element = MagicMock()
+        mock_element.wait_for = AsyncMock(side_effect=Exception("Element not found"))
 
-        mock_page.locator.return_value = mock_element
+        mock_page.locator = MagicMock(return_value=mock_element)
 
         result = await simulator.human_click(mock_page, "#button")
 
@@ -164,10 +168,13 @@ class TestHumanSimulator:
         """Test human typing success."""
         simulator = HumanSimulator({"typing_wpm_range": [60, 60]})  # Fixed WPM for testing
         mock_page = AsyncMock()
-        mock_element = AsyncMock()
-        mock_element.bounding_box.return_value = {"x": 100, "y": 100, "width": 200, "height": 30}
+        mock_element = MagicMock()
+        mock_element.wait_for = AsyncMock()
+        mock_element.bounding_box = AsyncMock(
+            return_value={"x": 100, "y": 100, "width": 200, "height": 30}
+        )
 
-        mock_page.locator.return_value = mock_element
+        mock_page.locator = MagicMock(return_value=mock_element)
 
         result = await simulator.human_type(mock_page, "#input", "test")
 
@@ -180,10 +187,10 @@ class TestHumanSimulator:
         """Test human typing handles errors."""
         simulator = HumanSimulator()
         mock_page = AsyncMock()
-        mock_element = AsyncMock()
-        mock_element.wait_for.side_effect = Exception("Element not visible")
+        mock_element = MagicMock()
+        mock_element.wait_for = AsyncMock(side_effect=Exception("Element not visible"))
 
-        mock_page.locator.return_value = mock_element
+        mock_page.locator = MagicMock(return_value=mock_element)
 
         result = await simulator.human_type(mock_page, "#input", "test")
 

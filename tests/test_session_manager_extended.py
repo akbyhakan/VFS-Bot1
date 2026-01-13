@@ -33,9 +33,7 @@ class TestSessionManagerExtended:
 
     def test_init_with_custom_buffer(self):
         """Test SessionManager initialization with custom refresh buffer."""
-        manager = SessionManager(
-            session_file=self.test_session_file, token_refresh_buffer=10
-        )
+        manager = SessionManager(session_file=self.test_session_file, token_refresh_buffer=10)
 
         # Buffer should be converted to seconds (10 minutes = 600 seconds)
         assert manager.token_refresh_buffer == 600
@@ -157,9 +155,7 @@ class TestSessionManagerExtended:
 
     def test_is_token_expired_within_buffer(self):
         """Test is_token_expired when token expires within buffer time."""
-        manager = SessionManager(
-            session_file=self.test_session_file, token_refresh_buffer=5
-        )
+        manager = SessionManager(session_file=self.test_session_file, token_refresh_buffer=5)
         manager.access_token = "test_token"
 
         # Set expiry to 4 minutes from now (buffer is 5 minutes)
@@ -170,9 +166,7 @@ class TestSessionManagerExtended:
 
     def test_is_token_expired_outside_buffer(self):
         """Test is_token_expired when token is valid for longer than buffer."""
-        manager = SessionManager(
-            session_file=self.test_session_file, token_refresh_buffer=5
-        )
+        manager = SessionManager(session_file=self.test_session_file, token_refresh_buffer=5)
         manager.access_token = "test_token"
 
         # Set expiry to 10 minutes from now (buffer is 5 minutes)

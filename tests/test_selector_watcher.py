@@ -198,16 +198,22 @@ class TestSelectorHealthCheck:
 
     @pytest.mark.asyncio
     async def test_check_all_selectors_error(self):
-        """Test check_all_selectors handles errors."""
+        """Test check_all_selectors handles errors during page navigation."""
         sm = SelectorManager()
         health_checker = SelectorHealthCheck(sm)
 
         mock_browser = AsyncMock()
-        mock_browser.new_page.side_effect = Exception("Browser error")
+        mock_page = AsyncMock()
+        mock_browser.new_page.return_value = mock_page
+        # Error happens during goto
+        mock_page.goto.side_effect = Exception("Navigation error")
 
         results = await health_checker.check_all_selectors(mock_browser)
 
         assert "error" in results
+        assert "Navigation error" in results["error"]
+        # Page should still be closed
+        mock_page.close.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_run_continuous(self):
