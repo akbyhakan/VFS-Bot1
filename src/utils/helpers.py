@@ -41,16 +41,16 @@ def mask_email(email: str) -> str:
 def mask_password(password: str) -> str:
     """
     Mask password for safe logging.
-    
+
     Args:
         password: Password to mask
-        
+
     Returns:
         Masked password (e.g., "pa****rd")
     """
     if not password:
         return "****"
-    
+
     length = len(password)
     if length <= 4:
         return "*" * length

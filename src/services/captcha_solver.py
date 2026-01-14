@@ -21,7 +21,7 @@ class CaptchaSolver:
         """
         if not api_key:
             raise ValueError("2Captcha API key is required")
-        
+
         self.api_key = api_key
         self.manual_timeout = manual_timeout
         logger.info("CaptchaSolver initialized with 2Captcha")
@@ -39,7 +39,7 @@ class CaptchaSolver:
             Captcha solution token or None
         """
         logger.info("Solving reCAPTCHA with 2Captcha...")
-        
+
         try:
             return await self._solve_with_2captcha(site_key, url)
         except Exception as e:
@@ -60,14 +60,13 @@ class CaptchaSolver:
         from twocaptcha import TwoCaptcha
 
         solver = TwoCaptcha(self.api_key)
-        
+
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         result: Any = await loop.run_in_executor(
-            None,
-            lambda: solver.recaptcha(sitekey=site_key, url=url)
+            None, lambda: solver.recaptcha(sitekey=site_key, url=url)
         )
-        
+
         logger.info("2Captcha solved successfully")
         solution: str = result["code"]
         return solution
