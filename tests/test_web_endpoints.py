@@ -4,7 +4,14 @@ import pytest
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
-from web.app import app, bot_state, metrics, check_database_health, increment_metric
+from web.app import app, bot_state, check_database_health, increment_metric
+
+
+# Access metrics dict directly from web.app module to avoid name collision with get_metrics function
+def get_metrics_dict():
+    """Get the metrics dictionary from web.app module."""
+    import web.app as web_app_module
+    return web_app_module.metrics
 
 
 @pytest.fixture
@@ -22,15 +29,16 @@ def reset_state():
     bot_state["appointments_booked"] = 0
     bot_state["active_users"] = 0
 
-    metrics["requests_total"] = 0
-    metrics["requests_success"] = 0
-    metrics["requests_failed"] = 0
-    metrics["slots_checked"] = 0
-    metrics["slots_found"] = 0
-    metrics["appointments_booked"] = 0
-    metrics["captchas_solved"] = 0
-    metrics["errors"] = {}
-    metrics["start_time"] = datetime.now(timezone.utc)
+    metrics_dict = get_metrics_dict()
+    metrics_dict["requests_total"] = 0
+    metrics_dict["requests_success"] = 0
+    metrics_dict["requests_failed"] = 0
+    metrics_dict["slots_checked"] = 0
+    metrics_dict["slots_found"] = 0
+    metrics_dict["appointments_booked"] = 0
+    metrics_dict["captchas_solved"] = 0
+    metrics_dict["errors"] = {}
+    metrics_dict["start_time"] = datetime.now(timezone.utc)
 
     yield
 
@@ -157,8 +165,9 @@ class TestMetricsEndpoint:
 
     def test_metrics_endpoint_success_rate(self, client, reset_state):
         """Test success rate calculation."""
-        metrics["requests_total"] = 10
-        metrics["requests_success"] = 7
+        metrics_dict = get_metrics_dict()
+        metrics_dict["requests_total"] = 10
+        metrics_dict["requests_success"] = 7
 
         response = client.get("/metrics")
         data = response.json()
@@ -187,27 +196,30 @@ class TestIncrementMetric:
 
     def test_increment_metric_default(self, reset_state):
         """Test increment_metric with default count."""
-        metrics["requests_total"] = 5
+        metrics_dict = get_metrics_dict()
+        metrics_dict["requests_total"] = 5
 
         increment_metric("requests_total")
 
-        assert metrics["requests_total"] == 6
+        assert metrics_dict["requests_total"] == 6
 
     def test_increment_metric_custom_count(self, reset_state):
         """Test increment_metric with custom count."""
-        metrics["slots_found"] = 10
+        metrics_dict = get_metrics_dict()
+        metrics_dict["slots_found"] = 10
 
         increment_metric("slots_found", count=5)
 
-        assert metrics["slots_found"] == 15
+        assert metrics_dict["slots_found"] == 15
 
     def test_increment_metric_invalid_name(self, reset_state):
         """Test increment_metric with invalid metric name."""
         # Should not raise an error, just do nothing
         increment_metric("invalid_metric", count=5)
 
+        metrics_dict = get_metrics_dict()
         # Metrics should remain unchanged
-        assert "invalid_metric" not in metrics
+        assert "invalid_metric" not in metrics_dict
 
 
 class TestCheckDatabaseHealth:
