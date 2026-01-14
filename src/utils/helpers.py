@@ -26,7 +26,15 @@ def mask_email(email: str) -> str:
     if not email or "@" not in email:
         return "***"
     parts = email.split("@")
-    masked_local = parts[0][:2] + "***" if len(parts[0]) > 2 else "***"
+    local = parts[0]
+    
+    if len(local) > 2:
+        masked_local = local[:2] + "***"      # test -> te***
+    elif len(local) >= 1:
+        masked_local = local[:1] + "***"      # ab -> a***
+    else:
+        masked_local = "***"
+    
     return f"{masked_local}@{parts[1]}"
 
 
