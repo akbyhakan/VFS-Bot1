@@ -13,28 +13,28 @@ from src.services.payment_service import PaymentService, PaymentMethod
 
 def test_captcha_solver_initialization():
     """Test CaptchaSolver initialization."""
-    solver = CaptchaSolver(provider="manual", api_key="", manual_timeout=120)
+    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
     assert solver is not None
-    assert solver.provider == "manual"
+    assert solver.api_key == "test_key"
 
 
 def test_captcha_solver_manual_provider():
-    """Test manual captcha provider."""
-    solver = CaptchaSolver(provider="manual", api_key="", manual_timeout=60)
-    assert solver.provider == "manual"
+    """Test manual captcha mode (no API key)."""
+    solver = CaptchaSolver(api_key="", manual_timeout=60)
+    assert solver.api_key == ""
     assert solver.manual_timeout == 60
 
 
 def test_captcha_solver_2captcha_provider():
     """Test 2captcha provider initialization."""
-    solver = CaptchaSolver(provider="2captcha", api_key="test_key", manual_timeout=120)
-    assert solver.provider == "2captcha"
+    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
+    assert solver.api_key == "test_key"
 
 
 def test_captcha_solver_nopecha_provider():
-    """Test nopecha provider initialization."""
-    solver = CaptchaSolver(provider="nopecha", api_key="test_key", manual_timeout=120)
-    assert solver.provider == "nopecha"
+    """Test initialization with API key (2Captcha only)."""
+    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
+    assert solver.api_key == "test_key"
 
 
 def test_centre_fetcher_initialization():
