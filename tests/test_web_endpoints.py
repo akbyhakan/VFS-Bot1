@@ -238,3 +238,35 @@ class TestApiStatusEndpoint:
         assert data["status"] == "running"
         assert data["stats"]["slots_found"] == 5
         assert data["stats"]["appointments_booked"] == 2
+
+
+class TestWebSocketAuthentication:
+    """Tests for WebSocket authentication."""
+
+    def test_websocket_requires_token(self, client):
+        """Test that WebSocket connection requires a token."""
+        # Try to connect without a token
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws"):
+                pass  # Should fail without token
+
+    def test_websocket_rejects_invalid_token(self, client):
+        """Test that WebSocket rejects invalid tokens."""
+        # Try to connect with invalid token
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws?token=invalid_token"):
+                pass  # Should fail with invalid token
+
+    def test_websocket_accepts_valid_token(self, client):
+        """Test WebSocket connection with valid token."""
+        from src.core.auth import create_access_token
+        
+        # Create a valid token
+        token = create_access_token({"sub": "test_user"})
+        
+        # Connect with valid token
+        with client.websocket_connect(f"/ws?token={token}") as websocket:
+            # Should receive initial status message
+            data = websocket.receive_json()
+            assert data["type"] == "status"
+            assert "data" in data
