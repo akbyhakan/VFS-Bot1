@@ -21,6 +21,7 @@ from slowapi.errors import RateLimitExceeded
 
 from src.core.security import verify_api_key, generate_api_key
 from src.core.auth import create_access_token, verify_token
+from src.services.otp_webhook_routes import router as otp_router
 
 security_scheme = HTTPBearer()
 
@@ -28,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+# Include OTP webhook router
+app.include_router(otp_router)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -465,20 +469,40 @@ async def get_logs(
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for real-time updates.
+    
+    Authentication: Send token in first message as {"token": "your-jwt-token"}
 
     Args:
         websocket: WebSocket connection
     """
-    # Query parameter authentication
-    token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=4001)
-        return
-
+    await websocket.accept()
+    
     try:
-        verify_token(token)
-    except HTTPException:
-        await websocket.close(code=4001)
+        # Wait for authentication message
+        auth_data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+        
+        if not isinstance(auth_data, dict) or "token" not in auth_data:
+            await websocket.close(code=4001, reason="Authentication required")
+            return
+        
+        token = auth_data.get("token")
+        if not token:
+            await websocket.close(code=4001, reason="Token missing")
+            return
+        
+        # Verify token
+        try:
+            verify_token(token)
+        except HTTPException:
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+        
+    except asyncio.TimeoutError:
+        await websocket.close(code=4001, reason="Authentication timeout")
+        return
+    except Exception as e:
+        logger.error(f"WebSocket authentication error: {e}")
+        await websocket.close(code=4000, reason="Authentication error")
         return
 
     await manager.connect(websocket)

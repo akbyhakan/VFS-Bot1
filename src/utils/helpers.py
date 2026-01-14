@@ -38,6 +38,28 @@ def mask_email(email: str) -> str:
     return f"{masked_local}@{parts[1]}"
 
 
+def mask_password(password: str) -> str:
+    """
+    Mask password for safe logging.
+    
+    Args:
+        password: Password to mask
+        
+    Returns:
+        Masked password (e.g., "pa****rd")
+    """
+    if not password:
+        return "****"
+    
+    length = len(password)
+    if length <= 4:
+        return "*" * length
+    elif length <= 8:
+        return password[:1] + "*" * (length - 2) + password[-1:]
+    else:
+        return password[:2] + "*" * (length - 4) + password[-2:]
+
+
 def mask_sensitive_data(text: str) -> str:
     """
     Mask potentially sensitive data in log messages.
