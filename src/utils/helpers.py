@@ -40,8 +40,12 @@ def mask_sensitive_data(text: str) -> str:
     Returns:
         Text with sensitive data masked
     """
-    # Mask email addresses
-    text = re.sub(r"[\w\.-]+@[\w\.-]+\.\w+", lambda m: mask_email(m.group()), text)
+    # Mask email addresses - more restrictive pattern to avoid false positives
+    text = re.sub(
+        r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b",
+        lambda m: mask_email(m.group()),
+        text,
+    )
     # Mask potential tokens/keys (long alphanumeric strings)
     text = re.sub(r"[A-Za-z0-9_-]{32,}", "***REDACTED***", text)
     return text
