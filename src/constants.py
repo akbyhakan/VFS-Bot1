@@ -110,3 +110,11 @@ class Delays:
     BUTTON_CLICK_WAIT = 0.5  # Wait after button click
     FORM_SUBMIT_WAIT = 3.0  # Wait after form submission
     PAGE_LOAD_BUFFER = 1.0  # Extra buffer for page loads
+
+
+class SelectorHealth:
+    """Selector health check configuration."""
+
+    DEFAULT_INTERVAL = 43200  # 12 hours in seconds
+    MIN_INTERVAL = 3600  # Minimum 1 hour
+    MAX_INTERVAL = 86400  # Maximum 24 hours

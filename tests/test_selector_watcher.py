@@ -7,6 +7,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.constants import SelectorHealth
 from src.utils.selector_watcher import SelectorHealthCheck
 from src.utils.selectors import SelectorManager
 
@@ -21,7 +22,7 @@ class TestSelectorHealthCheck:
 
         assert health_checker.selector_manager == sm
         assert health_checker.notifier is None
-        assert health_checker.check_interval == 3600
+        assert health_checker.check_interval == SelectorHealth.DEFAULT_INTERVAL
         assert health_checker.health_status == {}
         assert health_checker.last_check is None
 

@@ -7,6 +7,7 @@ from typing import Dict, Optional, Any
 
 from playwright.async_api import Page, Browser
 
+from src.constants import SelectorHealth
 from src.utils.selectors import SelectorManager
 from src.services.notification import NotificationService
 
@@ -20,7 +21,7 @@ class SelectorHealthCheck:
         self,
         selector_manager: SelectorManager,
         notifier: Optional[NotificationService] = None,
-        check_interval: int = 3600,  # 1 hour default
+        check_interval: int = SelectorHealth.DEFAULT_INTERVAL,
     ):
         self.selector_manager = selector_manager
         self.notifier = notifier

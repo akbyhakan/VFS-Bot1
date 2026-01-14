@@ -74,6 +74,7 @@ class VFSBot:
         self.total_errors: deque = deque()  # Track error timestamps
         self.circuit_breaker_open = False
         self.circuit_breaker_open_time: Optional[float] = None
+        self._circuit_breaker_lock = asyncio.Lock()
 
         # Concurrent processing semaphore
         self.user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
@@ -256,7 +257,7 @@ class VFSBot:
                     )
                     await asyncio.sleep(wait_time)
                     # Try to close circuit breaker
-                    self._reset_circuit_breaker()
+                    await self._reset_circuit_breaker()
                     continue
 
                 # Get active users with decrypted passwords
@@ -282,7 +283,7 @@ class VFSBot:
                 errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
                 if errors_in_batch > 0:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
-                    self._record_error()
+                    await self._record_error()
                 else:
                     # Successful batch - reset consecutive errors
                     self.consecutive_errors = 0
@@ -297,7 +298,7 @@ class VFSBot:
             except Exception as e:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
-                self._record_error()
+                await self._record_error()
 
                 # If circuit breaker open, wait longer
                 if self.circuit_breaker_open:
@@ -316,47 +317,49 @@ class VFSBot:
         async with self.user_semaphore:
             await self.process_user(user)
 
-    def _record_error(self) -> None:
+    async def _record_error(self) -> None:
         """Record error for circuit breaker tracking."""
-        current_time = time.time()
-        self.consecutive_errors += 1
-        self.total_errors.append(current_time)
+        async with self._circuit_breaker_lock:
+            current_time = time.time()
+            self.consecutive_errors += 1
+            self.total_errors.append(current_time)
 
-        # Clean old errors outside tracking window
-        cutoff_time = current_time - CircuitBreaker.ERROR_TRACKING_WINDOW
-        while self.total_errors and self.total_errors[0] < cutoff_time:
-            self.total_errors.popleft()
+            # Clean old errors outside tracking window
+            cutoff_time = current_time - CircuitBreaker.ERROR_TRACKING_WINDOW
+            while self.total_errors and self.total_errors[0] < cutoff_time:
+                self.total_errors.popleft()
 
-        # Check if circuit breaker should open
-        recent_errors = len(self.total_errors)
+            # Check if circuit breaker should open
+            recent_errors = len(self.total_errors)
 
-        if (
-            self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS
-            or recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR
-        ):
-            self.circuit_breaker_open = True
-            self.circuit_breaker_open_time = current_time
-            logger.error(
-                f"🚨 CIRCUIT BREAKER OPENED - "
-                f"consecutive: {self.consecutive_errors}, "
-                f"total in hour: {recent_errors}"
-            )
+            if (
+                self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS
+                or recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR
+            ):
+                self.circuit_breaker_open = True
+                self.circuit_breaker_open_time = current_time
+                logger.error(
+                    f"🚨 CIRCUIT BREAKER OPENED - "
+                    f"consecutive: {self.consecutive_errors}, "
+                    f"total in hour: {recent_errors}"
+                )
 
-            # Record circuit breaker trip in metrics
-            from ..utils.metrics import get_metrics
+                # Record circuit breaker trip in metrics
+                from ..utils.metrics import get_metrics
 
-            async def _record_trip():
-                metrics = await get_metrics()
-                await metrics.record_circuit_breaker_trip()
+                async def _record_trip():
+                    metrics = await get_metrics()
+                    await metrics.record_circuit_breaker_trip()
 
-            asyncio.create_task(_record_trip())
+                asyncio.create_task(_record_trip())
 
-    def _reset_circuit_breaker(self) -> None:
+    async def _reset_circuit_breaker(self) -> None:
         """Reset circuit breaker state."""
-        self.circuit_breaker_open = False
-        self.circuit_breaker_open_time = None
-        self.consecutive_errors = 0
-        logger.info("Circuit breaker CLOSED - resuming normal operation")
+        async with self._circuit_breaker_lock:
+            self.circuit_breaker_open = False
+            self.circuit_breaker_open_time = None
+            self.consecutive_errors = 0
+            logger.info("Circuit breaker CLOSED - resuming normal operation")
 
     def _get_circuit_breaker_wait_time(self) -> float:
         """

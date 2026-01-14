@@ -64,6 +64,7 @@ async def run_bot_mode(config: dict) -> None:
         # Note: The health checker will be started within the bot's browser context
         # when the browser is available. See VFSBot.start() for implementation.
         if config.get("selector_health_check", {}).get("enabled", True):
+            from src.constants import SelectorHealth
             from src.utils.selector_watcher import SelectorHealthCheck
             from src.utils.selectors import SelectorManager
 
@@ -71,7 +72,9 @@ async def run_bot_mode(config: dict) -> None:
             bot.health_checker = SelectorHealthCheck(
                 selector_manager,
                 notifier,
-                check_interval=config.get("selector_health_check", {}).get("interval", 3600),
+                check_interval=config.get("selector_health_check", {}).get(
+                    "interval", SelectorHealth.DEFAULT_INTERVAL
+                ),
             )
             logger.info("Selector health monitoring initialized")
         else:
@@ -117,21 +120,37 @@ async def run_both_mode(config: dict) -> None:
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
     # Create tasks for both modes
-    web_task = asyncio.create_task(run_web_mode(config))
-    bot_task = asyncio.create_task(run_bot_mode(config))
+    web_task = asyncio.create_task(run_web_mode(config), name="web_dashboard")
+    bot_task = asyncio.create_task(run_bot_mode(config), name="vfs_bot")
 
-    # Run both concurrently and handle exceptions
+    # Run both concurrently and wait for first exception
     try:
-        results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
+        done, pending = await asyncio.wait(
+            {web_task, bot_task}, return_when=asyncio.FIRST_EXCEPTION
+        )
 
-        # Check for exceptions in results
-        for i, result in enumerate(results):
-            task_name = "web" if i == 0 else "bot"
-            if isinstance(result, Exception):
-                logger.error(f"Task '{task_name}' failed with exception: {result}", exc_info=result)
+        # Check for exceptions in completed tasks
+        for task in done:
+            if task.exception():
+                logger.error(
+                    f"Task '{task.get_name()}' failed with exception: {task.exception()}",
+                    exc_info=task.exception(),
+                )
+                raise task.exception()
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
+    finally:
+        # Cancel pending tasks
+        logger.info("Cancelling pending tasks...")
+        for task in {web_task, bot_task}:
+            if not task.done():
+                task.cancel()
+
+        # Wait for tasks to complete cancellation with timeout
+        if web_task or bot_task:
+            await asyncio.wait({web_task, bot_task}, timeout=5.0)
+            logger.info("All tasks cancelled")
 
 
 def main() -> None:

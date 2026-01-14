@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.constants import SelectorHealth
 from src.utils.selector_watcher import SelectorHealthCheck
 
 
@@ -41,7 +42,7 @@ def test_selector_health_check_initialization(mock_selector_manager):
     """Test selector health check initialization."""
     checker = SelectorHealthCheck(mock_selector_manager)
     assert checker.selector_manager == mock_selector_manager
-    assert checker.check_interval == 3600
+    assert checker.check_interval == SelectorHealth.DEFAULT_INTERVAL  # 43200 (12 hours)
     assert checker.health_status == {}
     assert checker.last_check is None
 
