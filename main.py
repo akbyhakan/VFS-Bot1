@@ -139,8 +139,6 @@ async def run_both_mode(config: dict) -> None:
                 raise task.exception()
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
-        # Get pending tasks for cleanup
-        pending = {t for t in {web_task, bot_task} if not t.done()}
         raise
     finally:
         # Cancel pending tasks
