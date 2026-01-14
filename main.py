@@ -49,6 +49,9 @@ async def run_bot_mode(config: dict) -> None:
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
 
+    # Create shutdown event
+    shutdown_event = asyncio.Event()
+
     # Initialize database
     db = Database()
     await db.connect()
@@ -57,8 +60,8 @@ async def run_bot_mode(config: dict) -> None:
         # Initialize notification service
         notifier = NotificationService(config["notifications"])
 
-        # Initialize and start bot
-        bot = VFSBot(config, db, notifier)
+        # Initialize and start bot with shutdown event
+        bot = VFSBot(config, db, notifier, shutdown_event)
 
         # Initialize selector health monitoring (if enabled)
         # Note: The health checker will be started within the bot's browser context
@@ -81,8 +84,10 @@ async def run_bot_mode(config: dict) -> None:
 
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
+        shutdown_event.set()
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
+        shutdown_event.set()
     finally:
         await db.close()
 

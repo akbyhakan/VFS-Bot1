@@ -53,7 +53,13 @@ class UserInfo(TypedDict):
 class VFSBot:
     """VFS appointment booking bot using Playwright."""
 
-    def __init__(self, config: Dict[str, Any], db: Database, notifier: NotificationService):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        db: Database,
+        notifier: NotificationService,
+        shutdown_event: Optional[asyncio.Event] = None,
+    ):
         """
         Initialize VFS bot.
 
@@ -61,6 +67,7 @@ class VFSBot:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
+            shutdown_event: Optional event to signal graceful shutdown
         """
         self.config = config
         self.db = db
@@ -69,6 +76,7 @@ class VFSBot:
         self.context: Optional[BrowserContext] = None
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
+        self.shutdown_event = shutdown_event or asyncio.Event()
 
         # Circuit breaker state
         self.consecutive_errors = 0
@@ -246,8 +254,13 @@ class VFSBot:
 
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
-        while self.running:
+        while self.running and not self.shutdown_event.is_set():
             try:
+                # Check for shutdown request
+                if self.shutdown_event.is_set():
+                    logger.info("Shutdown requested, stopping bot loop...")
+                    break
+                
                 # Check circuit breaker
                 if self.circuit_breaker_open:
                     wait_time = self._get_circuit_breaker_wait_time()
