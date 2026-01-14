@@ -3,6 +3,7 @@
 import asyncio
 import random
 import logging
+import re
 from typing import Optional, Literal
 
 from playwright.async_api import Page
@@ -10,6 +11,44 @@ from playwright.async_api import Page
 from ..constants import Intervals, Timeouts
 
 logger = logging.getLogger(__name__)
+
+
+def mask_email(email: str) -> str:
+    """
+    Mask email for safe logging.
+
+    Args:
+        email: Email address to mask
+
+    Returns:
+        Masked email address
+    """
+    if not email or "@" not in email:
+        return "***"
+    parts = email.split("@")
+    masked_local = parts[0][:2] + "***" if len(parts[0]) > 2 else "***"
+    return f"{masked_local}@{parts[1]}"
+
+
+def mask_sensitive_data(text: str) -> str:
+    """
+    Mask potentially sensitive data in log messages.
+
+    Args:
+        text: Text that may contain sensitive data
+
+    Returns:
+        Text with sensitive data masked
+    """
+    # Mask email addresses - more restrictive pattern to avoid false positives
+    text = re.sub(
+        r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b",
+        lambda m: mask_email(m.group()),
+        text,
+    )
+    # Mask potential tokens/keys (long alphanumeric strings with word boundaries)
+    text = re.sub(r"\b[A-Za-z0-9_-]{32,}\b", "***REDACTED***", text)
+    return text
 
 
 async def smart_fill(

@@ -128,3 +128,13 @@ def mock_notifier():
     notifier.notify_booking_success = AsyncMock()
     notifier.notify_error = AsyncMock()
     return notifier
+
+
+@pytest.fixture
+def security_config():
+    """Security-focused test configuration."""
+    return {
+        "api_secret_key_min_length": 32,
+        "encryption_key_required": True,
+        "plaintext_password_allowed": False,
+    }

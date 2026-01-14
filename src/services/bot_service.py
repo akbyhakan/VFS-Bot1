@@ -6,7 +6,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -28,6 +28,25 @@ from ..utils.error_capture import ErrorCapture
 from ..utils.helpers import smart_fill, smart_click, wait_for_selector_smart, safe_navigate
 
 logger = logging.getLogger(__name__)
+
+
+class SlotInfo(TypedDict):
+    """Available appointment slot information."""
+
+    date: str
+    time: str
+
+
+class UserInfo(TypedDict):
+    """User information from database."""
+
+    id: int
+    email: str
+    password: str
+    centre: str
+    category: str
+    subcategory: str
+    active: bool
 
 
 class VFSBot:
@@ -501,7 +520,7 @@ class VFSBot:
 
     async def check_slots(
         self, page: Page, centre: str, category: str, subcategory: str
-    ) -> Optional[Dict[str, str]]:
+    ) -> Optional[SlotInfo]:
         """
         Check for available appointment slots.
 

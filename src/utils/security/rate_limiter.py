@@ -22,7 +22,8 @@ class RateLimiter:
         """
         self.max_requests = max_requests
         self.time_window = time_window
-        self.requests: deque = deque()
+        # maxlen prevents memory leak by automatically removing old items
+        self.requests: deque = deque(maxlen=max_requests * 2)
         self._lock = asyncio.Lock()
         logger.info(f"RateLimiter initialized: {max_requests} req/{time_window}s")
 

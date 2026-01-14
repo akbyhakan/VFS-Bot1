@@ -239,12 +239,14 @@ class CaptchaSolver:
         """
         try:
             await page.evaluate(
-                f"""
-                () => {{
-                    document.querySelector('[name="g-recaptcha-response"]').value = '{token}';
-                    document.querySelector('[name="g-recaptcha-response"]').innerHTML = '{token}';
-                }}
-            """
+                """(token) => {
+                    const el = document.querySelector('[name="g-recaptcha-response"]');
+                    if (el) {
+                        el.value = token;
+                        el.innerHTML = token;
+                    }
+                }""",
+                token,
             )
             logger.info("Captcha solution injected")
             return True

@@ -77,6 +77,7 @@ class Database:
     DEFAULT_PATH = "vfs_bot.db"  # Default database path
     POOL_SIZE = 5  # Connection pool size
     TEST_PATH = "test.db"  # Test database path
+    CONNECTION_TIMEOUT = 30.0  # Connection timeout in seconds
 
 
 class API:
@@ -91,3 +92,21 @@ class Metrics:
     """Metrics configuration."""
 
     RETENTION_DAYS = 30  # Days to keep metrics data
+
+
+class Limits:
+    """Application limits."""
+
+    MAX_LOG_ENTRIES = 500  # Maximum log entries to keep
+    MAX_ERRORS_IN_MEMORY = 100  # Maximum errors to keep in memory
+    DB_POOL_SIZE = 5  # Database connection pool size
+    DB_CONNECTION_TIMEOUT = 30.0  # Database connection timeout in seconds
+
+
+class Delays:
+    """UI interaction delays in seconds."""
+
+    DROPDOWN_WAIT = 2.0  # Wait after dropdown selection
+    BUTTON_CLICK_WAIT = 0.5  # Wait after button click
+    FORM_SUBMIT_WAIT = 3.0  # Wait after form submission
+    PAGE_LOAD_BUFFER = 1.0  # Extra buffer for page loads
