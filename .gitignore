@@ -95,3 +95,8 @@ notes.txt
 
 # Proxy files
 config/proxies.txt
+
+# Frontend build output
+web/static/dist/
+frontend/node_modules/
+frontend/dist/
