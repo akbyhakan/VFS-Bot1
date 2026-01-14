@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import type { BotStatus, BotCommand, Metrics, HealthCheck, LogEntry } from '@/types/api';
+import type { BotStatus, BotCommand, Metrics, HealthCheck } from '@/types/api';
 import type { User, CreateUserRequest, UpdateUserRequest } from '@/types/user';
 
 // Bot queries and mutations

@@ -10,13 +10,15 @@ export function useWebSocket() {
     (message: WebSocketMessage) => {
       switch (message.type) {
         case 'status':
-          updateStatus(message.data);
+          updateStatus(message.data as Record<string, unknown>);
           break;
         case 'log':
-          addLog(message.data as LogEntry);
+          addLog(message.data as unknown as LogEntry);
           break;
         case 'stats':
-          updateStatus({ stats: message.data });
+          if (message.data && typeof message.data === 'object') {
+            updateStatus({ stats: message.data as { slots_found: number; appointments_booked: number; active_users: number } });
+          }
           break;
         case 'ping':
           // Respond to ping to keep connection alive

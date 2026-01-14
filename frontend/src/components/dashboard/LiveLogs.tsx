@@ -1,6 +1,6 @@
 import { useBotStore } from '@/store/botStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { cn, getLogLevelColor, formatRelativeTime } from '@/utils/helpers';
+import { cn, getLogLevelColor } from '@/utils/helpers';
 import { useEffect, useRef } from 'react';
 
 export function LiveLogs() {
