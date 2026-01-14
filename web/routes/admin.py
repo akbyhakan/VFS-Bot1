@@ -35,10 +35,24 @@ async def get_current_admin_user(
     """
     Get current admin user from token.
     
-    For now, this is a placeholder. In production, you would:
+    ⚠️ PLACEHOLDER IMPLEMENTATION - Replace before production use!
+    
+    In production, you MUST:
     1. Extract token from Authorization header
     2. Verify token using verify_token()
-    3. Check if user has admin role
+    3. Check if user has admin role in database
+    4. Return actual user object or raise HTTPException if not admin
+    
+    Example implementation:
+        from fastapi import Header
+        from src.core.auth import verify_token
+        
+        token = authorization.split("Bearer ")[-1]
+        payload = verify_token(token)
+        user = await db.get_user_by_email(payload["email"])
+        if user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return user
     
     Args:
         credentials: User credentials from token
@@ -49,7 +63,7 @@ async def get_current_admin_user(
     Raises:
         HTTPException: If user is not admin
     """
-    # TODO: Implement proper admin authentication
+    # TODO: Implement proper admin authentication before production deployment
     # This is a simplified version for the initial implementation
     return {"role": "admin", "email": "admin@vfs-bot.local"}
 

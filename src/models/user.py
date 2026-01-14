@@ -10,12 +10,12 @@ class UserRole(str, Enum):
     """User roles."""
     ADMIN = "admin"
     USER = "user"
-    TESTER = "tester"  # Test kullanıcısı - direkt API kullanır
+    TESTER = "tester"  # Test user - uses direct API
 
 
 class UserSettings(BaseModel):
     """User-specific settings."""
-    use_direct_api: bool = False  # Direkt API kullanımı
+    use_direct_api: bool = False  # Enable direct API usage
     preferred_language: str = "tr"
     notification_enabled: bool = True
 
