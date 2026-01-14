@@ -260,7 +260,7 @@ class VFSBot:
                 if self.shutdown_event.is_set():
                     logger.info("Shutdown requested, stopping bot loop...")
                     break
-                
+
                 # Check circuit breaker
                 if self.circuit_breaker_open:
                     wait_time = self._get_circuit_breaker_wait_time()

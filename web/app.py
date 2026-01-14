@@ -288,13 +288,13 @@ async def health_check() -> Dict[str, Any]:
 async def check_database_health() -> bool:
     """
     Check database connectivity with actual query.
-    
+
     Returns:
         True if database is healthy, False otherwise
     """
     try:
         from src.models.database import Database
-        
+
         db = Database()
         await db.connect()
         try:
@@ -474,13 +474,13 @@ async def websocket_endpoint(websocket: WebSocket):
     if not token:
         await websocket.close(code=4001)
         return
-    
+
     try:
         verify_token(token)
     except HTTPException:
         await websocket.close(code=4001)
         return
-    
+
     await manager.connect(websocket)
 
     # Send initial status
@@ -626,14 +626,16 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
     else:
         # Plaintext password - only allowed in development
         if os.getenv("ENV", "production").lower() == "development":
-            logger.warning("⚠️ SECURITY WARNING: Using plaintext password. Only allowed in development!")
+            logger.warning(
+                "⚠️ SECURITY WARNING: Using plaintext password. Only allowed in development!"
+            )
             password_valid = credentials.password == admin_password
         else:
             raise HTTPException(
                 status_code=500,
                 detail="Server configuration error: ADMIN_PASSWORD must be hashed in production. "
-                       "Use: python -c \"from passlib.context import CryptContext; "
-                       "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
+                'Use: python -c "from passlib.context import CryptContext; '
+                "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
             )
 
     if not password_valid:

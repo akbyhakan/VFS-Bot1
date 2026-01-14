@@ -2,6 +2,7 @@
 DEPRECATED: This module is kept for backward compatibility.
 Use src.services.bot_service.VFSBot instead.
 """
+
 import warnings
 from src.services.bot_service import VFSBot
 
