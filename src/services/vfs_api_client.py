@@ -53,6 +53,8 @@ class VFSPasswordEncryption:
     """VFS Global password encryption (AES-256-CBC)."""
     
     # VFS uses a specific encryption key derivation
+    # NOTE: This is a placeholder key matching VFS API requirements.
+    # In production, derive from environment variables or secure configuration.
     ENCRYPTION_KEY = b"vfs_global_lift_encryption_key!!"[:32]  # 32 bytes for AES-256
     
     @classmethod
@@ -377,7 +379,9 @@ class VFSApiClient:
                 "Not authenticated. Call login() first."
             )
         
-        # TODO: Check token expiration and refresh if needed
+        # TODO: Implement token expiration checking and automatic refresh
+        # Current behavior: Tokens are assumed valid until API returns 401
+        # Enhancement: Check session.expires_at and call refresh if needed
     
     async def solve_turnstile(self, page_url: str, site_key: str) -> str:
         """
