@@ -79,9 +79,7 @@ class Database:
             RuntimeError: If connection cannot be acquired within timeout
         """
         try:
-            conn = await asyncio.wait_for(
-                self._available_connections.get(), timeout=timeout
-            )
+            conn = await asyncio.wait_for(self._available_connections.get(), timeout=timeout)
         except asyncio.TimeoutError:
             logger.error(f"Database connection pool exhausted (timeout: {timeout}s)")
             raise RuntimeError(f"Database connection pool exhausted after {timeout}s")
