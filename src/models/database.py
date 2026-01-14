@@ -2,13 +2,41 @@
 
 import aiosqlite
 import logging
-from typing import Dict, List, Optional, Any, AsyncIterator
+from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, ParamSpec
 from contextlib import asynccontextmanager
+from functools import wraps
 import asyncio
 
 from src.utils.encryption import encrypt_password, decrypt_password
 
 logger = logging.getLogger(__name__)
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+
+def require_connection(func: Callable[P, T]) -> Callable[P, T]:
+    """
+    Decorator to ensure database connection exists before method execution.
+    
+    Args:
+        func: Function to wrap
+    
+    Returns:
+        Wrapped function that checks for connection
+    
+    Raises:
+        RuntimeError: If database connection is not established
+    """
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if self.conn is None:
+            raise RuntimeError(
+                "Database connection is not established. "
+                "Call connect() first."
+            )
+        return await func(self, *args, **kwargs)
+    return wrapper
 
 
 class Database:
@@ -172,6 +200,7 @@ class Database:
             await self.conn.commit()
             logger.info("Database tables created/verified")
 
+    @require_connection
     async def add_user(
         self, email: str, password: str, centre: str, category: str, subcategory: str
     ) -> int:
@@ -188,27 +217,26 @@ class Database:
         Returns:
             User ID
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-
         # Encrypt password before storing (NOT hashing - we need plaintext for VFS login)
         encrypted_password = encrypt_password(password)
 
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO users (email, password, centre, category, subcategory)
-                VALUES (?, ?, ?, ?, ?)
-            """,
-                (email, encrypted_password, centre, category, subcategory),
-            )
-            await self.conn.commit()
-            logger.info(f"User added: {email}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT INTO users (email, password, centre, category, subcategory)
+                    VALUES (?, ?, ?, ?, ?)
+                """,
+                    (email, encrypted_password, centre, category, subcategory),
+                )
+                await conn.commit()
+                logger.info(f"User added: {email}")
+                last_id = cursor.lastrowid
+                if last_id is None:
+                    raise RuntimeError("Failed to fetch lastrowid after insert")
+                return int(last_id)
 
+    @require_connection
     async def get_active_users(self) -> List[Dict[str, Any]]:
         """
         Get all active users.
@@ -216,14 +244,13 @@ class Database:
         Returns:
             List of user dictionaries
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM users WHERE active = 1")
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
+    @require_connection
     async def get_user_with_decrypted_password(self, user_id: int) -> Optional[Dict[str, Any]]:
         """
         Get user with decrypted password for VFS login.
@@ -234,8 +261,6 @@ class Database:
         Returns:
             User dictionary with decrypted password or None
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -251,6 +276,7 @@ class Database:
                     return user
                 return None
 
+    @require_connection
     async def get_active_users_with_decrypted_passwords(self) -> List[Dict[str, Any]]:
         """
         Get all active users with decrypted passwords for VFS login.
@@ -258,8 +284,6 @@ class Database:
         Returns:
             List of user dictionaries with decrypted passwords
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM users WHERE active = 1")
@@ -290,6 +314,7 @@ class Database:
 
                 return users
 
+    @require_connection
     async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:
         """
         Add personal details for a user.
@@ -301,43 +326,43 @@ class Database:
         Returns:
             Personal details ID
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO personal_details
-                (user_id, first_name, last_name, passport_number, passport_expiry,
-                 gender, mobile_code, mobile_number, email, nationality, date_of_birth,
-                 address_line1, address_line2, state, city, postcode)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    user_id,
-                    details.get("first_name"),
-                    details.get("last_name"),
-                    details.get("passport_number"),
-                    details.get("passport_expiry"),
-                    details.get("gender"),
-                    details.get("mobile_code"),
-                    details.get("mobile_number"),
-                    details.get("email"),
-                    details.get("nationality"),
-                    details.get("date_of_birth"),
-                    details.get("address_line1"),
-                    details.get("address_line2"),
-                    details.get("state"),
-                    details.get("city"),
-                    details.get("postcode"),
-                ),
-            )
-            await self.conn.commit()
-            logger.info(f"Personal details added for user {user_id}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT INTO personal_details
+                    (user_id, first_name, last_name, passport_number, passport_expiry,
+                     gender, mobile_code, mobile_number, email, nationality, date_of_birth,
+                     address_line1, address_line2, state, city, postcode)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        user_id,
+                        details.get("first_name"),
+                        details.get("last_name"),
+                        details.get("passport_number"),
+                        details.get("passport_expiry"),
+                        details.get("gender"),
+                        details.get("mobile_code"),
+                        details.get("mobile_number"),
+                        details.get("email"),
+                        details.get("nationality"),
+                        details.get("date_of_birth"),
+                        details.get("address_line1"),
+                        details.get("address_line2"),
+                        details.get("state"),
+                        details.get("city"),
+                        details.get("postcode"),
+                    ),
+                )
+                await conn.commit()
+                logger.info(f"Personal details added for user {user_id}")
+                last_id = cursor.lastrowid
+                if last_id is None:
+                    raise RuntimeError("Failed to fetch lastrowid after insert")
+                return int(last_id)
 
+    @require_connection
     async def get_personal_details(self, user_id: int) -> Optional[Dict[str, Any]]:
         """
         Get personal details for a user.
@@ -348,13 +373,13 @@ class Database:
         Returns:
             Personal details dictionary or None
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
-            row = await cursor.fetchone()
-            return dict(row) if row else None
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
+                row = await cursor.fetchone()
+                return dict(row) if row else None
 
+    @require_connection
     async def add_appointment(
         self,
         user_id: int,
@@ -380,25 +405,25 @@ class Database:
         Returns:
             Appointment ID
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO appointments
-                (user_id, centre, category, subcategory, appointment_date,
-                 appointment_time, reference_number)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (user_id, centre, category, subcategory, date, time, reference),
-            )
-            await self.conn.commit()
-            logger.info(f"Appointment added for user {user_id}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT INTO appointments
+                    (user_id, centre, category, subcategory, appointment_date,
+                     appointment_time, reference_number)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (user_id, centre, category, subcategory, date, time, reference),
+                )
+                await conn.commit()
+                logger.info(f"Appointment added for user {user_id}")
+                last_id = cursor.lastrowid
+                if last_id is None:
+                    raise RuntimeError("Failed to fetch lastrowid after insert")
+                return int(last_id)
 
+    @require_connection
     async def get_appointments(self, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Get appointments, optionally filtered by user.
@@ -409,16 +434,16 @@ class Database:
         Returns:
             List of appointment dictionaries
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            if user_id:
-                await cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
-            else:
-                await cursor.execute("SELECT * FROM appointments")
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                if user_id:
+                    await cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
+                else:
+                    await cursor.execute("SELECT * FROM appointments")
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
 
+    @require_connection
     async def add_log(self, level: str, message: str, user_id: Optional[int] = None) -> None:
         """
         Add a log entry.
@@ -428,18 +453,18 @@ class Database:
             message: Log message
             user_id: Optional user ID
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO logs (level, message, user_id)
-                VALUES (?, ?, ?)
-            """,
-                (level, message, user_id),
-            )
-            await self.conn.commit()
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT INTO logs (level, message, user_id)
+                    VALUES (?, ?, ?)
+                """,
+                    (level, message, user_id),
+                )
+                await conn.commit()
 
+    @require_connection
     async def get_logs(self, limit: int = 100) -> List[Dict[str, Any]]:
         """
         Get recent log entries.
@@ -450,9 +475,8 @@ class Database:
         Returns:
             List of log dictionaries
         """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,))
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,))
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]

@@ -457,6 +457,18 @@ async def websocket_endpoint(websocket: WebSocket):
     Args:
         websocket: WebSocket connection
     """
+    # Query parameter authentication
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001)
+        return
+    
+    try:
+        verify_token(token)
+    except HTTPException:
+        await websocket.close(code=4001)
+        return
+    
     await manager.connect(websocket)
 
     # Send initial status
