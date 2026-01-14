@@ -124,7 +124,6 @@ async def run_both_mode(config: dict) -> None:
     bot_task = asyncio.create_task(run_bot_mode(config), name="vfs_bot")
 
     # Run both concurrently and wait for first exception
-    pending = set()
     try:
         done, pending = await asyncio.wait(
             {web_task, bot_task}, return_when=asyncio.FIRST_EXCEPTION
@@ -140,16 +139,19 @@ async def run_both_mode(config: dict) -> None:
                 raise task.exception()
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
+        # Get pending tasks for cleanup
+        pending = {t for t in {web_task, bot_task} if not t.done()}
         raise
     finally:
         # Cancel pending tasks
-        if pending:
+        pending_tasks = {t for t in {web_task, bot_task} if not t.done()}
+        if pending_tasks:
             logger.info("Cancelling pending tasks...")
-            for task in pending:
+            for task in pending_tasks:
                 task.cancel()
 
             # Wait for tasks to complete cancellation with timeout
-            await asyncio.wait(pending, timeout=5.0)
+            await asyncio.wait(pending_tasks, timeout=5.0)
             logger.info("All tasks cancelled")
 
 
