@@ -332,7 +332,10 @@ async def readiness_check():
 @app.get("/api/metrics")
 async def get_bot_metrics() -> Dict[str, Any]:
     """
-    Get detailed bot metrics.
+    Get detailed bot metrics in JSON format.
+    
+    This endpoint provides comprehensive metrics for the dashboard.
+    For Prometheus scraping, use /metrics/prometheus instead.
 
     Returns:
         Comprehensive metrics dictionary
@@ -346,7 +349,12 @@ async def get_bot_metrics() -> Dict[str, Any]:
 @app.get("/metrics")
 async def get_metrics() -> Dict[str, Any]:
     """
-    Prometheus-compatible metrics endpoint.
+    Legacy metrics endpoint (JSON format).
+    
+    Kept for backward compatibility. New integrations should use:
+    - /api/metrics for dashboard JSON metrics
+    - /metrics/prometheus for Prometheus text format
+    - /metrics/prom for prometheus_client format
 
     Returns:
         Metrics dictionary
@@ -395,7 +403,15 @@ async def get_prometheus_metrics() -> str:
 
 @app.get("/metrics/prom")
 async def metrics():
-    """Prometheus metrics endpoint using prometheus_client."""
+    """
+    Prometheus metrics endpoint using prometheus_client library.
+    
+    This endpoint returns metrics in Prometheus exposition format
+    using the official prometheus_client library for native scraping.
+    
+    Returns:
+        Response with Prometheus text format metrics
+    """
     from src.utils.prometheus_metrics import get_metrics_response
     return get_metrics_response()
 

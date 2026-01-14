@@ -2,7 +2,7 @@
 
 import re
 from typing import Optional
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
 class UserCreate(BaseModel):
@@ -14,7 +14,8 @@ class UserCreate(BaseModel):
     category: str = Field(..., min_length=1, max_length=100)
     subcategory: str = Field(..., min_length=1, max_length=100)
 
-    @validator("centre", "category", "subcategory")
+    @field_validator("centre", "category", "subcategory")
+    @classmethod
     def validate_alphanumeric_with_spaces(cls, v):
         """Validate that fields contain only safe characters."""
         if not re.match(r"^[a-zA-Z0-9\s\-\.,]+$", v):
@@ -24,7 +25,8 @@ class UserCreate(BaseModel):
             )
         return v.strip()
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def validate_password_strength(cls, v):
         """Validate password meets minimum requirements."""
         if len(v) < 8:
@@ -51,21 +53,24 @@ class PersonalDetailsCreate(BaseModel):
     city: Optional[str] = None
     postcode: Optional[str] = None
 
-    @validator("first_name", "last_name")
+    @field_validator("first_name", "last_name")
+    @classmethod
     def validate_name(cls, v):
         """Validate name contains only valid characters."""
         if not re.match(r"^[a-zA-ZğüşıöçĞÜŞİÖÇ\s\-]+$", v):
             raise ValueError("Name contains invalid characters")
         return v.strip()
 
-    @validator("passport_number")
+    @field_validator("passport_number")
+    @classmethod
     def validate_passport(cls, v):
         """Validate passport number format."""
         if not re.match(r"^[A-Z0-9]+$", v.upper()):
             raise ValueError("Invalid passport number format")
         return v.upper()
 
-    @validator("mobile_number")
+    @field_validator("mobile_number")
+    @classmethod
     def validate_mobile(cls, v):
         """Validate mobile number format."""
         if v and not re.match(r"^[0-9\+\-\s]+$", v):

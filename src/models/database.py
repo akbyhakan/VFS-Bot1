@@ -84,8 +84,14 @@ class Database:
                 timeout=timeout
             )
         except asyncio.TimeoutError:
-            logger.error(f"Connection pool exhausted - no connection available within {timeout}s")
-            raise RuntimeError(f"Database connection pool exhausted (timeout: {timeout}s)")
+            logger.error(
+                f"Connection pool exhausted - no connection available within {timeout}s. "
+                f"Pool size: {self.pool_size}. Consider increasing pool size or reducing load."
+            )
+            raise RuntimeError(
+                f"Database connection pool exhausted (timeout: {timeout}s, pool size: {self.pool_size}). "
+                f"Consider increasing POOL_SIZE or optimizing queries."
+            )
 
         try:
             yield conn
