@@ -53,7 +53,7 @@ class VFSPasswordEncryption:
     """VFS Global password encryption (AES-256-CBC)."""
     
     # VFS uses a specific encryption key derivation
-    ENCRYPTION_KEY = b"vfs_global_lift_encryption_key!"[:32]  # 32 bytes for AES-256
+    ENCRYPTION_KEY = b"vfs_global_lift_encryption_key!!"[:32]  # 32 bytes for AES-256
     
     @classmethod
     def encrypt(cls, password: str) -> str:

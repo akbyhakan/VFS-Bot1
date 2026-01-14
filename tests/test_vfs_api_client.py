@@ -189,10 +189,12 @@ class TestVFSApiClient:
             "refreshToken": "mock-refresh-token",
             "userId": "user123",
         })
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         with patch.object(client, '_init_http_session', new_callable=AsyncMock):
             client._http_session = AsyncMock()
-            client._http_session.post = AsyncMock(return_value=mock_response)
+            client._http_session.post = MagicMock(return_value=mock_response)
             client._http_session.headers = {}
             
             session = await client.login(
@@ -216,10 +218,12 @@ class TestVFSApiClient:
         mock_response = AsyncMock()
         mock_response.status = 401
         mock_response.text = AsyncMock(return_value="Invalid credentials")
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         with patch.object(client, '_init_http_session', new_callable=AsyncMock):
             client._http_session = AsyncMock()
-            client._http_session.post = AsyncMock(return_value=mock_response)
+            client._http_session.post = MagicMock(return_value=mock_response)
             
             with pytest.raises(Exception, match="Login failed: 401"):
                 await client.login(
@@ -244,9 +248,11 @@ class TestVFSApiClient:
             {"id": "1", "name": "Istanbul"},
             {"id": "2", "name": "Ankara"},
         ])
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         client._http_session = AsyncMock()
-        client._http_session.get = AsyncMock(return_value=mock_response)
+        client._http_session.get = MagicMock(return_value=mock_response)
         
         centres = await client.get_centres()
         
@@ -268,9 +274,11 @@ class TestVFSApiClient:
         mock_response.json = AsyncMock(return_value=[
             {"id": "1", "name": "Schengen Visa"},
         ])
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         client._http_session = AsyncMock()
-        client._http_session.get = AsyncMock(return_value=mock_response)
+        client._http_session.get = MagicMock(return_value=mock_response)
         
         categories = await client.get_visa_categories("centre123")
         
@@ -294,9 +302,11 @@ class TestVFSApiClient:
             "availableDates": ["2024-01-15", "2024-01-16"],
             "message": "Slots available"
         })
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         client._http_session = AsyncMock()
-        client._http_session.get = AsyncMock(return_value=mock_response)
+        client._http_session.get = MagicMock(return_value=mock_response)
         
         availability = await client.check_slot_availability(
             centre_id="centre123",
@@ -326,9 +336,11 @@ class TestVFSApiClient:
             "availableDates": [],
             "message": "No slots available"
         })
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         client._http_session = AsyncMock()
-        client._http_session.get = AsyncMock(return_value=mock_response)
+        client._http_session.get = MagicMock(return_value=mock_response)
         
         availability = await client.check_slot_availability(
             centre_id="centre123",
@@ -352,9 +364,11 @@ class TestVFSApiClient:
         
         mock_response = AsyncMock()
         mock_response.status = 500
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
         
         client._http_session = AsyncMock()
-        client._http_session.get = AsyncMock(return_value=mock_response)
+        client._http_session.get = MagicMock(return_value=mock_response)
         
         availability = await client.check_slot_availability(
             centre_id="centre123",

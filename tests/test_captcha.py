@@ -47,7 +47,7 @@ async def test_solve_turnstile_success():
     mock_solver_instance = MagicMock()
     mock_solver_instance.turnstile = MagicMock(return_value={"code": "mock-turnstile-token"})
     
-    with patch('src.services.captcha_solver.TwoCaptcha', return_value=mock_solver_instance):
+    with patch('twocaptcha.TwoCaptcha', return_value=mock_solver_instance):
         token = await solver.solve_turnstile(
             page_url="https://visa.vfsglobal.com/tur/tr/nld",
             site_key="mock-site-key"
@@ -77,7 +77,7 @@ async def test_solve_turnstile_error():
     solver = CaptchaSolver(api_key="test_api_key")
     
     # Mock TwoCaptcha to raise an exception
-    with patch('src.services.captcha_solver.TwoCaptcha', side_effect=Exception("API error")):
+    with patch('twocaptcha.TwoCaptcha', side_effect=Exception("API error")):
         token = await solver.solve_turnstile(
             page_url="https://visa.vfsglobal.com/tur/tr/nld",
             site_key="mock-site-key"
@@ -95,7 +95,7 @@ async def test_solve_turnstile_custom_timeout():
     mock_solver_instance = MagicMock()
     mock_solver_instance.turnstile = MagicMock(return_value={"code": "token"})
     
-    with patch('src.services.captcha_solver.TwoCaptcha', return_value=mock_solver_instance):
+    with patch('twocaptcha.TwoCaptcha', return_value=mock_solver_instance):
         token = await solver.solve_turnstile(
             page_url="https://visa.vfsglobal.com/tur/tr/nld",
             site_key="mock-site-key",
