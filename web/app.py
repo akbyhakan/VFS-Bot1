@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List, Set
 from datetime import datetime, timezone
+from collections import deque
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -50,7 +51,7 @@ bot_state = {
     "slots_found": 0,
     "appointments_booked": 0,
     "active_users": 0,
-    "logs": [],
+    "logs": deque(maxlen=500),  # Automatic size limit with deque
 }
 
 # Metrics storage
@@ -285,15 +286,25 @@ async def health_check() -> Dict[str, Any]:
 
 
 async def check_database_health() -> bool:
-    """Check database connectivity."""
+    """
+    Check database connectivity with actual query.
+    
+    Returns:
+        True if database is healthy, False otherwise
+    """
     try:
-        # Try to import and check database module
-        # This is a basic check - in production, you would do an actual query
-        from src.models.database import Database  # noqa: F401
-
-        # For now, assume healthy if import works
-        # TODO: Add actual database ping query when database is initialized
-        return True
+        from src.models.database import Database
+        
+        db = Database()
+        await db.connect()
+        try:
+            async with db.get_connection(timeout=5.0) as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+                    result = await cursor.fetchone()
+                    return result is not None
+        finally:
+            await db.close()
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
@@ -446,7 +457,8 @@ async def get_logs(
     Returns:
         Dictionary with logs list
     """
-    return {"logs": bot_state["logs"][-limit:]}
+    logs_list = list(bot_state["logs"])
+    return {"logs": logs_list[-limit:]}
 
 
 @app.websocket("/ws")
@@ -541,10 +553,7 @@ async def add_log(message: str, level: str = "INFO") -> None:
     log_entry = f"[{timestamp}] [{level}] {message}"
 
     bot_state["logs"].append(log_entry)
-
-    # Keep only last 500 logs in memory
-    if len(bot_state["logs"]) > 500:
-        bot_state["logs"] = bot_state["logs"][-500:]
+    # deque with maxlen=500 automatically removes oldest entries
 
     await broadcast_message(
         {"type": "log", "data": {"message": log_entry, "level": level, "timestamp": timestamp}}
@@ -609,15 +618,23 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check password - support both plaintext (for simple setups) and hashed passwords
+    # Check password - support both plaintext (for development) and hashed passwords
     password_valid = False
     if admin_password.startswith("$2b$"):
         # Hashed password (bcrypt format)
         password_valid = verify_password(credentials.password, admin_password)
     else:
-        # Plaintext password (for development/testing)
-        # Note: In production, passwords should be hashed
-        password_valid = credentials.password == admin_password
+        # Plaintext password - only allowed in development
+        if os.getenv("ENV", "production").lower() == "development":
+            logger.warning("⚠️ SECURITY WARNING: Using plaintext password. Only allowed in development!")
+            password_valid = credentials.password == admin_password
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Server configuration error: ADMIN_PASSWORD must be hashed in production. "
+                       "Use: python -c \"from passlib.context import CryptContext; "
+                       "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
+            )
 
     if not password_valid:
         raise HTTPException(

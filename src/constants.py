@@ -110,3 +110,16 @@ class Delays:
     BUTTON_CLICK_WAIT = 0.5  # Wait after button click
     FORM_SUBMIT_WAIT = 3.0  # Wait after form submission
     PAGE_LOAD_BUFFER = 1.0  # Extra buffer for page loads
+    
+    # Random delay ranges for human-like behavior
+    SHORT_MIN = 0.3
+    SHORT_MAX = 0.7
+    MEDIUM_MIN = 1.5
+    MEDIUM_MAX = 3.0
+    LONG_MIN = 2.5
+    LONG_MAX = 5.0
+    
+    # Specific action delays (min, max)
+    AFTER_LOGIN_FIELD = (0.3, 0.7)
+    AFTER_SELECT_OPTION = (1.5, 3.0)
+    AFTER_CLICK_CHECK = (2.5, 4.0)
