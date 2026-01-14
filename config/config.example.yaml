@@ -2,12 +2,25 @@ vfs:
   base_url: "https://visa.vfsglobal.com"
   country: "tur"
   language: "tr"
-  mission: "deu"
+  # Target country (mission) - MUST be one of the supported Schengen countries
+  # Supported: fra, nld, aut, bel, cze, pol, swe, che, fin, est, lva, ltu, lux, mlt, nor, dnk, isl, svn, hrv, bgr, svk
+  mission: "nld"
   centres:
     - "Istanbul"
     - "Ankara"
   category: "Schengen Visa"
   subcategory: "Tourism"
+
+# Multi-target support - check multiple countries
+multi_target:
+  enabled: false
+  targets:
+    - mission: "nld"
+      centres: ["Istanbul", "Ankara"]
+    - mission: "fra"
+      centres: ["Istanbul", "Ankara", "Izmir"]
+    - mission: "hrv"
+      centres: ["Istanbul"]
 
 credentials:
   email: "${VFS_EMAIL}"
@@ -29,7 +42,7 @@ notifications:
 captcha:
   provider: "2captcha"  # Only 2captcha is supported
   api_key: "${CAPTCHA_API_KEY}"
-  manual_timeout: 120
+  manual_timeout: 120  # Timeout for manual solving or Cloudflare Turnstile
 
 # SMS OTP Configuration
 otp:
