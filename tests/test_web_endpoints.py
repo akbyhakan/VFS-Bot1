@@ -246,7 +246,7 @@ class TestWebSocketAuthentication:
     def test_websocket_requires_token(self, client):
         """Test that WebSocket connection requires a token."""
         # Try to connect without sending authentication
-        with client.websocket_connect("/ws") as websocket:
+        with client.websocket_connect("/ws"):
             # Don't send auth, should timeout and close
             # The connection is accepted but requires auth message
             pass  # Connection will be closed by timeout
@@ -266,7 +266,7 @@ class TestWebSocketAuthentication:
         token = create_access_token({"sub": "test_user"})
 
         # Connect and send valid token
-        with client.websocket_connect(f"/ws") as websocket:
+        with client.websocket_connect("/ws") as websocket:
             # Send authentication message
             websocket.send_json({"token": token})
             # Should receive initial status message
