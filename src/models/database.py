@@ -1,181 +1,121 @@
-from typing import Optional, AsyncIterator
-import aiosqlite
-import os
-from datetime import datetime
+"""
+Database module with connection pooling support.
+"""
 
-DATABASE_PATH = os.getenv("DATABASE_PATH", "data/vfs_bot.db")
+import sqlite3
+from queue import Queue
+from threading import Lock
+from contextlib import contextmanager
 
 
-async def init_database():
-    """Initialize the database and create tables if they don't exist."""
-    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+class Database:
+    """Database class with connection pooling for efficient database operations."""
     
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                telegram_id INTEGER UNIQUE NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                last_name TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active BOOLEAN DEFAULT 1
-            )
-        """)
+    def __init__(self, db_path: str, pool_size: int = 5):
+        """
+        Initialize the database with connection pooling.
         
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS appointments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                appointment_date DATE NOT NULL,
-                appointment_time TIME,
-                location TEXT,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        """)
+        Args:
+            db_path: Path to the SQLite database file.
+            pool_size: Number of connections to maintain in the pool.
+        """
+        self.db_path = db_path
+        self.pool_size = pool_size
+        self._pool = Queue(maxsize=pool_size)
+        self._lock = Lock()
+        self._initialized = False
         
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                message TEXT NOT NULL,
-                is_read BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        """)
-        
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER UNIQUE NOT NULL,
-                notify_enabled BOOLEAN DEFAULT 1,
-                language TEXT DEFAULT 'en',
-                timezone TEXT DEFAULT 'UTC',
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        """)
-        
-        await db.commit()
-
-
-async def get_connection() -> AsyncIterator[aiosqlite.Connection]:
-    """Get a database connection as an async context manager."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        yield db
-
-
-async def get_user_by_telegram_id(telegram_id: int) -> Optional[dict]:
-    """Get a user by their Telegram ID."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM users WHERE telegram_id = ?", (telegram_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return dict(row) if row else None
-
-
-async def create_user(telegram_id: int, username: str = None, 
-                      first_name: str = None, last_name: str = None) -> int:
-    """Create a new user and return their ID."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        cursor = await db.execute(
-            """INSERT INTO users (telegram_id, username, first_name, last_name)
-               VALUES (?, ?, ?, ?)""",
-            (telegram_id, username, first_name, last_name)
-        )
-        await db.commit()
-        return cursor.lastrowid
-
-
-async def update_user(telegram_id: int, **kwargs) -> bool:
-    """Update user information."""
-    if not kwargs:
-        return False
+        # Pre-populate the connection pool
+        self._initialize_pool()
     
-    set_clause = ", ".join(f"{key} = ?" for key in kwargs.keys())
-    values = list(kwargs.values()) + [telegram_id]
+    def _initialize_pool(self):
+        """Initialize the connection pool with database connections."""
+        with self._lock:
+            if not self._initialized:
+                for _ in range(self.pool_size):
+                    conn = self._create_connection()
+                    self._pool.put(conn)
+                self._initialized = True
     
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
-            f"UPDATE users SET {set_clause} WHERE telegram_id = ?",
-            values
-        )
-        await db.commit()
-        return True
-
-
-async def create_appointment(user_id: int, appointment_date: str,
-                            appointment_time: str = None, 
-                            location: str = None) -> int:
-    """Create a new appointment."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        cursor = await db.execute(
-            """INSERT INTO appointments (user_id, appointment_date, appointment_time, location)
-               VALUES (?, ?, ?, ?)""",
-            (user_id, appointment_date, appointment_time, location)
-        )
-        await db.commit()
-        return cursor.lastrowid
-
-
-async def get_user_appointments(user_id: int) -> list:
-    """Get all appointments for a user."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM appointments WHERE user_id = ? ORDER BY appointment_date",
-            (user_id,)
-        ) as cursor:
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
-
-
-async def update_appointment_status(appointment_id: int, status: str) -> bool:
-    """Update the status of an appointment."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.execute(
-            "UPDATE appointments SET status = ? WHERE id = ?",
-            (status, appointment_id)
-        )
-        await db.commit()
-        return True
-
-
-async def get_user_settings(user_id: int) -> Optional[dict]:
-    """Get settings for a user."""
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM settings WHERE user_id = ?", (user_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return dict(row) if row else None
-
-
-async def create_or_update_settings(user_id: int, **kwargs) -> bool:
-    """Create or update user settings."""
-    existing = await get_user_settings(user_id)
+    def _create_connection(self) -> sqlite3.Connection:
+        """
+        Create a new database connection.
+        
+        Returns:
+            A new SQLite connection object.
+        """
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
     
-    async with aiosqlite.connect(DATABASE_PATH) as db:
-        if existing:
-            if kwargs:
-                set_clause = ", ".join(f"{key} = ?" for key in kwargs.keys())
-                values = list(kwargs.values()) + [user_id]
-                await db.execute(
-                    f"UPDATE settings SET {set_clause} WHERE user_id = ?",
-                    values
-                )
-        else:
-            columns = ["user_id"] + list(kwargs.keys())
-            placeholders = ", ".join("?" * len(columns))
-            values = [user_id] + list(kwargs.values())
-            await db.execute(
-                f"INSERT INTO settings ({', '.join(columns)}) VALUES ({placeholders})",
-                values
-            )
-        await db.commit()
-        return True
+    def get_connection(self) -> sqlite3.Connection:
+        """
+        Get a connection from the pool.
+        
+        Returns:
+            A database connection from the pool.
+        """
+        return self._pool.get()
+    
+    def release_connection(self, conn: sqlite3.Connection):
+        """
+        Release a connection back to the pool.
+        
+        Args:
+            conn: The connection to release.
+        """
+        self._pool.put(conn)
+    
+    @contextmanager
+    def connection(self):
+        """
+        Context manager for database connections.
+        
+        Yields:
+            A database connection that will be automatically released.
+        """
+        conn = self.get_connection()
+        try:
+            yield conn
+        finally:
+            self.release_connection(conn)
+    
+    def execute(self, query: str, params: tuple = None):
+        """
+        Execute a query and return the results.
+        
+        Args:
+            query: SQL query to execute.
+            params: Optional parameters for the query.
+            
+        Returns:
+            List of rows returned by the query.
+        """
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            conn.commit()
+            return cursor.fetchall()
+    
+    def execute_many(self, query: str, params_list: list):
+        """
+        Execute a query with multiple parameter sets.
+        
+        Args:
+            query: SQL query to execute.
+            params_list: List of parameter tuples.
+        """
+        with self.connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany(query, params_list)
+            conn.commit()
+    
+    def close_all(self):
+        """Close all connections in the pool."""
+        while not self._pool.empty():
+            conn = self._pool.get_nowait()
+            conn.close()
+        self._initialized = False
