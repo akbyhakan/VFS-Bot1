@@ -1,12 +1,15 @@
 """Factory for creating appropriate VFS service based on user type."""
 
 import logging
-from typing import Union
+from typing import Union, Optional, Any, Dict
+import asyncio
 
 from src.models.user import User
 from src.services.bot_service import VFSBot
 from src.services.vfs_api_client import VFSApiClient
 from src.services.captcha_solver import CaptchaSolver
+from src.models.database import Database
+from src.services.notification import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,10 @@ class VFSServiceFactory:
     async def create_service(
         user: User,
         config: dict,
-        captcha_solver: CaptchaSolver
+        captcha_solver: CaptchaSolver,
+        db: Optional[Database] = None,
+        notifier: Optional[NotificationService] = None,
+        shutdown_event: Optional[asyncio.Event] = None
     ) -> Union[VFSBot, VFSApiClient]:
         """
         Create appropriate VFS service for user.
@@ -32,6 +38,9 @@ class VFSServiceFactory:
             user: User making the request
             config: Bot configuration
             captcha_solver: Captcha solver instance
+            db: Database instance (required for VFSBot)
+            notifier: Notification service (required for VFSBot)
+            shutdown_event: Shutdown event (optional for VFSBot)
             
         Returns:
             VFSBot for normal users, VFSApiClient for testers
@@ -53,7 +62,18 @@ class VFSServiceFactory:
                 f"Creating VFSBot (browser) for user: {user.email} "
                 f"(role: {user.role.value})"
             )
-            return VFSBot(config=config)
+            # For browser mode, we need db and notifier
+            if db is None:
+                raise ValueError("Database instance required for browser mode")
+            if notifier is None:
+                raise ValueError("Notification service required for browser mode")
+                
+            return VFSBot(
+                config=config,
+                db=db,
+                notifier=notifier,
+                shutdown_event=shutdown_event
+            )
     
     @staticmethod
     def get_service_type(user: User) -> str:
