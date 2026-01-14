@@ -15,6 +15,7 @@ from src.utils.helpers import (
     random_delay,
     safe_navigate,
     safe_screenshot,
+    mask_password,
 )
 
 
@@ -222,3 +223,26 @@ async def test_safe_screenshot_failure(mock_page, tmp_path):
     filepath = str(tmp_path / "test.png")
     result = await safe_screenshot(mock_page, filepath)
     assert result is False
+
+
+def test_mask_password_empty():
+    """Test mask_password with empty password."""
+    assert mask_password("") == "****"
+
+
+def test_mask_password_short():
+    """Test mask_password with short password (<=4 chars)."""
+    assert mask_password("abc") == "***"
+    assert mask_password("abcd") == "****"
+
+
+def test_mask_password_medium():
+    """Test mask_password with medium password (5-8 chars)."""
+    assert mask_password("pass1") == "p***1"
+    assert mask_password("password") == "p******d"
+
+
+def test_mask_password_long():
+    """Test mask_password with long password (>8 chars)."""
+    assert mask_password("mypassword123") == "my*********23"
+    assert mask_password("verylongpassword") == "ve************rd"

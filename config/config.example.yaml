@@ -27,9 +27,19 @@ notifications:
     receiver: "${EMAIL_RECEIVER}"
 
 captcha:
-  provider: "2captcha"  # Options: 2captcha, anticaptcha, nopecha, manual
+  provider: "2captcha"  # Only 2captcha is supported
   api_key: "${CAPTCHA_API_KEY}"
   manual_timeout: 120
+
+# SMS OTP Configuration
+otp:
+  enabled: true
+  webhook_secret: "${SMS_WEBHOOK_SECRET}"
+  timeout_seconds: 300
+  max_entries: 100
+  patterns:  # Custom regex patterns (optional)
+    - '\b(\d{6})\b'
+    - 'code[:\s]+(\d{4,6})'
 
 bot:
   check_interval: 30

@@ -2,6 +2,7 @@
 
 import os
 import logging
+import threading
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -101,6 +102,7 @@ class PasswordEncryption:
 
 # Global instance
 _encryption_instance: Optional[PasswordEncryption] = None
+_lock = threading.Lock()
 
 
 def reset_encryption() -> None:
@@ -110,12 +112,13 @@ def reset_encryption() -> None:
     This is useful for testing or when the encryption key changes.
     """
     global _encryption_instance
-    _encryption_instance = None
+    with _lock:
+        _encryption_instance = None
 
 
 def get_encryption() -> PasswordEncryption:
     """
-    Get global encryption instance (singleton).
+    Get global encryption instance (singleton) - thread-safe.
 
     If the ENCRYPTION_KEY environment variable has changed since the
     singleton was created, the instance is reset to use the new key.
@@ -125,17 +128,15 @@ def get_encryption() -> PasswordEncryption:
     """
     global _encryption_instance
 
-    current_key = os.getenv("ENCRYPTION_KEY")
+    with _lock:
+        current_key = os.getenv("ENCRYPTION_KEY")
 
-    # Reset if instance doesn't exist
-    if _encryption_instance is None:
-        _encryption_instance = PasswordEncryption()
-    # Reset if key has changed (and current_key is not None)
-    elif current_key is not None and _encryption_instance._key != current_key:
-        # Key has changed, reset the instance
-        _encryption_instance = PasswordEncryption()
+        if _encryption_instance is None:
+            _encryption_instance = PasswordEncryption()
+        elif current_key is not None and _encryption_instance._key != current_key:
+            _encryption_instance = PasswordEncryption()
 
-    return _encryption_instance
+        return _encryption_instance
 
 
 def encrypt_password(password: str) -> str:

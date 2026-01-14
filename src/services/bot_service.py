@@ -93,9 +93,12 @@ class VFSBot:
         # Initialize error capture
         self.error_capture = ErrorCapture()
 
+        # Initialize OTP service
+        from .otp_webhook import get_otp_service
+        self.otp_service = get_otp_service()
+
         # Initialize components
         self.captcha_solver = CaptchaSolver(
-            provider=config["captcha"]["provider"],
             api_key=config["captcha"].get("api_key", ""),
             manual_timeout=config["captcha"].get("manual_timeout", 120),
         )
@@ -530,6 +533,40 @@ class VFSBot:
 
         except Exception as e:
             logger.error(f"Login error: {e}")
+            return False
+
+    async def handle_otp_verification(self, page: Page) -> bool:
+        """
+        Handle OTP verification if required.
+        
+        Args:
+            page: Playwright page object
+            
+        Returns:
+            True if OTP verification successful or not required
+        """
+        try:
+            # Check if OTP input is present
+            otp_input = await page.locator('input[name="otp"]').count()
+            
+            if otp_input > 0:
+                logger.info("OTP verification required, waiting for SMS...")
+                
+                otp_code = await self.otp_service.wait_for_otp(timeout=120)
+                
+                if otp_code:
+                    await smart_fill(page, 'input[name="otp"]', otp_code, self.human_sim)
+                    await smart_click(page, 'button[type="submit"]', self.human_sim)
+                    logger.info("OTP verification completed")
+                    return True
+                else:
+                    logger.error("OTP not received within timeout")
+                    return False
+            
+            return True  # No OTP required
+            
+        except Exception as e:
+            logger.error(f"OTP verification error: {e}")
             return False
 
     async def check_slots(
