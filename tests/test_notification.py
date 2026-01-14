@@ -224,9 +224,10 @@ async def test_send_notification_with_both_channels():
 
     notifier = NotificationService(config)
 
-    with patch.object(
-        notifier, "send_telegram", new_callable=AsyncMock
-    ) as mock_telegram, patch.object(notifier, "send_email", new_callable=AsyncMock) as mock_email:
+    with (
+        patch.object(notifier, "send_telegram", new_callable=AsyncMock) as mock_telegram,
+        patch.object(notifier, "send_email", new_callable=AsyncMock) as mock_email,
+    ):
         mock_telegram.return_value = True
         mock_email.return_value = True
         await notifier.send_notification("Test", "Message")

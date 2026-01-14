@@ -260,10 +260,10 @@ class TestWebSocketAuthentication:
     def test_websocket_accepts_valid_token(self, client):
         """Test WebSocket connection with valid token."""
         from src.core.auth import create_access_token
-        
+
         # Create a valid token
         token = create_access_token({"sub": "test_user"})
-        
+
         # Connect with valid token
         with client.websocket_connect(f"/ws?token={token}") as websocket:
             # Should receive initial status message

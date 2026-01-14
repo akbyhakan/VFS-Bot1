@@ -374,17 +374,17 @@ def test_token_refresh_buffer_conversion():
 def test_session_file_permissions(tmp_path):
     """Test that session file has correct permissions (Unix only)."""
     import platform
-    
+
     # Skip on Windows
     if platform.system() == "Windows":
         pytest.skip("File permissions test not applicable on Windows")
-    
+
     import stat
-    
+
     session_file = tmp_path / "session.json"
     manager = SessionManager(session_file=str(session_file))
     manager.set_tokens("test_token")
-    
+
     # Check file permissions (should be 0600 - owner read/write only)
     mode = os.stat(session_file).st_mode
     # Check that group and other have no permissions
