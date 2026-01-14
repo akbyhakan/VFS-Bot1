@@ -16,9 +16,10 @@ def test_captcha_solver_initialization():
 
 
 def test_captcha_solver_initialization_no_key():
-    """Test captcha solver initialization without API key raises error."""
-    with pytest.raises(ValueError, match="2Captcha API key is required"):
-        CaptchaSolver(api_key="")
+    """Test captcha solver initialization without API key (manual mode)."""
+    solver = CaptchaSolver(api_key="")
+    assert solver.api_key == ""
+    assert solver.manual_timeout == 120  # Default timeout
 
 
 def test_manual_solver_timeout():
