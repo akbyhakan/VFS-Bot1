@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, NamedTuple
 from functools import lru_cache
 
 from jose import JWTError, jwt
@@ -45,14 +45,22 @@ from passlib.context import CryptContext  # noqa: E402
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+class JWTSettings(NamedTuple):
+    """JWT configuration settings."""
+
+    secret_key: str
+    algorithm: str
+    expire_hours: int
+
+
 @lru_cache(maxsize=1)
-def _get_jwt_settings() -> tuple:
+def _get_jwt_settings() -> JWTSettings:
     """
     Get JWT settings with lazy initialization.
-    
+
     Returns:
-        Tuple of (secret_key, algorithm, expire_hours)
-    
+        JWTSettings named tuple with secret_key, algorithm, and expire_hours
+
     Raises:
         ValueError: If API_SECRET_KEY is not set or invalid
     """
@@ -69,30 +77,30 @@ def _get_jwt_settings() -> tuple:
             "Generate a secure random key with: "
             "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
         )
-    
+
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")
-    
+
     try:
         expire_hours = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
     except (ValueError, TypeError):
         raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
-    
-    return secret_key, algorithm, expire_hours
+
+    return JWTSettings(secret_key=secret_key, algorithm=algorithm, expire_hours=expire_hours)
 
 
 def get_secret_key() -> str:
     """Get the JWT secret key."""
-    return _get_jwt_settings()[0]
+    return _get_jwt_settings().secret_key
 
 
 def get_algorithm() -> str:
     """Get the JWT algorithm."""
-    return _get_jwt_settings()[1]
+    return _get_jwt_settings().algorithm
 
 
 def get_token_expire_hours() -> int:
     """Get the JWT token expiry hours."""
-    return _get_jwt_settings()[2]
+    return _get_jwt_settings().expire_hours
 
 
 def _truncate_password(password: str) -> str:
@@ -143,7 +151,7 @@ def create_access_token(
     secret_key = get_secret_key()
     algorithm = get_algorithm()
     expire_hours = get_token_expire_hours()
-    
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -172,7 +180,7 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     secret_key = get_secret_key()
     algorithm = get_algorithm()
-    
+
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return cast(dict[str, Any], payload)

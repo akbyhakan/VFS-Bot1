@@ -2,7 +2,7 @@
 
 import aiosqlite
 import logging
-from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, ParamSpec
+from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
 import asyncio
@@ -11,32 +11,30 @@ from src.utils.encryption import encrypt_password, decrypt_password
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec('P')
-T = TypeVar('T')
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
-def require_connection(func: Callable[P, T]) -> Callable[P, T]:
+def require_connection(func: F) -> F:
     """
     Decorator to ensure database connection exists before method execution.
-    
+
     Args:
         func: Function to wrap
-    
+
     Returns:
         Wrapped function that checks for connection
-    
+
     Raises:
         RuntimeError: If database connection is not established
     """
+
     @wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: "Database", *args: Any, **kwargs: Any) -> Any:
         if self.conn is None:
-            raise RuntimeError(
-                "Database connection is not established. "
-                "Call connect() first."
-            )
+            raise RuntimeError("Database connection is not established. " "Call connect() first.")
         return await func(self, *args, **kwargs)
-    return wrapper
+
+    return wrapper  # type: ignore[return-value]
 
 
 class Database:
@@ -477,6 +475,8 @@ class Database:
         """
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,))
+                await cursor.execute(
+                    "SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,)
+                )
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
