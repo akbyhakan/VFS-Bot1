@@ -2,6 +2,8 @@
 
 import json
 import logging
+import os
+import stat
 import time
 from pathlib import Path
 from typing import Callable, Dict, Optional
@@ -84,7 +86,10 @@ class SessionManager:
             with open(self.session_file, "w") as f:
                 json.dump(data, f, indent=2)
 
-            logger.info("Session saved to file")
+            # Set secure file permissions (0600 - owner read/write only)
+            os.chmod(self.session_file, stat.S_IRUSR | stat.S_IWUSR)
+
+            logger.info("Session saved securely to file")
             return True
 
         except Exception as e:

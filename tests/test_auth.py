@@ -10,8 +10,8 @@ from src.core.auth import (
     verify_token,
     hash_password,
     verify_password,
-    SECRET_KEY,
-    ALGORITHM,
+    get_secret_key,
+    get_algorithm,
 )
 from fastapi import HTTPException
 
@@ -25,7 +25,7 @@ def test_create_access_token():
     assert isinstance(token, str)
 
     # Decode and verify
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    payload = jwt.decode(token, get_secret_key(), algorithms=[get_algorithm()])
     assert payload["sub"] == "testuser"
     assert payload["name"] == "Test User"
     assert "exp" in payload
@@ -38,7 +38,7 @@ def test_create_access_token_with_expiry():
     token = create_access_token(data, expires_delta)
 
     assert token is not None
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    payload = jwt.decode(token, get_secret_key(), algorithms=[get_algorithm()])
     assert payload["sub"] == "testuser"
 
 

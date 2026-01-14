@@ -3,6 +3,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast
+from functools import lru_cache
 
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
@@ -43,28 +44,55 @@ from passlib.context import CryptContext  # noqa: E402
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings from environment
-_secret_key = os.getenv("API_SECRET_KEY")
-if not _secret_key:
-    raise ValueError(
-        "API_SECRET_KEY environment variable must be set. "
-        "Generate a secure random key with: "
-        "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-    )
-if len(_secret_key) < 32:
-    raise ValueError(
-        "API_SECRET_KEY must be at least 32 characters for security. "
-        "Generate a secure random key with: "
-        "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-    )
-SECRET_KEY = _secret_key
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-# Validate and convert JWT_EXPIRY_HOURS
-try:
-    ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
-except (ValueError, TypeError):
-    raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
+@lru_cache(maxsize=1)
+def _get_jwt_settings() -> tuple:
+    """
+    Get JWT settings with lazy initialization.
+    
+    Returns:
+        Tuple of (secret_key, algorithm, expire_hours)
+    
+    Raises:
+        ValueError: If API_SECRET_KEY is not set or invalid
+    """
+    secret_key = os.getenv("API_SECRET_KEY")
+    if not secret_key:
+        raise ValueError(
+            "API_SECRET_KEY environment variable must be set. "
+            "Generate a secure random key with: "
+            "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        )
+    if len(secret_key) < 32:
+        raise ValueError(
+            "API_SECRET_KEY must be at least 32 characters for security. "
+            "Generate a secure random key with: "
+            "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        )
+    
+    algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+    
+    try:
+        expire_hours = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
+    except (ValueError, TypeError):
+        raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
+    
+    return secret_key, algorithm, expire_hours
+
+
+def get_secret_key() -> str:
+    """Get the JWT secret key."""
+    return _get_jwt_settings()[0]
+
+
+def get_algorithm() -> str:
+    """Get the JWT algorithm."""
+    return _get_jwt_settings()[1]
+
+
+def get_token_expire_hours() -> int:
+    """Get the JWT token expiry hours."""
+    return _get_jwt_settings()[2]
 
 
 def _truncate_password(password: str) -> str:
@@ -112,14 +140,18 @@ def create_access_token(
         Encoded JWT token
 
     """
+    secret_key = get_secret_key()
+    algorithm = get_algorithm()
+    expire_hours = get_token_expire_hours()
+    
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     if isinstance(encoded_jwt, bytes):
         return encoded_jwt.decode()
     return str(encoded_jwt)
@@ -138,8 +170,11 @@ def verify_token(token: str) -> Dict[str, Any]:
     Raises:
         HTTPException: If token is invalid or expired
     """
+    secret_key = get_secret_key()
+    algorithm = get_algorithm()
+    
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return cast(dict[str, Any], payload)
     except JWTError as e:
         raise HTTPException(

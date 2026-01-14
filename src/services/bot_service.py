@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 import time
 from collections import deque
 from datetime import datetime
@@ -9,12 +10,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional, TypedDict
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from .captcha_solver import CaptchaSolver
 from .centre_fetcher import CentreFetcher
 from .notification import NotificationService
-from ..constants import Timeouts, Intervals, Retries, CircuitBreaker, RateLimits
+from ..constants import Timeouts, Intervals, Retries, CircuitBreaker, RateLimits, Delays
 from ..models.database import Database
 from ..utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ..utils.anti_detection.fingerprint_bypass import FingerprintBypass
@@ -52,7 +53,13 @@ class UserInfo(TypedDict):
 class VFSBot:
     """VFS appointment booking bot using Playwright."""
 
-    def __init__(self, config: Dict[str, Any], db: Database, notifier: NotificationService):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        db: Database,
+        notifier: NotificationService,
+        shutdown_event: Optional[asyncio.Event] = None,
+    ):
         """
         Initialize VFS bot.
 
@@ -60,6 +67,7 @@ class VFSBot:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
+            shutdown_event: Optional event to signal graceful shutdown
         """
         self.config = config
         self.db = db
@@ -68,6 +76,7 @@ class VFSBot:
         self.context: Optional[BrowserContext] = None
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
+        self.shutdown_event = shutdown_event or asyncio.Event()
 
         # Circuit breaker state
         self.consecutive_errors = 0
@@ -245,8 +254,13 @@ class VFSBot:
 
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
-        while self.running:
+        while self.running and not self.shutdown_event.is_set():
             try:
+                # Check for shutdown request
+                if self.shutdown_event.is_set():
+                    logger.info("Shutdown requested, stopping bot loop...")
+                    break
+                
                 # Check circuit breaker
                 if self.circuit_breaker_open:
                     wait_time = self._get_circuit_breaker_wait_time()
@@ -372,7 +386,7 @@ class VFSBot:
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
-        wait=wait_exponential(
+        wait=wait_random_exponential(
             multiplier=Retries.EXPONENTIAL_MULTIPLIER,
             min=Retries.EXPONENTIAL_MIN,
             max=Retries.EXPONENTIAL_MAX,
@@ -481,7 +495,7 @@ class VFSBot:
             # Fill login form with human simulation
             try:
                 await smart_fill(page, 'input[name="email"]', email, self.human_sim)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(random.uniform(*Delays.AFTER_LOGIN_FIELD))
                 await smart_fill(page, 'input[name="password"]', password, self.human_sim)
             except Exception as e:
                 # Capture error with failed selector
@@ -553,17 +567,17 @@ class VFSBot:
 
             # Select centre, category, subcategory
             await page.select_option("select#centres", label=centre)
-            await asyncio.sleep(2)
+            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
             await page.select_option("select#categories", label=category)
-            await asyncio.sleep(2)
+            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
             await page.select_option("select#subcategories", label=subcategory)
-            await asyncio.sleep(2)
+            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
             # Click to check slots with human simulation
             await smart_click(page, "button#check-slots", self.human_sim)
-            await asyncio.sleep(3)
+            await asyncio.sleep(random.uniform(*Delays.AFTER_CLICK_CHECK))
 
             # Check if slots are available
             slots_available = await page.locator(".available-slot").count() > 0
