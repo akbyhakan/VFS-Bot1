@@ -2,7 +2,7 @@
 
 import logging
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, HttpUrl, validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,8 @@ class VFSConfig(BaseModel):
     mission: str = Field(..., min_length=2, max_length=3, description="Mission code")
     centres: List[str] = Field(..., description="List of VFS centres")
 
-    @validator("base_url")
+    @field_validator("base_url")
+    @classmethod
     def validate_https(cls, v):
         """Ensure URL is HTTPS."""
         if not str(v).startswith("https://"):
@@ -53,7 +54,8 @@ class CaptchaConfig(BaseModel):
     api_key: str = Field(default="", description="Captcha API key")
     manual_timeout: int = Field(default=120, ge=30, le=600, description="Manual timeout (30-600s)")
 
-    @validator("provider")
+    @field_validator("provider")
+    @classmethod
     def validate_provider(cls, v):
         """Validate captcha provider."""
         valid_providers = ["manual", "2captcha", "anticaptcha", "nopecha"]

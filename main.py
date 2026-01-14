@@ -19,6 +19,7 @@ from src.services.bot_service import VFSBot
 from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
+from src.constants import SelectorHealth
 
 
 def setup_signal_handlers():
@@ -71,7 +72,7 @@ async def run_bot_mode(config: dict) -> None:
             bot.health_checker = SelectorHealthCheck(
                 selector_manager,
                 notifier,
-                check_interval=config.get("selector_health_check", {}).get("interval", 3600),
+                check_interval=config.get("selector_health_check", {}).get("interval", SelectorHealth.DEFAULT_INTERVAL),
             )
             logger.info("Selector health monitoring initialized")
         else:
@@ -108,7 +109,7 @@ async def run_web_mode(config: dict) -> None:
 
 async def run_both_mode(config: dict) -> None:
     """
-    Run both bot and web dashboard concurrently.
+    Run both bot and web dashboard concurrently with graceful shutdown.
 
     Args:
         config: Configuration dictionary
@@ -117,21 +118,38 @@ async def run_both_mode(config: dict) -> None:
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
     # Create tasks for both modes
-    web_task = asyncio.create_task(run_web_mode(config))
-    bot_task = asyncio.create_task(run_bot_mode(config))
+    web_task = asyncio.create_task(run_web_mode(config), name="web_dashboard")
+    bot_task = asyncio.create_task(run_bot_mode(config), name="vfs_bot")
+    
+    tasks = [web_task, bot_task]
 
-    # Run both concurrently and handle exceptions
     try:
-        results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
-
-        # Check for exceptions in results
-        for i, result in enumerate(results):
-            task_name = "web" if i == 0 else "bot"
-            if isinstance(result, Exception):
-                logger.error(f"Task '{task_name}' failed with exception: {result}", exc_info=result)
+        # Wait for first task to complete or fail
+        done, pending = await asyncio.wait(
+            tasks,
+            return_when=asyncio.FIRST_EXCEPTION
+        )
+        
+        # Check for exceptions
+        for task in done:
+            if task.exception():
+                logger.error(f"Task '{task.get_name()}' failed: {task.exception()}")
+                
+    except asyncio.CancelledError:
+        logger.info("Received shutdown signal, cancelling tasks...")
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
-        raise
+    finally:
+        # Graceful shutdown: cancel all pending tasks
+        logger.info("Initiating graceful shutdown...")
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+                try:
+                    await asyncio.wait_for(task, timeout=5.0)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+        logger.info("All tasks cancelled, shutdown complete")
 
 
 def main() -> None:

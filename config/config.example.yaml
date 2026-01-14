@@ -73,7 +73,7 @@ session:
 
 selector_health_check:
   enabled: true
-  interval: 3600  # Check every hour (in seconds)
+  interval: 43200  # Check every 12 hours (in seconds)
   critical_selectors:
     - login.email_input
     - login.password_input
