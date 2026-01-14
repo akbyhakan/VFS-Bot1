@@ -88,7 +88,7 @@ class ConnectionManager:
         Args:
             websocket: WebSocket connection
         """
-        await websocket.accept()
+        # Note: WebSocket should already be accepted before calling this method
         async with self._lock:
             self._connections.add(websocket)
 
