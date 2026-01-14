@@ -65,14 +65,28 @@ class Database:
         logger.info("Database connection pool closed")
 
     @asynccontextmanager
-    async def get_connection(self):
+    async def get_connection(self, timeout: float = 30.0):
         """
-        Get a connection from the pool.
+        Get a connection from the pool with timeout.
+
+        Args:
+            timeout: Maximum seconds to wait for a connection
 
         Yields:
             Database connection from pool
+
+        Raises:
+            asyncio.TimeoutError: If no connection available within timeout
         """
-        conn = await self._available_connections.get()
+        try:
+            conn = await asyncio.wait_for(
+                self._available_connections.get(),
+                timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Connection pool exhausted - no connection available within {timeout}s")
+            raise RuntimeError(f"Database connection pool exhausted (timeout: {timeout}s)")
+
         try:
             yield conn
         finally:

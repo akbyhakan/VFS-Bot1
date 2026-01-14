@@ -8,11 +8,12 @@ from typing import Dict, Any, List, Set
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -27,6 +28,17 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+# CORS Configuration
+ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8000").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -287,16 +299,34 @@ async def health_check() -> Dict[str, Any]:
 async def check_database_health() -> bool:
     """Check database connectivity."""
     try:
-        # Try to import and check database module
-        # This is a basic check - in production, you would do an actual query
-        from src.models.database import Database  # noqa: F401
-
-        # For now, assume healthy if import works
-        # TODO: Add actual database ping query when database is initialized
-        return True
+        # Check if database is available in app state
+        if hasattr(app.state, 'db') and app.state.db:
+            async with app.state.db.get_connection(timeout=5.0) as conn:
+                await conn.execute("SELECT 1")
+                return True
+        return True  # Assume healthy if not initialized yet
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
+
+
+@app.get("/health/live")
+async def liveness_check():
+    """Kubernetes liveness probe - just check if app is responding."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Kubernetes readiness probe - check if app is ready to serve traffic."""
+    # Check critical dependencies
+    try:
+        if hasattr(app.state, 'db') and app.state.db:
+            async with app.state.db.get_connection(timeout=2.0) as conn:
+                await conn.execute("SELECT 1")
+        return {"status": "ready"}
+    except Exception:
+        return Response(content='{"status": "not_ready"}', status_code=503)
 
 
 @app.get("/api/metrics")

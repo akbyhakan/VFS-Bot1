@@ -51,6 +51,11 @@ if not _secret_key:
         "Generate a secure random key with: "
         "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
     )
+if len(_secret_key) < 32:
+    raise ValueError(
+        "API_SECRET_KEY must be at least 32 characters long for security. "
+        "Current length: " + str(len(_secret_key))
+    )
 SECRET_KEY = _secret_key
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 

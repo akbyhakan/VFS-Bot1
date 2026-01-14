@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 class VFSBot:
     """VFS appointment booking bot using Playwright."""
 
+    MAX_SCREENSHOTS = 100  # Maximum screenshots to keep before rotation
+
     def __init__(self, config: Dict[str, Any], db: Database, notifier: NotificationService):
         """
         Initialize VFS bot.
@@ -52,7 +54,7 @@ class VFSBot:
 
         # Circuit breaker state
         self.consecutive_errors = 0
-        self.total_errors: deque = deque()  # Track error timestamps
+        self.total_errors: deque = deque(maxlen=1000)  # Track error timestamps (max 1000)
         self.circuit_breaker_open = False
         self.circuit_breaker_open_time: Optional[float] = None
 
@@ -654,7 +656,7 @@ class VFSBot:
 
     async def take_screenshot(self, page: Page, name: str) -> None:
         """
-        Take a screenshot.
+        Take a screenshot with automatic rotation.
 
         Args:
             page: Playwright page object
@@ -664,8 +666,26 @@ class VFSBot:
             screenshots_dir = Path("screenshots")
             screenshots_dir.mkdir(exist_ok=True)
 
+            # Rotate old screenshots
+            await self._rotate_screenshots(screenshots_dir)
+
             filepath = screenshots_dir / f"{name}.png"
             await page.screenshot(path=str(filepath), full_page=True)
             logger.info(f"Screenshot saved: {filepath}")
         except Exception as e:
             logger.error(f"Error taking screenshot: {e}")
+
+    async def _rotate_screenshots(self, screenshots_dir: Path) -> None:
+        """Remove oldest screenshots if limit exceeded."""
+        try:
+            screenshots = sorted(
+                screenshots_dir.glob("*.png"),
+                key=lambda x: x.stat().st_mtime
+            )
+
+            while len(screenshots) >= self.MAX_SCREENSHOTS:
+                oldest = screenshots.pop(0)
+                oldest.unlink()
+                logger.debug(f"Rotated old screenshot: {oldest}")
+        except Exception as e:
+            logger.warning(f"Error rotating screenshots: {e}")
