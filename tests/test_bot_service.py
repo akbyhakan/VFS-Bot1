@@ -112,10 +112,12 @@ def test_bot_circuit_breaker_state(bot_config, mock_db, mock_notifier):
 
 def test_bot_captcha_solver_initialization(bot_config, mock_db, mock_notifier):
     """Test captcha solver initialization."""
+    # Update config to provide API key
+    bot_config["captcha"]["api_key"] = "test_api_key"
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
     assert bot.captcha_solver is not None
-    assert bot.captcha_solver.provider == "manual"
+    assert bot.captcha_solver.api_key == "test_api_key"
 
 
 def test_bot_centre_fetcher_initialization(bot_config, mock_db, mock_notifier):
@@ -276,7 +278,7 @@ def test_bot_with_custom_captcha_config(mock_db, mock_notifier):
 
     bot = VFSBot(config, mock_db, mock_notifier)
 
-    assert bot.captcha_solver.provider == "2captcha"
+    assert bot.captcha_solver.api_key == "test_key"
 
 
 def test_bot_with_custom_session_config(mock_db, mock_notifier):

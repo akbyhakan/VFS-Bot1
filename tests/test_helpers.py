@@ -244,5 +244,5 @@ def test_mask_password_medium():
 
 def test_mask_password_long():
     """Test mask_password with long password (>8 chars)."""
-    assert mask_password("mypassword123") == "my*******23"
-    assert mask_password("verylongpassword") == "ve**********rd"
+    assert mask_password("mypassword123") == "my*********23"
+    assert mask_password("verylongpassword") == "ve************rd"
