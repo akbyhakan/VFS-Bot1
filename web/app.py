@@ -393,6 +393,13 @@ async def get_prometheus_metrics() -> str:
     return await bot_metrics.get_prometheus_metrics()
 
 
+@app.get("/metrics/prom")
+async def metrics():
+    """Prometheus metrics endpoint using prometheus_client."""
+    from src.utils.prometheus_metrics import get_metrics_response
+    return get_metrics_response()
+
+
 def increment_metric(name: str, count: int = 1) -> None:
     """Increment a metric counter."""
     if name in metrics:

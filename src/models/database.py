@@ -176,6 +176,29 @@ class Database:
             await self.conn.commit()
             logger.info("Database tables created/verified")
 
+            # Create indexes for better query performance
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)"
+            )
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)"
+            )
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)"
+            )
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)"
+            )
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)"
+            )
+            await cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)"
+            )
+
+            await self.conn.commit()
+            logger.info("Database indexes created/verified")
+
     async def add_user(
         self, email: str, password: str, centre: str, category: str, subcategory: str
     ) -> int:

@@ -1,16 +1,19 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit generate-secrets validate-config security-check
 
 help:
 	@echo "Available commands:"
-	@echo "  make install      - Install production dependencies"
-	@echo "  make install-dev  - Install development dependencies"
-	@echo "  make lint         - Run linting checks"
-	@echo "  make format       - Format code with black and isort"
-	@echo "  make test         - Run tests"
-	@echo "  make test-cov     - Run tests with coverage report"
-	@echo "  make clean        - Clean build artifacts and cache"
-	@echo "  make docker-test  - Run tests in Docker"
-	@echo "  make pre-commit   - Run pre-commit hooks"
+	@echo "  make install          - Install production dependencies"
+	@echo "  make install-dev      - Install development dependencies"
+	@echo "  make lint             - Run linting checks"
+	@echo "  make format           - Format code with black and isort"
+	@echo "  make test             - Run tests"
+	@echo "  make test-cov         - Run tests with coverage report"
+	@echo "  make clean            - Clean build artifacts and cache"
+	@echo "  make docker-test      - Run tests in Docker"
+	@echo "  make pre-commit       - Run pre-commit hooks"
+	@echo "  make generate-secrets - Generate secure secrets for .env"
+	@echo "  make validate-config  - Validate configuration files"
+	@echo "  make security-check   - Run security checks"
 
 install:
 	pip install -r requirements.txt
@@ -49,3 +52,14 @@ docker-test:
 
 pre-commit:
 	pre-commit run --all-files
+
+generate-secrets:
+	python scripts/generate_secrets.py
+
+validate-config:
+	python -c "from src.core.config_loader import load_config; from src.core.config_validator import ConfigValidator; c = load_config('config/config.yaml'); print('Valid' if ConfigValidator.validate(c) else 'Invalid')"
+
+security-check:
+	pip install safety bandit
+	safety check
+	bandit -r src/ -ll
