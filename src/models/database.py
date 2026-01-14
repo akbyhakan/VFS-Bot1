@@ -1,491 +1,181 @@
-"""Database operations for VFS-Bot using SQLite."""
-
+from typing import Optional, AsyncIterator
 import aiosqlite
-import logging
-from typing import Dict, List, Optional, Any
-from contextlib import asynccontextmanager
-import asyncio
+import os
+from datetime import datetime
 
-from src.utils.encryption import encrypt_password, decrypt_password
-
-logger = logging.getLogger(__name__)
+DATABASE_PATH = os.getenv("DATABASE_PATH", "data/vfs_bot.db")
 
 
-class Database:
-    """SQLite database manager for VFS-Bot with connection pooling."""
-
-    def __init__(self, db_path: str = "vfs_bot.db", pool_size: int = 5):
-        """
-        Initialize database connection pool.
-
-        Args:
-            db_path: Path to SQLite database file
-            pool_size: Maximum number of concurrent connections
-        """
-        self.db_path = db_path
-        self.conn: Optional[aiosqlite.Connection] = None
-        self.pool_size = pool_size
-        self._pool: List[aiosqlite.Connection] = []
-        self._pool_lock = asyncio.Lock()
-        self._available_connections: asyncio.Queue = asyncio.Queue(maxsize=pool_size)
-
-    async def connect(self) -> None:
-        """Establish database connection pool and create tables."""
-        # Create main connection for schema management
-        self.conn = await aiosqlite.connect(self.db_path)
-        self.conn.row_factory = aiosqlite.Row
-        await self._create_tables()
-
-        # Initialize connection pool
-        for _ in range(self.pool_size):
-            conn = await aiosqlite.connect(self.db_path)
-            conn.row_factory = aiosqlite.Row
-            self._pool.append(conn)
-            await self._available_connections.put(conn)
-
-        logger.info(f"Database connected with pool size {self.pool_size}: {self.db_path}")
-
-    async def close(self) -> None:
-        """Close database connection pool."""
-        # Close pooled connections
-        for conn in self._pool:
-            await conn.close()
-        self._pool.clear()
-
-        # Clear the queue
-        while not self._available_connections.empty():
-            try:
-                self._available_connections.get_nowait()
-            except asyncio.QueueEmpty:
-                break
-
-        # Close main connection
-        if self.conn:
-            await self.conn.close()
-        logger.info("Database connection pool closed")
-
-    @asynccontextmanager
-    async def get_connection(self, timeout: float = 30.0):
-        """
-        Get a connection from the pool with timeout.
-
-        Args:
-            timeout: Maximum seconds to wait for a connection
-
-        Yields:
-            Database connection from pool
-
-        Raises:
-            asyncio.TimeoutError: If no connection available within timeout
-        """
-        try:
-            conn = await asyncio.wait_for(
-                self._available_connections.get(),
-                timeout=timeout
+async def init_database():
+    """Initialize the database and create tables if they don't exist."""
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER UNIQUE NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT 1
             )
-        except asyncio.TimeoutError:
-            logger.error(
-                f"Connection pool exhausted - no connection available within {timeout}s. "
-                f"Pool size: {self.pool_size}. Consider increasing pool size or reducing load."
+        """)
+        
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                appointment_date DATE NOT NULL,
+                appointment_time TIME,
+                location TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
-            raise RuntimeError(
-                f"Database connection pool exhausted (timeout: {timeout}s, pool size: {self.pool_size}). "
-                f"Consider increasing POOL_SIZE or optimizing queries."
+        """)
+        
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                message TEXT NOT NULL,
+                is_read BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
-
-        try:
-            yield conn
-        finally:
-            await self._available_connections.put(conn)
-
-    async def _create_tables(self) -> None:
-        """Create database tables if they don't exist."""
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            # Users table
-            await cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    centre TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    subcategory TEXT NOT NULL,
-                    active BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """
+        """)
+        
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER UNIQUE NOT NULL,
+                notify_enabled BOOLEAN DEFAULT 1,
+                language TEXT DEFAULT 'en',
+                timezone TEXT DEFAULT 'UTC',
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
+        """)
+        
+        await db.commit()
 
-            # Personal details table
-            await cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS personal_details (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT NOT NULL,
-                    passport_number TEXT NOT NULL,
-                    passport_expiry TEXT,
-                    gender TEXT,
-                    mobile_code TEXT,
-                    mobile_number TEXT,
-                    email TEXT NOT NULL,
-                    nationality TEXT,
-                    date_of_birth TEXT,
-                    address_line1 TEXT,
-                    address_line2 TEXT,
-                    state TEXT,
-                    city TEXT,
-                    postcode TEXT,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                )
-            """
-            )
 
-            # Appointments table
-            await cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS appointments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    centre TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    subcategory TEXT NOT NULL,
-                    appointment_date TEXT,
-                    appointment_time TEXT,
-                    status TEXT DEFAULT 'pending',
-                    reference_number TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                )
-            """
-            )
+async def get_connection() -> AsyncIterator[aiosqlite.Connection]:
+    """Get a database connection as an async context manager."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        yield db
 
-            # Logs table
-            await cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    level TEXT NOT NULL,
-                    message TEXT NOT NULL,
-                    user_id INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
-                )
-            """
-            )
 
-            await self.conn.commit()
-            logger.info("Database tables created/verified")
-
-            # Create indexes for better query performance
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)"
-            )
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)"
-            )
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)"
-            )
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)"
-            )
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)"
-            )
-            await cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level)"
-            )
-
-            await self.conn.commit()
-            logger.info("Database indexes created/verified")
-
-    async def add_user(
-        self, email: str, password: str, centre: str, category: str, subcategory: str
-    ) -> int:
-        """
-        Add a new user to the database.
-
-        Args:
-            email: User email
-            password: User password (will be encrypted before storage)
-            centre: VFS centre
-            category: Visa category
-            subcategory: Visa subcategory
-
-        Returns:
-            User ID
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-
-        # Encrypt password before storing (NOT hashing - we need plaintext for VFS login)
-        encrypted_password = encrypt_password(password)
-
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO users (email, password, centre, category, subcategory)
-                VALUES (?, ?, ?, ?, ?)
-            """,
-                (email, encrypted_password, centre, category, subcategory),
-            )
-            await self.conn.commit()
-            logger.info(f"User added: {email}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
-
-    async def get_active_users(self) -> List[Dict[str, Any]]:
-        """
-        Get all active users.
-
-        Returns:
-            List of user dictionaries
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE active = 1")
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
-
-    async def get_user_with_decrypted_password(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get user with decrypted password for VFS login.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            User dictionary with decrypted password or None
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-                row = await cursor.fetchone()
-                if row:
-                    user = dict(row)
-                    # Decrypt password for VFS login
-                    try:
-                        user["password"] = decrypt_password(user["password"])
-                    except Exception as e:
-                        logger.error(f"Failed to decrypt password for user {user_id}: {e}")
-                        raise
-                    return user
-                return None
-
-    async def get_active_users_with_decrypted_passwords(self) -> List[Dict[str, Any]]:
-        """
-        Get all active users with decrypted passwords for VFS login.
-
-        Returns:
-            List of user dictionaries with decrypted passwords
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE active = 1")
-                rows = await cursor.fetchall()
-                users = []
-                failed_users = []
-                for row in rows:
-                    user = dict(row)
-                    # Decrypt password for VFS login
-                    try:
-                        user["password"] = decrypt_password(user["password"])
-                        users.append(user)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to decrypt password for user "
-                            f"{user['id']} ({user['email']}): {e}. "
-                            f"User needs to re-register with new password."
-                        )
-                        failed_users.append(user["email"])
-
-                # Alert if users failed decryption
-                if failed_users:
-                    logger.warning(
-                        f"⚠️  {len(failed_users)} user(s) have invalid "
-                        f"encrypted passwords and will be skipped: "
-                        f"{', '.join(failed_users)}. They need to re-register."
-                    )
-
-                return users
-
-    async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:
-        """
-        Add personal details for a user.
-
-        Args:
-            user_id: User ID
-            details: Personal details dictionary
-
-        Returns:
-            Personal details ID
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO personal_details
-                (user_id, first_name, last_name, passport_number, passport_expiry,
-                 gender, mobile_code, mobile_number, email, nationality, date_of_birth,
-                 address_line1, address_line2, state, city, postcode)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    user_id,
-                    details.get("first_name"),
-                    details.get("last_name"),
-                    details.get("passport_number"),
-                    details.get("passport_expiry"),
-                    details.get("gender"),
-                    details.get("mobile_code"),
-                    details.get("mobile_number"),
-                    details.get("email"),
-                    details.get("nationality"),
-                    details.get("date_of_birth"),
-                    details.get("address_line1"),
-                    details.get("address_line2"),
-                    details.get("state"),
-                    details.get("city"),
-                    details.get("postcode"),
-                ),
-            )
-            await self.conn.commit()
-            logger.info(f"Personal details added for user {user_id}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
-
-    async def get_personal_details(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Get personal details for a user.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            Personal details dictionary or None
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
+async def get_user_by_telegram_id(telegram_id: int) -> Optional[dict]:
+    """Get a user by their Telegram ID."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM users WHERE telegram_id = ?", (telegram_id,)
+        ) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
 
-    async def add_appointment(
-        self,
-        user_id: int,
-        centre: str,
-        category: str,
-        subcategory: str,
-        date: Optional[str] = None,
-        time: Optional[str] = None,
-        reference: Optional[str] = None,
-    ) -> int:
-        """
-        Add an appointment record.
 
-        Args:
-            user_id: User ID
-            centre: VFS centre
-            category: Visa category
-            subcategory: Visa subcategory
-            date: Appointment date
-            time: Appointment time
-            reference: Reference number
+async def create_user(telegram_id: int, username: str = None, 
+                      first_name: str = None, last_name: str = None) -> int:
+    """Create a new user and return their ID."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        cursor = await db.execute(
+            """INSERT INTO users (telegram_id, username, first_name, last_name)
+               VALUES (?, ?, ?, ?)""",
+            (telegram_id, username, first_name, last_name)
+        )
+        await db.commit()
+        return cursor.lastrowid
 
-        Returns:
-            Appointment ID
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO appointments
-                (user_id, centre, category, subcategory, appointment_date,
-                 appointment_time, reference_number)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (user_id, centre, category, subcategory, date, time, reference),
-            )
-            await self.conn.commit()
-            logger.info(f"Appointment added for user {user_id}")
-            last_id = cursor.lastrowid
-            if last_id is None:
-                raise RuntimeError("Failed to fetch lastrowid after insert")
-            return int(last_id)
 
-    async def get_appointments(self, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Get appointments, optionally filtered by user.
+async def update_user(telegram_id: int, **kwargs) -> bool:
+    """Update user information."""
+    if not kwargs:
+        return False
+    
+    set_clause = ", ".join(f"{key} = ?" for key in kwargs.keys())
+    values = list(kwargs.values()) + [telegram_id]
+    
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute(
+            f"UPDATE users SET {set_clause} WHERE telegram_id = ?",
+            values
+        )
+        await db.commit()
+        return True
 
-        Args:
-            user_id: Optional user ID filter
 
-        Returns:
-            List of appointment dictionaries
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            if user_id:
-                await cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
-            else:
-                await cursor.execute("SELECT * FROM appointments")
+async def create_appointment(user_id: int, appointment_date: str,
+                            appointment_time: str = None, 
+                            location: str = None) -> int:
+    """Create a new appointment."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        cursor = await db.execute(
+            """INSERT INTO appointments (user_id, appointment_date, appointment_time, location)
+               VALUES (?, ?, ?, ?)""",
+            (user_id, appointment_date, appointment_time, location)
+        )
+        await db.commit()
+        return cursor.lastrowid
+
+
+async def get_user_appointments(user_id: int) -> list:
+    """Get all appointments for a user."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM appointments WHERE user_id = ? ORDER BY appointment_date",
+            (user_id,)
+        ) as cursor:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
 
-    async def add_log(self, level: str, message: str, user_id: Optional[int] = None) -> None:
-        """
-        Add a log entry.
 
-        Args:
-            level: Log level (INFO, WARNING, ERROR)
-            message: Log message
-            user_id: Optional user ID
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO logs (level, message, user_id)
-                VALUES (?, ?, ?)
-            """,
-                (level, message, user_id),
+async def update_appointment_status(appointment_id: int, status: str) -> bool:
+    """Update the status of an appointment."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute(
+            "UPDATE appointments SET status = ? WHERE id = ?",
+            (status, appointment_id)
+        )
+        await db.commit()
+        return True
+
+
+async def get_user_settings(user_id: int) -> Optional[dict]:
+    """Get settings for a user."""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM settings WHERE user_id = ?", (user_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+
+async def create_or_update_settings(user_id: int, **kwargs) -> bool:
+    """Create or update user settings."""
+    existing = await get_user_settings(user_id)
+    
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        if existing:
+            if kwargs:
+                set_clause = ", ".join(f"{key} = ?" for key in kwargs.keys())
+                values = list(kwargs.values()) + [user_id]
+                await db.execute(
+                    f"UPDATE settings SET {set_clause} WHERE user_id = ?",
+                    values
+                )
+        else:
+            columns = ["user_id"] + list(kwargs.keys())
+            placeholders = ", ".join("?" * len(columns))
+            values = [user_id] + list(kwargs.values())
+            await db.execute(
+                f"INSERT INTO settings ({', '.join(columns)}) VALUES ({placeholders})",
+                values
             )
-            await self.conn.commit()
-
-    async def get_logs(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """
-        Get recent log entries.
-
-        Args:
-            limit: Maximum number of logs to retrieve
-
-        Returns:
-            List of log dictionaries
-        """
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
-            await cursor.execute("SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,))
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
+        await db.commit()
+        return True
