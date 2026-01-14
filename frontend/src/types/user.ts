@@ -23,8 +23,11 @@ export interface CreateUserRequest {
   is_active?: boolean;
 }
 
-export interface UpdateUserRequest extends Partial<CreateUserRequest> {
+export interface UpdateUserRequest extends Partial<CreateUserRequest> {}
+
+export interface UpdateUserPayload {
   id: number;
+  data: UpdateUserRequest;
 }
 
 export interface UserStats {

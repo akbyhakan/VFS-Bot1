@@ -35,9 +35,9 @@ export function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
 
   if (hours > 0) {
-    return `${hours}s ${minutes}d ${secs}sn`;
+    return `${hours}sa ${minutes}dk ${secs}sn`;
   } else if (minutes > 0) {
-    return `${minutes}d ${secs}sn`;
+    return `${minutes}dk ${secs}sn`;
   } else {
     return `${secs}sn`;
   }

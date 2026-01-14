@@ -828,7 +828,9 @@ class UserModel(BaseModel):
     updated_at: str
 
 
-# In-memory mock users storage (temporary)
+# In-memory mock users storage (temporary - for frontend development only)
+# WARNING: This is NOT thread-safe and should be replaced with proper database integration
+# TODO: Replace with async database operations using existing users/personal_details tables
 mock_users: List[UserModel] = []
 next_user_id = 1
 

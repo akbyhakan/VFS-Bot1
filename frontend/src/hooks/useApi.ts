@@ -76,7 +76,7 @@ export function useCreateUser() {
 
 export function useUpdateUser() {
   const queryClient = useQueryClient();
-  return useMutation<User, Error, UpdateUserRequest>({
+  return useMutation<User, Error, { id: number } & UpdateUserRequest>({
     mutationFn: ({ id, ...data }) => api.put<User>(`/api/users/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
