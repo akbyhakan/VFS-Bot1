@@ -129,12 +129,24 @@ class Database:
                     centre TEXT NOT NULL,
                     category TEXT NOT NULL,
                     subcategory TEXT NOT NULL,
+                    role TEXT DEFAULT 'user',
                     active BOOLEAN DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """
             )
+            
+            # Migrate existing users table to add role column if missing
+            await cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in await cursor.fetchall()]
+            if "role" not in columns:
+                logger.info("Adding 'role' column to users table...")
+                await cursor.execute(
+                    "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'"
+                )
+                await self.conn.commit()
+                logger.info("Role column added successfully")
 
             # Personal details table
             await cursor.execute(
@@ -200,7 +212,13 @@ class Database:
 
     @require_connection
     async def add_user(
-        self, email: str, password: str, centre: str, category: str, subcategory: str
+        self, 
+        email: str, 
+        password: str, 
+        centre: str, 
+        category: str, 
+        subcategory: str,
+        role: str = "user"
     ) -> int:
         """
         Add a new user to the database.
@@ -211,6 +229,7 @@ class Database:
             centre: VFS centre
             category: Visa category
             subcategory: Visa subcategory
+            role: User role (default: 'user')
 
         Returns:
             User ID
@@ -222,13 +241,13 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    INSERT INTO users (email, password, centre, category, subcategory)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO users (email, password, centre, category, subcategory, role)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                    (email, encrypted_password, centre, category, subcategory),
+                    (email, encrypted_password, centre, category, subcategory, role),
                 )
                 await conn.commit()
-                logger.info(f"User added: {email}")
+                logger.info(f"User added: {email} with role: {role}")
                 last_id = cursor.lastrowid
                 if last_id is None:
                     raise RuntimeError("Failed to fetch lastrowid after insert")
@@ -480,3 +499,76 @@ class Database:
                 )
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
+    
+    @require_connection
+    async def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get user by ID.
+        
+        Args:
+            user_id: User ID
+            
+        Returns:
+            User dictionary or None
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+                row = await cursor.fetchone()
+                return dict(row) if row else None
+    
+    @require_connection
+    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Get user by email.
+        
+        Args:
+            email: User email
+            
+        Returns:
+            User dictionary or None
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+                row = await cursor.fetchone()
+                return dict(row) if row else None
+    
+    @require_connection
+    async def get_users_by_role(self, role: str) -> List[Dict[str, Any]]:
+        """
+        Get all users with a specific role.
+        
+        Args:
+            role: User role (admin, user, tester)
+            
+        Returns:
+            List of user dictionaries
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM users WHERE role = ?", (role,))
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+    
+    @require_connection
+    async def update_user_role(self, user_id: int, role: str) -> None:
+        """
+        Update user role.
+        
+        Args:
+            user_id: User ID
+            role: New role (admin, user, tester)
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    UPDATE users 
+                    SET role = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (role, user_id),
+                )
+                await conn.commit()
+                logger.info(f"Updated user {user_id} role to {role}")

@@ -22,6 +22,7 @@ from slowapi.errors import RateLimitExceeded
 from src.core.security import verify_api_key, generate_api_key
 from src.core.auth import create_access_token, verify_token
 from src.services.otp_webhook_routes import router as otp_router
+from web.routes import admin_router
 
 security_scheme = HTTPBearer()
 
@@ -30,8 +31,9 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
 
-# Include OTP webhook router
+# Include routers
 app.include_router(otp_router)
+app.include_router(admin_router)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)

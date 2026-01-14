@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VFS-Bot Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .user-email {
+            font-weight: 500;
+            color: #fff;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .badge-api {
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        .badge-browser {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .test-warning-banner {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .test-warning-banner strong {
+            font-weight: bold;
+        }
+        
+        .test-warning-banner em {
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 VFS-Bot Dashboard</h1>
+            
+            <!-- User Info Section -->
+            {% if user %}
+            <div class="user-info">
+                <span class="user-email">{{ user.email }}</span>
+                
+                {% if user.is_tester %}
+                <span class="badge badge-api" title="Bu hesap direkt API kullanır - Sadece test amaçlı">
+                    ⚡ API MODE
+                </span>
+                {% else %}
+                <span class="badge badge-browser" title="Güvenli tarayıcı modu">
+                    🌐 Browser Mode
+                </span>
+                {% endif %}
+            </div>
+            
+            <!-- Test User Warning Banner -->
+            {% if user.is_tester %}
+            <div class="test-warning-banner">
+                ⚠️ <strong>TEST KULLANICISI:</strong> Bu hesap direkt API kullanmaktadır. 
+                Tüm sorgulama ve randevu işlemleri tarayıcı kullanmadan yapılır. 
+                <em>Sadece test amaçlıdır.</em>
+            </div>
+            {% endif %}
+            {% endif %}
+            
+            <div class="status-indicator">
+                <span id="status-text">Stopped</span>
+                <span id="status-dot" class="dot stopped"></span>
+            </div>
+        </header>
+
+        <main>
+            <section class="controls">
+                <button id="start-btn" class="btn btn-primary">▶️ Start Bot</button>
+                <button id="stop-btn" class="btn btn-secondary" disabled>⏹️ Stop Bot</button>
+            </section>
+
+            <section class="stats">
+                <div class="stat-card">
+                    <h3>Slots Found</h3>
+                    <p id="slots-found" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Appointments Booked</h3>
+                    <p id="appointments-booked" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Users</h3>
+                    <p id="active-users" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Last Check</h3>
+                    <p id="last-check" class="stat-value">Never</p>
+                </div>
+            </section>
+
+            <section class="logs-section">
+                <div class="logs-header">
+                    <h2>📋 Live Logs</h2>
+                    <button id="clear-logs-btn" class="btn btn-small">Clear</button>
+                </div>
+                <div id="logs-container" class="logs-container"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>VFS-Bot v2.0.0 | <a href="https://github.com/akbyhakan/VFS-Bot1" target="_blank">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
