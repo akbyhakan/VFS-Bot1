@@ -65,7 +65,7 @@ async def test_smart_fill_with_delay(mock_page):
 async def test_smart_fill_exception(mock_page):
     """Test smart_fill handles exceptions."""
     mock_page.fill.side_effect = Exception("Fill failed")
-    
+
     with pytest.raises(Exception, match="Fill failed"):
         await smart_fill(mock_page, "#email", "test@example.com")
 
@@ -96,7 +96,7 @@ async def test_smart_click_with_delay(mock_page):
 async def test_smart_click_exception(mock_page):
     """Test smart_click handles exceptions."""
     mock_page.click.side_effect = Exception("Click failed")
-    
+
     with pytest.raises(Exception, match="Click failed"):
         await smart_click(mock_page, "#submit")
 
@@ -131,7 +131,7 @@ async def test_wait_for_selector_smart_custom_state(mock_page):
 async def test_wait_for_selector_smart_timeout_exception(mock_page):
     """Test wait_for_selector_smart handles timeout."""
     mock_page.wait_for_selector.side_effect = Exception("Timeout")
-    
+
     with pytest.raises(Exception, match="Timeout"):
         await wait_for_selector_smart(mock_page, "#element")
 
@@ -140,6 +140,7 @@ async def test_wait_for_selector_smart_timeout_exception(mock_page):
 async def test_random_delay_default():
     """Test random_delay with default values."""
     import time
+
     start = time.time()
     await random_delay()
     elapsed = time.time() - start
@@ -151,6 +152,7 @@ async def test_random_delay_default():
 async def test_random_delay_custom():
     """Test random_delay with custom values."""
     import time
+
     start = time.time()
     await random_delay(min_seconds=0.1, max_seconds=0.2)
     elapsed = time.time() - start
