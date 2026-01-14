@@ -46,8 +46,8 @@ def mask_sensitive_data(text: str) -> str:
         lambda m: mask_email(m.group()),
         text,
     )
-    # Mask potential tokens/keys (long alphanumeric strings)
-    text = re.sub(r"[A-Za-z0-9_-]{32,}", "***REDACTED***", text)
+    # Mask potential tokens/keys (long alphanumeric strings with word boundaries)
+    text = re.sub(r"\b[A-Za-z0-9_-]{32,}\b", "***REDACTED***", text)
     return text
 
 
