@@ -91,3 +91,35 @@ class Metrics:
     """Metrics configuration."""
 
     RETENTION_DAYS = 30  # Days to keep metrics data
+
+
+class Selectors:
+    """CSS Selectors - should match config/selectors.yaml"""
+
+    # Login selectors
+    LOGIN_EMAIL = 'input[name="email"]'
+    LOGIN_PASSWORD = 'input[name="password"]'
+    LOGIN_SUBMIT = 'button[type="submit"]'
+    LOGIN_CAPTCHA = '.g-recaptcha'
+
+    # Appointment selectors
+    CENTRES_DROPDOWN = 'select#centres'
+    CATEGORIES_DROPDOWN = 'select#categories'
+    SUBCATEGORIES_DROPDOWN = 'select#subcategories'
+    CHECK_SLOTS_BUTTON = 'button#check-slots'
+    AVAILABLE_SLOT = '.available-slot'
+    SLOT_DATE = '.slot-date'
+    SLOT_TIME = '.slot-time'
+
+    # Form selectors
+    FIRST_NAME = 'input#first_name'
+    LAST_NAME = 'input#last_name'
+    PASSPORT_NUMBER = 'input#passport_number'
+    EMAIL = 'input#email'
+    MOBILE = 'input#mobile'
+    DOB = 'input#dob'
+
+    # Booking selectors
+    BOOK_APPOINTMENT = 'button#book-appointment'
+    CONFIRMATION = '.confirmation'
+    REFERENCE_NUMBER = '.reference-number'

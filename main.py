@@ -20,28 +20,55 @@ from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
 
+# Global shutdown event
+shutdown_event = asyncio.Event()
+
 
 def setup_signal_handlers():
-    """
-    Setup graceful shutdown handlers.
-
-    Note: Uses sys.exit(0) for immediate shutdown. asyncio.run() will handle
-    cleanup of running tasks, and the bot/web modes have their own cleanup
-    logic in finally blocks.
-    """
+    """Setup graceful shutdown handlers."""
     logger = logging.getLogger(__name__)
 
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
-        sys.exit(0)
+        shutdown_event.set()
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
 
 
+async def graceful_shutdown(bot=None, db=None, timeout=10):
+    """
+    Perform graceful shutdown with timeout.
+
+    Args:
+        bot: VFSBot instance to stop
+        db: Database instance to close
+        timeout: Maximum seconds to wait for cleanup
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting graceful shutdown (timeout: {timeout}s)...")
+
+    try:
+        async with asyncio.timeout(timeout):
+            if bot:
+                bot.running = False
+                logger.info("Waiting for bot to finish current operations...")
+                await asyncio.sleep(2)  # Give current operations time to complete
+                await bot.stop()
+
+            if db:
+                await db.close()
+
+        logger.info("Graceful shutdown completed")
+    except asyncio.TimeoutError:
+        logger.warning(f"Graceful shutdown timed out after {timeout}s, forcing exit")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
+
+
 async def run_bot_mode(config: dict) -> None:
     """
-    Run bot in automated mode.
+    Run bot in automated mode with graceful shutdown support.
 
     Args:
         config: Configuration dictionary
@@ -49,9 +76,9 @@ async def run_bot_mode(config: dict) -> None:
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
 
-    # Initialize database
     db = Database()
     await db.connect()
+    bot = None
 
     try:
         # Initialize notification service
@@ -77,14 +104,25 @@ async def run_bot_mode(config: dict) -> None:
         else:
             bot.health_checker = None
 
-        await bot.start()
+        # Run until shutdown signal
+        bot_task = asyncio.create_task(bot.start())
+        shutdown_task = asyncio.create_task(shutdown_event.wait())
+
+        done, pending = await asyncio.wait(
+            [bot_task, shutdown_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # Cancel pending tasks
+        for task in pending:
+            task.cancel()
 
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
     finally:
-        await db.close()
+        await graceful_shutdown(bot, db)
 
 
 async def run_web_mode(config: dict) -> None:

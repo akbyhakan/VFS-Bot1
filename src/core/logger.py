@@ -9,6 +9,8 @@ from types import FrameType
 from pathlib import Path
 from loguru import logger
 
+from .context import CorrelationLogFilter, get_correlation_id, get_user_context
+
 
 class JSONFormatter(logging.Formatter):
     """Format log records as JSON - kept for backward compatibility."""
@@ -23,6 +25,8 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
+            "correlation_id": getattr(record, 'correlation_id', 'N/A'),
+            "user": getattr(record, 'user_email', 'system'),
         }
 
         # Add exception info if present
@@ -128,3 +132,8 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
 
     # Set the root logger level to match the configured level
     logging.root.setLevel(getattr(logging, level))
+
+    # Add correlation filter to all handlers
+    correlation_filter = CorrelationLogFilter()
+    for handler in logging.root.handlers:
+        handler.addFilter(correlation_filter)

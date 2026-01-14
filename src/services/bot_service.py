@@ -9,12 +9,20 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+    RetryError,
+)
 
 from .captcha_solver import CaptchaSolver
 from .centre_fetcher import CentreFetcher
 from .notification import NotificationService
-from ..constants import Timeouts, Intervals, Retries, CircuitBreaker, RateLimits
+from ..constants import Timeouts, Intervals, Retries, CircuitBreaker, RateLimits, Selectors
+from ..core.exceptions import NetworkError, LoginError, SlotCheckError
 from ..models.database import Database
 from ..utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ..utils.anti_detection.fingerprint_bypass import FingerprintBypass
@@ -360,6 +368,9 @@ class VFSBot:
             min=Retries.EXPONENTIAL_MIN,
             max=Retries.EXPONENTIAL_MAX,
         ),
+        retry=retry_if_exception_type((NetworkError, TimeoutError, ConnectionError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
     )
     async def process_user(self, user: Dict[str, Any]) -> None:
         """
@@ -637,14 +648,14 @@ class VFSBot:
         """
         try:
             # Click continue/book button with human simulation
-            await smart_click(page, "button#book-appointment", self.human_sim)
+            await smart_click(page, Selectors.BOOK_APPOINTMENT, self.human_sim)
             await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
 
             # Wait for confirmation page
-            await wait_for_selector_smart(page, ".confirmation", timeout=Timeouts.SELECTOR_WAIT)
+            await wait_for_selector_smart(page, Selectors.CONFIRMATION, timeout=Timeouts.SELECTOR_WAIT)
 
             # Extract reference number
-            reference_text = await page.locator(".reference-number").text_content()
+            reference_text = await page.locator(Selectors.REFERENCE_NUMBER).text_content()
             reference: str = reference_text.strip() if reference_text else ""
 
             logger.info(f"Appointment booked! Reference: {reference}")
