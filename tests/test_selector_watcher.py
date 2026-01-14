@@ -21,7 +21,7 @@ class TestSelectorHealthCheck:
 
         assert health_checker.selector_manager == sm
         assert health_checker.notifier is None
-        assert health_checker.check_interval == 3600
+        assert health_checker.check_interval == 43200  # 12 hours default
         assert health_checker.health_status == {}
         assert health_checker.last_check is None
 
