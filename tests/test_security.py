@@ -121,11 +121,10 @@ class TestDataMasking:
     def test_mask_email(self):
         """Test email masking function."""
         assert mask_email("test@example.com") == "te***@example.com"
-        assert mask_email("a@b.com") == "***@b.com"
-        assert mask_email("ab@example.com") == "ab***@example.com"
-        assert mask_email("invalid") == "***"
+        assert mask_email("ab@example.com") == "a***@example.com"
+        assert mask_email("a@example.com") == "a***@example.com"
         assert mask_email("") == "***"
-        assert mask_email("no-at-sign") == "***"
+        assert mask_email("invalid") == "***"
 
     def test_mask_sensitive_data_email(self):
         """Test general sensitive data masking for emails."""

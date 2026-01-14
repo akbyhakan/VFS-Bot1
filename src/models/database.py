@@ -2,7 +2,7 @@
 
 import aiosqlite
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, AsyncIterator
 from contextlib import asynccontextmanager
 import asyncio
 
@@ -65,7 +65,7 @@ class Database:
         logger.info("Database connection pool closed")
 
     @asynccontextmanager
-    async def get_connection(self, timeout: float = 30.0):
+    async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[aiosqlite.Connection]:
         """
         Get a connection from the pool with timeout.
 
