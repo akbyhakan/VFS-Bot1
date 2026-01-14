@@ -3,7 +3,6 @@
 __all__ = [
     "VFSBot",
     "CaptchaSolver",
-    "CaptchaProvider",
     "CentreFetcher",
     "NotificationService",
 ]
@@ -19,10 +18,6 @@ def __getattr__(name):
         from .captcha_solver import CaptchaSolver
 
         return CaptchaSolver
-    elif name == "CaptchaProvider":
-        from .captcha_solver import CaptchaProvider
-
-        return CaptchaProvider
     elif name == "CentreFetcher":
         from .centre_fetcher import CentreFetcher
 

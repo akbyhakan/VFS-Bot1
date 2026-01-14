@@ -79,7 +79,10 @@ def config() -> Dict[str, Any]:
         },
         "credentials": {"email": "test@example.com", "password": "testpass"},
         "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
-        "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
+        "captcha": {
+            "api_key": "dd22eca10ee02b8bfcb0a991ea2099dd",
+            "manual_timeout": 10,
+        },
         "bot": {
             "check_interval": 5,
             "headless": True,

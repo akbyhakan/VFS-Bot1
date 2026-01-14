@@ -88,7 +88,7 @@ class ConnectionManager:
         Args:
             websocket: WebSocket connection
         """
-        await websocket.accept()
+        # Note: WebSocket should already be accepted before calling this method
         async with self._lock:
             self._connections.add(websocket)
 
@@ -469,34 +469,34 @@ async def get_logs(
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for real-time updates.
-    
+
     Authentication: Send token in first message as {"token": "your-jwt-token"}
 
     Args:
         websocket: WebSocket connection
     """
     await websocket.accept()
-    
+
     try:
         # Wait for authentication message
         auth_data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
-        
+
         if not isinstance(auth_data, dict) or "token" not in auth_data:
             await websocket.close(code=4001, reason="Authentication required")
             return
-        
+
         token = auth_data.get("token")
         if not token:
             await websocket.close(code=4001, reason="Token missing")
             return
-        
+
         # Verify token
         try:
             verify_token(token)
         except HTTPException:
             await websocket.close(code=4001, reason="Invalid token")
             return
-        
+
     except asyncio.TimeoutError:
         await websocket.close(code=4001, reason="Authentication timeout")
         return

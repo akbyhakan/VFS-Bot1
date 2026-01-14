@@ -78,7 +78,7 @@ async def get_verified_otp_service(
 @router.post("/sms", response_model=OTPResponse)
 async def receive_sms(
     payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
-):
+) -> OTPResponse:
     """
     Receive SMS webhook from provider.
 
@@ -113,7 +113,7 @@ async def wait_for_otp(
     phone: Optional[str] = None,
     timeout: int = 120,
     otp_service: OTPWebhookService = Depends(get_verified_otp_service),
-):
+) -> OTPResponse:
     """
     Wait for OTP to arrive (long polling).
 

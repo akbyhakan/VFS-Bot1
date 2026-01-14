@@ -11,24 +11,25 @@ logger = logging.getLogger(__name__)
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
 
-    def __init__(self, api_key: str, manual_timeout: int = 120):
+    def __init__(self, api_key: str = "", manual_timeout: int = 120):
         """
         Initialize 2Captcha solver.
 
         Args:
-            api_key: 2Captcha API key
+            api_key: 2Captcha API key (empty string for manual-only mode)
             manual_timeout: Timeout for fallback manual solving in seconds
         """
-        if not api_key:
-            raise ValueError("2Captcha API key is required")
-
         self.api_key = api_key
         self.manual_timeout = manual_timeout
-        logger.info("CaptchaSolver initialized with 2Captcha")
+
+        if api_key:
+            logger.info("CaptchaSolver initialized with 2Captcha")
+        else:
+            logger.warning("CaptchaSolver initialized without API key - manual mode only")
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
-        Solve reCAPTCHA v2/v3 using 2Captcha.
+        Solve reCAPTCHA v2/v3 using 2Captcha or manual fallback.
 
         Args:
             page: Playwright page object
@@ -38,6 +39,10 @@ class CaptchaSolver:
         Returns:
             Captcha solution token or None
         """
+        if not self.api_key:
+            logger.warning("No 2Captcha API key, using manual solving")
+            return await self._solve_manually(page)
+
         logger.info("Solving reCAPTCHA with 2Captcha...")
 
         try:
