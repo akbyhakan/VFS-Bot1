@@ -6,12 +6,9 @@ from fastapi.testclient import TestClient
 
 from web.app import app, bot_state, check_database_health, increment_metric
 
-
-# Access metrics dict directly from web.app module to avoid name collision with get_metrics function
-def get_metrics_dict():
-    """Get the metrics dictionary from web.app module."""
-    import web.app as web_app_module
-    return web_app_module.metrics
+# Import the metrics dict with an alias to avoid collision with get_metrics function
+import web.app
+metrics_storage = web.app.metrics  # This gets the dict at module level before any function shadows it
 
 
 @pytest.fixture
@@ -29,16 +26,15 @@ def reset_state():
     bot_state["appointments_booked"] = 0
     bot_state["active_users"] = 0
 
-    metrics_dict = get_metrics_dict()
-    metrics_dict["requests_total"] = 0
-    metrics_dict["requests_success"] = 0
-    metrics_dict["requests_failed"] = 0
-    metrics_dict["slots_checked"] = 0
-    metrics_dict["slots_found"] = 0
-    metrics_dict["appointments_booked"] = 0
-    metrics_dict["captchas_solved"] = 0
-    metrics_dict["errors"] = {}
-    metrics_dict["start_time"] = datetime.now(timezone.utc)
+    metrics_storage["requests_total"] = 0
+    metrics_storage["requests_success"] = 0
+    metrics_storage["requests_failed"] = 0
+    metrics_storage["slots_checked"] = 0
+    metrics_storage["slots_found"] = 0
+    metrics_storage["appointments_booked"] = 0
+    metrics_storage["captchas_solved"] = 0
+    metrics_storage["errors"] = {}
+    metrics_storage["start_time"] = datetime.now(timezone.utc)
 
     yield
 
@@ -165,9 +161,8 @@ class TestMetricsEndpoint:
 
     def test_metrics_endpoint_success_rate(self, client, reset_state):
         """Test success rate calculation."""
-        metrics_dict = get_metrics_dict()
-        metrics_dict["requests_total"] = 10
-        metrics_dict["requests_success"] = 7
+        metrics_storage["requests_total"] = 10
+        metrics_storage["requests_success"] = 7
 
         response = client.get("/metrics")
         data = response.json()
@@ -196,30 +191,27 @@ class TestIncrementMetric:
 
     def test_increment_metric_default(self, reset_state):
         """Test increment_metric with default count."""
-        metrics_dict = get_metrics_dict()
-        metrics_dict["requests_total"] = 5
+        metrics_storage["requests_total"] = 5
 
         increment_metric("requests_total")
 
-        assert metrics_dict["requests_total"] == 6
+        assert metrics_storage["requests_total"] == 6
 
     def test_increment_metric_custom_count(self, reset_state):
         """Test increment_metric with custom count."""
-        metrics_dict = get_metrics_dict()
-        metrics_dict["slots_found"] = 10
+        metrics_storage["slots_found"] = 10
 
         increment_metric("slots_found", count=5)
 
-        assert metrics_dict["slots_found"] == 15
+        assert metrics_storage["slots_found"] == 15
 
     def test_increment_metric_invalid_name(self, reset_state):
         """Test increment_metric with invalid metric name."""
         # Should not raise an error, just do nothing
         increment_metric("invalid_metric", count=5)
 
-        metrics_dict = get_metrics_dict()
         # Metrics should remain unchanged
-        assert "invalid_metric" not in metrics_dict
+        assert "invalid_metric" not in metrics_storage
 
 
 class TestCheckDatabaseHealth:
