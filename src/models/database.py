@@ -545,7 +545,6 @@ class Database:
                 raise ValueError(f"Missing required field: {field}")
         
         # Encrypt sensitive data
-        from src.utils.encryption import encrypt_password
         card_number_encrypted = encrypt_password(card_data["card_number"])
         cvv_encrypted = encrypt_password(card_data["cvv"])
         
@@ -620,7 +619,6 @@ class Database:
                 card = dict(row)
                 
                 # Decrypt sensitive data
-                from src.utils.encryption import decrypt_password
                 try:
                     card["card_number"] = decrypt_password(card["card_number_encrypted"])
                     card["cvv"] = decrypt_password(card["cvv_encrypted"])
@@ -653,7 +651,6 @@ class Database:
                 card = dict(row)
                 
                 # Decrypt card number to get last 4 digits, then mask
-                from src.utils.encryption import decrypt_password
                 try:
                     card_number = decrypt_password(card["card_number_encrypted"])
                     last_four = card_number[-4:]

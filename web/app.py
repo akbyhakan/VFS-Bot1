@@ -22,6 +22,7 @@ from slowapi.errors import RateLimitExceeded
 from src.core.security import verify_api_key, generate_api_key
 from src.core.auth import create_access_token, verify_token
 from src.services.otp_webhook_routes import router as otp_router
+from src.models.database import Database
 
 security_scheme = HTTPBearer()
 
@@ -1019,8 +1020,6 @@ async def get_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_token
         Masked payment card data or None if no card exists
     """
     try:
-        from src.models.database import Database
-        
         db = Database()
         await db.connect()
         
@@ -1060,8 +1059,6 @@ async def save_payment_card(
         Success message with card ID
     """
     try:
-        from src.models.database import Database
-        
         db = Database()
         await db.connect()
         
@@ -1098,8 +1095,6 @@ async def delete_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_to
         Success message
     """
     try:
-        from src.models.database import Database
-        
         db = Database()
         await db.connect()
         

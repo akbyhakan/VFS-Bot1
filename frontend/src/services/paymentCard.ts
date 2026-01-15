@@ -13,9 +13,9 @@ export const paymentCardApi = {
     try {
       const card = await api.get<PaymentCard>('/api/payment-card');
       return card;
-    } catch (error) {
-      // Return null if no card exists (404)
-      if (error instanceof Error && error.message.includes('404')) {
+    } catch (error: any) {
+      // Return null if no card exists (404) or if card is explicitly null
+      if (error?.response?.status === 404 || error?.response?.data === null) {
         return null;
       }
       throw error;
