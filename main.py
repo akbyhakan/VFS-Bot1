@@ -104,11 +104,34 @@ async def run_web_mode(config: dict) -> None:
 
     import uvicorn
     from web.app import app
+    from src.services.cleanup_service import CleanupService
 
-    # Run uvicorn server
-    config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
-    server = uvicorn.Server(config_uvicorn)
-    await server.serve()
+    # Initialize database for cleanup service
+    db = Database()
+    await db.connect()
+
+    try:
+        # Start cleanup service in background
+        cleanup_service = CleanupService(db, cleanup_days=30)
+        cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
+        logger.info("Cleanup service started (runs every 24 hours)")
+
+        # Run uvicorn server
+        config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        server = uvicorn.Server(config_uvicorn)
+        await server.serve()
+    finally:
+        # Stop cleanup service
+        if 'cleanup_service' in locals():
+            cleanup_service.stop()
+        if 'cleanup_task' in locals():
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
+        await db.close()
+        logger.info("Web mode shutdown complete")
 
 
 async def run_both_mode(config: dict) -> None:
