@@ -4,7 +4,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Optional
 from datetime import datetime, timezone
 from collections import deque
 
@@ -42,6 +42,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 static_dir = Path(__file__).parent / "static"
 templates_dir = Path(__file__).parent / "templates"
 
+# Mount the new React frontend build directory
+dist_dir = static_dir / "dist"
+if dist_dir.exists():
+    # Serve React app static assets
+    app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+    
+# Mount other static files (for backward compatibility)
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -191,19 +198,36 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app(request: Request, full_path: str = ""):
     """
-    Render main dashboard page.
-
+    Serve React SPA for all non-API routes.
+    
+    This handles client-side routing by serving index.html for all routes
+    that don't start with /api, /ws, /health, /metrics, or /static.
+    
     Args:
         request: FastAPI request object
-
+        full_path: Requested path
+        
     Returns:
-        HTML response with dashboard template
+        HTML response with React app
     """
-    return templates.TemplateResponse(
-        "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
-    )
+    # Skip API routes, WebSocket, health checks, and static files
+    if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # Serve the React app
+    dist_dir = Path(__file__).parent / "static" / "dist"
+    index_file = dist_dir / "index.html"
+    
+    if index_file.exists():
+        return FileResponse(index_file)
+    else:
+        # Fallback to old template if React build doesn't exist
+        return templates.TemplateResponse(
+            "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
+        )
 
 
 @app.get("/api/status")
@@ -761,6 +785,196 @@ async def get_error_screenshot(error_id: str, type: str = "full"):
                     raise HTTPException(status_code=500, detail="Error accessing screenshot")
 
     raise HTTPException(status_code=404, detail="Screenshot not found")
+
+
+# User Management API Endpoints (Mock - for frontend development)
+# TODO: Implement full database integration with personal_details table
+class UserCreateRequest(BaseModel):
+    """User creation request."""
+    email: str
+    phone: str
+    first_name: str
+    last_name: str
+    center_name: str
+    visa_category: str
+    visa_subcategory: str
+    is_active: bool = True
+
+
+class UserUpdateRequest(BaseModel):
+    """User update request."""
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    center_name: Optional[str] = None
+    visa_category: Optional[str] = None
+    visa_subcategory: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class UserModel(BaseModel):
+    """User response model."""
+    id: int
+    email: str
+    phone: str
+    first_name: str
+    last_name: str
+    center_name: str
+    visa_category: str
+    visa_subcategory: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+# In-memory mock users storage (temporary - for frontend development only)
+# WARNING: This is NOT thread-safe and should be replaced with proper database integration
+# TODO: Replace with async database operations using existing users/personal_details tables
+mock_users: List[UserModel] = []
+next_user_id = 1
+
+
+@app.get("/api/users", response_model=List[UserModel])
+async def get_users(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+    """
+    Get all users - requires authentication.
+    
+    Args:
+        token_data: Verified token data
+        
+    Returns:
+        List of users
+    """
+    # TODO: Replace with actual database query
+    return mock_users
+
+
+@app.post("/api/users", response_model=UserModel)
+async def create_user(
+    user: UserCreateRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Create a new user - requires authentication.
+    
+    Args:
+        user: User data
+        token_data: Verified token data
+        
+    Returns:
+        Created user
+    """
+    global next_user_id
+    
+    # TODO: Replace with actual database insert
+    new_user = UserModel(
+        id=next_user_id,
+        email=user.email,
+        phone=user.phone,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        center_name=user.center_name,
+        visa_category=user.visa_category,
+        visa_subcategory=user.visa_subcategory,
+        is_active=user.is_active,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    
+    mock_users.append(new_user)
+    next_user_id += 1
+    
+    logger.info(f"User created: {new_user.email} by {token_data.get('sub', 'unknown')}")
+    return new_user
+
+
+@app.put("/api/users/{user_id}", response_model=UserModel)
+async def update_user(
+    user_id: int,
+    user_update: UserUpdateRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Update a user - requires authentication.
+    
+    Args:
+        user_id: User ID
+        user_update: Updated user data
+        token_data: Verified token data
+        
+    Returns:
+        Updated user
+    """
+    # TODO: Replace with actual database update
+    for user in mock_users:
+        if user.id == user_id:
+            update_data = user_update.dict(exclude_unset=True)
+            for key, value in update_data.items():
+                setattr(user, key, value)
+            user.updated_at = datetime.now(timezone.utc).isoformat()
+            
+            logger.info(f"User updated: {user.email} by {token_data.get('sub', 'unknown')}")
+            return user
+    
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.delete("/api/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Delete a user - requires authentication.
+    
+    Args:
+        user_id: User ID
+        token_data: Verified token data
+        
+    Returns:
+        Success message
+    """
+    global mock_users
+    
+    # TODO: Replace with actual database delete
+    for i, user in enumerate(mock_users):
+        if user.id == user_id:
+            deleted_user = mock_users.pop(i)
+            logger.info(f"User deleted: {deleted_user.email} by {token_data.get('sub', 'unknown')}")
+            return {"message": "User deleted successfully"}
+    
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.patch("/api/users/{user_id}", response_model=UserModel)
+async def toggle_user_status(
+    user_id: int,
+    status_update: Dict[str, bool],
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Toggle user active status - requires authentication.
+    
+    Args:
+        user_id: User ID
+        status_update: Status update data (is_active)
+        token_data: Verified token data
+        
+    Returns:
+        Updated user
+    """
+    # TODO: Replace with actual database update
+    for user in mock_users:
+        if user.id == user_id:
+            if "is_active" in status_update:
+                user.is_active = status_update["is_active"]
+                user.updated_at = datetime.now(timezone.utc).isoformat()
+                
+                logger.info(f"User status toggled: {user.email} -> {user.is_active} by {token_data.get('sub', 'unknown')}")
+                return user
+    
+    raise HTTPException(status_code=404, detail="User not found")
 
 
 @app.get("/errors.html", response_class=HTMLResponse)
