@@ -46,13 +46,11 @@ class TestCountryInfo:
         info = CountryInfo(
             code="fra",
             name_en="France",
-            name_tr="Fransa",
-            centres=["Istanbul", "Ankara"]
+            name_tr="Fransa"
         )
         assert info.code == "fra"
         assert info.name_en == "France"
         assert info.name_tr == "Fransa"
-        assert info.centres == ["Istanbul", "Ankara"]
 
 
 class TestSourceCountry:
@@ -76,7 +74,7 @@ class TestSupportedCountries:
             assert info.code == code
             assert len(info.name_en) > 0
             assert len(info.name_tr) > 0
-            assert len(info.centres) > 0
+            # centres field removed - should be fetched dynamically
 
     def test_country_count(self):
         """Test that we have exactly 21 supported countries."""
@@ -89,23 +87,7 @@ class TestSupportedCountries:
         assert "hrv" in SUPPORTED_COUNTRIES
         assert "bgr" in SUPPORTED_COUNTRIES
 
-    def test_all_countries_have_istanbul(self):
-        """Test that Istanbul is a centre for all countries."""
-        for info in SUPPORTED_COUNTRIES.values():
-            assert "Istanbul" in info.centres
-
-    def test_france_has_six_centres(self):
-        """Test that France has the most centres."""
-        france = SUPPORTED_COUNTRIES["fra"]
-        assert len(france.centres) == 6
-        assert "Gaziantep" in france.centres
-        assert "Antalya" in france.centres
-        assert "Bursa" in france.centres
-
-    def test_bulgaria_has_edirne(self):
-        """Test that Bulgaria has Edirne centre."""
-        bulgaria = SUPPORTED_COUNTRIES["bgr"]
-        assert "Edirne" in bulgaria.centres
+    # Tests for static centres removed - centres should be fetched dynamically via CentreFetcher
 
 
 class TestGetRoute:
@@ -174,7 +156,7 @@ class TestGetCountryInfo:
         assert info.code == "nld"
         assert info.name_en == "Netherlands"
         assert info.name_tr == "Hollanda"
-        assert "Istanbul" in info.centres
+        # centres field removed - should be fetched dynamically
 
     def test_get_info_invalid_mission(self):
         """Test getting info raises error for invalid missions."""
@@ -188,7 +170,7 @@ class TestGetCountryInfo:
             assert info.code == code
             assert len(info.name_en) > 0
             assert len(info.name_tr) > 0
-            assert len(info.centres) > 0
+            # centres field removed - should be fetched dynamically
 
 
 class TestGetAllSupportedCodes:
@@ -217,32 +199,24 @@ class TestGetAllSupportedCodes:
 
 
 class TestGetCentresForMission:
-    """Test get_centres_for_mission function."""
+    """Test get_centres_for_mission function (deprecated)."""
 
-    def test_get_centres_valid_mission(self):
-        """Test getting centres for valid missions."""
-        centres = get_centres_for_mission("nld")
-        assert isinstance(centres, list)
-        assert "Istanbul" in centres
-        assert "Ankara" in centres
-        assert "Izmir" in centres
-
-    def test_get_centres_invalid_mission(self):
-        """Test getting centres raises error for invalid missions."""
-        with pytest.raises(ValueError, match="Unsupported mission code"):
-            get_centres_for_mission("deu")
-
-    def test_get_centres_france(self):
-        """Test getting centres for France (has most centres)."""
-        centres = get_centres_for_mission("fra")
-        assert len(centres) == 6
-        assert "Istanbul" in centres
-        assert "Gaziantep" in centres
-
-    def test_get_centres_bulgaria(self):
-        """Test getting centres for Bulgaria (has Edirne)."""
-        centres = get_centres_for_mission("bgr")
-        assert "Edirne" in centres
+    def test_get_centres_deprecated(self):
+        """Test that get_centres_for_mission is deprecated and returns empty list."""
+        import warnings
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            centres = get_centres_for_mission("nld")
+            
+            # Should return empty list
+            assert centres == []
+            
+            # Should raise deprecation warning
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "deprecated" in str(w[0].message).lower()
+            assert "CentreFetcher" in str(w[0].message)
 
 
 class TestIntegration:
@@ -269,9 +243,7 @@ class TestIntegration:
         info = get_country_info(code)
         assert info.code == code
         
-        # Get centres
-        centres = get_centres_for_mission(code)
-        assert len(centres) > 0
+        # Note: centres removed - should be fetched dynamically via CentreFetcher
 
     def test_all_mission_codes_in_supported_countries(self):
         """Test that all MissionCode enum values are in SUPPORTED_COUNTRIES."""
