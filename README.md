@@ -138,12 +138,65 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 
 ## ⚙️ Configuration
 
+### 🔐 Security Best Practices
+
+**IMPORTANT:** Follow these security guidelines before deploying:
+
+1. **Encryption Keys:**
+   - Generate a secure `ENCRYPTION_KEY` for password encryption:
+     ```bash
+     python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+     ```
+   - Generate a secure `VFS_ENCRYPTION_KEY` for VFS API authentication:
+     ```bash
+     python -c "import secrets; print(secrets.token_urlsafe(32))"
+     ```
+   - **Never** commit encryption keys to version control
+   - Store keys securely in environment variables or secret managers
+
+2. **API Keys & Secrets:**
+   - Generate a strong `API_SECRET_KEY` (minimum 32 characters):
+     ```bash
+     python -c "import secrets; print(secrets.token_urlsafe(32))"
+     ```
+   - Change default `ADMIN_PASSWORD` immediately
+   - Use hashed passwords for production deployments
+
+3. **Environment Variables:**
+   - Always use `.env` files (included in `.gitignore`)
+   - Never hardcode sensitive data in source code
+   - Use different keys for development and production
+
+4. **Database Security:**
+   - Configure `DB_POOL_SIZE` based on your workload (default: 10)
+   - Regularly backup your database
+   - Passwords are encrypted, not hashed (required for VFS authentication)
+
+5. **Token Management:**
+   - Tokens auto-refresh with `TOKEN_REFRESH_BUFFER_MINUTES` (default: 5 minutes)
+   - Sessions expire and refresh automatically
+   - Invalid sessions trigger re-authentication
+
 ### Environment Variables (.env)
 
 ```env
 # VFS Credentials
 VFS_EMAIL=your_email@example.com
 VFS_PASSWORD=your_password
+
+# Password Encryption Key (CRITICAL)
+# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+ENCRYPTION_KEY=your-base64-encoded-encryption-key-here
+
+# VFS API Encryption Key (CRITICAL)
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+VFS_ENCRYPTION_KEY=your-32-byte-encryption-key-here
+
+# Database Configuration
+DB_POOL_SIZE=10
+
+# Token Management
+TOKEN_REFRESH_BUFFER_MINUTES=5
 
 # Telegram Notifications (optional)
 TELEGRAM_BOT_TOKEN=your_bot_token
