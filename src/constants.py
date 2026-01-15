@@ -123,3 +123,13 @@ class Delays:
     AFTER_LOGIN_FIELD = (0.3, 0.7)
     AFTER_SELECT_OPTION = (1.5, 3.0)
     AFTER_CLICK_CHECK = (2.5, 4.0)
+
+
+class Defaults:
+    """Default configuration values."""
+
+    API_TIMEOUT = 30  # API request timeout in seconds
+    DB_POOL_SIZE = 10  # Database connection pool size
+    RATE_LIMIT_REQUESTS = 60  # Maximum requests per time window
+    RATE_LIMIT_WINDOW = 60  # Rate limit time window in seconds
+    TOKEN_REFRESH_BUFFER_MINUTES = 5  # Token refresh buffer in minutes

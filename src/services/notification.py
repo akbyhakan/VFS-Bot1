@@ -2,18 +2,22 @@
 
 import logging
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 logger = logging.getLogger(__name__)
 
+# Type aliases for better type hints
+NotificationPriority = Literal["low", "normal", "high"]
+NotificationConfig = Dict[str, Any]  # Could be TypedDict for more specificity
+
 
 class NotificationService:
     """Multi-channel notification service for VFS-Bot."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: NotificationConfig):
         """
         Initialize notification service.
 
@@ -28,7 +32,12 @@ class NotificationService:
             f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
         )
 
-    async def send_notification(self, title: str, message: str, priority: str = "normal") -> None:
+    async def send_notification(
+        self, 
+        title: str, 
+        message: str, 
+        priority: NotificationPriority = "normal"
+    ) -> None:
         """
         Send notification through all enabled channels.
 

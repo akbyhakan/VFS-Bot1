@@ -3,11 +3,12 @@
 import asyncio
 import base64
 import logging
+import os
 import secrets
 import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import aiohttp
 from Crypto.Cipher import AES
@@ -19,6 +20,12 @@ from ..core.countries import (
     validate_mission_code,
     get_country_info,
 )
+from ..core.exceptions import (
+    VFSAuthenticationError,
+    VFSSessionExpiredError,
+    ConfigurationError,
+)
+from ..constants import Defaults
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +59,37 @@ class SlotAvailability:
 class VFSPasswordEncryption:
     """VFS Global password encryption (AES-256-CBC)."""
     
-    # VFS uses a specific encryption key derivation
-    # NOTE: This is a placeholder key matching VFS API requirements.
-    # In production, derive from environment variables or secure configuration.
-    ENCRYPTION_KEY = b"vfs_global_lift_encryption_key!!"[:32]  # 32 bytes for AES-256
+    @classmethod
+    def _get_encryption_key(cls) -> bytes:
+        """
+        Get encryption key from environment variable.
+        
+        Returns:
+            Encryption key as bytes
+            
+        Raises:
+            ConfigurationError: If VFS_ENCRYPTION_KEY is not set or invalid
+        """
+        key = os.getenv("VFS_ENCRYPTION_KEY")
+        if not key:
+            raise ConfigurationError(
+                "VFS_ENCRYPTION_KEY environment variable is required. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+        
+        # Convert to bytes and ensure it's 32 bytes for AES-256
+        key_bytes = key.encode('utf-8')[:32]
+        
+        # Warn if key is too short (security issue)
+        if len(key_bytes) < 32:
+            logger.warning(
+                f"VFS_ENCRYPTION_KEY is shorter than recommended 32 bytes ({len(key_bytes)} bytes). "
+                "Consider generating a new key with the recommended method."
+            )
+            # Pad to 32 bytes for AES-256 compatibility
+            key_bytes = key_bytes.ljust(32, b'\0')
+        
+        return key_bytes
     
     @classmethod
     def encrypt(cls, password: str) -> str:
@@ -68,8 +102,9 @@ class VFSPasswordEncryption:
         Returns:
             Base64 encoded encrypted password
         """
+        encryption_key = cls._get_encryption_key()
         iv = secrets.token_bytes(16)
-        cipher = AES.new(cls.ENCRYPTION_KEY, AES.MODE_CBC, iv)
+        cipher = AES.new(encryption_key, AES.MODE_CBC, iv)
         padded_data = pad(password.encode('utf-8'), AES.block_size)
         encrypted = cipher.encrypt(padded_data)
         
@@ -201,14 +236,24 @@ class VFSApiClient:
             if response.status != 200:
                 error_text = await response.text()
                 logger.error(f"Login failed: {response.status} - {error_text}")
-                raise Exception(f"Login failed: {response.status}")
+                raise VFSAuthenticationError(f"Login failed with status {response.status}")
             
             data = await response.json()
+            
+            # Calculate token expiration time
+            # VFS tokens typically expire after 1 hour, but we add buffer for safety
+            token_refresh_buffer = int(os.getenv(
+                "TOKEN_REFRESH_BUFFER_MINUTES", 
+                str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
+            ))
+            expires_at = datetime.now() + timedelta(
+                minutes=data.get("expiresIn", 60) - token_refresh_buffer
+            )
             
             self.session = VFSSession(
                 access_token=data["accessToken"],
                 refresh_token=data.get("refreshToken", ""),
-                expires_at=datetime.now(),  # Parse from response
+                expires_at=expires_at,
                 user_id=data.get("userId", ""),
                 email=email
             )
@@ -218,7 +263,7 @@ class VFSApiClient:
                 "Authorization": f"Bearer {self.session.access_token}"
             })
             
-            logger.info(f"Login successful for {email[:3]}***")
+            logger.info(f"Login successful for {email[:3]}***, token expires at {expires_at}")
             return self.session
     
     async def get_centres(self) -> List[Dict[str, Any]]:
@@ -373,15 +418,69 @@ class VFSApiClient:
             return data
     
     async def _ensure_authenticated(self) -> None:
-        """Ensure we have a valid session."""
+        """
+        Ensure we have a valid session.
+        
+        Raises:
+            VFSSessionExpiredError: If session is not valid or has expired
+        """
         if not self.session:
-            raise RuntimeError(
+            raise VFSSessionExpiredError(
                 "Not authenticated. Call login() first."
             )
         
-        # TODO: Implement token expiration checking and automatic refresh
-        # Current behavior: Tokens are assumed valid until API returns 401
-        # Enhancement: Check session.expires_at and call refresh if needed
+        # Check if token has expired or is about to expire
+        if datetime.now() >= self.session.expires_at:
+            logger.warning("Token has expired, attempting refresh")
+            await self._refresh_token()
+    
+    async def _refresh_token(self) -> None:
+        """
+        Refresh the authentication token.
+        
+        Raises:
+            VFSAuthenticationError: If token refresh fails
+        """
+        if not self.session or not self.session.refresh_token:
+            raise VFSAuthenticationError(
+                "Cannot refresh token: No refresh token available. Please login again."
+            )
+        
+        try:
+            async with self._http_session.post(
+                f"{VFS_API_BASE}/user/refresh",
+                json={"refreshToken": self.session.refresh_token}
+            ) as response:
+                
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Token refresh failed: {response.status} - {error_text}")
+                    raise VFSAuthenticationError(f"Token refresh failed with status {response.status}")
+                
+                data = await response.json()
+                
+                # Update session with new tokens
+                token_refresh_buffer = int(os.getenv(
+                    "TOKEN_REFRESH_BUFFER_MINUTES", 
+                    str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
+                ))
+                self.session.access_token = data["accessToken"]
+                self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
+                self.session.expires_at = datetime.now() + timedelta(
+                    minutes=data.get("expiresIn", 60) - token_refresh_buffer
+                )
+                
+                # Update session headers with new auth token
+                self._http_session.headers.update({
+                    "Authorization": f"Bearer {self.session.access_token}"
+                })
+                
+                logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
+        except Exception as e:
+            if isinstance(e, VFSAuthenticationError):
+                raise
+            logger.error(f"Token refresh failed: {e}")
+            raise VFSSessionExpiredError(f"Token refresh failed: {e}")
     
     async def solve_turnstile(self, page_url: str, site_key: str) -> str:
         """
