@@ -168,6 +168,35 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class PaymentCardRequest(BaseModel):
+    """Payment card request model."""
+    
+    card_holder_name: str
+    card_number: str
+    expiry_month: str
+    expiry_year: str
+    cvv: str
+
+
+class PaymentCardResponse(BaseModel):
+    """Payment card response model (masked)."""
+    
+    id: int
+    card_holder_name: str
+    card_number_masked: str
+    expiry_month: str
+    expiry_year: str
+    created_at: str
+
+
+class WebhookUrlsResponse(BaseModel):
+    """Webhook URLs response model."""
+    
+    appointment_webhook: str
+    payment_webhook: str
+    base_url: str
+
+
 async def verify_jwt_token(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
 ) -> Dict[str, Any]:
@@ -975,6 +1004,140 @@ async def toggle_user_status(
                 return user
     
     raise HTTPException(status_code=404, detail="User not found")
+
+
+# Payment card endpoints
+@app.get("/api/payment-card", response_model=Optional[PaymentCardResponse])
+async def get_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+    """
+    Get saved payment card (masked) - requires authentication.
+    
+    Args:
+        token_data: Verified token data
+        
+    Returns:
+        Masked payment card data or None if no card exists
+    """
+    try:
+        from src.models.database import Database
+        
+        db = Database()
+        await db.connect()
+        
+        try:
+            card = await db.get_payment_card_masked()
+            if not card:
+                return None
+            
+            return PaymentCardResponse(
+                id=card["id"],
+                card_holder_name=card["card_holder_name"],
+                card_number_masked=card["card_number_masked"],
+                expiry_month=card["expiry_month"],
+                expiry_year=card["expiry_year"],
+                created_at=card["created_at"]
+            )
+        finally:
+            await db.close()
+    except Exception as e:
+        logger.error(f"Failed to get payment card: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve payment card")
+
+
+@app.post("/api/payment-card", status_code=201)
+async def save_payment_card(
+    card_data: PaymentCardRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Save or update payment card - requires authentication.
+    
+    Args:
+        card_data: Payment card data
+        token_data: Verified token data
+        
+    Returns:
+        Success message with card ID
+    """
+    try:
+        from src.models.database import Database
+        
+        db = Database()
+        await db.connect()
+        
+        try:
+            card_id = await db.save_payment_card({
+                "card_holder_name": card_data.card_holder_name,
+                "card_number": card_data.card_number,
+                "expiry_month": card_data.expiry_month,
+                "expiry_year": card_data.expiry_year,
+                "cvv": card_data.cvv
+            })
+            
+            logger.info(f"Payment card saved/updated by {token_data.get('sub', 'unknown')}")
+            return {"success": True, "card_id": card_id, "message": "Payment card saved successfully"}
+        finally:
+            await db.close()
+    except ValueError as e:
+        logger.error(f"Invalid card data: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to save payment card: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save payment card")
+
+
+@app.delete("/api/payment-card")
+async def delete_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+    """
+    Delete saved payment card - requires authentication.
+    
+    Args:
+        token_data: Verified token data
+        
+    Returns:
+        Success message
+    """
+    try:
+        from src.models.database import Database
+        
+        db = Database()
+        await db.connect()
+        
+        try:
+            deleted = await db.delete_payment_card()
+            if not deleted:
+                raise HTTPException(status_code=404, detail="No payment card found")
+            
+            logger.info(f"Payment card deleted by {token_data.get('sub', 'unknown')}")
+            return {"success": True, "message": "Payment card deleted successfully"}
+        finally:
+            await db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete payment card: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete payment card")
+
+
+@app.get("/api/settings/webhook-urls", response_model=WebhookUrlsResponse)
+async def get_webhook_urls(request: Request):
+    """
+    Get webhook URLs for SMS forwarding.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        Webhook URLs with base URL
+    """
+    # Get base URL from request
+    base_url = str(request.base_url).rstrip('/')
+    
+    return WebhookUrlsResponse(
+        appointment_webhook=f"{base_url}/api/webhook/sms/appointment",
+        payment_webhook=f"{base_url}/api/webhook/sms/payment",
+        base_url=base_url
+    )
 
 
 @app.get("/errors.html", response_class=HTMLResponse)

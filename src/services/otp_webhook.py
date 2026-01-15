@@ -96,17 +96,33 @@ class OTPWebhookService:
             otp_timeout_seconds: OTP validity period in seconds
             custom_patterns: Optional custom regex patterns for OTP extraction
         """
-        self._otp_queue: deque[OTPEntry] = deque(maxlen=max_entries)
+        # Separate queues for appointment and payment OTPs
+        self._appointment_otp_queue: deque[OTPEntry] = deque(maxlen=max_entries)
+        self._payment_otp_queue: deque[OTPEntry] = deque(maxlen=max_entries)
         self._otp_timeout = otp_timeout_seconds
         self._pattern_matcher = OTPPatternMatcher(custom_patterns)
         self._waiting_events: Dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
 
-        logger.info(f"OTPWebhookService initialized (timeout: {otp_timeout_seconds}s)")
+        logger.info(f"OTPWebhookService initialized with dual queues (timeout: {otp_timeout_seconds}s)")
 
     async def process_sms(self, phone_number: str, message: str) -> Optional[str]:
         """
-        Process incoming SMS and extract OTP.
+        Process incoming SMS and extract OTP (legacy method for backward compatibility).
+        Routes to appointment queue by default.
+
+        Args:
+            phone_number: Sender phone number
+            message: SMS message text
+
+        Returns:
+            Extracted OTP code or None
+        """
+        return await self.process_appointment_sms(phone_number, message)
+
+    async def process_appointment_sms(self, phone_number: str, message: str) -> Optional[str]:
+        """
+        Process incoming appointment SMS and extract OTP.
 
         Args:
             phone_number: Sender phone number
@@ -118,7 +134,7 @@ class OTPWebhookService:
         otp_code = self._pattern_matcher.extract_otp(message)
 
         if not otp_code:
-            logger.warning(f"No OTP found in SMS from {phone_number[:4]}***")
+            logger.warning(f"No OTP found in appointment SMS from {phone_number[:4]}***")
             return None
 
         entry = OTPEntry(
@@ -129,20 +145,72 @@ class OTPWebhookService:
         )
 
         async with self._lock:
-            self._otp_queue.append(entry)
+            self._appointment_otp_queue.append(entry)
 
             # Notify waiting consumers
-            for event in self._waiting_events.values():
-                event.set()
+            for key, event in self._waiting_events.items():
+                if key.startswith("appointment_"):
+                    event.set()
 
-        logger.info(f"OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
+        logger.info(f"Appointment OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
+        return otp_code
+
+    async def process_payment_sms(self, phone_number: str, message: str) -> Optional[str]:
+        """
+        Process incoming payment SMS and extract OTP.
+
+        Args:
+            phone_number: Sender phone number
+            message: SMS message text
+
+        Returns:
+            Extracted OTP code or None
+        """
+        otp_code = self._pattern_matcher.extract_otp(message)
+
+        if not otp_code:
+            logger.warning(f"No OTP found in payment SMS from {phone_number[:4]}***")
+            return None
+
+        entry = OTPEntry(
+            code=otp_code,
+            phone_number=phone_number,
+            raw_message=message,
+            received_at=datetime.now(timezone.utc),
+        )
+
+        async with self._lock:
+            self._payment_otp_queue.append(entry)
+
+            # Notify waiting consumers
+            for key, event in self._waiting_events.items():
+                if key.startswith("payment_"):
+                    event.set()
+
+        logger.info(f"Payment OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
         return otp_code
 
     async def wait_for_otp(
         self, phone_number: Optional[str] = None, timeout: Optional[int] = None
     ) -> Optional[str]:
         """
-        Wait for OTP code to arrive.
+        Wait for OTP code to arrive (legacy method for backward compatibility).
+        Routes to appointment queue by default.
+
+        Args:
+            phone_number: Optional phone number filter
+            timeout: Maximum wait time in seconds (default: otp_timeout_seconds)
+
+        Returns:
+            OTP code or None if timeout
+        """
+        return await self.wait_for_appointment_otp(phone_number, timeout)
+
+    async def wait_for_appointment_otp(
+        self, phone_number: Optional[str] = None, timeout: Optional[int] = None
+    ) -> Optional[str]:
+        """
+        Wait for appointment OTP code to arrive.
 
         Args:
             phone_number: Optional phone number filter
@@ -152,7 +220,7 @@ class OTPWebhookService:
             OTP code or None if timeout
         """
         timeout = timeout or self._otp_timeout
-        wait_key = phone_number or "any"
+        wait_key = f"appointment_{phone_number or 'any'}"
 
         event = asyncio.Event()
         self._waiting_events[wait_key] = event
@@ -162,7 +230,9 @@ class OTPWebhookService:
 
             while True:
                 # Check existing OTPs
-                otp = await self._get_latest_otp(phone_number)
+                otp = await self._get_latest_otp_from_queue(
+                    self._appointment_otp_queue, phone_number
+                )
                 if otp:
                     return otp
 
@@ -171,7 +241,53 @@ class OTPWebhookService:
                 remaining = timeout - elapsed
 
                 if remaining <= 0:
-                    logger.warning(f"OTP wait timeout after {timeout}s")
+                    logger.warning(f"Appointment OTP wait timeout after {timeout}s")
+                    return None
+
+                # Wait for new OTP or timeout
+                try:
+                    await asyncio.wait_for(event.wait(), timeout=min(remaining, 5.0))
+                    event.clear()
+                except asyncio.TimeoutError:
+                    continue
+
+        finally:
+            self._waiting_events.pop(wait_key, None)
+
+    async def wait_for_payment_otp(
+        self, phone_number: Optional[str] = None, timeout: Optional[int] = None
+    ) -> Optional[str]:
+        """
+        Wait for payment OTP code to arrive.
+
+        Args:
+            phone_number: Optional phone number filter
+            timeout: Maximum wait time in seconds (default: otp_timeout_seconds)
+
+        Returns:
+            OTP code or None if timeout
+        """
+        timeout = timeout or self._otp_timeout
+        wait_key = f"payment_{phone_number or 'any'}"
+
+        event = asyncio.Event()
+        self._waiting_events[wait_key] = event
+
+        try:
+            start_time = datetime.now(timezone.utc)
+
+            while True:
+                # Check existing OTPs
+                otp = await self._get_latest_otp_from_queue(self._payment_otp_queue, phone_number)
+                if otp:
+                    return otp
+
+                # Calculate remaining time
+                elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+                remaining = timeout - elapsed
+
+                if remaining <= 0:
+                    logger.warning(f"Payment OTP wait timeout after {timeout}s")
                     return None
 
                 # Wait for new OTP or timeout
@@ -186,9 +302,24 @@ class OTPWebhookService:
 
     async def _get_latest_otp(self, phone_number: Optional[str] = None) -> Optional[str]:
         """
-        Get the latest unused OTP code.
+        Get the latest unused OTP code from appointment queue (legacy).
 
         Args:
+            phone_number: Optional phone number filter
+
+        Returns:
+            OTP code or None
+        """
+        return await self._get_latest_otp_from_queue(self._appointment_otp_queue, phone_number)
+
+    async def _get_latest_otp_from_queue(
+        self, queue: deque[OTPEntry], phone_number: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Get the latest unused OTP code from specified queue.
+
+        Args:
+            queue: OTP queue to search
             phone_number: Optional phone number filter
 
         Returns:
@@ -197,7 +328,7 @@ class OTPWebhookService:
         async with self._lock:
             now = datetime.now(timezone.utc)
 
-            for entry in reversed(self._otp_queue):
+            for entry in reversed(queue):
                 # Skip used entries
                 if entry.used:
                     continue
@@ -220,28 +351,45 @@ class OTPWebhookService:
 
     async def cleanup_expired(self) -> int:
         """
-        Remove expired OTP entries.
+        Remove expired OTP entries from both queues.
 
         Returns:
             Number of entries removed
         """
         async with self._lock:
             now = datetime.now(timezone.utc)
-            initial_count = len(self._otp_queue)
-
-            self._otp_queue = deque(
+            
+            # Clean appointment queue
+            initial_appt_count = len(self._appointment_otp_queue)
+            self._appointment_otp_queue = deque(
                 (
                     entry
-                    for entry in self._otp_queue
+                    for entry in self._appointment_otp_queue
                     if (now - entry.received_at).total_seconds() <= self._otp_timeout
                 ),
-                maxlen=self._otp_queue.maxlen,
+                maxlen=self._appointment_otp_queue.maxlen,
             )
+            appt_removed = initial_appt_count - len(self._appointment_otp_queue)
+            
+            # Clean payment queue
+            initial_pay_count = len(self._payment_otp_queue)
+            self._payment_otp_queue = deque(
+                (
+                    entry
+                    for entry in self._payment_otp_queue
+                    if (now - entry.received_at).total_seconds() <= self._otp_timeout
+                ),
+                maxlen=self._payment_otp_queue.maxlen,
+            )
+            pay_removed = initial_pay_count - len(self._payment_otp_queue)
 
-            removed = initial_count - len(self._otp_queue)
-            if removed > 0:
-                logger.debug(f"Cleaned up {removed} expired OTP entries")
-            return removed
+            total_removed = appt_removed + pay_removed
+            if total_removed > 0:
+                logger.debug(
+                    f"Cleaned up {total_removed} expired OTP entries "
+                    f"(appointment: {appt_removed}, payment: {pay_removed})"
+                )
+            return total_removed
 
 
 # Global instance

@@ -202,6 +202,22 @@ class Database:
             """
             )
 
+            # Payment card table (single card for all payments)
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS payment_card (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    card_holder_name TEXT NOT NULL,
+                    card_number_encrypted TEXT NOT NULL,
+                    expiry_month TEXT NOT NULL,
+                    expiry_year TEXT NOT NULL,
+                    cvv_encrypted TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
             await self.conn.commit()
             logger.info("Database tables created/verified")
 
@@ -507,3 +523,168 @@ class Database:
                 )
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
+
+    @require_connection
+    async def save_payment_card(self, card_data: Dict[str, str]) -> int:
+        """
+        Save or update payment card (only one card allowed).
+        
+        Args:
+            card_data: Dictionary containing card_holder_name, card_number, 
+                      expiry_month, expiry_year, cvv
+                      
+        Returns:
+            Card ID
+            
+        Raises:
+            ValueError: If card data is invalid
+        """
+        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year", "cvv"]
+        for field in required_fields:
+            if field not in card_data:
+                raise ValueError(f"Missing required field: {field}")
+        
+        # Encrypt sensitive data
+        from src.utils.encryption import encrypt_password
+        card_number_encrypted = encrypt_password(card_data["card_number"])
+        cvv_encrypted = encrypt_password(card_data["cvv"])
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Check if a card already exists
+                await cursor.execute("SELECT id FROM payment_card LIMIT 1")
+                existing = await cursor.fetchone()
+                
+                if existing:
+                    # Update existing card
+                    await cursor.execute(
+                        """
+                        UPDATE payment_card 
+                        SET card_holder_name = ?, 
+                            card_number_encrypted = ?,
+                            expiry_month = ?,
+                            expiry_year = ?,
+                            cvv_encrypted = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """,
+                        (
+                            card_data["card_holder_name"],
+                            card_number_encrypted,
+                            card_data["expiry_month"],
+                            card_data["expiry_year"],
+                            cvv_encrypted,
+                            existing["id"],
+                        ),
+                    )
+                    await conn.commit()
+                    logger.info("Payment card updated")
+                    return existing["id"]
+                else:
+                    # Insert new card
+                    await cursor.execute(
+                        """
+                        INSERT INTO payment_card 
+                        (card_holder_name, card_number_encrypted, expiry_month, expiry_year, cvv_encrypted)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (
+                            card_data["card_holder_name"],
+                            card_number_encrypted,
+                            card_data["expiry_month"],
+                            card_data["expiry_year"],
+                            cvv_encrypted,
+                        ),
+                    )
+                    await conn.commit()
+                    card_id = cursor.lastrowid
+                    logger.info(f"Payment card created with ID: {card_id}")
+                    return card_id
+
+    @require_connection
+    async def get_payment_card(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the saved payment card with decrypted data.
+        
+        Returns:
+            Card dictionary with decrypted data or None if no card exists
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM payment_card LIMIT 1")
+                row = await cursor.fetchone()
+                
+                if not row:
+                    return None
+                
+                card = dict(row)
+                
+                # Decrypt sensitive data
+                from src.utils.encryption import decrypt_password
+                try:
+                    card["card_number"] = decrypt_password(card["card_number_encrypted"])
+                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
+                except Exception as e:
+                    logger.error(f"Failed to decrypt card data: {e}")
+                    raise ValueError("Failed to decrypt card data")
+                
+                # Remove encrypted fields from response
+                del card["card_number_encrypted"]
+                del card["cvv_encrypted"]
+                
+                return card
+
+    @require_connection
+    async def get_payment_card_masked(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the saved payment card with masked card number (for frontend display).
+        
+        Returns:
+            Card dictionary with masked card number or None if no card exists
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT * FROM payment_card LIMIT 1")
+                row = await cursor.fetchone()
+                
+                if not row:
+                    return None
+                
+                card = dict(row)
+                
+                # Decrypt card number to get last 4 digits, then mask
+                from src.utils.encryption import decrypt_password
+                try:
+                    card_number = decrypt_password(card["card_number_encrypted"])
+                    last_four = card_number[-4:]
+                    card["card_number_masked"] = f"**** **** **** {last_four}"
+                except Exception as e:
+                    logger.error(f"Failed to decrypt card number: {e}")
+                    card["card_number_masked"] = "**** **** **** ****"
+                
+                # Remove encrypted and sensitive fields
+                del card["card_number_encrypted"]
+                del card["cvv_encrypted"]
+                
+                return card
+
+    @require_connection
+    async def delete_payment_card(self) -> bool:
+        """
+        Delete the saved payment card.
+        
+        Returns:
+            True if card was deleted, False if no card existed
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT id FROM payment_card LIMIT 1")
+                existing = await cursor.fetchone()
+                
+                if not existing:
+                    return False
+                
+                await cursor.execute("DELETE FROM payment_card WHERE id = ?", (existing["id"],))
+                await conn.commit()
+                logger.info("Payment card deleted")
+                return True

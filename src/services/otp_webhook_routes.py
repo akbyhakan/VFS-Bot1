@@ -80,7 +80,7 @@ async def receive_sms(
     payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
 ) -> OTPResponse:
     """
-    Receive SMS webhook from provider.
+    Receive SMS webhook from provider (legacy endpoint - routes to appointment).
 
     Expected payload format:
     {
@@ -90,7 +90,7 @@ async def receive_sms(
     }
     """
     try:
-        otp = await otp_service.process_sms(
+        otp = await otp_service.process_appointment_sms(
             phone_number=payload.phone_number, message=payload.message
         )
 
@@ -105,6 +105,72 @@ async def receive_sms(
 
     except Exception as e:
         logger.error(f"SMS webhook processing error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process SMS")
+
+
+@router.post("/sms/appointment", response_model=OTPResponse)
+async def receive_appointment_sms(
+    payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
+) -> OTPResponse:
+    """
+    Receive appointment SMS webhook from provider.
+
+    Expected payload format:
+    {
+        "from": "+905551234567",
+        "text": "Your VFS verification code is 123456",
+        "timestamp": "2024-01-15T10:30:00Z"
+    }
+    """
+    try:
+        otp = await otp_service.process_appointment_sms(
+            phone_number=payload.phone_number, message=payload.message
+        )
+
+        if otp:
+            return OTPResponse(
+                success=True,
+                otp=f"{otp[:2]}****",  # Partially masked for logging
+                message="Appointment OTP extracted successfully",
+            )
+        else:
+            return OTPResponse(success=False, message="No OTP found in message")
+
+    except Exception as e:
+        logger.error(f"Appointment SMS webhook processing error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process SMS")
+
+
+@router.post("/sms/payment", response_model=OTPResponse)
+async def receive_payment_sms(
+    payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
+) -> OTPResponse:
+    """
+    Receive payment SMS webhook from provider.
+
+    Expected payload format:
+    {
+        "from": "+905551234567",
+        "text": "Your bank verification code is 123456",
+        "timestamp": "2024-01-15T10:30:00Z"
+    }
+    """
+    try:
+        otp = await otp_service.process_payment_sms(
+            phone_number=payload.phone_number, message=payload.message
+        )
+
+        if otp:
+            return OTPResponse(
+                success=True,
+                otp=f"{otp[:2]}****",  # Partially masked for logging
+                message="Payment OTP extracted successfully",
+            )
+        else:
+            return OTPResponse(success=False, message="No OTP found in message")
+
+    except Exception as e:
+        logger.error(f"Payment SMS webhook processing error: {e}")
         raise HTTPException(status_code=500, detail="Failed to process SMS")
 
 
