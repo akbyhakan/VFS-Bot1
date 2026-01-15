@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class CentreFetcher:
     """Fetch available centres and categories from VFS website."""
 
-    def __init__(self, base_url: str, country: str, mission: str):
+    def __init__(self, base_url: str, country: str, mission: str, language: str = "tr"):
         """
         Initialize centre fetcher.
 
@@ -19,12 +19,14 @@ class CentreFetcher:
             base_url: VFS base URL
             country: Country code (e.g., 'tur')
             mission: Mission code (e.g., 'deu')
+            language: Language code (e.g., 'tr')
         """
         self.base_url = base_url
         self.country = country
         self.mission = mission
+        self.language = language
         self.cache: Dict[str, Any] = {}
-        logger.info(f"CentreFetcher initialized for {country}/{mission}")
+        logger.info(f"CentreFetcher initialized for {country}/{language}/{mission}")
 
     async def get_available_centres(self, page: Page) -> List[str]:
         """
@@ -44,7 +46,7 @@ class CentreFetcher:
 
         try:
             # Navigate to appointment page
-            url = f"{self.base_url}/{self.country}/{self.mission}/en/appointment"
+            url = f"{self.base_url}/{self.country}/{self.language}/{self.mission}/appointment"
             await page.goto(url, wait_until="networkidle", timeout=30000)
 
             # Wait for centre dropdown to load

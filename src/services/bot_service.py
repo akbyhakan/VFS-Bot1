@@ -108,6 +108,7 @@ class VFSBot:
             base_url=config["vfs"]["base_url"],
             country=config["vfs"]["country"],
             mission=config["vfs"]["mission"],
+            language=config["vfs"].get("language", "tr"),
         )
 
         # Initialize anti-detection components
@@ -482,8 +483,9 @@ class VFSBot:
         try:
             base = self.config["vfs"]["base_url"]
             country = self.config["vfs"]["country"]
+            language = self.config["vfs"].get("language", "tr")
             mission = self.config["vfs"]["mission"]
-            url = f"{base}/{country}/{mission}/en/login"
+            url = f"{base}/{country}/{language}/{mission}/login"
             logger.info(f"Navigating to login page: {url}")
 
             if not await safe_navigate(page, url, timeout=Timeouts.NAVIGATION):
@@ -592,8 +594,9 @@ class VFSBot:
             # Navigate to appointment page
             base = self.config["vfs"]["base_url"]
             country = self.config["vfs"]["country"]
+            language = self.config["vfs"].get("language", "tr")
             mission = self.config["vfs"]["mission"]
-            appointment_url = f"{base}/{country}/{mission}/en/appointment"
+            appointment_url = f"{base}/{country}/{language}/{mission}/appointment"
 
             if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
                 logger.error("Failed to navigate to appointment page")
