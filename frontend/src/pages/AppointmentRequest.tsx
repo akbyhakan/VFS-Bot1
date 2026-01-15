@@ -51,6 +51,8 @@ const validateEmail = (email: string): boolean => {
 };
 
 const validatePhoneNumber = (phone: string): boolean => {
+  // Turkish phone number format: 10 digits, not starting with 0
+  // Example: 5551234567 (not 05551234567)
   return /^[1-9]\d{9}$/.test(phone);
 };
 

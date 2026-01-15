@@ -1221,9 +1221,14 @@ async def get_country_centres(country_code: str):
         
     Returns:
         List of centre names
+        
+    Note:
+        Currently returns Turkish VFS centres regardless of country_code.
+        This is because appointments are made at Turkish VFS centres for
+        all destination countries. In the future, this could be dynamically
+        fetched from VFS or cached.
     """
-    # For now, return common Turkish centres
-    # TODO: In the future, this could be dynamically fetched from VFS or cached
+    # Turkish VFS centres (same for all countries as applications are made in Turkey)
     centres = ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"]
     return centres
 
@@ -1443,6 +1448,11 @@ async def update_appointment_request_status(
         
     Returns:
         Success message
+        
+    Note:
+        When status is set to 'completed', completed_at timestamp is set.
+        When status changes from 'completed' to another status, completed_at
+        is not cleared as it represents historical data.
     """
     try:
         status = status_update.get("status")
@@ -1456,7 +1466,7 @@ async def update_appointment_request_status(
         await db.connect()
         
         try:
-            # Set completed_at timestamp if status is completed
+            # Set completed_at timestamp only when status becomes 'completed'
             completed_at = datetime.now(timezone.utc) if status == "completed" else None
             
             updated = await db.update_appointment_request_status(

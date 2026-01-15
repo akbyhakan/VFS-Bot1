@@ -771,8 +771,11 @@ class Database:
                 # Insert persons
                 for person in persons:
                     # Validate email
-                    if not validate_email(person.get("email", "")):
-                        raise ValidationError(f"Invalid email format: {person.get('email')}", field="email")
+                    email = person.get("email", "")
+                    if not email:
+                        raise ValidationError("Email is required for all persons", field="email")
+                    if not validate_email(email):
+                        raise ValidationError(f"Invalid email format: {email}", field="email")
                     
                     await cursor.execute(
                         """
