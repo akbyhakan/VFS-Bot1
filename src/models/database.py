@@ -2,12 +2,15 @@
 
 import aiosqlite
 import logging
+import os
 from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
 import asyncio
 
 from src.utils.encryption import encrypt_password, decrypt_password
+from src.utils.validators import validate_email, validate_phone
+from src.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +43,19 @@ def require_connection(func: F) -> F:
 class Database:
     """SQLite database manager for VFS-Bot with connection pooling."""
 
-    def __init__(self, db_path: str = "vfs_bot.db", pool_size: int = 5):
+    def __init__(self, db_path: str = "vfs_bot.db", pool_size: Optional[int] = None):
         """
         Initialize database connection pool.
 
         Args:
             db_path: Path to SQLite database file
-            pool_size: Maximum number of concurrent connections
+            pool_size: Maximum number of concurrent connections (defaults to DB_POOL_SIZE env var or 10)
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
+        # Get pool size from parameter, env var, or default to 10
+        if pool_size is None:
+            pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
         self.pool_size = pool_size
         self._pool: List[aiosqlite.Connection] = []
         self._pool_lock = asyncio.Lock()
@@ -214,7 +220,14 @@ class Database:
 
         Returns:
             User ID
+            
+        Raises:
+            ValidationError: If email format is invalid
         """
+        # Validate email format
+        if not validate_email(email):
+            raise ValidationError(f"Invalid email format: {email}", field="email")
+        
         # Encrypt password before storing (NOT hashing - we need plaintext for VFS login)
         encrypted_password = encrypt_password(password)
 
@@ -323,7 +336,20 @@ class Database:
 
         Returns:
             Personal details ID
+            
+        Raises:
+            ValidationError: If email or phone format is invalid
         """
+        # Validate email if provided
+        email = details.get("email")
+        if email and not validate_email(email):
+            raise ValidationError(f"Invalid email format: {email}", field="email")
+        
+        # Validate phone if provided
+        mobile_number = details.get("mobile_number")
+        if mobile_number and not validate_phone(mobile_number):
+            raise ValidationError(f"Invalid phone number format: {mobile_number}", field="mobile_number")
+        
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(

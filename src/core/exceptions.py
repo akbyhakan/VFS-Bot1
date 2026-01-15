@@ -102,3 +102,65 @@ class AuthenticationError(VFSBotError):
 
     def __init__(self, message: str = "Authentication failed", recoverable: bool = False):
         super().__init__(message, recoverable)
+
+
+class VFSApiError(VFSBotError):
+    """Base class for VFS API-related errors."""
+
+    def __init__(self, message: str = "VFS API error occurred", recoverable: bool = True):
+        super().__init__(message, recoverable)
+
+
+class VFSAuthenticationError(VFSApiError):
+    """VFS API authentication error."""
+
+    def __init__(self, message: str = "VFS API authentication failed", recoverable: bool = False):
+        super().__init__(message, recoverable)
+
+
+class VFSRateLimitError(VFSApiError):
+    """VFS API rate limit error."""
+
+    def __init__(self, message: str = "VFS API rate limit exceeded", wait_time: Optional[int] = None):
+        """
+        Initialize VFS API rate limit error.
+
+        Args:
+            message: Error message
+            wait_time: Recommended wait time in seconds
+        """
+        self.wait_time = wait_time
+        if wait_time:
+            message += f". Retry after {wait_time} seconds."
+        super().__init__(message, recoverable=True)
+
+
+class VFSSlotNotFoundError(VFSApiError):
+    """VFS appointment slot not found."""
+
+    def __init__(self, message: str = "No appointment slots available", recoverable: bool = True):
+        super().__init__(message, recoverable)
+
+
+class VFSSessionExpiredError(VFSApiError):
+    """VFS session or token has expired."""
+
+    def __init__(self, message: str = "VFS session expired", recoverable: bool = True):
+        super().__init__(message, recoverable)
+
+
+class ValidationError(VFSBotError):
+    """Input validation error."""
+
+    def __init__(self, message: str = "Validation error", field: Optional[str] = None):
+        """
+        Initialize validation error.
+
+        Args:
+            message: Error message
+            field: Field name that failed validation
+        """
+        self.field = field
+        if field:
+            message = f"Validation error for field '{field}': {message}"
+        super().__init__(message, recoverable=False)
