@@ -1,14 +1,16 @@
-"""Tests for countries configuration."""
+"""Tests for VFS Global Turkey countries configuration."""
 
 import pytest
 from src.core.countries import (
+    CountryInfo,
+    SOURCE_COUNTRY_CODE,
+    SOURCE_LANGUAGE,
+    SUPPORTED_COUNTRIES,
     validate_mission_code,
     get_route,
     get_country_info,
     get_all_mission_codes,
-    SOURCE_COUNTRY_CODE,
-    SOURCE_LANGUAGE,
-    SUPPORTED_COUNTRIES,
+    get_centres_for_mission,
 )
 
 
@@ -21,6 +23,40 @@ def test_source_country():
 def test_supported_countries_count():
     """Test that all 21 Schengen countries are supported."""
     assert len(SUPPORTED_COUNTRIES) == 21
+
+
+def test_all_countries_have_required_fields():
+    """Test that all countries have complete information."""
+    for code, info in SUPPORTED_COUNTRIES.items():
+        assert isinstance(code, str)
+        assert len(code) == 3
+        assert isinstance(info, CountryInfo)
+        assert info.code == code
+        assert len(info.name_en) > 0
+        assert len(info.name_tr) > 0
+        assert len(info.centres) > 0
+        assert info.route.startswith("turkey/")
+
+
+def test_all_countries_have_istanbul():
+    """Test that Istanbul is a centre for all countries."""
+    for info in SUPPORTED_COUNTRIES.values():
+        assert "Istanbul" in info.centres
+
+
+def test_france_has_six_centres():
+    """Test that France has the most centres."""
+    france = SUPPORTED_COUNTRIES["fra"]
+    assert len(france.centres) == 6
+    assert "Gaziantep" in france.centres
+    assert "Antalya" in france.centres
+    assert "Bursa" in france.centres
+
+
+def test_bulgaria_has_edirne():
+    """Test that Bulgaria has Edirne centre."""
+    bulgaria = SUPPORTED_COUNTRIES["bgr"]
+    assert "Edirne" in bulgaria.centres
 
 
 def test_validate_mission_code_valid():
@@ -94,3 +130,32 @@ def test_all_names_exist():
         assert info.name_tr
         assert len(info.name_en) > 0
         assert len(info.name_tr) > 0
+
+
+def test_get_centres_for_mission():
+    """Test getting centres for valid missions."""
+    centres = get_centres_for_mission("nld")
+    assert isinstance(centres, list)
+    assert "Istanbul" in centres
+    assert "Ankara" in centres
+    assert "Izmir" in centres
+
+
+def test_get_centres_for_mission_invalid():
+    """Test getting centres raises error for invalid missions."""
+    with pytest.raises(ValueError, match="Unsupported mission code"):
+        get_centres_for_mission("deu")
+
+
+def test_get_centres_france():
+    """Test getting centres for France (has most centres)."""
+    centres = get_centres_for_mission("fra")
+    assert len(centres) == 6
+    assert "Istanbul" in centres
+    assert "Gaziantep" in centres
+
+
+def test_get_centres_bulgaria():
+    """Test getting centres for Bulgaria (has Edirne)."""
+    centres = get_centres_for_mission("bgr")
+    assert "Edirne" in centres
