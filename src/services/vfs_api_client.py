@@ -25,6 +25,7 @@ from ..core.exceptions import (
     VFSSessionExpiredError,
     ConfigurationError,
 )
+from ..constants import Defaults
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class VFSPasswordEncryption:
             Encryption key as bytes
             
         Raises:
-            ConfigurationError: If VFS_ENCRYPTION_KEY is not set
+            ConfigurationError: If VFS_ENCRYPTION_KEY is not set or invalid
         """
         key = os.getenv("VFS_ENCRYPTION_KEY")
         if not key:
@@ -79,8 +80,13 @@ class VFSPasswordEncryption:
         # Convert to bytes and ensure it's 32 bytes for AES-256
         key_bytes = key.encode('utf-8')[:32]
         
-        # Pad if needed to reach 32 bytes
+        # Warn if key is too short (security issue)
         if len(key_bytes) < 32:
+            logger.warning(
+                f"VFS_ENCRYPTION_KEY is shorter than recommended 32 bytes ({len(key_bytes)} bytes). "
+                "Consider generating a new key with the recommended method."
+            )
+            # Pad to 32 bytes for AES-256 compatibility
             key_bytes = key_bytes.ljust(32, b'\0')
         
         return key_bytes
@@ -236,7 +242,10 @@ class VFSApiClient:
             
             # Calculate token expiration time
             # VFS tokens typically expire after 1 hour, but we add buffer for safety
-            token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
+            token_refresh_buffer = int(os.getenv(
+                "TOKEN_REFRESH_BUFFER_MINUTES", 
+                str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
+            ))
             expires_at = datetime.now() + timedelta(
                 minutes=data.get("expiresIn", 60) - token_refresh_buffer
             )
@@ -451,7 +460,10 @@ class VFSApiClient:
                 data = await response.json()
                 
                 # Update session with new tokens
-                token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
+                token_refresh_buffer = int(os.getenv(
+                    "TOKEN_REFRESH_BUFFER_MINUTES", 
+                    str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
+                ))
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
                 self.session.expires_at = datetime.now() + timedelta(

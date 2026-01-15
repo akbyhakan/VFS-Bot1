@@ -11,6 +11,7 @@ import asyncio
 from src.utils.encryption import encrypt_password, decrypt_password
 from src.utils.validators import validate_email, validate_phone
 from src.core.exceptions import ValidationError
+from src.constants import Defaults
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +50,13 @@ class Database:
 
         Args:
             db_path: Path to SQLite database file
-            pool_size: Maximum number of concurrent connections (defaults to DB_POOL_SIZE env var or 10)
+            pool_size: Maximum number of concurrent connections (defaults to DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
-        # Get pool size from parameter, env var, or default to 10
+        # Get pool size from parameter, env var, or default
         if pool_size is None:
-            pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
+            pool_size = int(os.getenv("DB_POOL_SIZE", str(Defaults.DB_POOL_SIZE)))
         self.pool_size = pool_size
         self._pool: List[aiosqlite.Connection] = []
         self._pool_lock = asyncio.Lock()
