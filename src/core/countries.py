@@ -1,6 +1,5 @@
 """VFS Global Turkey - Supported Schengen Countries Configuration."""
 
-from typing import Dict, List
 from dataclasses import dataclass
 
 
@@ -16,11 +15,11 @@ class CountryInfo:
     name_en: str
     name_tr: str
     route: str
-    centres: List[str]
+    centres: list[str]
 
 
 # All 21 Schengen countries supported by VFS Global Turkey
-SUPPORTED_COUNTRIES: Dict[str, CountryInfo] = {
+SUPPORTED_COUNTRIES: dict[str, CountryInfo] = {
     "fra": CountryInfo(
         code="fra",
         name_en="France",
@@ -223,7 +222,7 @@ def get_country_info(mission_code: str) -> CountryInfo:
     return SUPPORTED_COUNTRIES[mission_code]
 
 
-def get_all_mission_codes() -> List[str]:
+def get_all_mission_codes() -> list[str]:
     """
     Get list of all supported mission codes.
     
@@ -233,7 +232,7 @@ def get_all_mission_codes() -> List[str]:
     return list(SUPPORTED_COUNTRIES.keys())
 
 
-def get_centres_for_mission(mission_code: str) -> List[str]:
+def get_centres_for_mission(mission_code: str) -> list[str]:
     """
     Get available VFS centres for a mission.
     
