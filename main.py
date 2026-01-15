@@ -92,23 +92,49 @@ async def run_bot_mode(config: dict) -> None:
         await db.close()
 
 
-async def run_web_mode(config: dict) -> None:
+async def run_web_mode(config: dict, start_cleanup: bool = True) -> None:
     """
     Run bot with web dashboard.
 
     Args:
         config: Configuration dictionary
+        start_cleanup: Whether to start the cleanup service (default True)
     """
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot with web dashboard...")
 
     import uvicorn
     from web.app import app
+    from src.services.cleanup_service import CleanupService
 
-    # Run uvicorn server
-    config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
-    server = uvicorn.Server(config_uvicorn)
-    await server.serve()
+    # Initialize database for cleanup service
+    db = Database()
+    await db.connect()
+
+    cleanup_task = None
+    try:
+        # Start cleanup service in background (only if requested)
+        if start_cleanup:
+            cleanup_service = CleanupService(db, cleanup_days=30)
+            cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
+            logger.info("Cleanup service started (runs every 24 hours)")
+
+        # Run uvicorn server
+        config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        server = uvicorn.Server(config_uvicorn)
+        await server.serve()
+    finally:
+        # Stop cleanup service
+        if start_cleanup and 'cleanup_service' in locals():
+            cleanup_service.stop()
+        if cleanup_task:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
+        await db.close()
+        logger.info("Web mode shutdown complete")
 
 
 async def run_both_mode(config: dict) -> None:
@@ -121,12 +147,23 @@ async def run_both_mode(config: dict) -> None:
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
-    # Create tasks for both modes
-    web_task = asyncio.create_task(run_web_mode(config))
+    # Create tasks for both modes (disable cleanup in web task to avoid duplication)
+    web_task = asyncio.create_task(run_web_mode(config, start_cleanup=False))
     bot_task = asyncio.create_task(run_bot_mode(config))
 
-    # Run both concurrently and handle exceptions
+    # Initialize shared cleanup service for both modes
+    from src.services.cleanup_service import CleanupService
+    db = Database()
+    await db.connect()
+    
+    cleanup_task = None
     try:
+        # Start cleanup service once for both modes
+        cleanup_service = CleanupService(db, cleanup_days=30)
+        cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
+        logger.info("Cleanup service started (runs every 24 hours)")
+
+        # Run both concurrently and handle exceptions
         results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
 
         # Check for exceptions in results
@@ -137,6 +174,18 @@ async def run_both_mode(config: dict) -> None:
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
+    finally:
+        # Stop cleanup service
+        if 'cleanup_service' in locals():
+            cleanup_service.stop()
+        if cleanup_task:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
+        await db.close()
+        logger.info("Combined mode shutdown complete")
 
 
 def main() -> None:

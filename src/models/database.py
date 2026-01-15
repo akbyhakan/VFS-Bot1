@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, 
 from contextlib import asynccontextmanager
 from functools import wraps
 import asyncio
+from datetime import datetime, timezone
 
 from src.utils.encryption import encrypt_password, decrypt_password
 from src.utils.validators import validate_email, validate_phone
@@ -214,6 +215,45 @@ class Database:
                     cvv_encrypted TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
+            # Appointment requests table
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS appointment_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    country_code TEXT NOT NULL,
+                    centres TEXT NOT NULL,
+                    preferred_dates TEXT NOT NULL,
+                    person_count INTEGER NOT NULL CHECK(person_count >= 1 AND person_count <= 6),
+                    status TEXT DEFAULT 'pending',
+                    completed_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
+            # Appointment persons table
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS appointment_persons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    request_id INTEGER NOT NULL,
+                    first_name TEXT NOT NULL,
+                    last_name TEXT NOT NULL,
+                    nationality TEXT NOT NULL DEFAULT 'Turkey',
+                    birth_date TEXT NOT NULL,
+                    passport_number TEXT NOT NULL,
+                    passport_issue_date TEXT NOT NULL,
+                    passport_expiry_date TEXT NOT NULL,
+                    phone_code TEXT NOT NULL DEFAULT '90',
+                    phone_number TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
             """
             )
@@ -685,3 +725,271 @@ class Database:
                 await conn.commit()
                 logger.info("Payment card deleted")
                 return True
+
+    @require_connection
+    async def create_appointment_request(
+        self,
+        country_code: str,
+        centres: List[str],
+        preferred_dates: List[str],
+        person_count: int,
+        persons: List[Dict[str, Any]]
+    ) -> int:
+        """
+        Create a new appointment request.
+        
+        Args:
+            country_code: Target country code (e.g., 'nld', 'aut')
+            centres: List of selected centres
+            preferred_dates: List of preferred dates in DD/MM/YYYY format
+            person_count: Number of persons (1-6)
+            persons: List of person data dictionaries
+            
+        Returns:
+            Request ID
+        """
+        import json
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Insert appointment request
+                await cursor.execute(
+                    """
+                    INSERT INTO appointment_requests 
+                    (country_code, centres, preferred_dates, person_count)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        country_code,
+                        json.dumps(centres),
+                        json.dumps(preferred_dates),
+                        person_count,
+                    ),
+                )
+                request_id = cursor.lastrowid
+                
+                # Insert persons
+                for person in persons:
+                    # Validate email
+                    email = person.get("email", "")
+                    if not email:
+                        raise ValidationError("Email is required for all persons", field="email")
+                    if not validate_email(email):
+                        raise ValidationError(f"Invalid email format: {email}", field="email")
+                    
+                    await cursor.execute(
+                        """
+                        INSERT INTO appointment_persons
+                        (request_id, first_name, last_name, nationality, birth_date,
+                         passport_number, passport_issue_date, passport_expiry_date,
+                         phone_code, phone_number, email)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            request_id,
+                            person.get("first_name"),
+                            person.get("last_name"),
+                            person.get("nationality", "Turkey"),
+                            person.get("birth_date"),
+                            person.get("passport_number"),
+                            person.get("passport_issue_date"),
+                            person.get("passport_expiry_date"),
+                            person.get("phone_code", "90"),
+                            person.get("phone_number"),
+                            person.get("email"),
+                        ),
+                    )
+                
+                await conn.commit()
+                logger.info(f"Appointment request created: {request_id}")
+                return request_id
+
+    @require_connection
+    async def get_appointment_request(self, request_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get appointment request with person details.
+        
+        Args:
+            request_id: Request ID
+            
+        Returns:
+            Request dictionary with persons list or None
+        """
+        import json
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Get request
+                await cursor.execute(
+                    "SELECT * FROM appointment_requests WHERE id = ?",
+                    (request_id,)
+                )
+                request_row = await cursor.fetchone()
+                
+                if not request_row:
+                    return None
+                
+                request = dict(request_row)
+                
+                # Parse JSON fields
+                request["centres"] = json.loads(request["centres"])
+                request["preferred_dates"] = json.loads(request["preferred_dates"])
+                
+                # Get persons
+                await cursor.execute(
+                    "SELECT * FROM appointment_persons WHERE request_id = ?",
+                    (request_id,)
+                )
+                person_rows = await cursor.fetchall()
+                request["persons"] = [dict(row) for row in person_rows]
+                
+                return request
+
+    @require_connection
+    async def get_all_appointment_requests(
+        self, status: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all appointment requests.
+        
+        Args:
+            status: Optional status filter ('pending', 'processing', 'completed', 'failed')
+            
+        Returns:
+            List of request dictionaries with persons
+        """
+        import json
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                if status:
+                    await cursor.execute(
+                        "SELECT * FROM appointment_requests WHERE status = ? ORDER BY created_at DESC",
+                        (status,)
+                    )
+                else:
+                    await cursor.execute(
+                        "SELECT * FROM appointment_requests ORDER BY created_at DESC"
+                    )
+                
+                request_rows = await cursor.fetchall()
+                requests = []
+                
+                for request_row in request_rows:
+                    request = dict(request_row)
+                    request["centres"] = json.loads(request["centres"])
+                    request["preferred_dates"] = json.loads(request["preferred_dates"])
+                    
+                    # Get persons for this request
+                    await cursor.execute(
+                        "SELECT * FROM appointment_persons WHERE request_id = ?",
+                        (request["id"],)
+                    )
+                    person_rows = await cursor.fetchall()
+                    request["persons"] = [dict(row) for row in person_rows]
+                    
+                    requests.append(request)
+                
+                return requests
+
+    @require_connection
+    async def update_appointment_request_status(
+        self,
+        request_id: int,
+        status: str,
+        completed_at: Optional[datetime] = None
+    ) -> bool:
+        """
+        Update appointment request status.
+        
+        Args:
+            request_id: Request ID
+            status: New status ('pending', 'processing', 'completed', 'failed')
+            completed_at: Optional completion timestamp
+            
+        Returns:
+            True if updated, False if request not found
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                if completed_at:
+                    await cursor.execute(
+                        """
+                        UPDATE appointment_requests 
+                        SET status = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """,
+                        (status, completed_at, request_id),
+                    )
+                else:
+                    await cursor.execute(
+                        """
+                        UPDATE appointment_requests 
+                        SET status = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """,
+                        (status, request_id),
+                    )
+                
+                await conn.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Appointment request {request_id} status updated to {status}")
+                    return True
+                return False
+
+    @require_connection
+    async def delete_appointment_request(self, request_id: int) -> bool:
+        """
+        Delete appointment request (cascades to persons).
+        
+        Args:
+            request_id: Request ID
+            
+        Returns:
+            True if deleted, False if not found
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    "DELETE FROM appointment_requests WHERE id = ?",
+                    (request_id,)
+                )
+                await conn.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Appointment request {request_id} deleted")
+                    return True
+                return False
+
+    @require_connection
+    async def cleanup_completed_requests(self, days: int = 30) -> int:
+        """
+        Delete completed requests older than specified days.
+        
+        Args:
+            days: Age threshold in days (default 30)
+            
+        Returns:
+            Number of requests deleted
+        """
+        from datetime import timedelta
+        
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    DELETE FROM appointment_requests 
+                    WHERE status = 'completed' AND completed_at < ?
+                    """,
+                    (cutoff_date,)
+                )
+                await conn.commit()
+                deleted_count = cursor.rowcount
+                
+                if deleted_count > 0:
+                    logger.info(f"Cleaned up {deleted_count} old appointment requests")
+                
+                return deleted_count

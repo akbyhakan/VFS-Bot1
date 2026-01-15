@@ -6,12 +6,14 @@ import {
   Settings,
   FileText,
   Activity,
+  Calendar,
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
 
 const navigation = [
   { name: 'Dashboard', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { name: 'Kullanıcılar', href: ROUTES.USERS, icon: Users },
+  { name: 'Randevu Talebi', href: ROUTES.APPOINTMENTS, icon: Calendar },
   { name: 'Loglar', href: ROUTES.LOGS, icon: FileText },
   { name: 'Ayarlar', href: ROUTES.SETTINGS, icon: Settings },
 ];

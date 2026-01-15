@@ -222,3 +222,253 @@ async def test_add_log(test_db):
 
     logs = await test_db.get_logs(limit=10)
     assert len(logs) >= 2
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_request(test_db):
+    """Test creating an appointment request."""
+    persons = [
+        {
+            "first_name": "John",
+            "last_name": "Doe",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "john@example.com",
+        },
+        {
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "nationality": "Turkey",
+            "birth_date": "20/05/1992",
+            "passport_number": "U87654321",
+            "passport_issue_date": "01/01/2021",
+            "passport_expiry_date": "01/01/2031",
+            "phone_code": "90",
+            "phone_number": "5559876543",
+            "email": "jane@example.com",
+        },
+    ]
+    
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul", "Ankara"],
+        preferred_dates=["15/02/2026", "16/02/2026"],
+        person_count=2,
+        persons=persons,
+    )
+    
+    assert request_id > 0
+
+
+@pytest.mark.asyncio
+async def test_get_appointment_request(test_db):
+    """Test getting an appointment request with persons."""
+    persons = [
+        {
+            "first_name": "John",
+            "last_name": "Doe",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "john@example.com",
+        },
+    ]
+    
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    # Get the request
+    request = await test_db.get_appointment_request(request_id)
+    
+    assert request is not None
+    assert request["id"] == request_id
+    assert request["country_code"] == "nld"
+    assert request["centres"] == ["Istanbul"]
+    assert request["preferred_dates"] == ["15/02/2026"]
+    assert request["person_count"] == 1
+    assert request["status"] == "pending"
+    assert len(request["persons"]) == 1
+    assert request["persons"][0]["first_name"] == "John"
+
+
+@pytest.mark.asyncio
+async def test_get_all_appointment_requests(test_db):
+    """Test getting all appointment requests."""
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "test@example.com",
+        },
+    ]
+    
+    # Create multiple requests
+    id1 = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    id2 = await test_db.create_appointment_request(
+        country_code="aut",
+        centres=["Ankara"],
+        preferred_dates=["20/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    # Get all requests
+    requests = await test_db.get_all_appointment_requests()
+    
+    assert len(requests) >= 2
+    assert any(r["id"] == id1 for r in requests)
+    assert any(r["id"] == id2 for r in requests)
+
+
+@pytest.mark.asyncio
+async def test_update_appointment_request_status(test_db):
+    """Test updating appointment request status."""
+    from datetime import datetime, timezone
+    
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "test@example.com",
+        },
+    ]
+    
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    # Update status
+    completed_at = datetime.now(timezone.utc)
+    updated = await test_db.update_appointment_request_status(
+        request_id=request_id,
+        status="completed",
+        completed_at=completed_at
+    )
+    
+    assert updated is True
+    
+    # Verify update
+    request = await test_db.get_appointment_request(request_id)
+    assert request["status"] == "completed"
+    assert request["completed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_appointment_request(test_db):
+    """Test deleting an appointment request."""
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "test@example.com",
+        },
+    ]
+    
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    # Delete the request
+    deleted = await test_db.delete_appointment_request(request_id)
+    assert deleted is True
+    
+    # Verify it's deleted
+    request = await test_db.get_appointment_request(request_id)
+    assert request is None
+
+
+@pytest.mark.asyncio
+async def test_cleanup_completed_requests(test_db):
+    """Test cleanup of old completed requests."""
+    from datetime import datetime, timezone, timedelta
+    
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "test@example.com",
+        },
+    ]
+    
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+    
+    # Mark as completed with old timestamp (35 days ago)
+    old_date = datetime.now(timezone.utc) - timedelta(days=35)
+    await test_db.update_appointment_request_status(
+        request_id=request_id,
+        status="completed",
+        completed_at=old_date
+    )
+    
+    # Run cleanup (30 days threshold)
+    deleted_count = await test_db.cleanup_completed_requests(days=30)
+    
+    # Should have deleted 1 request
+    assert deleted_count == 1
+    
+    # Verify it's deleted
+    request = await test_db.get_appointment_request(request_id)
+    assert request is None

@@ -9,6 +9,7 @@ import { Dashboard } from '@/pages/Dashboard';
 import { Users } from '@/pages/Users';
 import { Settings } from '@/pages/Settings';
 import { Logs } from '@/pages/Logs';
+import { AppointmentRequest } from '@/pages/AppointmentRequest';
 import { NotFound } from '@/pages/NotFound';
 import { ROUTES } from '@/utils/constants';
 import '@/styles/globals.css';
@@ -45,6 +46,7 @@ function App() {
               <Route path={ROUTES.USERS} element={<Users />} />
               <Route path={ROUTES.SETTINGS} element={<Settings />} />
               <Route path={ROUTES.LOGS} element={<Logs />} />
+              <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />
             </Route>
 
             {/* 404 */}

@@ -10,6 +10,7 @@ export const ROUTES = {
   USERS: '/users',
   SETTINGS: '/settings',
   LOGS: '/logs',
+  APPOINTMENTS: '/appointments',
 } as const;
 
 export const LOG_LEVELS = {
