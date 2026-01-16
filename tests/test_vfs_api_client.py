@@ -226,10 +226,12 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_get_centres(self, client):
         """Test getting centres."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -255,10 +257,12 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_get_visa_categories(self, client):
         """Test getting visa categories."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -283,10 +287,12 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_check_slot_availability_available(self, client):
         """Test checking slot availability when slots are available."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -317,10 +323,12 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_check_slot_availability_not_available(self, client):
         """Test checking slot availability when no slots are available."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -346,10 +354,12 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_check_slot_availability_error(self, client):
         """Test checking slot availability when API returns error."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
