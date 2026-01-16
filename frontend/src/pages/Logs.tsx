@@ -7,9 +7,13 @@ import DOMPurify from 'dompurify';
 
 /**
  * Sanitize log content to prevent XSS attacks
+ * Allows basic text formatting tags for legitimate log content
  */
 const sanitizeLog = (log: string): string => {
-  return DOMPurify.sanitize(log, { ALLOWED_TAGS: [] });
+  return DOMPurify.sanitize(log, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'code'],
+    ALLOWED_ATTR: [],
+  });
 };
 
 export function Logs() {

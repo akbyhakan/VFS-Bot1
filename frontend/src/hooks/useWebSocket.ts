@@ -4,9 +4,9 @@ import { useBotStore } from '@/store/botStore';
 import type { WebSocketMessage, LogEntry } from '@/types/api';
 import { isBotStatusData, isLogEntry, isStatsData } from '@/utils/typeGuards';
 import { logger } from '@/utils/logger';
+import { WEBSOCKET_THROTTLE } from '@/utils/constants';
 
-const LOG_BUFFER_TIME = 100; // ms
-const STATUS_THROTTLE_TIME = 500; // ms
+const { LOG_BUFFER_TIME, STATUS_THROTTLE_TIME } = WEBSOCKET_THROTTLE;
 
 export function useWebSocket() {
   const { updateStatus, addLogs, setConnected } = useBotStore();
