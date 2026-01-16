@@ -255,9 +255,7 @@ class VFSApiClient:
             )
 
             # Update session headers with auth token
-            self._session.headers.update(
-                {"Authorization": f"Bearer {self.session.access_token}"}
-            )
+            self._session.headers.update({"Authorization": f"Bearer {self.session.access_token}"})
 
             logger.info(f"Login successful for {email[:3]}***, token expires at {expires_at}")
             return self.session

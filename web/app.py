@@ -230,6 +230,7 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
 
 # API Routes start here
 
+
 @app.get("/api/status")
 async def get_status() -> Dict[str, Any]:
     """
