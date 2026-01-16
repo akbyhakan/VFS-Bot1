@@ -464,7 +464,5 @@ class VFSApiClient:
         Returns:
             Turnstile token
         """
-        # type: ignore[no-any-return]
-        return await self.captcha_solver.solve_turnstile(
-            page_url=page_url, site_key=site_key
-        )
+        result = await self.captcha_solver.solve_turnstile(page_url=page_url, site_key=site_key)
+        return str(result)
