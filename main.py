@@ -11,6 +11,7 @@ import sys
 import os
 import argparse
 import signal
+from typing import Optional
 
 from src.core.config_loader import load_config
 from src.models.database import Database
@@ -39,12 +40,13 @@ def setup_signal_handlers():
     signal.signal(signal.SIGINT, handle_signal)
 
 
-async def run_bot_mode(config: dict) -> None:
+async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
 
     Args:
         config: Configuration dictionary
+        db: Optional shared database instance
     """
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
@@ -52,9 +54,11 @@ async def run_bot_mode(config: dict) -> None:
     # Create shutdown event
     shutdown_event = asyncio.Event()
 
-    # Initialize database
-    db = Database()
-    await db.connect()
+    # Initialize database if not provided
+    db_owned = db is None
+    if db_owned:
+        db = Database()
+        await db.connect()
 
     try:
         # Initialize notification service
@@ -89,16 +93,19 @@ async def run_bot_mode(config: dict) -> None:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
     finally:
-        await db.close()
+        # Only close if we own the database instance
+        if db_owned and db:
+            await db.close()
 
 
-async def run_web_mode(config: dict, start_cleanup: bool = True) -> None:
+async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Database] = None) -> None:
     """
     Run bot with web dashboard.
 
     Args:
         config: Configuration dictionary
         start_cleanup: Whether to start the cleanup service (default True)
+        db: Optional shared database instance
     """
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot with web dashboard...")
@@ -107,9 +114,11 @@ async def run_web_mode(config: dict, start_cleanup: bool = True) -> None:
     from web.app import app
     from src.services.cleanup_service import CleanupService
 
-    # Initialize database for cleanup service
-    db = Database()
-    await db.connect()
+    # Initialize database if not provided
+    db_owned = db is None
+    if db_owned:
+        db = Database()
+        await db.connect()
 
     cleanup_task = None
     try:
@@ -133,7 +142,9 @@ async def run_web_mode(config: dict, start_cleanup: bool = True) -> None:
                 await cleanup_task
             except asyncio.CancelledError:
                 pass
-        await db.close()
+        # Only close if we own the database instance
+        if db_owned and db:
+            await db.close()
         logger.info("Web mode shutdown complete")
 
 
@@ -147,21 +158,14 @@ async def run_both_mode(config: dict) -> None:
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
-    # Create tasks for both modes (disable cleanup in web task to avoid duplication)
-    web_task = asyncio.create_task(run_web_mode(config, start_cleanup=False))
-    bot_task = asyncio.create_task(run_bot_mode(config))
-
-    # Initialize shared cleanup service for both modes
-    from src.services.cleanup_service import CleanupService
+    # Initialize shared database instance for both modes
     db = Database()
     await db.connect()
     
-    cleanup_task = None
     try:
-        # Start cleanup service once for both modes
-        cleanup_service = CleanupService(db, cleanup_days=30)
-        cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
-        logger.info("Cleanup service started (runs every 24 hours)")
+        # Create tasks for both modes with shared database (disable cleanup in web task to avoid duplication)
+        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
+        bot_task = asyncio.create_task(run_bot_mode(config, db=db))
 
         # Run both concurrently and handle exceptions
         results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
@@ -175,15 +179,7 @@ async def run_both_mode(config: dict) -> None:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
     finally:
-        # Stop cleanup service
-        if 'cleanup_service' in locals():
-            cleanup_service.stop()
-        if cleanup_task:
-            cleanup_task.cancel()
-            try:
-                await cleanup_task
-            except asyncio.CancelledError:
-                pass
+        # Close shared database
         await db.close()
         logger.info("Combined mode shutdown complete")
 
