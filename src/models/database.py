@@ -51,7 +51,8 @@ class Database:
 
         Args:
             db_path: Path to SQLite database file
-            pool_size: Maximum number of concurrent connections (defaults to DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
+            pool_size: Maximum number of concurrent connections (defaults to
+                DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
@@ -385,7 +386,9 @@ class Database:
                 )
                 # Update existing records with a default value
                 await cursor.execute(
-                    "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL"
+                    """UPDATE appointment_requests
+                    SET visa_subcategory = ''
+                    WHERE visa_subcategory IS NULL"""
                 )
 
             # Check appointment_persons table
@@ -410,7 +413,9 @@ class Database:
                 )
                 # Update existing records with default value
                 await cursor.execute(
-                    "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL"
+                    """UPDATE appointment_persons
+                    SET is_child_with_parent = 0
+                    WHERE is_child_with_parent IS NULL"""
                 )
 
             await self.conn.commit()
@@ -755,8 +760,8 @@ class Database:
                     # Update existing card
                     await cursor.execute(
                         """
-                        UPDATE payment_card 
-                        SET card_holder_name = ?, 
+                        UPDATE payment_card
+                        SET card_holder_name = ?,
                             card_number_encrypted = ?,
                             expiry_month = ?,
                             expiry_year = ?,
@@ -780,8 +785,9 @@ class Database:
                     # Insert new card
                     await cursor.execute(
                         """
-                        INSERT INTO payment_card 
-                        (card_holder_name, card_number_encrypted, expiry_month, expiry_year, cvv_encrypted)
+                        INSERT INTO payment_card
+                        (card_holder_name, card_number_encrypted, expiry_month,
+                         expiry_year, cvv_encrypted)
                         VALUES (?, ?, ?, ?, ?)
                         """,
                         (
@@ -918,8 +924,9 @@ class Database:
                 # Insert appointment request
                 await cursor.execute(
                     """
-                    INSERT INTO appointment_requests 
-                    (country_code, visa_category, visa_subcategory, centres, preferred_dates, person_count)
+                    INSERT INTO appointment_requests
+                    (country_code, visa_category, visa_subcategory, centres,
+                     preferred_dates, person_count)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
@@ -1037,7 +1044,8 @@ class Database:
             async with conn.cursor() as cursor:
                 if status:
                     await cursor.execute(
-                        "SELECT * FROM appointment_requests WHERE status = ? ORDER BY created_at DESC",
+                        """SELECT * FROM appointment_requests
+                        WHERE status = ? ORDER BY created_at DESC""",
                         (status,),
                     )
                 else:
@@ -1090,7 +1098,7 @@ class Database:
                 if completed_at:
                     await cursor.execute(
                         """
-                        UPDATE appointment_requests 
+                        UPDATE appointment_requests
                         SET status = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
@@ -1099,7 +1107,7 @@ class Database:
                 else:
                     await cursor.execute(
                         """
-                        UPDATE appointment_requests 
+                        UPDATE appointment_requests
                         SET status = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
@@ -1153,7 +1161,7 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    DELETE FROM appointment_requests 
+                    DELETE FROM appointment_requests
                     WHERE status = 'completed' AND completed_at < ?
                     """,
                     (cutoff_date,),

@@ -2,6 +2,7 @@
 
 import os
 import sys
+import warnings
 from pathlib import Path
 
 # Test constants
@@ -36,6 +37,16 @@ def pytest_configure(config):
     if not os.getenv("ENCRYPTION_KEY"):
         os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
+    # Set VFS_ENCRYPTION_KEY for VFS API tests
+    if not os.getenv("VFS_ENCRYPTION_KEY"):
+        import secrets
+        os.environ["VFS_ENCRYPTION_KEY"] = secrets.token_urlsafe(32)
+
+    # Suppress async mock warnings
+    warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
+    warnings.filterwarnings("ignore", category=pytest.PytestUnraisableExceptionWarning)
+
 
 @pytest.fixture(scope="session")
 def session_encryption_key():
@@ -50,7 +61,12 @@ def setup_test_environment(monkeypatch):
     if not os.getenv("ENCRYPTION_KEY"):
         test_key = Fernet.generate_key().decode()
         monkeypatch.setenv("ENCRYPTION_KEY", test_key)
-    yield
+
+    # Suppress async-related warnings during tests
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        warnings.filterwarnings("ignore", message=".*was never awaited.*")
+        yield
     # Cleanup after test if needed
 
 

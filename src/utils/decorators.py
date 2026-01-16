@@ -80,7 +80,8 @@ def retry_async(
                     last_exception = e
                     if attempt < max_retries:
                         logger.warning(
-                            f"{func.__name__} failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                            f"{func.__name__} failed "
+                            f"(attempt {attempt + 1}/{max_retries + 1}): {e}. "
                             f"Retrying in {current_delay:.1f}s..."
                         )
                         await asyncio.sleep(current_delay)
@@ -117,7 +118,7 @@ def timed_async(func: F) -> F:
             elapsed = (datetime.now() - start).total_seconds()
             logger.debug(f"{func.__name__} completed in {elapsed:.3f}s")
             return result
-        except Exception as e:
+        except Exception:
             elapsed = (datetime.now() - start).total_seconds()
             logger.debug(f"{func.__name__} failed after {elapsed:.3f}s")
             raise

@@ -156,8 +156,9 @@ class AuditLogger:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
                         """
-                        INSERT INTO audit_log 
-                        (action, user_id, username, ip_address, user_agent, details, timestamp, success)
+                        INSERT INTO audit_log
+                        (action, user_id, username, ip_address, user_agent,
+                         details, timestamp, success)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (

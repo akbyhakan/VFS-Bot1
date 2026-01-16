@@ -167,8 +167,11 @@ async def run_both_mode(config: dict) -> None:
     await db.connect()
 
     try:
-        # Create tasks for both modes with shared database (disable cleanup in web task to avoid duplication)
-        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
+        # Create tasks for both modes with shared database
+        # (disable cleanup in web task to avoid duplication)
+        web_task = asyncio.create_task(
+            run_web_mode(config, start_cleanup=True, db=db)
+        )
         bot_task = asyncio.create_task(run_bot_mode(config, db=db))
 
         # Run both concurrently and handle exceptions

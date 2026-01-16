@@ -101,17 +101,17 @@ class TestWebhookSignature:
 
         # Create signature with old timestamp using utility function
         from src.utils.webhook_utils import generate_webhook_signature
-        import time
+        import time as time_module
 
         # Temporarily mock time to create old signature
-        old_time = time.time() - 400  # 400 seconds old
-        original_time = time.time
-        time.time = lambda: old_time
+        old_time = time_module.time() - 400  # 400 seconds old
+        original_time = time_module.time
+        time_module.time = lambda: old_time
 
         try:
             old_signature = generate_webhook_signature(payload, secret)
         finally:
-            time.time = original_time
+            time_module.time = original_time
 
         assert not verify_webhook_signature(
             payload.encode(), old_signature, secret, timestamp_tolerance=300  # 5 minutes
