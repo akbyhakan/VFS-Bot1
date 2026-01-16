@@ -12,14 +12,12 @@ interface TokenData {
 
 class TokenManager {
   private memoryToken: string | null = null;
-  private rememberMe: boolean = false;
 
   /**
    * Set token with optional remember me and expiration
    */
   setToken(token: string, remember: boolean = false, expiresInMs?: number): void {
     this.memoryToken = token;
-    this.rememberMe = remember;
 
     if (remember) {
       const tokenData: TokenData = {
@@ -59,7 +57,6 @@ class TokenManager {
 
       // Restore to memory
       this.memoryToken = tokenData.token;
-      this.rememberMe = true;
       return tokenData.token;
     } catch {
       // Invalid format, clear it
@@ -80,7 +77,6 @@ class TokenManager {
    */
   clearToken(): void {
     this.memoryToken = null;
-    this.rememberMe = false;
     localStorage.removeItem(AUTH_TOKEN_KEY);
   }
 

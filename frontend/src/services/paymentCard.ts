@@ -13,9 +13,10 @@ export const paymentCardApi = {
     try {
       const card = await api.get<PaymentCard>('/api/payment-card');
       return card;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return null if no card exists (404) or if card is explicitly null
-      if (error?.response?.status === 404 || error?.response?.data === null) {
+      const err = error as { response?: { status?: number; data?: unknown } };
+      if (err?.response?.status === 404 || err?.response?.data === null) {
         return null;
       }
       throw error;

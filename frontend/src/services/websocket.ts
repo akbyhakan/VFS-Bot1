@@ -1,4 +1,6 @@
-import { AUTH_TOKEN_KEY, WEBSOCKET_RECONNECT } from '@/utils/constants';
+import { WEBSOCKET_RECONNECT } from '@/utils/constants';
+import { tokenManager } from '@/utils/tokenManager';
+import { logger } from '@/utils/logger';
 import type { WebSocketMessage } from '@/types/api';
 
 type MessageHandler = (message: WebSocketMessage) => void;
@@ -24,11 +26,11 @@ export class WebSocketService {
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
+      logger.info('WebSocket connected');
       this.reconnectAttempts = 0;
 
       // Send authentication token
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = tokenManager.getToken();
       if (token && this.ws) {
         this.ws.send(JSON.stringify({ token }));
       }
@@ -41,17 +43,17 @@ export class WebSocketService {
         const message: WebSocketMessage = JSON.parse(event.data);
         this.messageHandlers.forEach((handler) => handler(message));
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        logger.error('Failed to parse WebSocket message:', error);
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      logger.error('WebSocket error:', error);
       this.errorHandlers.forEach((handler) => handler(error));
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket disconnected');
+      logger.info('WebSocket disconnected');
       this.closeHandlers.forEach((handler) => handler());
 
       if (!this.isIntentionallyClosed) {
@@ -80,7 +82,7 @@ export class WebSocketService {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     } else {
-      console.warn('WebSocket is not connected');
+      logger.warn('WebSocket is not connected');
     }
   }
 
@@ -106,7 +108,7 @@ export class WebSocketService {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= WEBSOCKET_RECONNECT.MAX_ATTEMPTS) {
-      console.error('Max WebSocket reconnection attempts reached');
+      logger.error('Max WebSocket reconnection attempts reached');
       return;
     }
 
@@ -116,7 +118,7 @@ export class WebSocketService {
       WEBSOCKET_RECONNECT.MAX_DELAY
     );
 
-    console.log(`Reconnecting WebSocket in ${delay}ms...`);
+    logger.info(`Reconnecting WebSocket in ${delay}ms...`);
     this.reconnectAttempts++;
 
     this.reconnectTimeout = setTimeout(() => {

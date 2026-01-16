@@ -14,49 +14,18 @@ import {
   useDeleteAppointmentRequest,
 } from '@/hooks/useAppointmentRequest';
 import type { AppointmentRequest, AppointmentPerson } from '@/types/appointment';
+import {
+  validateBirthDate,
+  validatePassportIssueDate,
+  validatePassportExpiryDate,
+  validateEmail,
+  validateTurkishPhone,
+} from '@/utils/validators/appointment';
 
-// Validation helper functions
-const validateBirthDate = (date: string): boolean => {
-  if (!date) return false;
-  const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
-  const inputDate = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return inputDate <= today;
-};
+// Alias for consistency with existing code
+const validatePhoneNumber = validateTurkishPhone;
 
-const validatePassportIssueDate = (date: string): boolean => {
-  if (!date) return false;
-  const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
-  const inputDate = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return inputDate <= today;
-};
-
-const validatePassportExpiryDate = (date: string): boolean => {
-  if (!date) return false;
-  const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
-  const inputDate = new Date(year, month - 1, day);
-  const threeMonthsFromNow = new Date();
-  threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-  return inputDate >= threeMonthsFromNow;
-};
-
-const validateEmail = (email: string): boolean => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
-
-const validatePhoneNumber = (phone: string): boolean => {
-  // Turkish phone number format: 10 digits, not starting with 0
-  // Example: 5551234567 (not 05551234567)
-  return /^[1-9]\d{9}$/.test(phone);
-};
-
-export function AppointmentRequest() {
+export default function AppointmentRequest() {
   const [personCount, setPersonCount] = useState<number>(1);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCentres, setSelectedCentres] = useState<string[]>([]);
@@ -423,6 +392,7 @@ function PersonForm({
   errors,
 }: {
   index: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   register: any;
   errors: Record<string, string>;
 }) {
@@ -527,4 +497,3 @@ function PersonForm({
   );
 }
 
-export default AppointmentRequest;

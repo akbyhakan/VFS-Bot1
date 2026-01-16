@@ -1,15 +1,16 @@
 import { api } from './api';
-import { AUTH_TOKEN_KEY, REMEMBER_ME_KEY } from '@/utils/constants';
+import { REMEMBER_ME_KEY } from '@/utils/constants';
+import { tokenManager } from '@/utils/tokenManager';
 import type { LoginRequest, TokenResponse } from '@/types/api';
 
 export class AuthService {
   async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<TokenResponse> {
     const response = await api.post<TokenResponse>('/api/auth/login', credentials);
     
-    // Store token
-    localStorage.setItem(AUTH_TOKEN_KEY, response.access_token);
+    // Store token using tokenManager
+    tokenManager.setToken(response.access_token, rememberMe);
     
-    // Store remember me preference
+    // Store remember me preference (for compatibility)
     if (rememberMe) {
       localStorage.setItem(REMEMBER_ME_KEY, 'true');
     } else {
@@ -20,16 +21,16 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
+    tokenManager.clearToken();
     localStorage.removeItem(REMEMBER_ME_KEY);
   }
 
   getToken(): string | null {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    return tokenManager.getToken();
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return tokenManager.hasToken();
   }
 
   shouldRememberUser(): boolean {

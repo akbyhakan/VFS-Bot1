@@ -9,12 +9,12 @@ const LOG_BUFFER_TIME = 100; // ms
 const STATUS_THROTTLE_TIME = 500; // ms
 
 export function useWebSocket() {
-  const { updateStatus, addLog, addLogs, setConnected } = useBotStore();
+  const { updateStatus, addLogs, setConnected } = useBotStore();
   
   // Buffers for batching
   const logBuffer = useRef<LogEntry[]>([]);
-  const logTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const statusTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingStatusUpdate = useRef<Record<string, unknown> | null>(null);
 
   // Flush log buffer

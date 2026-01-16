@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { API_BASE_URL, AUTH_TOKEN_KEY } from '@/utils/constants';
+import { API_BASE_URL } from '@/utils/constants';
+import { tokenManager } from '@/utils/tokenManager';
 import type { ApiError } from '@/types/api';
 
 class ApiClient {
@@ -16,7 +17,7 @@ class ApiClient {
     // Request interceptor to add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        const token = tokenManager.getToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -33,7 +34,7 @@ class ApiClient {
           // Token expired or invalid - clear auth and redirect to login
           // Only redirect if not already on login page to prevent infinite loop
           if (!window.location.pathname.includes('/login')) {
-            localStorage.removeItem(AUTH_TOKEN_KEY);
+            tokenManager.clearToken();
             window.location.href = '/login';
           }
         }
