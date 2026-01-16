@@ -115,18 +115,19 @@ class TestWebhookSignature:
         payload = '{"test": "data"}'
         secret = "test-secret-key"
         
-        # Create signature with old timestamp
-        old_timestamp = int(time.time()) - 400  # 400 seconds old
-        signed_payload = f"{old_timestamp}.{payload}"
-        import hmac
-        import hashlib
-        signature = hmac.new(
-            secret.encode('utf-8'),
-            signed_payload.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+        # Create signature with old timestamp using utility function
+        from src.utils.webhook_utils import generate_webhook_signature
+        import time
         
-        old_signature = f"t={old_timestamp},v1={signature}"
+        # Temporarily mock time to create old signature
+        old_time = time.time() - 400  # 400 seconds old
+        original_time = time.time
+        time.time = lambda: old_time
+        
+        try:
+            old_signature = generate_webhook_signature(payload, secret)
+        finally:
+            time.time = original_time
         
         assert not verify_webhook_signature(
             payload.encode(),
@@ -206,7 +207,7 @@ class TestDecorators:
         """Test retry decorator with eventual success."""
         call_count = 0
         
-        @retry_async(max_retries=3, delay=0.01)
+        @retry_async(max_retries=3, delay=0.01, exceptions=(ValueError,))
         async def flaky_func():
             nonlocal call_count
             call_count += 1
@@ -223,7 +224,7 @@ class TestDecorators:
         """Test retry decorator with permanent failure."""
         call_count = 0
         
-        @retry_async(max_retries=2, delay=0.01)
+        @retry_async(max_retries=2, delay=0.01, exceptions=(ValueError,))
         async def failing_func():
             nonlocal call_count
             call_count += 1

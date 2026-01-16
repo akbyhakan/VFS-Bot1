@@ -45,7 +45,7 @@ async def get_verified_otp_service(
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
     env = os.getenv("ENV", "production").lower()
     
-    # Production'da signature zorunlu
+    # Signature required in production
     if env == "production" and webhook_secret:
         if not x_webhook_signature:
             raise HTTPException(
@@ -53,7 +53,7 @@ async def get_verified_otp_service(
                 detail="Webhook signature required in production"
             )
         
-        # Signature doğrula
+        # Verify signature
         body = await request.body()
         if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
             raise HTTPException(

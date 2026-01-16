@@ -51,7 +51,7 @@ def retry_async(
     max_retries: int = 3,
     delay: float = 1.0,
     backoff: float = 2.0,
-    exceptions: tuple = (Exception,)
+    exceptions: tuple = (ConnectionError, TimeoutError, OSError)
 ) -> Callable[[F], F]:
     """
     Decorator to retry async functions with exponential backoff.
@@ -60,7 +60,7 @@ def retry_async(
         max_retries: Maximum number of retry attempts
         delay: Initial delay between retries
         backoff: Backoff multiplier
-        exceptions: Tuple of exceptions to catch and retry
+        exceptions: Tuple of exceptions to catch and retry (default: network/IO errors)
     
     Example:
         @retry_async(max_retries=3, delay=1.0)

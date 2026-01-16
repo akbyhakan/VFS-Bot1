@@ -1,6 +1,7 @@
 """Adaptive rate limiter that backs off on failures."""
 
 import asyncio
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -45,8 +46,8 @@ class AdaptiveRateLimiter:
             
             if elapsed < self._current_delay:
                 wait_time = self._current_delay - elapsed
-                # Add jitter
-                jitter = wait_time * self.jitter_factor * (2 * asyncio.get_event_loop().time() % 1 - 1)
+                # Add random jitter to prevent thundering herd
+                jitter = wait_time * self.jitter_factor * random.uniform(-1, 1)
                 wait_time = max(0, wait_time + jitter)
                 
                 logger.debug(f"Rate limiter waiting {wait_time:.2f}s (delay: {self._current_delay:.2f}s)")

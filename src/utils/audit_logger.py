@@ -115,8 +115,9 @@ class AuditLogger:
         else:
             self._buffer.append(entry)
             if len(self._buffer) >= self._buffer_size:
-                logger.warning("Audit buffer full, oldest entries will be dropped")
-                self._buffer = self._buffer[-self._buffer_size:]
+                logger.warning("Audit buffer full, removing oldest entries")
+                # Keep only the newer half to avoid frequent trimming
+                self._buffer = self._buffer[-self._buffer_size // 2:]
     
     def _sanitize(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Mask sensitive data in the details dictionary."""
