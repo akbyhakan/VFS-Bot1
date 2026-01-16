@@ -753,11 +753,11 @@ class VFSBot:
     async def book_appointment_for_request(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """
         Book appointment using reservation data from API.
-        
+
         Args:
             page: Playwright page
             reservation: Reservation data from database
-            
+
         Returns:
             True if booking successful
         """

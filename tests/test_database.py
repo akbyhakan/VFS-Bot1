@@ -257,7 +257,7 @@ async def test_create_appointment_request(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     request_id = await test_db.create_appointment_request(
         country_code="nld",
         visa_category="Tourism",
@@ -267,7 +267,7 @@ async def test_create_appointment_request(test_db):
         person_count=2,
         persons=persons,
     )
-    
+
     assert request_id > 0
 
 
@@ -290,7 +290,7 @@ async def test_get_appointment_request(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     request_id = await test_db.create_appointment_request(
         country_code="nld",
         visa_category="Tourism",
@@ -300,10 +300,10 @@ async def test_get_appointment_request(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     # Get the request
     request = await test_db.get_appointment_request(request_id)
-    
+
     assert request is not None
     assert request["id"] == request_id
     assert request["country_code"] == "nld"
@@ -334,7 +334,7 @@ async def test_get_all_appointment_requests(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     # Create multiple requests
     id1 = await test_db.create_appointment_request(
         country_code="nld",
@@ -345,7 +345,7 @@ async def test_get_all_appointment_requests(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     id2 = await test_db.create_appointment_request(
         country_code="aut",
         visa_category="Business",
@@ -355,10 +355,10 @@ async def test_get_all_appointment_requests(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     # Get all requests
     requests = await test_db.get_all_appointment_requests()
-    
+
     assert len(requests) >= 2
     assert any(r["id"] == id1 for r in requests)
     assert any(r["id"] == id2 for r in requests)
@@ -368,7 +368,7 @@ async def test_get_all_appointment_requests(test_db):
 async def test_update_appointment_request_status(test_db):
     """Test updating appointment request status."""
     from datetime import datetime, timezone
-    
+
     persons = [
         {
             "first_name": "Test",
@@ -385,7 +385,7 @@ async def test_update_appointment_request_status(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     request_id = await test_db.create_appointment_request(
         country_code="nld",
         visa_category="Tourism",
@@ -395,7 +395,7 @@ async def test_update_appointment_request_status(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     # Update status
     completed_at = datetime.now(timezone.utc)
     updated = await test_db.update_appointment_request_status(
@@ -403,9 +403,9 @@ async def test_update_appointment_request_status(test_db):
         status="completed",
         completed_at=completed_at
     )
-    
+
     assert updated is True
-    
+
     # Verify update
     request = await test_db.get_appointment_request(request_id)
     assert request["status"] == "completed"
@@ -431,7 +431,7 @@ async def test_delete_appointment_request(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     request_id = await test_db.create_appointment_request(
         country_code="nld",
         visa_category="Tourism",
@@ -441,11 +441,11 @@ async def test_delete_appointment_request(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     # Delete the request
     deleted = await test_db.delete_appointment_request(request_id)
     assert deleted is True
-    
+
     # Verify it's deleted
     request = await test_db.get_appointment_request(request_id)
     assert request is None
@@ -455,7 +455,7 @@ async def test_delete_appointment_request(test_db):
 async def test_cleanup_completed_requests(test_db):
     """Test cleanup of old completed requests."""
     from datetime import datetime, timezone, timedelta
-    
+
     persons = [
         {
             "first_name": "Test",
@@ -472,7 +472,7 @@ async def test_cleanup_completed_requests(test_db):
             "is_child_with_parent": False,
         },
     ]
-    
+
     request_id = await test_db.create_appointment_request(
         country_code="nld",
         visa_category="Tourism",
@@ -482,7 +482,7 @@ async def test_cleanup_completed_requests(test_db):
         person_count=1,
         persons=persons,
     )
-    
+
     # Mark as completed with old timestamp (35 days ago)
     old_date = datetime.now(timezone.utc) - timedelta(days=35)
     await test_db.update_appointment_request_status(
@@ -490,13 +490,13 @@ async def test_cleanup_completed_requests(test_db):
         status="completed",
         completed_at=old_date
     )
-    
+
     # Run cleanup (30 days threshold)
     deleted_count = await test_db.cleanup_completed_requests(days=30)
-    
+
     # Should have deleted 1 request
     assert deleted_count == 1
-    
+
     # Verify it's deleted
     request = await test_db.get_appointment_request(request_id)
     assert request is None

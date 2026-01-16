@@ -6,7 +6,7 @@ from enum import Enum
 
 class MissionCode(str, Enum):
     """Supported mission (target country) codes for VFS Turkey."""
-    
+
     FRANCE = "fra"
     NETHERLANDS = "nld"
     AUSTRIA = "aut"
@@ -155,13 +155,13 @@ SUPPORTED_COUNTRIES: Dict[str, CountryInfo] = {
 def get_route(mission_code: str) -> str:
     """
     Get VFS route string for a mission.
-    
+
     Args:
         mission_code: Target country code (e.g., 'nld', 'fra')
-        
+
     Returns:
         Route string (e.g., 'tur/tr/nld')
-        
+
     Raises:
         ValueError: If mission code is not supported
     """
@@ -172,10 +172,10 @@ def get_route(mission_code: str) -> str:
 def validate_mission_code(mission_code: str) -> None:
     """
     Validate that a mission code is supported.
-    
+
     Args:
         mission_code: Target country code
-        
+
     Raises:
         ValueError: If mission code is not in supported list
     """
@@ -190,10 +190,10 @@ def validate_mission_code(mission_code: str) -> None:
 def get_country_info(mission_code: str) -> CountryInfo:
     """
     Get country information.
-    
+
     Args:
         mission_code: Target country code
-        
+
     Returns:
         CountryInfo with code, names, and centres
     """
@@ -209,16 +209,16 @@ def get_all_supported_codes() -> List[str]:
 def get_centres_for_mission(mission_code: str) -> List[str]:
     """
     Get available VFS centres for a mission.
-    
+
     DEPRECATED: Centres should be fetched dynamically from VFS website
     using CentreFetcher instead of this static list.
-    
+
     Args:
         mission_code: Target country code
-        
+
     Returns:
         Empty list (deprecated)
-        
+
     Raises:
         DeprecationWarning: This function is deprecated
     """

@@ -165,7 +165,7 @@ async def run_both_mode(config: dict) -> None:
     # Initialize shared database instance for both modes
     db = Database()
     await db.connect()
-    
+
     try:
         # Create tasks for both modes with shared database
         # (disable cleanup in web task to avoid duplication)

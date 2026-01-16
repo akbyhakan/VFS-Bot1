@@ -362,7 +362,7 @@ class OTPWebhookService:
         """
         async with self._lock:
             now = datetime.now(timezone.utc)
-            
+
             # Clean appointment queue
             initial_appt_count = len(self._appointment_otp_queue)
             self._appointment_otp_queue = deque(
@@ -374,7 +374,7 @@ class OTPWebhookService:
                 maxlen=self._appointment_otp_queue.maxlen,
             )
             appt_removed = initial_appt_count - len(self._appointment_otp_queue)
-            
+
             # Clean payment queue
             initial_pay_count = len(self._payment_otp_queue)
             self._payment_otp_queue = deque(
@@ -404,20 +404,20 @@ _otp_lock = threading.Lock()
 def get_otp_service() -> OTPWebhookService:
     """
     Get global OTP service instance (thread-safe singleton).
-    
+
     Uses double-checked locking pattern for efficiency.
     """
     global _otp_service
-    
+
     # First check without lock (fast path)
     if _otp_service is not None:
         return _otp_service
-    
+
     # Acquire lock for initialization
     with _otp_lock:
         # Double-check after acquiring lock
         if _otp_service is None:
             _otp_service = OTPWebhookService()
             logger.info("OTP service singleton initialized")
-        
+
         return _otp_service

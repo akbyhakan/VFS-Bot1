@@ -49,7 +49,7 @@ dist_dir = static_dir / "dist"
 if dist_dir.exists():
     # Serve React app static assets
     app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
-    
+
 # Mount other static files (for backward compatibility)
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -172,7 +172,7 @@ class TokenResponse(BaseModel):
 
 class PaymentCardRequest(BaseModel):
     """Payment card request model."""
-    
+
     card_holder_name: str
     card_number: str
     expiry_month: str
@@ -182,7 +182,7 @@ class PaymentCardRequest(BaseModel):
 
 class PaymentCardResponse(BaseModel):
     """Payment card response model (masked)."""
-    
+
     id: int
     card_holder_name: str
     card_number_masked: str
@@ -193,7 +193,7 @@ class PaymentCardResponse(BaseModel):
 
 class WebhookUrlsResponse(BaseModel):
     """Webhook URLs response model."""
-    
+
     appointment_webhook: str
     payment_webhook: str
     base_url: str
@@ -233,25 +233,25 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
 async def serve_react_app(request: Request, full_path: str = ""):
     """
     Serve React SPA for all non-API routes.
-    
+
     This handles client-side routing by serving index.html for all routes
     that don't start with /api, /ws, /health, /metrics, or /static.
-    
+
     Args:
         request: FastAPI request object
         full_path: Requested path
-        
+
     Returns:
         HTML response with React app
     """
     # Skip API routes, WebSocket, health checks, and static files
     if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
         raise HTTPException(status_code=404, detail="Not found")
-    
+
     # Serve the React app
     dist_dir = Path(__file__).parent / "static" / "dist"
     index_file = dist_dir / "index.html"
-    
+
     if index_file.exists():
         return FileResponse(index_file)
     else:
@@ -870,10 +870,10 @@ next_user_id = 1
 async def get_users(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Get all users - requires authentication.
-    
+
     Args:
         token_data: Verified token data
-        
+
     Returns:
         List of users
     """
@@ -888,16 +888,16 @@ async def create_user(
 ):
     """
     Create a new user - requires authentication.
-    
+
     Args:
         user: User data
         token_data: Verified token data
-        
+
     Returns:
         Created user
     """
     global next_user_id
-    
+
     # TODO: Replace with actual database insert
     new_user = UserModel(
         id=next_user_id,
@@ -912,10 +912,10 @@ async def create_user(
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
-    
+
     mock_users.append(new_user)
     next_user_id += 1
-    
+
     logger.info(f"User created: {new_user.email} by {token_data.get('sub', 'unknown')}")
     return new_user
 
@@ -928,12 +928,12 @@ async def update_user(
 ):
     """
     Update a user - requires authentication.
-    
+
     Args:
         user_id: User ID
         user_update: Updated user data
         token_data: Verified token data
-        
+
     Returns:
         Updated user
     """
@@ -944,10 +944,10 @@ async def update_user(
             for key, value in update_data.items():
                 setattr(user, key, value)
             user.updated_at = datetime.now(timezone.utc).isoformat()
-            
+
             logger.info(f"User updated: {user.email} by {token_data.get('sub', 'unknown')}")
             return user
-    
+
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -958,23 +958,23 @@ async def delete_user(
 ):
     """
     Delete a user - requires authentication.
-    
+
     Args:
         user_id: User ID
         token_data: Verified token data
-        
+
     Returns:
         Success message
     """
     global mock_users
-    
+
     # TODO: Replace with actual database delete
     for i, user in enumerate(mock_users):
         if user.id == user_id:
             deleted_user = mock_users.pop(i)
             logger.info(f"User deleted: {deleted_user.email} by {token_data.get('sub', 'unknown')}")
             return {"message": "User deleted successfully"}
-    
+
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -986,12 +986,12 @@ async def toggle_user_status(
 ):
     """
     Toggle user active status - requires authentication.
-    
+
     Args:
         user_id: User ID
         status_update: Status update data (is_active)
         token_data: Verified token data
-        
+
     Returns:
         Updated user
     """
@@ -1001,13 +1001,13 @@ async def toggle_user_status(
             if "is_active" in status_update:
                 user.is_active = status_update["is_active"]
                 user.updated_at = datetime.now(timezone.utc).isoformat()
-                
+
                 logger.info(
                     f"User status toggled: {user.email} -> {user.is_active} "
                     f"by {token_data.get('sub', 'unknown')}"
                 )
                 return user
-    
+
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -1016,22 +1016,22 @@ async def toggle_user_status(
 async def get_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Get saved payment card (masked) - requires authentication.
-    
+
     Args:
         token_data: Verified token data
-        
+
     Returns:
         Masked payment card data or None if no card exists
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             card = await db.get_payment_card_masked()
             if not card:
                 return None
-            
+
             return PaymentCardResponse(
                 id=card["id"],
                 card_holder_name=card["card_holder_name"],
@@ -1054,18 +1054,18 @@ async def save_payment_card(
 ):
     """
     Save or update payment card - requires authentication.
-    
+
     Args:
         card_data: Payment card data
         token_data: Verified token data
-        
+
     Returns:
         Success message with card ID
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             card_id = await db.save_payment_card({
                 "card_holder_name": card_data.card_holder_name,
@@ -1074,7 +1074,7 @@ async def save_payment_card(
                 "expiry_year": card_data.expiry_year,
                 "cvv": card_data.cvv
             })
-            
+
             logger.info(
                 f"Payment card saved/updated by {token_data.get('sub', 'unknown')}"
             )
@@ -1097,22 +1097,22 @@ async def save_payment_card(
 async def delete_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Delete saved payment card - requires authentication.
-    
+
     Args:
         token_data: Verified token data
-        
+
     Returns:
         Success message
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             deleted = await db.delete_payment_card()
             if not deleted:
                 raise HTTPException(status_code=404, detail="No payment card found")
-            
+
             logger.info(f"Payment card deleted by {token_data.get('sub', 'unknown')}")
             return {"success": True, "message": "Payment card deleted successfully"}
         finally:
@@ -1221,7 +1221,7 @@ COUNTRIES_DATA = [
 async def get_countries():
     """
     Get list of available countries.
-    
+
     Returns:
         List of countries with codes and names
     """
@@ -1232,13 +1232,13 @@ async def get_countries():
 async def get_country_centres(country_code: str):
     """
     Get list of centres for a specific country.
-    
+
     Args:
         country_code: Country code (e.g., 'nld', 'aut')
-        
+
     Returns:
         List of centre names
-        
+
     Note:
         Currently returns Turkish VFS centres regardless of country_code.
         This is because appointments are made at Turkish VFS centres for
@@ -1257,18 +1257,18 @@ async def create_appointment_request(
 ):
     """
     Create a new appointment request.
-    
+
     Args:
         request_data: Appointment request data
         token_data: Verified token data
-        
+
     Returns:
         Created appointment request info
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             # Validate person count matches persons list
             if request_data.person_count != len(request_data.persons):
@@ -1279,10 +1279,10 @@ async def create_appointment_request(
                         f"number of persons provided ({len(request_data.persons)})"
                     )
                 )
-            
+
             # Convert persons to dict
             persons_data = [person.dict() for person in request_data.persons]
-            
+
             # Create request in database
             request_id = await db.create_appointment_request(
                 country_code=request_data.country_code,
@@ -1293,12 +1293,12 @@ async def create_appointment_request(
                 person_count=request_data.person_count,
                 persons=persons_data
             )
-            
+
             logger.info(
                 f"Appointment request {request_id} created by "
                 f"{token_data.get('sub', 'unknown')}"
             )
-            
+
             return {
                 "id": request_id,
                 "status": "pending",
@@ -1323,21 +1323,21 @@ async def get_appointment_requests(
 ):
     """
     Get all appointment requests.
-    
+
     Args:
         status: Optional status filter
         token_data: Verified token data
-        
+
     Returns:
         List of appointment requests
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             requests = await db.get_all_appointment_requests(status=status)
-            
+
             # Convert to response model
             response_requests = []
             for req in requests:
@@ -1346,7 +1346,7 @@ async def get_appointment_requests(
                     {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
                     for person in req["persons"]
                 ]
-                
+
                 response_requests.append(
                     AppointmentRequestResponse(
                         id=req["id"],
@@ -1362,7 +1362,7 @@ async def get_appointment_requests(
                         persons=persons
                     )
                 )
-            
+
             return response_requests
         finally:
             await db.close()
@@ -1378,30 +1378,30 @@ async def get_appointment_request(
 ):
     """
     Get a specific appointment request.
-    
+
     Args:
         request_id: Request ID
         token_data: Verified token data
-        
+
     Returns:
         Appointment request details
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             req = await db.get_appointment_request(request_id)
-            
+
             if not req:
                 raise HTTPException(status_code=404, detail="Appointment request not found")
-            
+
             # Remove internal fields from persons
             persons = [
                 {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
                 for person in req["persons"]
             ]
-            
+
             return AppointmentRequestResponse(
                 id=req["id"],
                 country_code=req["country_code"],
@@ -1431,29 +1431,29 @@ async def delete_appointment_request(
 ):
     """
     Delete an appointment request.
-    
+
     Args:
         request_id: Request ID
         token_data: Verified token data
-        
+
     Returns:
         Success message
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             deleted = await db.delete_appointment_request(request_id)
-            
+
             if not deleted:
                 raise HTTPException(status_code=404, detail="Appointment request not found")
-            
+
             logger.info(
                 f"Appointment request {request_id} deleted by "
                 f"{token_data.get('sub', 'unknown')}"
             )
-            
+
             return {"success": True, "message": "Appointment request deleted"}
         finally:
             await db.close()
@@ -1472,15 +1472,15 @@ async def update_appointment_request_status(
 ):
     """
     Update appointment request status.
-    
+
     Args:
         request_id: Request ID
         status_update: Dict with 'status' key
         token_data: Verified token data
-        
+
     Returns:
         Success message
-        
+
     Note:
         When status is set to 'completed', completed_at timestamp is set.
         When status changes from 'completed' to another status, completed_at
@@ -1490,33 +1490,33 @@ async def update_appointment_request_status(
         status = status_update.get("status")
         if not status:
             raise HTTPException(status_code=400, detail="Status is required")
-        
+
         if status not in ["pending", "processing", "completed", "failed"]:
             raise HTTPException(status_code=400, detail="Invalid status value")
-        
+
         db = Database()
         await db.connect()
-        
+
         try:
             # Set completed_at timestamp only when status becomes 'completed'
             completed_at = (
                 datetime.now(timezone.utc) if status == "completed" else None
             )
-            
+
             updated = await db.update_appointment_request_status(
                 request_id=request_id,
                 status=status,
                 completed_at=completed_at
             )
-            
+
             if not updated:
                 raise HTTPException(status_code=404, detail="Appointment request not found")
-            
+
             logger.info(
                 f"Appointment request {request_id} status updated to {status} "
                 f"by {token_data.get('sub', 'unknown')}"
             )
-            
+
             return {"success": True, "message": f"Status updated to {status}"}
         finally:
             await db.close()
@@ -1534,16 +1534,16 @@ async def update_appointment_request_status(
 async def get_webhook_urls(request: Request):
     """
     Get webhook URLs for SMS forwarding.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Webhook URLs with base URL
     """
     # Get base URL from request
     base_url = str(request.base_url).rstrip('/')
-    
+
     return WebhookUrlsResponse(
         appointment_webhook=f"{base_url}/api/webhook/sms/appointment",
         payment_webhook=f"{base_url}/api/webhook/sms/payment",

@@ -116,28 +116,28 @@ class CaptchaSolver:
     ) -> Optional[str]:
         """
         Solve Cloudflare Turnstile captcha using 2Captcha.
-        
+
         VFS Global uses Cloudflare Turnstile instead of reCAPTCHA.
-        
+
         Args:
             page_url: Page URL where Turnstile is displayed
             site_key: Turnstile site key
             timeout: Solving timeout in seconds
-            
+
         Returns:
             Turnstile token or None
         """
         if not self.api_key:
             logger.warning("No 2Captcha API key for Turnstile")
             return None
-        
+
         try:
             from twocaptcha import TwoCaptcha
-            
+
             solver = TwoCaptcha(self.api_key)
-            
+
             logger.info(f"Solving Turnstile captcha for {page_url}")
-            
+
             # Run in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
@@ -147,11 +147,11 @@ class CaptchaSolver:
                     url=page_url,
                 )
             )
-            
+
             token = result.get("code")
             logger.info("Turnstile solved successfully")
             return token
-            
+
         except Exception as e:
             logger.error(f"Turnstile solving error: {e}")
             return None
