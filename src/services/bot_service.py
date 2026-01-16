@@ -148,6 +148,10 @@ class VFSBot:
             self.proxy_manager = None
             logger.info("Anti-detection features disabled")
 
+        # Initialize appointment booking service (PART 2)
+        from .appointment_booking_service import AppointmentBookingService
+        self.booking_service = AppointmentBookingService(config, self.captcha_solver, self.human_sim)
+
         logger.info("VFSBot initialized")
 
     async def __aenter__(self):
@@ -743,3 +747,16 @@ class VFSBot:
             logger.info(f"Screenshot saved: {filepath}")
         except Exception as e:
             logger.error(f"Error taking screenshot: {e}")
+
+    async def book_appointment_for_request(self, page: Page, reservation: Dict[str, Any]) -> bool:
+        """
+        Book appointment using reservation data from API.
+        
+        Args:
+            page: Playwright page
+            reservation: Reservation data from database
+            
+        Returns:
+            True if booking successful
+        """
+        return await self.booking_service.run_booking_flow(page, reservation)

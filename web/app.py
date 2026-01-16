@@ -1120,6 +1120,7 @@ class AppointmentPersonRequest(BaseModel):
     """Appointment person request model."""
     first_name: str
     last_name: str
+    gender: str  # "female" | "male"
     nationality: str = "Turkey"
     birth_date: str  # Format: DD/MM/YYYY
     passport_number: str
@@ -1128,11 +1129,14 @@ class AppointmentPersonRequest(BaseModel):
     phone_code: str = "90"
     phone_number: str  # Without leading 0
     email: str
+    is_child_with_parent: bool = False  # Child checkbox
 
 
 class AppointmentRequestCreate(BaseModel):
     """Appointment request creation model."""
     country_code: str
+    visa_category: str
+    visa_subcategory: str
     centres: List[str]
     preferred_dates: List[str]  # Format: DD/MM/YYYY
     person_count: int
@@ -1144,6 +1148,7 @@ class AppointmentPersonResponse(BaseModel):
     id: int
     first_name: str
     last_name: str
+    gender: str
     nationality: str
     birth_date: str
     passport_number: str
@@ -1152,12 +1157,15 @@ class AppointmentPersonResponse(BaseModel):
     phone_code: str
     phone_number: str
     email: str
+    is_child_with_parent: bool
 
 
 class AppointmentRequestResponse(BaseModel):
     """Appointment request response model."""
     id: int
     country_code: str
+    visa_category: str
+    visa_subcategory: str
     centres: List[str]
     preferred_dates: List[str]
     person_count: int
@@ -1266,6 +1274,8 @@ async def create_appointment_request(
             # Create request in database
             request_id = await db.create_appointment_request(
                 country_code=request_data.country_code,
+                visa_category=request_data.visa_category,
+                visa_subcategory=request_data.visa_subcategory,
                 centres=request_data.centres,
                 preferred_dates=request_data.preferred_dates,
                 person_count=request_data.person_count,
@@ -1326,6 +1336,8 @@ async def get_appointment_requests(
                     AppointmentRequestResponse(
                         id=req["id"],
                         country_code=req["country_code"],
+                        visa_category=req["visa_category"],
+                        visa_subcategory=req["visa_subcategory"],
                         centres=req["centres"],
                         preferred_dates=req["preferred_dates"],
                         person_count=req["person_count"],
@@ -1378,6 +1390,8 @@ async def get_appointment_request(
             return AppointmentRequestResponse(
                 id=req["id"],
                 country_code=req["country_code"],
+                visa_category=req["visa_category"],
+                visa_subcategory=req["visa_subcategory"],
                 centres=req["centres"],
                 preferred_dates=req["preferred_dates"],
                 person_count=req["person_count"],
