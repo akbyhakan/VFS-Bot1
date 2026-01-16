@@ -526,3 +526,5 @@ function PersonForm({
     </div>
   );
 }
+
+export default AppointmentRequest;

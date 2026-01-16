@@ -6,6 +6,7 @@ interface BotState extends BotStatus {
   isConnected: boolean;
   updateStatus: (status: Partial<BotStatus>) => void;
   addLog: (log: LogEntry) => void;
+  addLogs: (logs: LogEntry[]) => void;
   clearLogs: () => void;
   setConnected: (connected: boolean) => void;
   setLogs: (logs: LogEntry[]) => void;
@@ -35,6 +36,16 @@ export const useBotStore = create<BotState>((set) => ({
   addLog: (log) =>
     set((state) => {
       const newLogs = [...state.logs, log];
+      // Keep only the last MAX_LOGS entries
+      if (newLogs.length > MAX_LOGS) {
+        return { logs: newLogs.slice(-MAX_LOGS) };
+      }
+      return { logs: newLogs };
+    }),
+
+  addLogs: (logs) =>
+    set((state) => {
+      const newLogs = [...state.logs, ...logs];
       // Keep only the last MAX_LOGS entries
       if (newLogs.length > MAX_LOGS) {
         return { logs: newLogs.slice(-MAX_LOGS) };

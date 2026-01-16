@@ -43,21 +43,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'btn inline-flex items-center justify-center gap-2',
+          'btn inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark-900 transition-all',
           variantClasses[variant],
           sizeClasses[size],
           className
         )}
         disabled={disabled || isLoading}
+        aria-disabled={disabled || isLoading}
+        aria-busy={isLoading}
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         ) : (
-          leftIcon && <span>{leftIcon}</span>
+          leftIcon && <span aria-hidden="true">{leftIcon}</span>
         )}
         {children}
-        {!isLoading && rightIcon && <span>{rightIcon}</span>}
+        {!isLoading && rightIcon && <span aria-hidden="true">{rightIcon}</span>}
       </button>
     );
   }

@@ -341,3 +341,5 @@ export function Settings() {
     </div>
   );
 }
+
+export default Settings;

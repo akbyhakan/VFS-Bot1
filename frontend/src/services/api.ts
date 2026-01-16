@@ -31,8 +31,11 @@ class ApiClient {
       (error: AxiosError<ApiError>) => {
         if (error.response?.status === 401) {
           // Token expired or invalid - clear auth and redirect to login
-          localStorage.removeItem(AUTH_TOKEN_KEY);
-          window.location.href = '/login';
+          // Only redirect if not already on login page to prevent infinite loop
+          if (!window.location.pathname.includes('/login')) {
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(this.handleError(error));
       }
