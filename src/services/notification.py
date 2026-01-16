@@ -33,10 +33,7 @@ class NotificationService:
         )
 
     async def send_notification(
-        self, 
-        title: str, 
-        message: str, 
-        priority: NotificationPriority = "normal"
+        self, title: str, message: str, priority: NotificationPriority = "normal"
     ) -> None:
         """
         Send notification through all enabled channels.

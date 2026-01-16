@@ -43,11 +43,7 @@ class TestCountryInfo:
 
     def test_country_info_structure(self):
         """Test CountryInfo has correct fields."""
-        info = CountryInfo(
-            code="fra",
-            name_en="France",
-            name_tr="Fransa"
-        )
+        info = CountryInfo(code="fra", name_en="France", name_tr="Fransa")
         assert info.code == "fra"
         assert info.name_en == "France"
         assert info.name_tr == "Fransa"
@@ -103,10 +99,10 @@ class TestGetRoute:
         """Test route generation raises error for invalid missions."""
         with pytest.raises(ValueError, match="Unsupported mission code"):
             get_route("deu")  # Germany - not supported
-        
+
         with pytest.raises(ValueError, match="Unsupported mission code"):
             get_route("usa")  # USA - not in Schengen
-        
+
         with pytest.raises(ValueError, match="Unsupported mission code"):
             get_route("xxx")  # Invalid code
 
@@ -204,14 +200,14 @@ class TestGetCentresForMission:
     def test_get_centres_deprecated(self):
         """Test that get_centres_for_mission is deprecated and returns empty list."""
         import warnings
-        
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             centres = get_centres_for_mission("nld")
-            
+
             # Should return empty list
             assert centres == []
-            
+
             # Should raise deprecation warning
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
@@ -227,22 +223,22 @@ class TestIntegration:
         # Get all supported codes
         codes = get_all_supported_codes()
         assert len(codes) > 0
-        
+
         # Pick a code
         code = "nld"
         assert code in codes
-        
+
         # Validate it
         validate_mission_code(code)  # Should not raise
-        
+
         # Get route
         route = get_route(code)
         assert route == "tur/tr/nld"
-        
+
         # Get country info
         info = get_country_info(code)
         assert info.code == code
-        
+
         # Note: centres removed - should be fetched dynamically via CentreFetcher
 
     def test_all_mission_codes_in_supported_countries(self):

@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class AuditAction(Enum):
     """Audit action types."""
+
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILURE = "login_failure"
     LOGOUT = "logout"
@@ -33,6 +34,7 @@ class AuditAction(Enum):
 @dataclass
 class AuditEntry:
     """Audit log entry."""
+
     action: str
     user_id: Optional[int]
     username: Optional[str]
@@ -41,7 +43,7 @@ class AuditEntry:
     details: Dict[str, Any]
     timestamp: str
     success: bool = True
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
@@ -49,23 +51,30 @@ class AuditEntry:
 class AuditLogger:
     """
     Audit logger for tracking security-sensitive operations.
-    
+
     Features:
     - Automatic sensitive data masking
     - Database persistence
     - Structured logging
     """
-    
+
     SENSITIVE_KEYS = {
-        'password', 'token', 'api_key', 'secret', 'card_number', 
-        'cvv', 'authorization', 'cookie', 'session'
+        "password",
+        "token",
+        "api_key",
+        "secret",
+        "card_number",
+        "cvv",
+        "authorization",
+        "cookie",
+        "session",
     }
-    
+
     def __init__(self, db=None):
         self.db = db
         self._buffer = []
         self._buffer_size = 100
-    
+
     async def log(
         self,
         action: AuditAction,
@@ -74,11 +83,11 @@ class AuditLogger:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-        success: bool = True
+        success: bool = True,
     ) -> None:
         """
         Log an audit event.
-        
+
         Args:
             action: The action being audited
             user_id: ID of the user performing the action
@@ -89,7 +98,7 @@ class AuditLogger:
             success: Whether the action was successful
         """
         sanitized_details = self._sanitize(details or {})
-        
+
         entry = AuditEntry(
             action=action.value,
             user_id=user_id,
@@ -98,17 +107,17 @@ class AuditLogger:
             user_agent=user_agent,
             details=sanitized_details,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            success=success
+            success=success,
         )
-        
+
         # Log to standard logger
         log_level = logging.INFO if success else logging.WARNING
         logger.log(
             log_level,
             f"AUDIT: {action.value} | user={username or user_id} | "
-            f"ip={ip_address} | success={success}"
+            f"ip={ip_address} | success={success}",
         )
-        
+
         # Persist to database if available
         if self.db:
             await self._persist(entry)
@@ -117,80 +126,83 @@ class AuditLogger:
             if len(self._buffer) >= self._buffer_size:
                 logger.warning("Audit buffer full, removing oldest entries")
                 # Keep only the newer half to avoid frequent trimming
-                self._buffer = self._buffer[-self._buffer_size // 2:]
-    
+                self._buffer = self._buffer[-self._buffer_size // 2 :]
+
     def _sanitize(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Mask sensitive data in the details dictionary."""
         if not isinstance(data, dict):
             return data
-        
-        sanitized = {}
+
+        sanitized: Dict[str, Any] = {}
         for key, value in data.items():
             key_lower = key.lower()
-            
+
             if any(sensitive in key_lower for sensitive in self.SENSITIVE_KEYS):
                 if isinstance(value, str) and len(value) > 4:
-                    sanitized[key] = value[:2] + '***' + value[-2:]
+                    sanitized[key] = value[:2] + "***" + value[-2:]
                 else:
-                    sanitized[key] = '***REDACTED***'
+                    sanitized[key] = "***REDACTED***"
             elif isinstance(value, dict):
                 sanitized[key] = self._sanitize(value)
             else:
                 sanitized[key] = value
-        
+
         return sanitized
-    
+
     async def _persist(self, entry: AuditEntry) -> None:
         """Persist audit entry to database."""
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cursor:
-                    await cursor.execute("""
+                    await cursor.execute(
+                        """
                         INSERT INTO audit_log 
                         (action, user_id, username, ip_address, user_agent, details, timestamp, success)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        entry.action,
-                        entry.user_id,
-                        entry.username,
-                        entry.ip_address,
-                        entry.user_agent,
-                        json.dumps(entry.details),
-                        entry.timestamp,
-                        entry.success
-                    ))
+                    """,
+                        (
+                            entry.action,
+                            entry.user_id,
+                            entry.username,
+                            entry.ip_address,
+                            entry.user_agent,
+                            json.dumps(entry.details),
+                            entry.timestamp,
+                            entry.success,
+                        ),
+                    )
                     await conn.commit()
         except Exception as e:
             logger.error(f"Failed to persist audit entry: {e}")
             self._buffer.append(entry)
-    
+
     async def get_recent(
         self,
         limit: int = 100,
         action: Optional[AuditAction] = None,
-        user_id: Optional[int] = None
-    ) -> list:
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """Get recent audit entries."""
         if not self.db:
             return [e.to_dict() for e in self._buffer[-limit:]]
-        
+
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cursor:
                     query = "SELECT * FROM audit_log WHERE 1=1"
-                    params = []
-                    
+                    params: List[Union[str, int]] = []
+
                     if action:
                         query += " AND action = ?"
                         params.append(action.value)
-                    
+
                     if user_id:
                         query += " AND user_id = ?"
                         params.append(user_id)
-                    
+
                     query += " ORDER BY timestamp DESC LIMIT ?"
                     params.append(limit)
-                    
+
                     await cursor.execute(query, params)
                     rows = await cursor.fetchall()
                     return [dict(row) for row in rows]
@@ -203,7 +215,7 @@ class AuditLogger:
 _audit_logger: Optional[AuditLogger] = None
 
 
-def get_audit_logger(db=None) -> AuditLogger:
+def get_audit_logger(db: Any = None) -> AuditLogger:
     """Get the global audit logger instance."""
     global _audit_logger
     if _audit_logger is None:

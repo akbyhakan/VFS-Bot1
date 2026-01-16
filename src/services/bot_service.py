@@ -150,7 +150,10 @@ class VFSBot:
 
         # Initialize appointment booking service (PART 2)
         from .appointment_booking_service import AppointmentBookingService
-        self.booking_service = AppointmentBookingService(config, self.captcha_solver, self.human_sim)
+
+        self.booking_service = AppointmentBookingService(
+            config, self.captcha_solver, self.human_sim
+        )
 
         logger.info("VFSBot initialized")
 
@@ -751,11 +754,11 @@ class VFSBot:
     async def book_appointment_for_request(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """
         Book appointment using reservation data from API.
-        
+
         Args:
             page: Playwright page
             reservation: Reservation data from database
-            
+
         Returns:
             True if booking successful
         """
