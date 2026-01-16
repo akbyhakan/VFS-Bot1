@@ -147,7 +147,7 @@ class CaptchaSolver:
 
             token = result.get("code")
             logger.info("Turnstile solved successfully")
-            return token
+            return token  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error(f"Turnstile solving error: {e}")

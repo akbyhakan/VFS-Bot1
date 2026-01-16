@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -133,7 +133,7 @@ class AuditLogger:
         if not isinstance(data, dict):
             return data
 
-        sanitized = {}
+        sanitized: Dict[str, Any] = {}
         for key, value in data.items():
             key_lower = key.lower()
 
@@ -177,8 +177,11 @@ class AuditLogger:
             self._buffer.append(entry)
 
     async def get_recent(
-        self, limit: int = 100, action: Optional[AuditAction] = None, user_id: Optional[int] = None
-    ) -> list:
+        self,
+        limit: int = 100,
+        action: Optional[AuditAction] = None,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """Get recent audit entries."""
         if not self.db:
             return [e.to_dict() for e in self._buffer[-limit:]]
@@ -187,7 +190,7 @@ class AuditLogger:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cursor:
                     query = "SELECT * FROM audit_log WHERE 1=1"
-                    params = []
+                    params: List[Union[str, int]] = []
 
                     if action:
                         query += " AND action = ?"
@@ -212,7 +215,7 @@ class AuditLogger:
 _audit_logger: Optional[AuditLogger] = None
 
 
-def get_audit_logger(db=None) -> AuditLogger:
+def get_audit_logger(db: Any = None) -> AuditLogger:
     """Get the global audit logger instance."""
     global _audit_logger
     if _audit_logger is None:

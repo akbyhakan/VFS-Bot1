@@ -775,7 +775,7 @@ class Database:
                     )
                     await conn.commit()
                     logger.info("Payment card updated")
-                    return existing["id"]
+                    return int(existing["id"])
                 else:
                     # Insert new card
                     await cursor.execute(
@@ -794,6 +794,8 @@ class Database:
                     )
                     await conn.commit()
                     card_id = cursor.lastrowid
+                    if card_id is None:
+                        raise RuntimeError("Failed to get inserted card ID")
                     logger.info(f"Payment card created with ID: {card_id}")
                     return card_id
 
@@ -930,6 +932,8 @@ class Database:
                     ),
                 )
                 request_id = cursor.lastrowid
+                if request_id is None:
+                    raise RuntimeError("Failed to get inserted request ID")
 
                 # Insert persons
                 for person in persons:

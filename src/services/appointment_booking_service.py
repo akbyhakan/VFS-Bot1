@@ -69,7 +69,7 @@ class AppointmentBookingService:
     Form doldurma, tarih/saat seçimi, ödeme ve 3D Secure işlemleri.
     """
 
-    def __init__(self, config: Dict[str, Any], captcha_solver=None, human_sim=None):
+    def __init__(self, config: Dict[str, Any], captcha_solver: Any = None, human_sim: Any = None):
         """
         Initialize booking service.
 

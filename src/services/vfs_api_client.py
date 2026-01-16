@@ -189,6 +189,13 @@ class VFSApiClient:
             await self._http_session.close()
             self._http_session = None
 
+    @property
+    def _session(self) -> aiohttp.ClientSession:
+        """Get HTTP session, raising error if not initialized."""
+        if self._http_session is None:
+            raise RuntimeError("HTTP session not initialized. Call _init_http_session() first.")
+        return self._http_session
+
     async def login(self, email: str, password: str, turnstile_token: str) -> VFSSession:
         """
         Login to VFS Global.
@@ -216,7 +223,7 @@ class VFSApiClient:
 
         logger.info(f"Logging in to VFS for mission: {self.mission_code}")
 
-        async with self._http_session.post(
+        async with self._session.post(
             f"{VFS_API_BASE}/user/login",
             data=payload,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -248,7 +255,7 @@ class VFSApiClient:
             )
 
             # Update session headers with auth token
-            self._http_session.headers.update(
+            self._session.headers.update(
                 {"Authorization": f"Bearer {self.session.access_token}"}
             )
 
@@ -264,10 +271,10 @@ class VFSApiClient:
         """
         await self._ensure_authenticated()
 
-        async with self._http_session.get(f"{VFS_API_BASE}/master/center") as response:
+        async with self._session.get(f"{VFS_API_BASE}/master/center") as response:
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
-            return data
+            return data  # type: ignore[no-any-return]
 
     async def get_visa_categories(self, centre_id: str) -> List[Dict[str, Any]]:
         """
@@ -281,11 +288,11 @@ class VFSApiClient:
         """
         await self._ensure_authenticated()
 
-        async with self._http_session.get(
+        async with self._session.get(
             f"{VFS_API_BASE}/master/visacategory", params={"centerId": centre_id}
         ) as response:
             data = await response.json()
-            return data
+            return data  # type: ignore[no-any-return]
 
     async def get_visa_subcategories(
         self, centre_id: str, category_id: str
@@ -302,12 +309,12 @@ class VFSApiClient:
         """
         await self._ensure_authenticated()
 
-        async with self._http_session.get(
+        async with self._session.get(
             f"{VFS_API_BASE}/master/subvisacategory",
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
             data = await response.json()
-            return data
+            return data  # type: ignore[no-any-return]
 
     async def check_slot_availability(
         self, centre_id: str, category_id: str, subcategory_id: str
@@ -331,7 +338,7 @@ class VFSApiClient:
             "subVisaCategoryId": subcategory_id,
         }
 
-        async with self._http_session.get(
+        async with self._session.get(
             f"{VFS_API_BASE}/appointment/slots", params=params
         ) as response:
             if response.status != 200:
@@ -373,7 +380,7 @@ class VFSApiClient:
 
         payload = {"appointmentDate": slot_date, "appointmentTime": slot_time, **applicant_data}
 
-        async with self._http_session.post(
+        async with self._session.post(
             f"{VFS_API_BASE}/appointment/applicants", json=payload
         ) as response:
             data = await response.json()
@@ -383,7 +390,7 @@ class VFSApiClient:
             else:
                 logger.error(f"Booking failed: {data}")
 
-            return data
+            return data  # type: ignore[no-any-return]
 
     async def _ensure_authenticated(self) -> None:
         """
@@ -413,7 +420,7 @@ class VFSApiClient:
             )
 
         try:
-            async with self._http_session.post(
+            async with self._session.post(
                 f"{VFS_API_BASE}/user/refresh", json={"refreshToken": self.session.refresh_token}
             ) as response:
                 if response.status != 200:
@@ -438,7 +445,7 @@ class VFSApiClient:
                 )
 
                 # Update session headers with new auth token
-                self._http_session.headers.update(
+                self._session.headers.update(
                     {"Authorization": f"Bearer {self.session.access_token}"}
                 )
 
@@ -460,4 +467,4 @@ class VFSApiClient:
         Returns:
             Turnstile token
         """
-        return await self.captcha_solver.solve_turnstile(page_url=page_url, site_key=site_key)
+        return await self.captcha_solver.solve_turnstile(page_url=page_url, site_key=site_key)  # type: ignore[no-any-return]

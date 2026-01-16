@@ -3,12 +3,12 @@
 import asyncio
 import functools
 import logging
-from typing import Callable, TypeVar, Any, Optional
+from typing import Callable, TypeVar, Any, Optional, Awaitable, Tuple, Type
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-F = TypeVar("F", bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def log_errors(
@@ -30,7 +30,7 @@ def log_errors(
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
@@ -41,7 +41,7 @@ def log_errors(
                     raise
                 return default_return
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
@@ -50,7 +50,7 @@ def retry_async(
     max_retries: int = 3,
     delay: float = 1.0,
     backoff: float = 2.0,
-    exceptions: tuple = (ConnectionError, TimeoutError, OSError),
+    exceptions: Tuple[Type[BaseException], ...] = (ConnectionError, TimeoutError, OSError),
 ) -> Callable[[F], F]:
     """
     Decorator to retry async functions with exponential backoff.
@@ -69,8 +69,8 @@ def retry_async(
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            last_exception = None
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception: Optional[BaseException] = None
             current_delay = delay
 
             for attempt in range(max_retries + 1):
@@ -90,9 +90,11 @@ def retry_async(
                             f"{func.__name__} failed after {max_retries + 1} attempts: {e}"
                         )
 
-            raise last_exception
+            if last_exception:
+                raise last_exception
+            raise RuntimeError("Unexpected error in retry logic")
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
@@ -108,7 +110,7 @@ def timed_async(func: F) -> F:
     """
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         start = datetime.now()
         try:
             result = await func(*args, **kwargs)
@@ -120,4 +122,4 @@ def timed_async(func: F) -> F:
             logger.debug(f"{func.__name__} failed after {elapsed:.3f}s")
             raise
 
-    return wrapper
+    return wrapper  # type: ignore[return-value]
