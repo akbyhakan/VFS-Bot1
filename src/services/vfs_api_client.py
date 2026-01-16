@@ -73,23 +73,21 @@ class VFSPasswordEncryption:
         key = os.getenv("VFS_ENCRYPTION_KEY")
         if not key:
             raise ConfigurationError(
-                "VFS_ENCRYPTION_KEY environment variable is required. "
-                "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                "VFS_ENCRYPTION_KEY environment variable must be set. "
+                "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
         
-        # Convert to bytes and ensure it's 32 bytes for AES-256
-        key_bytes = key.encode('utf-8')[:32]
+        key_bytes = key.encode('utf-8')
         
-        # Warn if key is too short (security issue)
+        # Enforce minimum 32 bytes for security
         if len(key_bytes) < 32:
-            logger.warning(
-                f"VFS_ENCRYPTION_KEY is shorter than recommended 32 bytes ({len(key_bytes)} bytes). "
-                "Consider generating a new key with the recommended method."
+            raise ConfigurationError(
+                f"VFS_ENCRYPTION_KEY must be at least 32 bytes (current: {len(key_bytes)}). "
+                "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
-            # Pad to 32 bytes for AES-256 compatibility
-            key_bytes = key_bytes.ljust(32, b'\0')
         
-        return key_bytes
+        # Use first 32 bytes for AES-256
+        return key_bytes[:32]
     
     @classmethod
     def encrypt(cls, password: str) -> str:

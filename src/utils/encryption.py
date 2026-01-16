@@ -108,34 +108,42 @@ _lock = threading.Lock()
 def reset_encryption() -> None:
     """
     Reset the global encryption instance.
-
-    This is useful for testing or when the encryption key changes.
+    Thread-safe implementation.
     """
     global _encryption_instance
     with _lock:
         _encryption_instance = None
+        logger.info("Encryption instance reset")
 
 
 def get_encryption() -> PasswordEncryption:
     """
     Get global encryption instance (singleton) - thread-safe.
-
-    If the ENCRYPTION_KEY environment variable has changed since the
-    singleton was created, the instance is reset to use the new key.
-
+    
+    Uses double-checked locking pattern for efficiency.
+    
     Returns:
         PasswordEncryption instance
     """
     global _encryption_instance
-
-    with _lock:
+    
+    # First check without lock (fast path)
+    if _encryption_instance is not None:
         current_key = os.getenv("ENCRYPTION_KEY")
-
+        if current_key and _encryption_instance._key == current_key:
+            return _encryption_instance
+    
+    # Acquire lock for initialization
+    with _lock:
+        # Double-check after acquiring lock
+        current_key = os.getenv("ENCRYPTION_KEY")
+        
         if _encryption_instance is None:
             _encryption_instance = PasswordEncryption()
         elif current_key is not None and _encryption_instance._key != current_key:
+            logger.warning("Encryption key changed, reinitializing...")
             _encryption_instance = PasswordEncryption()
-
+        
         return _encryption_instance
 
 

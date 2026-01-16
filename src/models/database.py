@@ -122,6 +122,58 @@ class Database:
         finally:
             await self._available_connections.put(conn)
 
+    @asynccontextmanager
+    async def get_connection_with_retry(
+        self, 
+        timeout: float = 30.0, 
+        max_retries: int = 3
+    ) -> AsyncIterator[aiosqlite.Connection]:
+        """
+        Get a connection from the pool with retry logic.
+        
+        Args:
+            timeout: Maximum time to wait for a connection
+            max_retries: Maximum retry attempts
+            
+        Yields:
+            Database connection from pool
+        """
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                async with self.get_connection(timeout=timeout) as conn:
+                    yield conn
+                    return
+            except RuntimeError as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 0.5  # Exponential backoff
+                    logger.warning(
+                        f"Connection pool exhausted, retrying in {wait_time}s "
+                        f"(attempt {attempt + 1}/{max_retries})"
+                    )
+                    await asyncio.sleep(wait_time)
+        
+        raise last_error or RuntimeError("Failed to acquire database connection")
+
+    async def health_check(self) -> bool:
+        """
+        Perform a health check on the database connection.
+        
+        Returns:
+            True if database is healthy
+        """
+        try:
+            async with self.get_connection(timeout=5.0) as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+                    result = await cursor.fetchone()
+                    return result is not None
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return False
+
     async def _create_tables(self) -> None:
         """Create database tables if they don't exist."""
         if self.conn is None:
@@ -261,6 +313,34 @@ class Database:
                 )
             """
             )
+
+            # Audit log table
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    action TEXT NOT NULL,
+                    user_id INTEGER,
+                    username TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    details TEXT,
+                    timestamp TEXT NOT NULL,
+                    success BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+                )
+            """)
+
+            # Audit log indexes
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
+            """)
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
+            """)
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
+            """)
 
             await self.conn.commit()
             

@@ -1,14 +1,13 @@
 """FastAPI routes for SMS OTP webhook."""
 
 import logging
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Header, Depends
-from pydantic import BaseModel, Field
-import hmac
-import hashlib
 import os
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
+from pydantic import BaseModel, Field
 
 from .otp_webhook import get_otp_service, OTPWebhookService
+from ..utils.webhook_utils import verify_webhook_signature
 
 logger = logging.getLogger(__name__)
 
@@ -34,44 +33,37 @@ class OTPResponse(BaseModel):
     message: str
 
 
-def verify_webhook_signature(payload: bytes, signature: Optional[str], secret: str) -> bool:
-    """
-    Verify webhook signature using HMAC-SHA256.
-
-    Args:
-        payload: Raw request body
-        signature: Signature from header
-        secret: Webhook secret key
-
-    Returns:
-        True if signature is valid
-    """
-    if not signature or not secret:
-        return False
-
-    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-
-    return hmac.compare_digest(signature, expected)
-
-
 async def get_verified_otp_service(
-    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature")
+    request: Request,
+    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
 ) -> OTPWebhookService:
     """
     Dependency to verify webhook signature and return OTP service.
-
-    Note: For production, implement proper signature verification
-    based on your SMS provider's documentation.
+    
+    Production mode requires signature verification.
     """
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-    # If secret is configured, require signature
-    # For now, we skip signature check if secret is not set (development mode)
-    if webhook_secret and not x_webhook_signature:
-        logger.warning("Webhook signature missing")
-        # In production, raise HTTPException
-        # raise HTTPException(status_code=401, detail="Webhook signature required")
-
+    env = os.getenv("ENV", "production").lower()
+    
+    # Production'da signature zorunlu
+    if env == "production" and webhook_secret:
+        if not x_webhook_signature:
+            raise HTTPException(
+                status_code=401,
+                detail="Webhook signature required in production"
+            )
+        
+        # Signature doğrula
+        body = await request.body()
+        if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid webhook signature"
+            )
+    elif webhook_secret and not x_webhook_signature:
+        # Development mode - just log warning
+        logger.warning("Webhook signature missing (development mode)")
+    
     return get_otp_service()
 
 

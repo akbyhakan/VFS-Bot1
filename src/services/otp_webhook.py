@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+import threading
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Pattern
 from collections import deque
@@ -392,13 +393,28 @@ class OTPWebhookService:
             return total_removed
 
 
-# Global instance
+# Global instance with thread-safe initialization
 _otp_service: Optional[OTPWebhookService] = None
+_otp_lock = threading.Lock()
 
 
 def get_otp_service() -> OTPWebhookService:
-    """Get global OTP service instance."""
+    """
+    Get global OTP service instance (thread-safe singleton).
+    
+    Uses double-checked locking pattern for efficiency.
+    """
     global _otp_service
-    if _otp_service is None:
-        _otp_service = OTPWebhookService()
-    return _otp_service
+    
+    # First check without lock (fast path)
+    if _otp_service is not None:
+        return _otp_service
+    
+    # Acquire lock for initialization
+    with _otp_lock:
+        # Double-check after acquiring lock
+        if _otp_service is None:
+            _otp_service = OTPWebhookService()
+            logger.info("OTP service singleton initialized")
+        
+        return _otp_service
