@@ -228,38 +228,7 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
     await manager.broadcast(message)
 
 
-@app.get("/", response_class=HTMLResponse)
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-async def serve_react_app(request: Request, full_path: str = ""):
-    """
-    Serve React SPA for all non-API routes.
-
-    This handles client-side routing by serving index.html for all routes
-    that don't start with /api, /ws, /health, /metrics, or /static.
-
-    Args:
-        request: FastAPI request object
-        full_path: Requested path
-
-    Returns:
-        HTML response with React app
-    """
-    # Skip API routes, WebSocket, health checks, and static files
-    if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
-        raise HTTPException(status_code=404, detail="Not found")
-
-    # Serve the React app
-    dist_dir = Path(__file__).parent / "static" / "dist"
-    index_file = dist_dir / "index.html"
-
-    if index_file.exists():
-        return FileResponse(index_file)
-    else:
-        # Fallback to old template if React build doesn't exist
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
-        )
-
+# API Routes start here
 
 @app.get("/api/status")
 async def get_status() -> Dict[str, Any]:
@@ -1548,6 +1517,40 @@ async def errors_dashboard(request: Request):
     return templates.TemplateResponse(
         "errors.html", {"request": request, "title": "Error Dashboard - VFS Bot"}
     )
+
+
+# Catch-all route for React SPA - MUST be last!
+@app.get("/", response_class=HTMLResponse)
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app(request: Request, full_path: str = ""):
+    """
+    Serve React SPA for all non-API routes.
+
+    This handles client-side routing by serving index.html for all routes
+    that don't start with /api, /ws, /health, /metrics, or /static.
+
+    Args:
+        request: FastAPI request object
+        full_path: Requested path
+
+    Returns:
+        HTML response with React app
+    """
+    # Skip API routes, WebSocket, health checks, and static files
+    if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Serve the React app
+    dist_dir = Path(__file__).parent / "static" / "dist"
+    index_file = dist_dir / "index.html"
+
+    if index_file.exists():
+        return FileResponse(index_file)
+    else:
+        # Fallback to old template if React build doesn't exist
+        return templates.TemplateResponse(
+            "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
+        )
 
 
 if __name__ == "__main__":

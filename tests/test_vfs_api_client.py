@@ -14,6 +14,7 @@ from src.services.vfs_api_client import (
     SlotAvailability,
     VFS_API_BASE,
 )
+from src.core.exceptions import VFSSessionExpiredError, VFSAuthenticationError
 
 
 class TestVFSPasswordEncryption:
@@ -371,16 +372,18 @@ class TestVFSApiClient:
     @pytest.mark.asyncio
     async def test_ensure_authenticated_not_logged_in(self, client):
         """Test ensure authenticated raises error when not logged in."""
-        with pytest.raises(RuntimeError, match="Not authenticated"):
+        with pytest.raises(VFSSessionExpiredError, match="Not authenticated"):
             await client._ensure_authenticated()
 
     @pytest.mark.asyncio
     async def test_ensure_authenticated_logged_in(self, client):
         """Test ensure authenticated passes when logged in."""
+        from datetime import timedelta
+
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired yet
             user_id="user123",
             email="test@example.com",
         )
