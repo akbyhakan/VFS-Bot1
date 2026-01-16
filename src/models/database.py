@@ -284,14 +284,22 @@ class Database:
             if 'visa_category' not in column_names:
                 logger.info("Adding visa_category column to appointment_requests")
                 await cursor.execute(
-                    "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT DEFAULT ''"
+                    "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT"
+                )
+                # Update existing records with a default value
+                await cursor.execute(
+                    "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL"
                 )
             
             # Add visa_subcategory if missing
             if 'visa_subcategory' not in column_names:
                 logger.info("Adding visa_subcategory column to appointment_requests")
                 await cursor.execute(
-                    "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT DEFAULT ''"
+                    "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT"
+                )
+                # Update existing records with a default value
+                await cursor.execute(
+                    "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL"
                 )
             
             # Check appointment_persons table
@@ -303,14 +311,22 @@ class Database:
             if 'gender' not in person_column_names:
                 logger.info("Adding gender column to appointment_persons")
                 await cursor.execute(
-                    "ALTER TABLE appointment_persons ADD COLUMN gender TEXT DEFAULT 'male'"
+                    "ALTER TABLE appointment_persons ADD COLUMN gender TEXT"
+                )
+                # Update existing records with default value
+                await cursor.execute(
+                    "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL"
                 )
             
             # Add is_child_with_parent if missing
             if 'is_child_with_parent' not in person_column_names:
                 logger.info("Adding is_child_with_parent column to appointment_persons")
                 await cursor.execute(
-                    "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN DEFAULT 0"
+                    "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN"
+                )
+                # Update existing records with default value
+                await cursor.execute(
+                    "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL"
                 )
             
             await self.conn.commit()

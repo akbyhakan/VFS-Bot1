@@ -25,7 +25,7 @@ VFS_SELECTORS = {
     'gender_male': '//mat-option[contains(., "Male")]',
     'birth_date': '#dateOfBirth',
     'nationality_dropdown': '#mat-select-value-4',
-    'nationality_turkey': '//mat-option[contains(., "Türkiye")][1]',
+    'nationality_turkey': '(//mat-option[contains(., "Turkey")])[1] | (//mat-option[contains(., "Türkiye")])[1]',
     'passport_number': '#mat-input-5',
     'passport_expiry': '#passportExpirtyDate',
     'phone_code': '#mat-input-6',
@@ -208,9 +208,10 @@ class AppointmentBookingService:
         """
         logger.info(f"Filling form for person {index + 1}: {person['first_name']} {person['last_name']}")
         
-        # Wait 21 seconds as per VFS warning
-        logger.info("Waiting 21 seconds (VFS requirement)...")
-        await asyncio.sleep(21)
+        # Wait for VFS requirement (configurable, default 21 seconds)
+        vfs_wait = self.config.get("vfs", {}).get("form_wait_seconds", 21)
+        logger.info(f"Waiting {vfs_wait} seconds (VFS requirement)...")
+        await asyncio.sleep(vfs_wait)
         
         # Child checkbox (if applicable)
         if person.get('is_child_with_parent', False):
@@ -357,7 +358,10 @@ class AppointmentBookingService:
     
     async def select_preferred_time(self, page: Page) -> bool:
         """
-        Select preferred time slot (09:00+ priority).
+        Select first available time slot.
+        
+        Note: Current implementation selects first available slot.
+        Future enhancement: Implement preference for 09:00+ slots.
         
         Args:
             page: Playwright page
@@ -558,9 +562,10 @@ class AppointmentBookingService:
             await page.click(VFS_SELECTORS['otp_submit'])
             logger.info("OTP submitted")
             
-            # Wait 60 seconds for response
-            logger.info("Waiting 60 seconds for payment confirmation...")
-            await asyncio.sleep(60)
+            # Wait for payment confirmation (configurable, default 60 seconds)
+            payment_wait = self.config.get("payment", {}).get("confirmation_wait_seconds", 60)
+            logger.info(f"Waiting {payment_wait} seconds for payment confirmation...")
+            await asyncio.sleep(payment_wait)
             
             # Check result
             current_url = page.url
