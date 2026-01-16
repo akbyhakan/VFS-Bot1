@@ -40,6 +40,7 @@ def pytest_configure(config):
     # Set VFS_ENCRYPTION_KEY for VFS API tests
     if not os.getenv("VFS_ENCRYPTION_KEY"):
         import secrets
+
         os.environ["VFS_ENCRYPTION_KEY"] = secrets.token_urlsafe(32)
 
     # Suppress async mock warnings

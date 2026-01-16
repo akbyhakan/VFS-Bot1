@@ -22,7 +22,9 @@ class TestVFSPasswordEncryption:
 
     def test_encryption_key_length(self):
         """Test encryption key is 32 bytes for AES-256."""
-        assert len(VFSPasswordEncryption.ENCRYPTION_KEY) == 32
+        # Get key from the private method to verify it's 32 bytes
+        key = VFSPasswordEncryption._get_encryption_key()
+        assert len(key) == 32
 
     def test_encrypt_password(self):
         """Test password encryption."""
@@ -51,8 +53,9 @@ class TestVFSPasswordEncryption:
         iv = decoded[:16]
         ciphertext = decoded[16:]
 
-        # Decrypt
-        cipher = AES.new(VFSPasswordEncryption.ENCRYPTION_KEY, AES.MODE_CBC, iv)
+        # Decrypt using the same key method
+        key = VFSPasswordEncryption._get_encryption_key()
+        cipher = AES.new(key, AES.MODE_CBC, iv)
         decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
 
         # Should match original
@@ -93,7 +96,8 @@ class TestVFSPasswordEncryption:
         decoded = base64.b64decode(encrypted)
         iv = decoded[:16]
         ciphertext = decoded[16:]
-        cipher = AES.new(VFSPasswordEncryption.ENCRYPTION_KEY, AES.MODE_CBC, iv)
+        key = VFSPasswordEncryption._get_encryption_key()
+        cipher = AES.new(key, AES.MODE_CBC, iv)
         decrypted = unpad(cipher.decrypt(ciphertext), AES.block_size)
 
         assert decrypted.decode("utf-8") == password
@@ -216,7 +220,7 @@ class TestVFSApiClient:
             client._http_session = AsyncMock()
             client._http_session.post = MagicMock(return_value=mock_response)
 
-            with pytest.raises(Exception, match="Login failed: 401"):
+            with pytest.raises(Exception, match="Login failed with status 401"):
                 await client.login(
                     email="test@example.com",
                     password="wrongpassword",

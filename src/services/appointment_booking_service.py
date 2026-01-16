@@ -24,8 +24,7 @@ VFS_SELECTORS = {
     "birth_date": "#dateOfBirth",
     "nationality_dropdown": "#mat-select-value-4",
     "nationality_turkey": (
-        '(//mat-option[contains(., "Turkey")])[1] | '
-        '(//mat-option[contains(., "Türkiye")])[1]'
+        '(//mat-option[contains(., "Turkey")])[1] | ' '(//mat-option[contains(., "Türkiye")])[1]'
     ),
     "passport_number": "#mat-input-5",
     "passport_expiry": "#passportExpirtyDate",
