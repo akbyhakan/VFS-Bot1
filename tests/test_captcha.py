@@ -42,17 +42,16 @@ async def test_captcha_solver_manual_fallback():
 async def test_solve_turnstile_success():
     """Test successful Turnstile solving."""
     solver = CaptchaSolver(api_key="test_api_key")
-    
+
     # Mock TwoCaptcha
     mock_solver_instance = MagicMock()
     mock_solver_instance.turnstile = MagicMock(return_value={"code": "mock-turnstile-token"})
-    
-    with patch('twocaptcha.TwoCaptcha', return_value=mock_solver_instance):
+
+    with patch("twocaptcha.TwoCaptcha", return_value=mock_solver_instance):
         token = await solver.solve_turnstile(
-            page_url="https://visa.vfsglobal.com/tur/tr/nld",
-            site_key="mock-site-key"
+            page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key"
         )
-        
+
         assert token == "mock-turnstile-token"
         mock_solver_instance.turnstile.assert_called_once()
 
@@ -61,12 +60,11 @@ async def test_solve_turnstile_success():
 async def test_solve_turnstile_no_api_key():
     """Test Turnstile solving without API key."""
     solver = CaptchaSolver(api_key="")
-    
+
     token = await solver.solve_turnstile(
-        page_url="https://visa.vfsglobal.com/tur/tr/nld",
-        site_key="mock-site-key"
+        page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key"
     )
-    
+
     # Should return None when no API key
     assert token is None
 
@@ -75,14 +73,13 @@ async def test_solve_turnstile_no_api_key():
 async def test_solve_turnstile_error():
     """Test Turnstile solving with error."""
     solver = CaptchaSolver(api_key="test_api_key")
-    
+
     # Mock TwoCaptcha to raise an exception
-    with patch('twocaptcha.TwoCaptcha', side_effect=Exception("API error")):
+    with patch("twocaptcha.TwoCaptcha", side_effect=Exception("API error")):
         token = await solver.solve_turnstile(
-            page_url="https://visa.vfsglobal.com/tur/tr/nld",
-            site_key="mock-site-key"
+            page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key"
         )
-        
+
         # Should return None on error
         assert token is None
 
@@ -91,16 +88,13 @@ async def test_solve_turnstile_error():
 async def test_solve_turnstile_custom_timeout():
     """Test Turnstile solving with custom timeout."""
     solver = CaptchaSolver(api_key="test_api_key")
-    
+
     mock_solver_instance = MagicMock()
     mock_solver_instance.turnstile = MagicMock(return_value={"code": "token"})
-    
-    with patch('twocaptcha.TwoCaptcha', return_value=mock_solver_instance):
-        token = await solver.solve_turnstile(
-            page_url="https://visa.vfsglobal.com/tur/tr/nld",
-            site_key="mock-site-key",
-            timeout=60
-        )
-        
-        assert token == "token"
 
+    with patch("twocaptcha.TwoCaptcha", return_value=mock_solver_instance):
+        token = await solver.solve_turnstile(
+            page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key", timeout=60
+        )
+
+        assert token == "token"
