@@ -33,9 +33,9 @@ class NotificationService:
         )
 
     async def send_notification(
-        self, 
-        title: str, 
-        message: str, 
+        self,
+        title: str,
+        message: str,
         priority: NotificationPriority = "normal"
     ) -> None:
         """

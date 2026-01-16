@@ -98,7 +98,9 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
             await db.close()
 
 
-async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Database] = None) -> None:
+async def run_web_mode(
+    config: dict, start_cleanup: bool = True, db: Optional[Database] = None
+) -> None:
     """
     Run bot with web dashboard.
 
@@ -125,7 +127,9 @@ async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Da
         # Start cleanup service in background (only if requested)
         if start_cleanup:
             cleanup_service = CleanupService(db, cleanup_days=30)
-            cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
+            cleanup_task = asyncio.create_task(
+                cleanup_service.run_periodic_cleanup(interval_hours=24)
+            )
             logger.info("Cleanup service started (runs every 24 hours)")
 
         # Run uvicorn server
@@ -163,8 +167,11 @@ async def run_both_mode(config: dict) -> None:
     await db.connect()
     
     try:
-        # Create tasks for both modes with shared database (disable cleanup in web task to avoid duplication)
-        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
+        # Create tasks for both modes with shared database
+        # (disable cleanup in web task to avoid duplication)
+        web_task = asyncio.create_task(
+            run_web_mode(config, start_cleanup=True, db=db)
+        )
         bot_task = asyncio.create_task(run_bot_mode(config, db=db))
 
         # Run both concurrently and handle exceptions

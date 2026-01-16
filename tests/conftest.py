@@ -2,6 +2,7 @@
 
 import os
 import sys
+import warnings
 from pathlib import Path
 
 # Test constants
@@ -35,6 +36,15 @@ def pytest_configure(config):
     os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
     if not os.getenv("ENCRYPTION_KEY"):
         os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+
+@pytest.fixture(autouse=True)
+def suppress_warnings():
+    """Suppress async mock and pluggy warnings during tests."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        warnings.simplefilter("ignore", category=DeprecationWarning)
+        yield
 
 
 @pytest.fixture(scope="session")

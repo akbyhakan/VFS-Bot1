@@ -51,7 +51,8 @@ class Database:
 
         Args:
             db_path: Path to SQLite database file
-            pool_size: Maximum number of concurrent connections (defaults to DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
+            pool_size: Maximum number of concurrent connections
+                (defaults to DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
@@ -124,22 +125,22 @@ class Database:
 
     @asynccontextmanager
     async def get_connection_with_retry(
-        self, 
-        timeout: float = 30.0, 
+        self,
+        timeout: float = 30.0,
         max_retries: int = 3
     ) -> AsyncIterator[aiosqlite.Connection]:
         """
         Get a connection from the pool with retry logic.
-        
+
         Args:
             timeout: Maximum time to wait for a connection
             max_retries: Maximum retry attempts
-            
+
         Yields:
             Database connection from pool
         """
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 async with self.get_connection(timeout=timeout) as conn:
@@ -154,13 +155,13 @@ class Database:
                         f"(attempt {attempt + 1}/{max_retries})"
                     )
                     await asyncio.sleep(wait_time)
-        
+
         raise last_error or RuntimeError("Failed to acquire database connection")
 
     async def health_check(self) -> bool:
         """
         Perform a health check on the database connection.
-        
+
         Returns:
             True if database is healthy
         """
@@ -343,23 +344,23 @@ class Database:
             """)
 
             await self.conn.commit()
-            
+
             # Migration: Add new columns if they don't exist
             await self._migrate_schema()
-            
+
             logger.info("Database tables created/verified")
 
     async def _migrate_schema(self) -> None:
         """Migrate database schema for new columns."""
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
-        
+
         async with self.conn.cursor() as cursor:
             # Check if appointment_requests table has visa_category column
             await cursor.execute("PRAGMA table_info(appointment_requests)")
             columns = await cursor.fetchall()
             column_names = [col[1] for col in columns]
-            
+
             # Add visa_category if missing
             if 'visa_category' not in column_names:
                 logger.info("Adding visa_category column to appointment_requests")
@@ -370,7 +371,7 @@ class Database:
                 await cursor.execute(
                     "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL"
                 )
-            
+
             # Add visa_subcategory if missing
             if 'visa_subcategory' not in column_names:
                 logger.info("Adding visa_subcategory column to appointment_requests")
@@ -379,14 +380,15 @@ class Database:
                 )
                 # Update existing records with a default value
                 await cursor.execute(
-                    "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL"
+                    "UPDATE appointment_requests SET visa_subcategory = '' "
+                    "WHERE visa_subcategory IS NULL"
                 )
-            
+
             # Check appointment_persons table
             await cursor.execute("PRAGMA table_info(appointment_persons)")
             person_columns = await cursor.fetchall()
             person_column_names = [col[1] for col in person_columns]
-            
+
             # Add gender if missing
             if 'gender' not in person_column_names:
                 logger.info("Adding gender column to appointment_persons")
@@ -397,7 +399,7 @@ class Database:
                 await cursor.execute(
                     "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL"
                 )
-            
+
             # Add is_child_with_parent if missing
             if 'is_child_with_parent' not in person_column_names:
                 logger.info("Adding is_child_with_parent column to appointment_persons")
@@ -406,9 +408,10 @@ class Database:
                 )
                 # Update existing records with default value
                 await cursor.execute(
-                    "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL"
+                    "UPDATE appointment_persons SET is_child_with_parent = 0 "
+                    "WHERE is_child_with_parent IS NULL"
                 )
-            
+
             await self.conn.commit()
             logger.info("Schema migration completed")
 
@@ -428,14 +431,14 @@ class Database:
 
         Returns:
             User ID
-            
+
         Raises:
             ValidationError: If email format is invalid
         """
         # Validate email format
         if not validate_email(email):
             raise ValidationError(f"Invalid email format: {email}", field="email")
-        
+
         # Encrypt password before storing (NOT hashing - we need plaintext for VFS login)
         encrypted_password = encrypt_password(password)
 
@@ -544,7 +547,7 @@ class Database:
 
         Returns:
             Personal details ID
-            
+
         Raises:
             ValidationError: If email or phone format is invalid
         """
@@ -552,12 +555,15 @@ class Database:
         email = details.get("email")
         if email and not validate_email(email):
             raise ValidationError(f"Invalid email format: {email}", field="email")
-        
+
         # Validate phone if provided
         mobile_number = details.get("mobile_number")
         if mobile_number and not validate_phone(mobile_number):
-            raise ValidationError(f"Invalid phone number format: {mobile_number}", field="mobile_number")
-        
+            raise ValidationError(
+                f"Invalid phone number format: {mobile_number}",
+                field="mobile_number"
+            )
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
@@ -719,14 +725,14 @@ class Database:
     async def save_payment_card(self, card_data: Dict[str, str]) -> int:
         """
         Save or update payment card (only one card allowed).
-        
+
         Args:
-            card_data: Dictionary containing card_holder_name, card_number, 
+            card_data: Dictionary containing card_holder_name, card_number,
                       expiry_month, expiry_year, cvv
-                      
+
         Returns:
             Card ID
-            
+
         Raises:
             ValueError: If card data is invalid
         """
@@ -734,23 +740,23 @@ class Database:
         for field in required_fields:
             if field not in card_data:
                 raise ValueError(f"Missing required field: {field}")
-        
+
         # Encrypt sensitive data
         card_number_encrypted = encrypt_password(card_data["card_number"])
         cvv_encrypted = encrypt_password(card_data["cvv"])
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 # Check if a card already exists
                 await cursor.execute("SELECT id FROM payment_card LIMIT 1")
                 existing = await cursor.fetchone()
-                
+
                 if existing:
                     # Update existing card
                     await cursor.execute(
                         """
-                        UPDATE payment_card 
-                        SET card_holder_name = ?, 
+                        UPDATE payment_card
+                        SET card_holder_name = ?,
                             card_number_encrypted = ?,
                             expiry_month = ?,
                             expiry_year = ?,
@@ -774,8 +780,9 @@ class Database:
                     # Insert new card
                     await cursor.execute(
                         """
-                        INSERT INTO payment_card 
-                        (card_holder_name, card_number_encrypted, expiry_month, expiry_year, cvv_encrypted)
+                        INSERT INTO payment_card
+                        (card_holder_name, card_number_encrypted, expiry_month,
+                         expiry_year, cvv_encrypted)
                         VALUES (?, ?, ?, ?, ?)
                         """,
                         (
@@ -795,7 +802,7 @@ class Database:
     async def get_payment_card(self) -> Optional[Dict[str, Any]]:
         """
         Get the saved payment card with decrypted data.
-        
+
         Returns:
             Card dictionary with decrypted data or None if no card exists
         """
@@ -803,12 +810,12 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM payment_card LIMIT 1")
                 row = await cursor.fetchone()
-                
+
                 if not row:
                     return None
-                
+
                 card = dict(row)
-                
+
                 # Decrypt sensitive data
                 try:
                     card["card_number"] = decrypt_password(card["card_number_encrypted"])
@@ -816,18 +823,18 @@ class Database:
                 except Exception as e:
                     logger.error(f"Failed to decrypt card data: {e}")
                     raise ValueError("Failed to decrypt card data")
-                
+
                 # Remove encrypted fields from response
                 del card["card_number_encrypted"]
                 del card["cvv_encrypted"]
-                
+
                 return card
 
     @require_connection
     async def get_payment_card_masked(self) -> Optional[Dict[str, Any]]:
         """
         Get the saved payment card with masked card number (for frontend display).
-        
+
         Returns:
             Card dictionary with masked card number or None if no card exists
         """
@@ -835,12 +842,12 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM payment_card LIMIT 1")
                 row = await cursor.fetchone()
-                
+
                 if not row:
                     return None
-                
+
                 card = dict(row)
-                
+
                 # Decrypt card number to get last 4 digits, then mask
                 try:
                     card_number = decrypt_password(card["card_number_encrypted"])
@@ -849,18 +856,18 @@ class Database:
                 except Exception as e:
                     logger.error(f"Failed to decrypt card number: {e}")
                     card["card_number_masked"] = "**** **** **** ****"
-                
+
                 # Remove encrypted and sensitive fields
                 del card["card_number_encrypted"]
                 del card["cvv_encrypted"]
-                
+
                 return card
 
     @require_connection
     async def delete_payment_card(self) -> bool:
         """
         Delete the saved payment card.
-        
+
         Returns:
             True if card was deleted, False if no card existed
         """
@@ -868,10 +875,10 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT id FROM payment_card LIMIT 1")
                 existing = await cursor.fetchone()
-                
+
                 if not existing:
                     return False
-                
+
                 await cursor.execute("DELETE FROM payment_card WHERE id = ?", (existing["id"],))
                 await conn.commit()
                 logger.info("Payment card deleted")
@@ -890,7 +897,7 @@ class Database:
     ) -> int:
         """
         Create a new appointment request.
-        
+
         Args:
             country_code: Target country code (e.g., 'nld', 'aut')
             visa_category: Visa category
@@ -899,19 +906,20 @@ class Database:
             preferred_dates: List of preferred dates in DD/MM/YYYY format
             person_count: Number of persons (1-6)
             persons: List of person data dictionaries
-            
+
         Returns:
             Request ID
         """
         import json
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 # Insert appointment request
                 await cursor.execute(
                     """
-                    INSERT INTO appointment_requests 
-                    (country_code, visa_category, visa_subcategory, centres, preferred_dates, person_count)
+                    INSERT INTO appointment_requests
+                    (country_code, visa_category, visa_subcategory, centres,
+                     preferred_dates, person_count)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
@@ -924,7 +932,7 @@ class Database:
                     ),
                 )
                 request_id = cursor.lastrowid
-                
+
                 # Insert persons
                 for person in persons:
                     # Validate email
@@ -933,7 +941,7 @@ class Database:
                         raise ValidationError("Email is required for all persons", field="email")
                     if not validate_email(email):
                         raise ValidationError(f"Invalid email format: {email}", field="email")
-                    
+
                     await cursor.execute(
                         """
                         INSERT INTO appointment_persons
@@ -958,7 +966,7 @@ class Database:
                             person.get("is_child_with_parent", False),
                         ),
                     )
-                
+
                 await conn.commit()
                 logger.info(f"Appointment request created: {request_id}")
                 return request_id
@@ -967,15 +975,15 @@ class Database:
     async def get_appointment_request(self, request_id: int) -> Optional[Dict[str, Any]]:
         """
         Get appointment request with person details.
-        
+
         Args:
             request_id: Request ID
-            
+
         Returns:
             Request dictionary with persons list or None
         """
         import json
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 # Get request
@@ -984,22 +992,22 @@ class Database:
                     (request_id,)
                 )
                 request_row = await cursor.fetchone()
-                
+
                 if not request_row:
                     return None
-                
+
                 request = dict(request_row)
-                
+
                 # Parse JSON fields
                 request["centres"] = json.loads(request["centres"])
                 request["preferred_dates"] = json.loads(request["preferred_dates"])
-                
+
                 # Ensure visa fields have defaults for old records
                 if "visa_category" not in request or request["visa_category"] is None:
                     request["visa_category"] = ""
                 if "visa_subcategory" not in request or request["visa_subcategory"] is None:
                     request["visa_subcategory"] = ""
-                
+
                 # Get persons
                 await cursor.execute(
                     "SELECT * FROM appointment_persons WHERE request_id = ?",
@@ -1007,7 +1015,7 @@ class Database:
                 )
                 person_rows = await cursor.fetchall()
                 request["persons"] = [dict(row) for row in person_rows]
-                
+
                 return request
 
     @require_connection
@@ -1016,41 +1024,42 @@ class Database:
     ) -> List[Dict[str, Any]]:
         """
         Get all appointment requests.
-        
+
         Args:
             status: Optional status filter ('pending', 'processing', 'completed', 'failed')
-            
+
         Returns:
             List of request dictionaries with persons
         """
         import json
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 if status:
                     await cursor.execute(
-                        "SELECT * FROM appointment_requests WHERE status = ? ORDER BY created_at DESC",
+                        "SELECT * FROM appointment_requests "
+                        "WHERE status = ? ORDER BY created_at DESC",
                         (status,)
                     )
                 else:
                     await cursor.execute(
                         "SELECT * FROM appointment_requests ORDER BY created_at DESC"
                     )
-                
+
                 request_rows = await cursor.fetchall()
                 requests = []
-                
+
                 for request_row in request_rows:
                     request = dict(request_row)
                     request["centres"] = json.loads(request["centres"])
                     request["preferred_dates"] = json.loads(request["preferred_dates"])
-                    
+
                     # Ensure visa fields have defaults for old records
                     if "visa_category" not in request or request["visa_category"] is None:
                         request["visa_category"] = ""
                     if "visa_subcategory" not in request or request["visa_subcategory"] is None:
                         request["visa_subcategory"] = ""
-                    
+
                     # Get persons for this request
                     await cursor.execute(
                         "SELECT * FROM appointment_persons WHERE request_id = ?",
@@ -1058,9 +1067,9 @@ class Database:
                     )
                     person_rows = await cursor.fetchall()
                     request["persons"] = [dict(row) for row in person_rows]
-                    
+
                     requests.append(request)
-                
+
                 return requests
 
     @require_connection
@@ -1072,12 +1081,12 @@ class Database:
     ) -> bool:
         """
         Update appointment request status.
-        
+
         Args:
             request_id: Request ID
             status: New status ('pending', 'processing', 'completed', 'failed')
             completed_at: Optional completion timestamp
-            
+
         Returns:
             True if updated, False if request not found
         """
@@ -1086,7 +1095,7 @@ class Database:
                 if completed_at:
                     await cursor.execute(
                         """
-                        UPDATE appointment_requests 
+                        UPDATE appointment_requests
                         SET status = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
@@ -1095,15 +1104,15 @@ class Database:
                 else:
                     await cursor.execute(
                         """
-                        UPDATE appointment_requests 
+                        UPDATE appointment_requests
                         SET status = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
                         (status, request_id),
                     )
-                
+
                 await conn.commit()
-                
+
                 if cursor.rowcount > 0:
                     logger.info(f"Appointment request {request_id} status updated to {status}")
                     return True
@@ -1113,10 +1122,10 @@ class Database:
     async def delete_appointment_request(self, request_id: int) -> bool:
         """
         Delete appointment request (cascades to persons).
-        
+
         Args:
             request_id: Request ID
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -1127,7 +1136,7 @@ class Database:
                     (request_id,)
                 )
                 await conn.commit()
-                
+
                 if cursor.rowcount > 0:
                     logger.info(f"Appointment request {request_id} deleted")
                     return True
@@ -1137,30 +1146,30 @@ class Database:
     async def cleanup_completed_requests(self, days: int = 30) -> int:
         """
         Delete completed requests older than specified days.
-        
+
         Args:
             days: Age threshold in days (default 30)
-            
+
         Returns:
             Number of requests deleted
         """
         from datetime import timedelta
-        
+
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    DELETE FROM appointment_requests 
+                    DELETE FROM appointment_requests
                     WHERE status = 'completed' AND completed_at < ?
                     """,
                     (cutoff_date,)
                 )
                 await conn.commit()
                 deleted_count = cursor.rowcount
-                
+
                 if deleted_count > 0:
                     logger.info(f"Cleaned up {deleted_count} old appointment requests")
-                
+
                 return deleted_count

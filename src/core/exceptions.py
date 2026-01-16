@@ -121,7 +121,9 @@ class VFSAuthenticationError(VFSApiError):
 class VFSRateLimitError(VFSApiError):
     """VFS API rate limit error."""
 
-    def __init__(self, message: str = "VFS API rate limit exceeded", wait_time: Optional[int] = None):
+    def __init__(
+        self, message: str = "VFS API rate limit exceeded", wait_time: Optional[int] = None
+    ):
         """
         Initialize VFS API rate limit error.
 

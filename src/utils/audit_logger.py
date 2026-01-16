@@ -41,7 +41,7 @@ class AuditEntry:
     details: Dict[str, Any]
     timestamp: str
     success: bool = True
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
@@ -49,23 +49,23 @@ class AuditEntry:
 class AuditLogger:
     """
     Audit logger for tracking security-sensitive operations.
-    
+
     Features:
     - Automatic sensitive data masking
     - Database persistence
     - Structured logging
     """
-    
+
     SENSITIVE_KEYS = {
-        'password', 'token', 'api_key', 'secret', 'card_number', 
+        'password', 'token', 'api_key', 'secret', 'card_number',
         'cvv', 'authorization', 'cookie', 'session'
     }
-    
+
     def __init__(self, db=None):
         self.db = db
         self._buffer = []
         self._buffer_size = 100
-    
+
     async def log(
         self,
         action: AuditAction,
@@ -78,7 +78,7 @@ class AuditLogger:
     ) -> None:
         """
         Log an audit event.
-        
+
         Args:
             action: The action being audited
             user_id: ID of the user performing the action
@@ -89,7 +89,7 @@ class AuditLogger:
             success: Whether the action was successful
         """
         sanitized_details = self._sanitize(details or {})
-        
+
         entry = AuditEntry(
             action=action.value,
             user_id=user_id,
@@ -100,7 +100,7 @@ class AuditLogger:
             timestamp=datetime.now(timezone.utc).isoformat(),
             success=success
         )
-        
+
         # Log to standard logger
         log_level = logging.INFO if success else logging.WARNING
         logger.log(
@@ -108,7 +108,7 @@ class AuditLogger:
             f"AUDIT: {action.value} | user={username or user_id} | "
             f"ip={ip_address} | success={success}"
         )
-        
+
         # Persist to database if available
         if self.db:
             await self._persist(entry)
@@ -118,16 +118,16 @@ class AuditLogger:
                 logger.warning("Audit buffer full, removing oldest entries")
                 # Keep only the newer half to avoid frequent trimming
                 self._buffer = self._buffer[-self._buffer_size // 2:]
-    
+
     def _sanitize(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Mask sensitive data in the details dictionary."""
         if not isinstance(data, dict):
             return data
-        
+
         sanitized = {}
         for key, value in data.items():
             key_lower = key.lower()
-            
+
             if any(sensitive in key_lower for sensitive in self.SENSITIVE_KEYS):
                 if isinstance(value, str) and len(value) > 4:
                     sanitized[key] = value[:2] + '***' + value[-2:]
@@ -137,17 +137,18 @@ class AuditLogger:
                 sanitized[key] = self._sanitize(value)
             else:
                 sanitized[key] = value
-        
+
         return sanitized
-    
+
     async def _persist(self, entry: AuditEntry) -> None:
         """Persist audit entry to database."""
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute("""
-                        INSERT INTO audit_log 
-                        (action, user_id, username, ip_address, user_agent, details, timestamp, success)
+                        INSERT INTO audit_log
+                        (action, user_id, username, ip_address, user_agent,
+                         details, timestamp, success)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         entry.action,
@@ -163,7 +164,7 @@ class AuditLogger:
         except Exception as e:
             logger.error(f"Failed to persist audit entry: {e}")
             self._buffer.append(entry)
-    
+
     async def get_recent(
         self,
         limit: int = 100,
@@ -173,24 +174,24 @@ class AuditLogger:
         """Get recent audit entries."""
         if not self.db:
             return [e.to_dict() for e in self._buffer[-limit:]]
-        
+
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cursor:
                     query = "SELECT * FROM audit_log WHERE 1=1"
                     params = []
-                    
+
                     if action:
                         query += " AND action = ?"
                         params.append(action.value)
-                    
+
                     if user_id:
                         query += " AND user_id = ?"
                         params.append(user_id)
-                    
+
                     query += " ORDER BY timestamp DESC LIMIT ?"
                     params.append(limit)
-                    
+
                     await cursor.execute(query, params)
                     rows = await cursor.fetchall()
                     return [dict(row) for row in rows]

@@ -105,7 +105,10 @@ class OTPWebhookService:
         self._waiting_events: Dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
 
-        logger.info(f"OTPWebhookService initialized with dual queues (timeout: {otp_timeout_seconds}s)")
+        logger.info(
+            f"OTPWebhookService initialized with dual queues "
+            f"(timeout: {otp_timeout_seconds}s)"
+        )
 
     async def process_sms(self, phone_number: str, message: str) -> Optional[str]:
         """

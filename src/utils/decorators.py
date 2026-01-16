@@ -3,7 +3,7 @@
 import asyncio
 import functools
 import logging
-from typing import Callable, TypeVar, Any, Optional
+from typing import Callable, TypeVar, Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -18,12 +18,12 @@ def log_errors(
 ) -> Callable[[F], F]:
     """
     Decorator to log errors from async functions.
-    
+
     Args:
         reraise: Whether to reraise the exception after logging
         default_return: Value to return if not reraising
         log_level: Logging level for errors
-    
+
     Example:
         @log_errors(reraise=False, default_return=[])
         async def get_items():
@@ -55,13 +55,13 @@ def retry_async(
 ) -> Callable[[F], F]:
     """
     Decorator to retry async functions with exponential backoff.
-    
+
     Args:
         max_retries: Maximum number of retry attempts
         delay: Initial delay between retries
         backoff: Backoff multiplier
         exceptions: Tuple of exceptions to catch and retry (default: network/IO errors)
-    
+
     Example:
         @retry_async(max_retries=3, delay=1.0)
         async def flaky_operation():
@@ -72,7 +72,7 @@ def retry_async(
         async def wrapper(*args, **kwargs):
             last_exception = None
             current_delay = delay
-            
+
             for attempt in range(max_retries + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -80,7 +80,8 @@ def retry_async(
                     last_exception = e
                     if attempt < max_retries:
                         logger.warning(
-                            f"{func.__name__} failed (attempt {attempt + 1}/{max_retries + 1}): {e}. "
+                            f"{func.__name__} failed "
+                            f"(attempt {attempt + 1}/{max_retries + 1}): {e}. "
                             f"Retrying in {current_delay:.1f}s..."
                         )
                         await asyncio.sleep(current_delay)
@@ -89,7 +90,7 @@ def retry_async(
                         logger.error(
                             f"{func.__name__} failed after {max_retries + 1} attempts: {e}"
                         )
-            
+
             raise last_exception
         return wrapper
     return decorator
@@ -98,7 +99,7 @@ def retry_async(
 def timed_async(func: F) -> F:
     """
     Decorator to measure and log execution time of async functions.
-    
+
     Example:
         @timed_async
         async def slow_operation():
@@ -112,7 +113,7 @@ def timed_async(func: F) -> F:
             elapsed = (datetime.now() - start).total_seconds()
             logger.debug(f"{func.__name__} completed in {elapsed:.3f}s")
             return result
-        except Exception as e:
+        except Exception:
             elapsed = (datetime.now() - start).total_seconds()
             logger.debug(f"{func.__name__} failed after {elapsed:.3f}s")
             raise

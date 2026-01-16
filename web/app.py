@@ -1002,7 +1002,10 @@ async def toggle_user_status(
                 user.is_active = status_update["is_active"]
                 user.updated_at = datetime.now(timezone.utc).isoformat()
                 
-                logger.info(f"User status toggled: {user.email} -> {user.is_active} by {token_data.get('sub', 'unknown')}")
+                logger.info(
+                    f"User status toggled: {user.email} -> {user.is_active} "
+                    f"by {token_data.get('sub', 'unknown')}"
+                )
                 return user
     
     raise HTTPException(status_code=404, detail="User not found")
@@ -1072,8 +1075,14 @@ async def save_payment_card(
                 "cvv": card_data.cvv
             })
             
-            logger.info(f"Payment card saved/updated by {token_data.get('sub', 'unknown')}")
-            return {"success": True, "card_id": card_id, "message": "Payment card saved successfully"}
+            logger.info(
+                f"Payment card saved/updated by {token_data.get('sub', 'unknown')}"
+            )
+            return {
+                "success": True,
+                "card_id": card_id,
+                "message": "Payment card saved successfully"
+            }
         finally:
             await db.close()
     except ValueError as e:
@@ -1265,7 +1274,10 @@ async def create_appointment_request(
             if request_data.person_count != len(request_data.persons):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Person count ({request_data.person_count}) does not match number of persons provided ({len(request_data.persons)})"
+                    detail=(
+                        f"Person count ({request_data.person_count}) does not match "
+                        f"number of persons provided ({len(request_data.persons)})"
+                    )
                 )
             
             # Convert persons to dict
@@ -1282,7 +1294,10 @@ async def create_appointment_request(
                 persons=persons_data
             )
             
-            logger.info(f"Appointment request {request_id} created by {token_data.get('sub', 'unknown')}")
+            logger.info(
+                f"Appointment request {request_id} created by "
+                f"{token_data.get('sub', 'unknown')}"
+            )
             
             return {
                 "id": request_id,
@@ -1434,7 +1449,10 @@ async def delete_appointment_request(
             if not deleted:
                 raise HTTPException(status_code=404, detail="Appointment request not found")
             
-            logger.info(f"Appointment request {request_id} deleted by {token_data.get('sub', 'unknown')}")
+            logger.info(
+                f"Appointment request {request_id} deleted by "
+                f"{token_data.get('sub', 'unknown')}"
+            )
             
             return {"success": True, "message": "Appointment request deleted"}
         finally:
@@ -1481,7 +1499,9 @@ async def update_appointment_request_status(
         
         try:
             # Set completed_at timestamp only when status becomes 'completed'
-            completed_at = datetime.now(timezone.utc) if status == "completed" else None
+            completed_at = (
+                datetime.now(timezone.utc) if status == "completed" else None
+            )
             
             updated = await db.update_appointment_request_status(
                 request_id=request_id,
@@ -1492,7 +1512,10 @@ async def update_appointment_request_status(
             if not updated:
                 raise HTTPException(status_code=404, detail="Appointment request not found")
             
-            logger.info(f"Appointment request {request_id} status updated to {status} by {token_data.get('sub', 'unknown')}")
+            logger.info(
+                f"Appointment request {request_id} status updated to {status} "
+                f"by {token_data.get('sub', 'unknown')}"
+            )
             
             return {"success": True, "message": f"Status updated to {status}"}
         finally:
@@ -1500,7 +1523,10 @@ async def update_appointment_request_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update appointment request {request_id} status: {e}", exc_info=True)
+        logger.error(
+            f"Failed to update appointment request {request_id} status: {e}",
+            exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Failed to update status")
 
 
