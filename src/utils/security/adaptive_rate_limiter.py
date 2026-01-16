@@ -28,10 +28,14 @@ class AdaptiveRateLimiter:
     recovery_factor: float = 0.8
     jitter_factor: float = 0.1
     
-    _current_delay: float = field(default=30.0, init=False)
+    _current_delay: float = field(default=0.0, init=False)
     _consecutive_failures: int = field(default=0, init=False)
     _last_request_time: float = field(default=0.0, init=False)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
+    
+    def __post_init__(self):
+        """Initialize current delay to base delay."""
+        self._current_delay = self.base_delay
     
     async def wait(self) -> None:
         """Wait for the appropriate delay before next request."""
