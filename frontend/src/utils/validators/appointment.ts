@@ -10,7 +10,7 @@ export function validateBirthDate(date: string): boolean {
   if (!date) return false;
   
   const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
   
   const inputDate = new Date(year, month - 1, day);
   const today = new Date();
@@ -26,7 +26,7 @@ export function validatePassportIssueDate(date: string): boolean {
   if (!date) return false;
   
   const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
   
   const inputDate = new Date(year, month - 1, day);
   const today = new Date();
@@ -42,7 +42,7 @@ export function validatePassportExpiryDate(date: string): boolean {
   if (!date) return false;
   
   const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
   
   const inputDate = new Date(year, month - 1, day);
   const threeMonthsFromNow = new Date();
@@ -83,7 +83,7 @@ export function validatePreferredDate(date: string): boolean {
   if (!date) return false;
   
   const [day, month, year] = date.split('/').map(Number);
-  if (!day || !month || !year) return false;
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
   
   const inputDate = new Date(year, month - 1, day);
   const today = new Date();

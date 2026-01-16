@@ -17,6 +17,9 @@ export function useWebSocket() {
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingStatusUpdate = useRef<Record<string, unknown> | null>(null);
 
+  // Maximum buffer size to prevent memory leak
+  const MAX_LOG_BUFFER_SIZE = 100;
+
   // Flush log buffer
   const flushLogs = useCallback(() => {
     if (logBuffer.current.length > 0) {
@@ -53,10 +56,16 @@ export function useWebSocket() {
           break;
         case 'log':
           if (isLogEntry(message.data)) {
-            // Buffer logs for batch addition
+            // Buffer logs for batch addition with bounds checking
             logBuffer.current.push(message.data);
             
-            if (!logTimerRef.current) {
+            // Flush immediately if buffer is too large to prevent memory leak
+            if (logBuffer.current.length >= MAX_LOG_BUFFER_SIZE) {
+              if (logTimerRef.current) {
+                clearTimeout(logTimerRef.current);
+              }
+              flushLogs();
+            } else if (!logTimerRef.current) {
               logTimerRef.current = setTimeout(flushLogs, LOG_BUFFER_TIME);
             }
           }

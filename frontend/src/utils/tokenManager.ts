@@ -49,10 +49,18 @@ class TokenManager {
     try {
       const tokenData: TokenData = JSON.parse(stored);
       
-      // Check expiration
-      if (tokenData.expiresAt && Date.now() > tokenData.expiresAt) {
-        this.clearToken();
+      // Validate structure
+      if (!tokenData || typeof tokenData !== 'object' || typeof tokenData.token !== 'string') {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
         return null;
+      }
+      
+      // Check expiration
+      if (tokenData.expiresAt) {
+        if (typeof tokenData.expiresAt !== 'number' || Date.now() > tokenData.expiresAt) {
+          this.clearToken();
+          return null;
+        }
       }
 
       // Restore to memory
