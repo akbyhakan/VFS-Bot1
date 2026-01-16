@@ -4,6 +4,7 @@
 
 import { api } from './api';
 import type { PaymentCard, PaymentCardRequest, WebhookUrls } from '@/types/payment';
+import { isApiError } from '@/utils/typeGuards';
 
 export const paymentCardApi = {
   /**
@@ -13,10 +14,12 @@ export const paymentCardApi = {
     try {
       const card = await api.get<PaymentCard>('/api/payment-card');
       return card;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Return null if no card exists (404) or if card is explicitly null
-      if (error?.response?.status === 404 || error?.response?.data === null) {
-        return null;
+      if (isApiError(error)) {
+        if (error.response?.status === 404 || error.response?.data === null) {
+          return null;
+        }
       }
       throw error;
     }

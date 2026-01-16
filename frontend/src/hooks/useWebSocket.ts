@@ -1,23 +1,85 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { websocketService } from '@/services/websocket';
 import { useBotStore } from '@/store/botStore';
 import type { WebSocketMessage, LogEntry } from '@/types/api';
+import { isBotStatusData, isLogEntry, isStatsData } from '@/utils/typeGuards';
+import { logger } from '@/utils/logger';
+import { WEBSOCKET_THROTTLE } from '@/utils/constants';
+
+const { LOG_BUFFER_TIME, STATUS_THROTTLE_TIME } = WEBSOCKET_THROTTLE;
 
 export function useWebSocket() {
-  const { updateStatus, addLog, setConnected } = useBotStore();
+  const { updateStatus, addLogs, setConnected } = useBotStore();
+  
+  // Buffers for batching
+  const logBuffer = useRef<LogEntry[]>([]);
+  const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingStatusUpdate = useRef<Record<string, unknown> | null>(null);
+
+  // Maximum buffer size to prevent memory leak
+  const MAX_LOG_BUFFER_SIZE = 100;
+
+  // Flush log buffer
+  const flushLogs = useCallback(() => {
+    if (logBuffer.current.length > 0) {
+      addLogs(logBuffer.current);
+      logBuffer.current = [];
+    }
+    logTimerRef.current = null;
+  }, [addLogs]);
+
+  // Flush status update
+  const flushStatus = useCallback(() => {
+    if (pendingStatusUpdate.current) {
+      updateStatus(pendingStatusUpdate.current);
+      pendingStatusUpdate.current = null;
+    }
+    statusTimerRef.current = null;
+  }, [updateStatus]);
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
       switch (message.type) {
         case 'status':
-          updateStatus(message.data as Record<string, unknown>);
+          if (isBotStatusData(message.data)) {
+            // Throttle status updates
+            pendingStatusUpdate.current = {
+              ...pendingStatusUpdate.current,
+              ...message.data,
+            };
+            
+            if (!statusTimerRef.current) {
+              statusTimerRef.current = setTimeout(flushStatus, STATUS_THROTTLE_TIME);
+            }
+          }
           break;
         case 'log':
-          addLog(message.data as unknown as LogEntry);
+          if (isLogEntry(message.data)) {
+            // Buffer logs for batch addition with bounds checking
+            logBuffer.current.push(message.data);
+            
+            // Flush immediately if buffer is too large to prevent memory leak
+            if (logBuffer.current.length >= MAX_LOG_BUFFER_SIZE) {
+              if (logTimerRef.current) {
+                clearTimeout(logTimerRef.current);
+              }
+              flushLogs();
+            } else if (!logTimerRef.current) {
+              logTimerRef.current = setTimeout(flushLogs, LOG_BUFFER_TIME);
+            }
+          }
           break;
         case 'stats':
-          if (message.data && typeof message.data === 'object') {
-            updateStatus({ stats: message.data as { slots_found: number; appointments_booked: number; active_users: number } });
+          if (isStatsData(message.data)) {
+            pendingStatusUpdate.current = {
+              ...pendingStatusUpdate.current,
+              stats: message.data,
+            };
+            
+            if (!statusTimerRef.current) {
+              statusTimerRef.current = setTimeout(flushStatus, STATUS_THROTTLE_TIME);
+            }
           }
           break;
         case 'ping':
@@ -25,10 +87,10 @@ export function useWebSocket() {
           websocketService.send({ type: 'pong' });
           break;
         default:
-          console.log('Unknown message type:', message.type);
+          logger.warn('Unknown message type:', message.type);
       }
     },
-    [updateStatus, addLog]
+    [flushLogs, flushStatus]
   );
 
   const handleOpen = useCallback(() => {
@@ -37,10 +99,19 @@ export function useWebSocket() {
 
   const handleClose = useCallback(() => {
     setConnected(false);
-  }, [setConnected]);
+    // Flush any pending updates
+    if (logTimerRef.current) {
+      clearTimeout(logTimerRef.current);
+      flushLogs();
+    }
+    if (statusTimerRef.current) {
+      clearTimeout(statusTimerRef.current);
+      flushStatus();
+    }
+  }, [setConnected, flushLogs, flushStatus]);
 
   const handleError = useCallback((error: Event) => {
-    console.error('WebSocket error:', error);
+    logger.error('WebSocket error:', error);
   }, []);
 
   useEffect(() => {
@@ -55,6 +126,14 @@ export function useWebSocket() {
 
     // Cleanup on unmount
     return () => {
+      // Clear timers
+      if (logTimerRef.current) {
+        clearTimeout(logTimerRef.current);
+      }
+      if (statusTimerRef.current) {
+        clearTimeout(statusTimerRef.current);
+      }
+      
       unsubMessage();
       unsubOpen();
       unsubClose();

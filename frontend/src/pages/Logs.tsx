@@ -3,6 +3,18 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Loading } from '@/components/common/Loading';
 import { cn, getLogLevelColor } from '@/utils/helpers';
 import { FileText } from 'lucide-react';
+import DOMPurify from 'dompurify';
+
+/**
+ * Sanitize log content to prevent XSS attacks
+ * Allows basic text formatting tags for legitimate log content
+ */
+const sanitizeLog = (log: string): string => {
+  return DOMPurify.sanitize(log, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'code'],
+    ALLOWED_ATTR: [],
+  });
+};
 
 export function Logs() {
   const { data, isLoading } = useLogs(500);
@@ -34,7 +46,8 @@ export function Logs() {
             ) : (
               logs.map((log, index) => {
                 // Parse log entry to extract level
-                const levelMatch = log.match(/\[(DEBUG|INFO|WARNING|ERROR|SUCCESS)\]/);
+                const sanitizedLog = sanitizeLog(log);
+                const levelMatch = sanitizedLog.match(/\[(DEBUG|INFO|WARNING|ERROR|SUCCESS)\]/);
                 const level = levelMatch ? levelMatch[1] : 'INFO';
 
                 return (
@@ -46,7 +59,7 @@ export function Logs() {
                     )}
                     style={{ borderLeftColor: 'currentColor' }}
                   >
-                    {log}
+                    {sanitizedLog}
                   </div>
                 );
               })
@@ -57,3 +70,5 @@ export function Logs() {
     </div>
   );
 }
+
+export default Logs;

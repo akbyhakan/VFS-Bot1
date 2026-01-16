@@ -1,18 +1,24 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { lazy, Suspense } from 'react';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { Layout } from '@/components/layout/Layout';
+import { Loading } from '@/components/common/Loading';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { SkipLink } from '@/components/common/SkipLink';
 import { Login } from '@/pages/Login';
-import { Dashboard } from '@/pages/Dashboard';
-import { Users } from '@/pages/Users';
-import { Settings } from '@/pages/Settings';
-import { Logs } from '@/pages/Logs';
-import { AppointmentRequest } from '@/pages/AppointmentRequest';
-import { NotFound } from '@/pages/NotFound';
 import { ROUTES } from '@/utils/constants';
 import '@/styles/globals.css';
+
+// Lazy load pages for code splitting
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Users = lazy(() => import('@/pages/Users'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Logs = lazy(() => import('@/pages/Logs'));
+const AppointmentRequest = lazy(() => import('@/pages/AppointmentRequest'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -30,29 +36,33 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path={ROUTES.LOGIN} element={<Login />} />
+          <SkipLink />
+          <OfflineBanner />
+          <Suspense fallback={<Loading fullScreen text="Yükleniyor..." />}>
+            <Routes>
+              {/* Public routes */}
+              <Route path={ROUTES.LOGIN} element={<Login />} />
 
-            {/* Protected routes */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
-              <Route path={ROUTES.USERS} element={<Users />} />
-              <Route path={ROUTES.SETTINGS} element={<Settings />} />
-              <Route path={ROUTES.LOGS} element={<Logs />} />
-              <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />
-            </Route>
+              {/* Protected routes */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+                <Route path={ROUTES.USERS} element={<Users />} />
+                <Route path={ROUTES.SETTINGS} element={<Settings />} />
+                <Route path={ROUTES.LOGS} element={<Logs />} />
+                <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />
+              </Route>
 
-            {/* 404 */}
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
+              {/* 404 */}
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
 
         {/* Toast notifications */}

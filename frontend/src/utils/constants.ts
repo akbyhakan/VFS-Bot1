@@ -46,6 +46,11 @@ export const WEBSOCKET_RECONNECT = {
   BACKOFF_MULTIPLIER: 2,
 } as const;
 
+export const WEBSOCKET_THROTTLE = {
+  LOG_BUFFER_TIME: 100, // ms - buffer logs for batch addition
+  STATUS_THROTTLE_TIME: 500, // ms - throttle status updates
+} as const;
+
 export const VISA_CATEGORIES = [
   'Tourist',
   'Business',
