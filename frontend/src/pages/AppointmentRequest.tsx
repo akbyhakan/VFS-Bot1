@@ -90,6 +90,7 @@ export function AppointmentRequest() {
     return {
       first_name: '',
       last_name: '',
+      gender: 'male',
       nationality: 'Turkey',
       birth_date: '',
       passport_number: '',
@@ -98,6 +99,7 @@ export function AppointmentRequest() {
       phone_code: '90',
       phone_number: '',
       email: '',
+      is_child_with_parent: false,
     };
   }
 

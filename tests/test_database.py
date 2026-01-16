@@ -231,6 +231,7 @@ async def test_create_appointment_request(test_db):
         {
             "first_name": "John",
             "last_name": "Doe",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -239,10 +240,12 @@ async def test_create_appointment_request(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "john@example.com",
+            "is_child_with_parent": False,
         },
         {
             "first_name": "Jane",
             "last_name": "Doe",
+            "gender": "female",
             "nationality": "Turkey",
             "birth_date": "20/05/1992",
             "passport_number": "U87654321",
@@ -251,11 +254,14 @@ async def test_create_appointment_request(test_db):
             "phone_code": "90",
             "phone_number": "5559876543",
             "email": "jane@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     request_id = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul", "Ankara"],
         preferred_dates=["15/02/2026", "16/02/2026"],
         person_count=2,
@@ -272,6 +278,7 @@ async def test_get_appointment_request(test_db):
         {
             "first_name": "John",
             "last_name": "Doe",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -280,11 +287,14 @@ async def test_get_appointment_request(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "john@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     request_id = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul"],
         preferred_dates=["15/02/2026"],
         person_count=1,
@@ -312,6 +322,7 @@ async def test_get_all_appointment_requests(test_db):
         {
             "first_name": "Test",
             "last_name": "User",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -320,12 +331,15 @@ async def test_get_all_appointment_requests(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "test@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     # Create multiple requests
     id1 = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul"],
         preferred_dates=["15/02/2026"],
         person_count=1,
@@ -334,6 +348,8 @@ async def test_get_all_appointment_requests(test_db):
     
     id2 = await test_db.create_appointment_request(
         country_code="aut",
+        visa_category="Business",
+        visa_subcategory="Conference",
         centres=["Ankara"],
         preferred_dates=["20/02/2026"],
         person_count=1,
@@ -357,6 +373,7 @@ async def test_update_appointment_request_status(test_db):
         {
             "first_name": "Test",
             "last_name": "User",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -365,11 +382,14 @@ async def test_update_appointment_request_status(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "test@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     request_id = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul"],
         preferred_dates=["15/02/2026"],
         person_count=1,
@@ -399,6 +419,7 @@ async def test_delete_appointment_request(test_db):
         {
             "first_name": "Test",
             "last_name": "User",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -407,11 +428,14 @@ async def test_delete_appointment_request(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "test@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     request_id = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul"],
         preferred_dates=["15/02/2026"],
         person_count=1,
@@ -436,6 +460,7 @@ async def test_cleanup_completed_requests(test_db):
         {
             "first_name": "Test",
             "last_name": "User",
+            "gender": "male",
             "nationality": "Turkey",
             "birth_date": "15/01/1990",
             "passport_number": "U12345678",
@@ -444,11 +469,14 @@ async def test_cleanup_completed_requests(test_db):
             "phone_code": "90",
             "phone_number": "5551234567",
             "email": "test@example.com",
+            "is_child_with_parent": False,
         },
     ]
     
     request_id = await test_db.create_appointment_request(
         country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
         centres=["Istanbul"],
         preferred_dates=["15/02/2026"],
         person_count=1,

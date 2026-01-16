@@ -225,6 +225,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS appointment_requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     country_code TEXT NOT NULL,
+                    visa_category TEXT NOT NULL,
+                    visa_subcategory TEXT NOT NULL,
                     centres TEXT NOT NULL,
                     preferred_dates TEXT NOT NULL,
                     person_count INTEGER NOT NULL CHECK(person_count >= 1 AND person_count <= 6),
@@ -244,6 +246,7 @@ class Database:
                     request_id INTEGER NOT NULL,
                     first_name TEXT NOT NULL,
                     last_name TEXT NOT NULL,
+                    gender TEXT NOT NULL,
                     nationality TEXT NOT NULL DEFAULT 'Turkey',
                     birth_date TEXT NOT NULL,
                     passport_number TEXT NOT NULL,
@@ -252,6 +255,7 @@ class Database:
                     phone_code TEXT NOT NULL DEFAULT '90',
                     phone_number TEXT NOT NULL,
                     email TEXT NOT NULL,
+                    is_child_with_parent BOOLEAN NOT NULL DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
@@ -259,7 +263,74 @@ class Database:
             )
 
             await self.conn.commit()
+            
+            # Migration: Add new columns if they don't exist
+            await self._migrate_schema()
+            
             logger.info("Database tables created/verified")
+
+    async def _migrate_schema(self) -> None:
+        """Migrate database schema for new columns."""
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
+        
+        async with self.conn.cursor() as cursor:
+            # Check if appointment_requests table has visa_category column
+            await cursor.execute("PRAGMA table_info(appointment_requests)")
+            columns = await cursor.fetchall()
+            column_names = [col[1] for col in columns]
+            
+            # Add visa_category if missing
+            if 'visa_category' not in column_names:
+                logger.info("Adding visa_category column to appointment_requests")
+                await cursor.execute(
+                    "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT"
+                )
+                # Update existing records with a default value
+                await cursor.execute(
+                    "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL"
+                )
+            
+            # Add visa_subcategory if missing
+            if 'visa_subcategory' not in column_names:
+                logger.info("Adding visa_subcategory column to appointment_requests")
+                await cursor.execute(
+                    "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT"
+                )
+                # Update existing records with a default value
+                await cursor.execute(
+                    "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL"
+                )
+            
+            # Check appointment_persons table
+            await cursor.execute("PRAGMA table_info(appointment_persons)")
+            person_columns = await cursor.fetchall()
+            person_column_names = [col[1] for col in person_columns]
+            
+            # Add gender if missing
+            if 'gender' not in person_column_names:
+                logger.info("Adding gender column to appointment_persons")
+                await cursor.execute(
+                    "ALTER TABLE appointment_persons ADD COLUMN gender TEXT"
+                )
+                # Update existing records with default value
+                await cursor.execute(
+                    "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL"
+                )
+            
+            # Add is_child_with_parent if missing
+            if 'is_child_with_parent' not in person_column_names:
+                logger.info("Adding is_child_with_parent column to appointment_persons")
+                await cursor.execute(
+                    "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN"
+                )
+                # Update existing records with default value
+                await cursor.execute(
+                    "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL"
+                )
+            
+            await self.conn.commit()
+            logger.info("Schema migration completed")
 
     @require_connection
     async def add_user(
@@ -730,6 +801,8 @@ class Database:
     async def create_appointment_request(
         self,
         country_code: str,
+        visa_category: str,
+        visa_subcategory: str,
         centres: List[str],
         preferred_dates: List[str],
         person_count: int,
@@ -740,6 +813,8 @@ class Database:
         
         Args:
             country_code: Target country code (e.g., 'nld', 'aut')
+            visa_category: Visa category
+            visa_subcategory: Visa subcategory
             centres: List of selected centres
             preferred_dates: List of preferred dates in DD/MM/YYYY format
             person_count: Number of persons (1-6)
@@ -756,11 +831,13 @@ class Database:
                 await cursor.execute(
                     """
                     INSERT INTO appointment_requests 
-                    (country_code, centres, preferred_dates, person_count)
-                    VALUES (?, ?, ?, ?)
+                    (country_code, visa_category, visa_subcategory, centres, preferred_dates, person_count)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (
                         country_code,
+                        visa_category,
+                        visa_subcategory,
                         json.dumps(centres),
                         json.dumps(preferred_dates),
                         person_count,
@@ -780,15 +857,16 @@ class Database:
                     await cursor.execute(
                         """
                         INSERT INTO appointment_persons
-                        (request_id, first_name, last_name, nationality, birth_date,
+                        (request_id, first_name, last_name, gender, nationality, birth_date,
                          passport_number, passport_issue_date, passport_expiry_date,
-                         phone_code, phone_number, email)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         phone_code, phone_number, email, is_child_with_parent)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             request_id,
                             person.get("first_name"),
                             person.get("last_name"),
+                            person.get("gender", "male"),
                             person.get("nationality", "Turkey"),
                             person.get("birth_date"),
                             person.get("passport_number"),
@@ -797,6 +875,7 @@ class Database:
                             person.get("phone_code", "90"),
                             person.get("phone_number"),
                             person.get("email"),
+                            person.get("is_child_with_parent", False),
                         ),
                     )
                 
@@ -834,6 +913,12 @@ class Database:
                 # Parse JSON fields
                 request["centres"] = json.loads(request["centres"])
                 request["preferred_dates"] = json.loads(request["preferred_dates"])
+                
+                # Ensure visa fields have defaults for old records
+                if "visa_category" not in request or request["visa_category"] is None:
+                    request["visa_category"] = ""
+                if "visa_subcategory" not in request or request["visa_subcategory"] is None:
+                    request["visa_subcategory"] = ""
                 
                 # Get persons
                 await cursor.execute(
@@ -879,6 +964,12 @@ class Database:
                     request = dict(request_row)
                     request["centres"] = json.loads(request["centres"])
                     request["preferred_dates"] = json.loads(request["preferred_dates"])
+                    
+                    # Ensure visa fields have defaults for old records
+                    if "visa_category" not in request or request["visa_category"] is None:
+                        request["visa_category"] = ""
+                    if "visa_subcategory" not in request or request["visa_subcategory"] is None:
+                        request["visa_subcategory"] = ""
                     
                     # Get persons for this request
                     await cursor.execute(
