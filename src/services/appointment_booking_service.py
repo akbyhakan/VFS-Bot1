@@ -4,13 +4,11 @@ import asyncio
 import logging
 import random
 import re
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+from typing import Dict, Any
 
 from playwright.async_api import Page
 
 from .otp_webhook import get_otp_service
-from ..utils.helpers import smart_fill, smart_click, wait_for_selector_smart
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +23,10 @@ VFS_SELECTORS = {
     "gender_male": '//mat-option[contains(., "Male")]',
     "birth_date": "#dateOfBirth",
     "nationality_dropdown": "#mat-select-value-4",
-    "nationality_turkey": '(//mat-option[contains(., "Turkey")])[1] | (//mat-option[contains(., "Türkiye")])[1]',
+    "nationality_turkey": (
+        '(//mat-option[contains(., "Turkey")])[1] | '
+        '(//mat-option[contains(., "Türkiye")])[1]'
+    ),
     "passport_number": "#mat-input-5",
     "passport_expiry": "#passportExpirtyDate",
     "phone_code": "#mat-input-6",
@@ -295,7 +296,7 @@ class AppointmentBookingService:
                 # Click "Add Another Applicant"
                 await page.click(VFS_SELECTORS["add_another_button"])
                 await self.wait_for_overlay(page)
-                logger.info(f"Opening form for next applicant...")
+                logger.info("Opening form for next applicant...")
             else:
                 # Last person - Click Continue
                 await page.click(VFS_SELECTORS["continue_button"])
@@ -321,8 +322,6 @@ class AppointmentBookingService:
 
         # Check for Captcha
         await self.handle_captcha_if_present(page)
-
-        preferred_dates = [self.normalize_date(d) for d in reservation["preferred_dates"]]
 
         # Find available dates (green bordered cells)
         available_dates = await page.locator("a.fc-daygrid-day-number").all()
@@ -428,11 +427,13 @@ class AppointmentBookingService:
                     if token:
                         # Inject token
                         await page.evaluate(
-                            f"""
-                            (token) => {{
-                                const input = document.querySelector('[name="cf-turnstile-response"]');
+                            """
+                            (token) => {
+                                const input = document.querySelector(
+                                    '[name="cf-turnstile-response"]'
+                                );
                                 if (input) input.value = token;
-                            }}
+                            }
                         """,
                             token,
                         )

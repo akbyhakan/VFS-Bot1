@@ -1,7 +1,7 @@
 """Input validation utilities for VFS-Bot."""
 
 import re
-from typing import Optional, List
+from typing import List
 
 
 def validate_email(email: str) -> bool:

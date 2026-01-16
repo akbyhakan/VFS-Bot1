@@ -1,6 +1,5 @@
 """VFS Global Direct API Client for Turkey."""
 
-import asyncio
 import base64
 import logging
 import os
@@ -465,4 +464,7 @@ class VFSApiClient:
         Returns:
             Turnstile token
         """
-        return await self.captcha_solver.solve_turnstile(page_url=page_url, site_key=site_key)  # type: ignore[no-any-return]
+        # type: ignore[no-any-return]
+        return await self.captcha_solver.solve_turnstile(
+            page_url=page_url, site_key=site_key
+        )

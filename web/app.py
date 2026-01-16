@@ -935,8 +935,6 @@ async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_
     Returns:
         Success message
     """
-    global mock_users
-
     # TODO: Replace with actual database delete
     for i, user in enumerate(mock_users):
         if user.id == user_id:
@@ -972,7 +970,8 @@ async def toggle_user_status(
                 user.updated_at = datetime.now(timezone.utc).isoformat()
 
                 logger.info(
-                    f"User status toggled: {user.email} -> {user.is_active} by {token_data.get('sub', 'unknown')}"
+                    f"User status toggled: {user.email} -> {user.is_active} "
+                    f"by {token_data.get('sub', 'unknown')}"
                 )
                 return user
 
@@ -1245,7 +1244,10 @@ async def create_appointment_request(
             if request_data.person_count != len(request_data.persons):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Person count ({request_data.person_count}) does not match number of persons provided ({len(request_data.persons)})",
+                    detail=(
+                        f"Person count ({request_data.person_count}) does not match "
+                        f"number of persons provided ({len(request_data.persons)})"
+                    ),
                 )
 
             # Convert persons to dict
@@ -1468,7 +1470,8 @@ async def update_appointment_request_status(
                 raise HTTPException(status_code=404, detail="Appointment request not found")
 
             logger.info(
-                f"Appointment request {request_id} status updated to {status} by {token_data.get('sub', 'unknown')}"
+                f"Appointment request {request_id} status updated to {status} "
+                f"by {token_data.get('sub', 'unknown')}"
             )
 
             return {"success": True, "message": f"Status updated to {status}"}

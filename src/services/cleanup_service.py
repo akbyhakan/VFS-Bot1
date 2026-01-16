@@ -48,7 +48,8 @@ class CleanupService:
         """
         self._running = True
         logger.info(
-            f"Starting periodic cleanup service (interval: {interval_hours}h, age: {self.cleanup_days} days)"
+            f"Starting periodic cleanup service "
+            f"(interval: {interval_hours}h, age: {self.cleanup_days} days)"
         )
 
         while self._running:
