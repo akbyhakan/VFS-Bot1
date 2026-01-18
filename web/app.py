@@ -1,6 +1,7 @@
 """FastAPI web dashboard with WebSocket support for VFS-Bot."""
 
 import asyncio
+import gc
 import logging
 import os
 from pathlib import Path
@@ -1249,8 +1250,6 @@ async def initiate_payment(
     Returns:
         Payment result
     """
-    import gc
-    
     try:
         db = Database()
         await db.connect()
@@ -1281,6 +1280,12 @@ async def initiate_payment(
             
     finally:
         # CRITICAL: Clear CVV from memory
+        # Note: This is a best-effort approach. Python's string interning
+        # and garbage collection are implementation-dependent.
+        # For production use with highly sensitive data, consider:
+        # 1. Using ctypes to overwrite memory directly
+        # 2. Using libraries like 'pympler' for secure memory handling
+        # 3. Delegating payment processing to PCI-DSS compliant gateway
         request.cvv = ""
         del request
         gc.collect()
