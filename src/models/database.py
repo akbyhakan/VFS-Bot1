@@ -622,6 +622,190 @@ class Database:
                 return dict(row) if row else None
 
     @require_connection
+    async def get_all_users_with_details(self) -> List[Dict[str, Any]]:
+        """
+        Get all users with their personal details joined.
+
+        Returns:
+            List of user dictionaries with personal details
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT 
+                        u.id, u.email, u.centre as center_name, 
+                        u.category as visa_category, u.subcategory as visa_subcategory,
+                        u.active as is_active, u.created_at, u.updated_at,
+                        p.first_name, p.last_name, p.mobile_number as phone
+                    FROM users u
+                    LEFT JOIN personal_details p ON u.id = p.user_id
+                    ORDER BY u.created_at DESC
+                """
+                )
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+
+    @require_connection
+    async def update_user(
+        self, 
+        user_id: int, 
+        email: Optional[str] = None,
+        centre: Optional[str] = None,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
+        active: Optional[bool] = None
+    ) -> bool:
+        """
+        Update user information.
+
+        Args:
+            user_id: User ID
+            email: New email (optional)
+            centre: New centre (optional)
+            category: New visa category (optional)
+            subcategory: New visa subcategory (optional)
+            active: New active status (optional)
+
+        Returns:
+            True if user was updated, False if not found
+
+        Raises:
+            ValidationError: If email format is invalid
+        """
+        # Validate email if provided
+        if email and not validate_email(email):
+            raise ValidationError(f"Invalid email format: {email}", field="email")
+
+        # Build dynamic update query
+        updates = []
+        params = []
+        
+        if email is not None:
+            updates.append("email = ?")
+            params.append(email)
+        if centre is not None:
+            updates.append("centre = ?")
+            params.append(centre)
+        if category is not None:
+            updates.append("category = ?")
+            params.append(category)
+        if subcategory is not None:
+            updates.append("subcategory = ?")
+            params.append(subcategory)
+        if active is not None:
+            updates.append("active = ?")
+            params.append(1 if active else 0)
+
+        if not updates:
+            return True  # Nothing to update
+
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(user_id)
+
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+                await cursor.execute(query, params)
+                await conn.commit()
+                
+                if cursor.rowcount == 0:
+                    return False
+                
+                logger.info(f"User {user_id} updated")
+                return True
+
+    @require_connection
+    async def update_personal_details(
+        self, 
+        user_id: int,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        mobile_number: Optional[str] = None,
+        **other_fields: Any
+    ) -> bool:
+        """
+        Update personal details for a user.
+
+        Args:
+            user_id: User ID
+            first_name: New first name (optional)
+            last_name: New last name (optional)
+            mobile_number: New mobile number (optional)
+            **other_fields: Other personal detail fields
+
+        Returns:
+            True if updated, False if not found
+
+        Raises:
+            ValidationError: If phone format is invalid
+        """
+        # Validate phone if provided
+        if mobile_number and not validate_phone(mobile_number):
+            raise ValidationError(
+                f"Invalid phone number format: {mobile_number}", field="mobile_number"
+            )
+
+        # Build dynamic update query
+        updates = []
+        params = []
+        
+        if first_name is not None:
+            updates.append("first_name = ?")
+            params.append(first_name)
+        if last_name is not None:
+            updates.append("last_name = ?")
+            params.append(last_name)
+        if mobile_number is not None:
+            updates.append("mobile_number = ?")
+            params.append(mobile_number)
+
+        # Add other fields
+        for field, value in other_fields.items():
+            if value is not None:
+                updates.append(f"{field} = ?")
+                params.append(value)
+
+        if not updates:
+            return True  # Nothing to update
+
+        params.append(user_id)
+
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                query = f"UPDATE personal_details SET {', '.join(updates)} WHERE user_id = ?"
+                await cursor.execute(query, params)
+                await conn.commit()
+                
+                if cursor.rowcount == 0:
+                    return False
+                
+                logger.info(f"Personal details updated for user {user_id}")
+                return True
+
+    @require_connection
+    async def delete_user(self, user_id: int) -> bool:
+        """
+        Delete a user and all associated data (cascading).
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            True if user was deleted, False if not found
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+                await conn.commit()
+                
+                if cursor.rowcount == 0:
+                    return False
+                
+                logger.info(f"User {user_id} deleted")
+                return True
+
+    @require_connection
     async def add_appointment(
         self,
         user_id: int,
