@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { tokenManager } from '@/utils/tokenManager';
 import { AUTH_TOKEN_KEY } from '@/utils/constants';
 

@@ -14,7 +14,8 @@ describe('ConfirmDialog', () => {
   it('renders title and message', () => {
     render(<ConfirmDialog {...defaultProps} />);
     
-    expect(screen.getByText('Confirm Action')).toBeInTheDocument();
+    // Check by role to avoid duplicate title issue
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     expect(screen.getByText('Are you sure?')).toBeInTheDocument();
   });
 

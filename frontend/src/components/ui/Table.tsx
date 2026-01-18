@@ -23,7 +23,6 @@ export function Table<T>({
   columns,
   keyExtractor,
   emptyMessage = 'Veri bulunamadı',
-  className,
   hoverable = true,
   onRowClick,
 }: TableProps<T>) {
