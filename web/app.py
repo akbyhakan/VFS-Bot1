@@ -24,6 +24,7 @@ from src.core.auth import create_access_token, verify_token
 from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
+from src.utils.encryption import encrypt_password
 
 security_scheme = HTTPBearer()
 
@@ -822,9 +823,9 @@ class UserModel(BaseModel):
 
     id: int
     email: str
-    phone: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    phone: str = ""  # Default to empty string for backward compatibility
+    first_name: str = ""  # Default to empty string for backward compatibility
+    last_name: str = ""  # Default to empty string for backward compatibility
     center_name: str
     visa_category: str
     visa_subcategory: str
@@ -973,10 +974,11 @@ async def update_user(
     try:
         await db.connect()
         
-        # Update user table fields
+        # Update user table fields (including password if provided)
         user_updated = await db.update_user(
             user_id=user_id,
             email=user_update.email,
+            password=user_update.password,
             centre=user_update.center_name,
             category=user_update.visa_category,
             subcategory=user_update.visa_subcategory,
@@ -994,18 +996,6 @@ async def update_user(
                 last_name=user_update.last_name,
                 mobile_number=user_update.phone,
             )
-        
-        # Update password if provided
-        if user_update.password:
-            from src.utils.encryption import encrypt_password
-            encrypted_password = encrypt_password(user_update.password)
-            async with db.get_connection() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                        (encrypted_password, user_id)
-                    )
-                    await conn.commit()
         
         # Get updated user
         users = await db.get_all_users_with_details()

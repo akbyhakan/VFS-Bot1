@@ -9,6 +9,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Exponential backoff constants
+BASE_BACKOFF_SECONDS = 300  # 5 minutes
+MAX_BACKOFF_SECONDS = 5400  # 90 minutes (1.5 hours)
+
 
 class CleanupService:
     """Service for cleaning up old completed appointment requests."""
@@ -94,7 +98,10 @@ class CleanupService:
                     break
                 
                 # Exponential backoff: 5min, 10min, 20min, 40min, 80min (max 1.5h)
-                backoff_seconds = min(300 * (2 ** (self._consecutive_errors - 1)), 5400)
+                backoff_seconds = min(
+                    BASE_BACKOFF_SECONDS * (2 ** (self._consecutive_errors - 1)),
+                    MAX_BACKOFF_SECONDS
+                )
                 logger.warning(
                     f"⏳ Waiting {backoff_seconds}s ({backoff_seconds // 60} minutes) "
                     f"before retry..."

@@ -8,6 +8,9 @@ from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
+# Bcrypt hash prefixes for validation
+BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")
+
 
 class EnvValidator:
     """Validate required environment variables."""
@@ -92,7 +95,7 @@ class EnvValidator:
                 # ADMIN_PASSWORD validation (production only)
                 elif var == "ADMIN_PASSWORD" and env == "production":
                     # In production, admin password should be bcrypt hashed
-                    if not value.startswith("$2b$") and not value.startswith("$2a$"):
+                    if not value.startswith(BCRYPT_PREFIXES):
                         validation_errors.append(
                             f"{var}: Must be bcrypt hashed in production. "
                             "Use: python -c \"from passlib.context import CryptContext; "

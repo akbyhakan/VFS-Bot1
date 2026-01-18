@@ -651,6 +651,7 @@ class Database:
         self, 
         user_id: int, 
         email: Optional[str] = None,
+        password: Optional[str] = None,
         centre: Optional[str] = None,
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
@@ -662,6 +663,7 @@ class Database:
         Args:
             user_id: User ID
             email: New email (optional)
+            password: New password (optional, will be encrypted)
             centre: New centre (optional)
             category: New visa category (optional)
             subcategory: New visa subcategory (optional)
@@ -684,6 +686,11 @@ class Database:
         if email is not None:
             updates.append("email = ?")
             params.append(email)
+        if password is not None:
+            # Encrypt password before storage
+            encrypted_password = encrypt_password(password)
+            updates.append("password = ?")
+            params.append(encrypted_password)
         if centre is not None:
             updates.append("centre = ?")
             params.append(centre)
