@@ -33,9 +33,8 @@ export function Logs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<LogLevel>('ALL');
 
-  const logs = data?.logs || [];
-
   const filteredLogs = useMemo(() => {
+    const logs = data?.logs || [];
     let result = logs;
 
     // Filter by search query
@@ -53,7 +52,9 @@ export function Logs() {
     }
 
     return result;
-  }, [logs, searchQuery, selectedLevel]);
+  }, [data?.logs, searchQuery, selectedLevel]);
+
+  const logs = data?.logs || [];
 
   const handleClearLogs = () => {
     if (confirm('Tüm logları temizlemek istediğinizden emin misiniz?')) {

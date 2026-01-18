@@ -34,7 +34,6 @@ export default function AppointmentRequest() {
   const [dateInput, setDateInput] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [viewingRequest, setViewingRequest] = useState<AppointmentRequestResponse | null>(null);
-  const [_editingRequest, setEditingRequest] = useState<AppointmentRequestResponse | null>(null);
 
   const { data: countries, isLoading: loadingCountries } = useCountries();
   const { data: centres, isLoading: loadingCentres } = useCentres(selectedCountry);
@@ -202,7 +201,6 @@ export default function AppointmentRequest() {
   };
 
   const handleEditRequest = (request: AppointmentRequestResponse) => {
-    setEditingRequest(request);
     setSelectedCountry(request.country_code);
     setSelectedCentres(request.centres);
     setSelectedDates(request.preferred_dates);
@@ -384,7 +382,6 @@ export default function AppointmentRequest() {
                   setSelectedCentres([]);
                   setSelectedDates([]);
                   setErrors({});
-                  setEditingRequest(null);
                   toast.info('Form temizlendi');
                 }}
               >
