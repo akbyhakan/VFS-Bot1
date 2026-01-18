@@ -24,6 +24,7 @@ from src.core.auth import create_access_token, verify_token
 from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
+from src.utils.encryption import encrypt_password
 
 security_scheme = HTTPBearer()
 
@@ -788,12 +789,12 @@ async def get_error_screenshot(error_id: str, type: str = "full"):
     raise HTTPException(status_code=404, detail="Screenshot not found")
 
 
-# User Management API Endpoints (Mock - for frontend development)
-# TODO: Implement full database integration with personal_details table
+# User Management API Endpoints (Database-integrated)
 class UserCreateRequest(BaseModel):
     """User creation request."""
 
     email: str
+    password: str  # VFS password for login
     phone: str
     first_name: str
     last_name: str
@@ -807,6 +808,7 @@ class UserUpdateRequest(BaseModel):
     """User update request."""
 
     email: Optional[str] = None
+    password: Optional[str] = None  # VFS password
     phone: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -821,9 +823,9 @@ class UserModel(BaseModel):
 
     id: int
     email: str
-    phone: str
-    first_name: str
-    last_name: str
+    phone: str = ""  # Default to empty string for backward compatibility
+    first_name: str = ""  # Default to empty string for backward compatibility
+    last_name: str = ""  # Default to empty string for backward compatibility
     center_name: str
     visa_category: str
     visa_subcategory: str
@@ -832,26 +834,42 @@ class UserModel(BaseModel):
     updated_at: str
 
 
-# In-memory mock users storage (temporary - for frontend development only)
-# WARNING: This is NOT thread-safe and should be replaced with proper database integration
-# TODO: Replace with async database operations using existing users/personal_details tables
-mock_users: List[UserModel] = []
-next_user_id = 1
-
-
 @app.get("/api/users", response_model=List[UserModel])
 async def get_users(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
-    Get all users - requires authentication.
+    Get all users from database - requires authentication.
 
     Args:
         token_data: Verified token data
 
     Returns:
-        List of users
+        List of users with their personal details
     """
-    # TODO: Replace with actual database query
-    return mock_users
+    db = Database()
+    try:
+        await db.connect()
+        users_data = await db.get_all_users_with_details()
+        
+        # Convert database records to UserModel format
+        users = []
+        for user in users_data:
+            users.append(UserModel(
+                id=user["id"],
+                email=user["email"],
+                phone=user.get("phone") or "",
+                first_name=user.get("first_name") or "",
+                last_name=user.get("last_name") or "",
+                center_name=user["center_name"],
+                visa_category=user["visa_category"],
+                visa_subcategory=user["visa_subcategory"],
+                is_active=bool(user["is_active"]),
+                created_at=user["created_at"],
+                updated_at=user["updated_at"],
+            ))
+        
+        return users
+    finally:
+        await db.close()
 
 
 @app.post("/api/users", response_model=UserModel)
@@ -859,7 +877,7 @@ async def create_user(
     user: UserCreateRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
-    Create a new user - requires authentication.
+    Create a new user in database - requires authentication.
 
     Args:
         user: User data
@@ -867,29 +885,69 @@ async def create_user(
 
     Returns:
         Created user
+
+    Raises:
+        HTTPException: If user creation fails
     """
-    global next_user_id
-
-    # TODO: Replace with actual database insert
-    new_user = UserModel(
-        id=next_user_id,
-        email=user.email,
-        phone=user.phone,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        center_name=user.center_name,
-        visa_category=user.visa_category,
-        visa_subcategory=user.visa_subcategory,
-        is_active=user.is_active,
-        created_at=datetime.now(timezone.utc).isoformat(),
-        updated_at=datetime.now(timezone.utc).isoformat(),
-    )
-
-    mock_users.append(new_user)
-    next_user_id += 1
-
-    logger.info(f"User created: {new_user.email} by {token_data.get('sub', 'unknown')}")
-    return new_user
+    db = Database()
+    try:
+        await db.connect()
+        
+        # Create user record
+        user_id = await db.add_user(
+            email=user.email,
+            password=user.password,
+            centre=user.center_name,
+            category=user.visa_category,
+            subcategory=user.visa_subcategory,
+        )
+        
+        # Create personal details record
+        await db.add_personal_details(
+            user_id=user_id,
+            details={
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "mobile_number": user.phone,
+                "passport_number": "",  # Required field, empty for now
+            }
+        )
+        
+        # Set user as active/inactive
+        if not user.is_active:
+            await db.update_user(user_id, active=False)
+        
+        # Get the created user with details
+        users = await db.get_all_users_with_details()
+        created_user = next((u for u in users if u["id"] == user_id), None)
+        
+        if not created_user:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created user")
+        
+        logger.info(f"User created: {user.email} by {token_data.get('sub', 'unknown')}")
+        
+        return UserModel(
+            id=created_user["id"],
+            email=created_user["email"],
+            phone=created_user.get("phone") or "",
+            first_name=created_user.get("first_name") or "",
+            last_name=created_user.get("last_name") or "",
+            center_name=created_user["center_name"],
+            visa_category=created_user["visa_category"],
+            visa_subcategory=created_user["visa_subcategory"],
+            is_active=bool(created_user["is_active"]),
+            created_at=created_user["created_at"],
+            updated_at=created_user["updated_at"],
+        )
+        
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating user: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create user")
+    finally:
+        await db.close()
 
 
 @app.put("/api/users/{user_id}", response_model=UserModel)
@@ -899,7 +957,7 @@ async def update_user(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
 ):
     """
-    Update a user - requires authentication.
+    Update a user in database - requires authentication.
 
     Args:
         user_id: User ID
@@ -908,25 +966,75 @@ async def update_user(
 
     Returns:
         Updated user
+
+    Raises:
+        HTTPException: If user not found or update fails
     """
-    # TODO: Replace with actual database update
-    for user in mock_users:
-        if user.id == user_id:
-            update_data = user_update.dict(exclude_unset=True)
-            for key, value in update_data.items():
-                setattr(user, key, value)
-            user.updated_at = datetime.now(timezone.utc).isoformat()
-
-            logger.info(f"User updated: {user.email} by {token_data.get('sub', 'unknown')}")
-            return user
-
-    raise HTTPException(status_code=404, detail="User not found")
+    db = Database()
+    try:
+        await db.connect()
+        
+        # Update user table fields (including password if provided)
+        user_updated = await db.update_user(
+            user_id=user_id,
+            email=user_update.email,
+            password=user_update.password,
+            centre=user_update.center_name,
+            category=user_update.visa_category,
+            subcategory=user_update.visa_subcategory,
+            active=user_update.is_active,
+        )
+        
+        if not user_updated:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Update personal details if provided
+        if any([user_update.first_name, user_update.last_name, user_update.phone]):
+            await db.update_personal_details(
+                user_id=user_id,
+                first_name=user_update.first_name,
+                last_name=user_update.last_name,
+                mobile_number=user_update.phone,
+            )
+        
+        # Get updated user
+        users = await db.get_all_users_with_details()
+        updated_user = next((u for u in users if u["id"] == user_id), None)
+        
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found after update")
+        
+        logger.info(f"User updated: {updated_user['email']} by {token_data.get('sub', 'unknown')}")
+        
+        return UserModel(
+            id=updated_user["id"],
+            email=updated_user["email"],
+            phone=updated_user.get("phone") or "",
+            first_name=updated_user.get("first_name") or "",
+            last_name=updated_user.get("last_name") or "",
+            center_name=updated_user["center_name"],
+            visa_category=updated_user["visa_category"],
+            visa_subcategory=updated_user["visa_subcategory"],
+            is_active=bool(updated_user["is_active"]),
+            created_at=updated_user["created_at"],
+            updated_at=updated_user["updated_at"],
+        )
+        
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating user: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update user")
+    finally:
+        await db.close()
 
 
 @app.delete("/api/users/{user_id}")
 async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
-    Delete a user - requires authentication.
+    Delete a user from database - requires authentication.
 
     Args:
         user_id: User ID
@@ -934,15 +1042,37 @@ async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_
 
     Returns:
         Success message
-    """
-    # TODO: Replace with actual database delete
-    for i, user in enumerate(mock_users):
-        if user.id == user_id:
-            deleted_user = mock_users.pop(i)
-            logger.info(f"User deleted: {deleted_user.email} by {token_data.get('sub', 'unknown')}")
-            return {"message": "User deleted successfully"}
 
-    raise HTTPException(status_code=404, detail="User not found")
+    Raises:
+        HTTPException: If user not found
+    """
+    db = Database()
+    try:
+        await db.connect()
+        
+        # Get user email before deletion for logging
+        users = await db.get_all_users_with_details()
+        user = next((u for u in users if u["id"] == user_id), None)
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Delete user (cascades to personal_details due to FOREIGN KEY)
+        deleted = await db.delete_user(user_id)
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        logger.info(f"User deleted: {user['email']} by {token_data.get('sub', 'unknown')}")
+        return {"message": "User deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete user")
+    finally:
+        await db.close()
 
 
 @app.patch("/api/users/{user_id}", response_model=UserModel)
