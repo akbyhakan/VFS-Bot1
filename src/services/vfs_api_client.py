@@ -268,11 +268,16 @@ class VFSApiClient:
                 )
             )
             expires_in = data.get("expiresIn", 60)
-            # Ensure buffer doesn't exceed expiry time (leave at least 1 minute)
-            buffer_minutes = min(token_refresh_buffer, max(1, expires_in - 1))
-            expires_at = datetime.now() + timedelta(
-                minutes=max(1, expires_in - buffer_minutes)
-            )
+            # Ensure buffer doesn't exceed expiry time
+            # If expires_in is very short (<=2 min), use 50% of the time as buffer
+            # Otherwise use the configured buffer, but never more than expires_in - 1
+            if expires_in <= 2:
+                effective_expiry = max(1, expires_in // 2)
+            else:
+                buffer_minutes = min(token_refresh_buffer, expires_in - 1)
+                effective_expiry = max(1, expires_in - buffer_minutes)
+            
+            expires_at = datetime.now() + timedelta(minutes=effective_expiry)
 
             self.session = VFSSession(
                 access_token=data["accessToken"],
@@ -465,13 +470,18 @@ class VFSApiClient:
                     )
                 )
                 expires_in = data.get("expiresIn", 60)
-                # Ensure buffer doesn't exceed expiry time (leave at least 1 minute)
-                buffer_minutes = min(token_refresh_buffer, max(1, expires_in - 1))
+                # Ensure buffer doesn't exceed expiry time
+                # If expires_in is very short (<=2 min), use 50% of the time as buffer
+                # Otherwise use the configured buffer, but never more than expires_in - 1
+                if expires_in <= 2:
+                    effective_expiry = max(1, expires_in // 2)
+                else:
+                    buffer_minutes = min(token_refresh_buffer, expires_in - 1)
+                    effective_expiry = max(1, expires_in - buffer_minutes)
+                
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now() + timedelta(
-                    minutes=max(1, expires_in - buffer_minutes)
-                )
+                self.session.expires_at = datetime.now() + timedelta(minutes=effective_expiry)
 
                 # Update session headers with new auth token
                 self._session.headers.update(
