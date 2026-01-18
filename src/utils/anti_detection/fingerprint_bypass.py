@@ -2,14 +2,31 @@
 
 import logging
 import random
+from dataclasses import dataclass
 
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class CanvasNoiseConfig:
+    """Configuration for canvas noise injection."""
+    
+    # RGB shift ranges - small values to avoid visual artifacts
+    RGB_SHIFT_MIN: int = -5
+    RGB_SHIFT_MAX: int = 5
+    
+    # Alpha shift range - smaller to maintain transparency accuracy
+    ALPHA_SHIFT_MIN: int = -2
+    ALPHA_SHIFT_MAX: int = 2
+
+
 class FingerprintBypass:
     """Bypass browser fingerprinting techniques."""
+    
+    # Default configuration
+    DEFAULT_CONFIG = CanvasNoiseConfig()
 
     @staticmethod
     async def apply_all(page: Page) -> None:
@@ -28,20 +45,30 @@ class FingerprintBypass:
             logger.error(f"Error applying fingerprint bypass: {e}")
 
     @staticmethod
-    async def _inject_canvas_noise(page: Page) -> None:
-        """Inject noise into Canvas to randomize fingerprint."""
-        # Generate random noise shift values (-5 to +5)
-        # These are safe integer values that cannot cause injection
-        r_shift = random.randint(-5, 5)
-        g_shift = random.randint(-5, 5)
-        b_shift = random.randint(-5, 5)
-        a_shift = random.randint(-2, 2)
+    async def _inject_canvas_noise(
+        page: Page, 
+        config: CanvasNoiseConfig = None
+    ) -> None:
+        """
+        Inject noise into Canvas to randomize fingerprint.
+        
+        Args:
+            page: Playwright page object
+            config: Optional noise configuration (uses DEFAULT_CONFIG if None)
+        """
+        config = config or FingerprintBypass.DEFAULT_CONFIG
+        
+        # Generate random noise shift values using configuration
+        r_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+        g_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+        b_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+        a_shift = random.randint(config.ALPHA_SHIFT_MIN, config.ALPHA_SHIFT_MAX)
 
         # Validate values are within safe range
-        assert -5 <= r_shift <= 5
-        assert -5 <= g_shift <= 5
-        assert -5 <= b_shift <= 5
-        assert -2 <= a_shift <= 2
+        assert config.RGB_SHIFT_MIN <= r_shift <= config.RGB_SHIFT_MAX
+        assert config.RGB_SHIFT_MIN <= g_shift <= config.RGB_SHIFT_MAX
+        assert config.RGB_SHIFT_MIN <= b_shift <= config.RGB_SHIFT_MAX
+        assert config.ALPHA_SHIFT_MIN <= a_shift <= config.ALPHA_SHIFT_MAX
 
         await page.add_init_script(
             f"""

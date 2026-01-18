@@ -1,5 +1,7 @@
 """Constants and configuration values for VFS-Bot."""
 
+import os
+
 
 class Timeouts:
     """Timeout values in milliseconds."""
@@ -82,10 +84,10 @@ class ErrorCapture:
 class Database:
     """Database configuration."""
 
-    DEFAULT_PATH = "vfs_bot.db"  # Default database path
-    POOL_SIZE = 10  # Connection pool size (unified with Defaults)
+    DEFAULT_PATH = os.getenv("DATABASE_PATH", "vfs_bot.db")  # Configurable database path
+    POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))  # Configurable pool size
     TEST_PATH = "test.db"  # Test database path
-    CONNECTION_TIMEOUT = 30.0  # Connection timeout in seconds
+    CONNECTION_TIMEOUT = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))  # Configurable timeout
 
 
 class API:

@@ -150,7 +150,7 @@ class OTPWebhookService:
         async with self._lock:
             self._appointment_otp_queue.append(entry)
 
-            # Notify waiting consumers
+            # Notify waiting consumers - MUST BE INSIDE LOCK to prevent race condition
             for key, event in self._waiting_events.items():
                 if key.startswith("appointment_"):
                     event.set()
@@ -185,7 +185,7 @@ class OTPWebhookService:
         async with self._lock:
             self._payment_otp_queue.append(entry)
 
-            # Notify waiting consumers
+            # Notify waiting consumers - MUST BE INSIDE LOCK to prevent race condition
             for key, event in self._waiting_events.items():
                 if key.startswith("payment_"):
                     event.set()
@@ -209,6 +209,68 @@ class OTPWebhookService:
         """
         return await self.wait_for_appointment_otp(phone_number, timeout)
 
+    async def _wait_for_otp_generic(
+        self,
+        queue: deque,
+        queue_type: str,
+        phone_number: Optional[str] = None,
+        timeout: Optional[int] = None
+    ) -> Optional[str]:
+        """
+        Generic OTP wait method.
+        
+        Args:
+            queue: OTP queue to check
+            queue_type: 'appointment' or 'payment'
+            phone_number: Optional phone number filter
+            timeout: Maximum wait time in seconds
+        
+        Returns:
+            OTP code or None if timeout
+        """
+        timeout = timeout or self._otp_timeout
+        wait_key = f"{queue_type}_{phone_number or 'any'}"
+        
+        event = asyncio.Event()
+        self._waiting_events[wait_key] = event
+        
+        # Safety limit: maximum iteration count
+        max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
+        iteration = 0
+        
+        try:
+            start_time = datetime.now(timezone.utc)
+            
+            while iteration < max_iterations:
+                iteration += 1
+                
+                # Check existing OTPs
+                otp = await self._get_latest_otp_from_queue(queue, phone_number)
+                if otp:
+                    return otp
+                
+                # Calculate remaining time
+                elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+                remaining = timeout - elapsed
+                
+                if remaining <= 0:
+                    logger.warning(f"{queue_type.capitalize()} OTP wait timeout after {timeout}s")
+                    return None
+                
+                # Wait for new OTP or timeout
+                try:
+                    await asyncio.wait_for(event.wait(), timeout=min(remaining, 5.0))
+                    event.clear()
+                except asyncio.TimeoutError:
+                    continue
+            
+            # Max iterations reached
+            logger.error(f"{queue_type.capitalize()} OTP wait exceeded max iterations ({max_iterations})")
+            return None
+        
+        finally:
+            self._waiting_events.pop(wait_key, None)
+
     async def wait_for_appointment_otp(
         self, phone_number: Optional[str] = None, timeout: Optional[int] = None
     ) -> Optional[str]:
@@ -222,50 +284,9 @@ class OTPWebhookService:
         Returns:
             OTP code or None if timeout
         """
-        timeout = timeout or self._otp_timeout
-        wait_key = f"appointment_{phone_number or 'any'}"
-
-        event = asyncio.Event()
-        self._waiting_events[wait_key] = event
-        
-        # Safety limit: maximum iteration count
-        max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
-        iteration = 0
-
-        try:
-            start_time = datetime.now(timezone.utc)
-
-            while iteration < max_iterations:
-                iteration += 1
-                
-                # Check existing OTPs
-                otp = await self._get_latest_otp_from_queue(
-                    self._appointment_otp_queue, phone_number
-                )
-                if otp:
-                    return otp
-
-                # Calculate remaining time
-                elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-                remaining = timeout - elapsed
-
-                if remaining <= 0:
-                    logger.warning(f"Appointment OTP wait timeout after {timeout}s")
-                    return None
-
-                # Wait for new OTP or timeout
-                try:
-                    await asyncio.wait_for(event.wait(), timeout=min(remaining, 5.0))
-                    event.clear()
-                except asyncio.TimeoutError:
-                    continue
-            
-            # Max iterations reached
-            logger.error(f"Appointment OTP wait exceeded max iterations ({max_iterations})")
-            return None
-
-        finally:
-            self._waiting_events.pop(wait_key, None)
+        return await self._wait_for_otp_generic(
+            self._appointment_otp_queue, "appointment", phone_number, timeout
+        )
 
     async def wait_for_payment_otp(
         self, phone_number: Optional[str] = None, timeout: Optional[int] = None
@@ -280,48 +301,9 @@ class OTPWebhookService:
         Returns:
             OTP code or None if timeout
         """
-        timeout = timeout or self._otp_timeout
-        wait_key = f"payment_{phone_number or 'any'}"
-
-        event = asyncio.Event()
-        self._waiting_events[wait_key] = event
-        
-        # Safety limit: maximum iteration count
-        max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
-        iteration = 0
-
-        try:
-            start_time = datetime.now(timezone.utc)
-
-            while iteration < max_iterations:
-                iteration += 1
-                
-                # Check existing OTPs
-                otp = await self._get_latest_otp_from_queue(self._payment_otp_queue, phone_number)
-                if otp:
-                    return otp
-
-                # Calculate remaining time
-                elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-                remaining = timeout - elapsed
-
-                if remaining <= 0:
-                    logger.warning(f"Payment OTP wait timeout after {timeout}s")
-                    return None
-
-                # Wait for new OTP or timeout
-                try:
-                    await asyncio.wait_for(event.wait(), timeout=min(remaining, 5.0))
-                    event.clear()
-                except asyncio.TimeoutError:
-                    continue
-            
-            # Max iterations reached
-            logger.error(f"Payment OTP wait exceeded max iterations ({max_iterations})")
-            return None
-
-        finally:
-            self._waiting_events.pop(wait_key, None)
+        return await self._wait_for_otp_generic(
+            self._payment_otp_queue, "payment", phone_number, timeout
+        )
 
     async def _get_latest_otp(self, phone_number: Optional[str] = None) -> Optional[str]:
         """

@@ -28,6 +28,7 @@ from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
 from src.utils.encryption import encrypt_password
+from src.middleware.request_tracking import RequestTrackingMiddleware
 
 security_scheme = HTTPBearer()
 
@@ -35,6 +36,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+# Add request tracking middleware
+app.add_middleware(RequestTrackingMiddleware)
 
 # Include OTP webhook router
 app.include_router(otp_router)
