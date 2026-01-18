@@ -46,7 +46,7 @@ def mask_phone(phone: str) -> str:
     """
     Mask phone number for logging purposes.
     
-    Example: +905551234567 -> +90***4567
+    Example: +905551234567 -> +***4567
     
     Args:
         phone: Phone number to mask
@@ -57,10 +57,13 @@ def mask_phone(phone: str) -> str:
     if not phone or len(phone) < 4:
         return "***"
     
-    # Keep country code and last 4 digits
+    # Keep country code (if starts with +) and last 4 digits
     if phone.startswith("+"):
-        return phone[:3] + "***" + phone[-4:]
+        # Find where country code ends (varies: +1, +44, +971, etc.)
+        # Safe approach: show only the + and last 4 digits
+        return "+" + "***" + phone[-4:]
     else:
+        # No country code - just show last 4 digits
         return "***" + phone[-4:]
 
 

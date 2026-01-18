@@ -84,9 +84,7 @@ class Database:
         await self._create_tables()
 
         # Initialize connection pool
-        # Note: WAL mode is a database-wide setting, so we don't need to set it
-        # for each connection, but we do it anyway for explicitness and to handle
-        # cases where the database might be shared across processes
+        # Note: WAL mode is a database-wide setting that persists across connections
         for _ in range(self.pool_size):
             conn = await aiosqlite.connect(self.db_path)
             conn.row_factory = aiosqlite.Row

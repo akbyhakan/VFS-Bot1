@@ -47,7 +47,7 @@ class TestMaskPhone:
 
     def test_mask_standard_phone_with_country_code(self):
         """Test masking phone with country code."""
-        assert mask_phone("+905551234567") == "+90***4567"
+        assert mask_phone("+905551234567") == "+***4567"
 
     def test_mask_phone_without_country_code(self):
         """Test masking phone without country code."""
@@ -63,7 +63,11 @@ class TestMaskPhone:
 
     def test_mask_international_phone(self):
         """Test masking international phone."""
-        assert mask_phone("+441234567890") == "+44***7890"
+        assert mask_phone("+441234567890") == "+***7890"
+        
+    def test_mask_single_digit_country_code(self):
+        """Test masking phone with single-digit country code (e.g., US +1)."""
+        assert mask_phone("+15551234567") == "+***4567"
 
 
 class TestMaskPassword:
@@ -98,7 +102,7 @@ class TestMaskSensitiveDict:
         data = {"name": "John", "phone": "+905551234567"}
         masked = mask_sensitive_dict(data)
         assert masked["name"] == "John"
-        assert masked["phone"] == "+90***4567"
+        assert masked["phone"] == "+***4567"
 
     def test_mask_nested_dict(self):
         """Test masking nested dictionaries."""
@@ -183,7 +187,7 @@ class TestSafeLogUser:
         }
         safe = safe_log_user(user)
         assert safe["email"] == "u***@e***.com"
-        assert safe["mobile_number"] == "+90***4567"
+        assert safe["mobile_number"] == "+***4567"
 
     def test_safe_log_user_preserves_non_sensitive(self):
         """Test that non-sensitive fields are preserved."""
