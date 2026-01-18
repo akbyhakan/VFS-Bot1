@@ -105,8 +105,8 @@ class RateLimitError(VFSBotError):
 class ConfigurationError(VFSBotError):
     """Configuration error occurred."""
 
-    def __init__(self, message: str = "Configuration error", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Configuration error", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
 class MissingEnvironmentVariableError(ConfigurationError):
@@ -124,8 +124,8 @@ class MissingEnvironmentVariableError(ConfigurationError):
 class AuthenticationError(VFSBotError):
     """Authentication failed."""
 
-    def __init__(self, message: str = "Authentication failed", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Authentication failed", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
 class InvalidCredentialsError(AuthenticationError):
@@ -230,8 +230,8 @@ class ValidationError(VFSBotError):
 class DatabaseError(VFSBotError):
     """Base class for database-related errors."""
     
-    def __init__(self, message: str = "Database error occurred", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Database error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
 class DatabaseConnectionError(DatabaseError):
@@ -263,8 +263,8 @@ class RecordNotFoundError(DatabaseError):
 class PaymentError(VFSBotError):
     """Base class for payment-related errors."""
     
-    def __init__(self, message: str = "Payment error occurred", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Payment error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
 class PaymentCardNotFoundError(PaymentError):
@@ -285,8 +285,8 @@ class PaymentProcessingError(PaymentError):
 class OTPError(VFSBotError):
     """Base class for OTP-related errors."""
     
-    def __init__(self, message: str = "OTP error occurred", recoverable: bool = True):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "OTP error occurred", recoverable: bool = True, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
 class OTPTimeoutError(OTPError):
