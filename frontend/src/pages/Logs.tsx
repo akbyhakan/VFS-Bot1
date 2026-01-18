@@ -71,7 +71,9 @@ export function Logs() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `logs-${new Date().toISOString().split('T')[0]}.txt`;
+    // Generate filename with current date in YYYY-MM-DD format
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.download = `logs-${dateStr}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

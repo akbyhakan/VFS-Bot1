@@ -195,13 +195,13 @@ export function Settings() {
                     value={formatCardNumber(formData.card_number)}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\s/g, '');
-                      if (/^\d*$/.test(value) && value.length <= 16) {
+                      if (/^\d*$/.test(value) && value.length <= 19) {
                         setFormData({ ...formData, card_number: value });
                         setFormErrors({ ...formErrors, cardNumber: undefined });
                       }
                     }}
                     placeholder="4111 1111 1111 1234"
-                    maxLength={19}
+                    maxLength={23}
                     autoComplete="cc-number"
                     inputMode="numeric"
                     className={`w-full px-3 py-2 border rounded bg-dark-800 text-white font-mono ${
@@ -252,9 +252,6 @@ export function Settings() {
                         formErrors.expiryYear ? 'border-red-500' : 'border-dark-600'
                       }`}
                     />
-                    {formErrors.expiryMonth && (
-                      <p className="text-red-500 text-xs mt-1 col-span-2">{formErrors.expiryMonth}</p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-sm text-dark-400 mb-1">CVV</label>
@@ -280,6 +277,11 @@ export function Settings() {
                       <p className="text-red-500 text-xs mt-1">{formErrors.cvv}</p>
                     )}
                   </div>
+                  {formErrors.expiryMonth && (
+                    <div className="col-span-2">
+                      <p className="text-red-500 text-xs mt-1">{formErrors.expiryMonth}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button

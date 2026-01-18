@@ -103,6 +103,7 @@ export function validateCardholderName(name: string): boolean {
  */
 export function formatCardNumber(cardNumber: string): string {
   const clean = cardNumber.replace(/\D/g, '');
+  if (!clean) return '';
   const groups = clean.match(/.{1,4}/g);
   return groups ? groups.join(' ') : clean;
 }

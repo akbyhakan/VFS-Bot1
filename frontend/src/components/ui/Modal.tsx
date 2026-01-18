@@ -69,13 +69,15 @@ export function Modal({
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
       
-      // Focus first focusable element
+      // Focus first focusable element after a short delay
+      // to ensure the modal is fully rendered and focusable
+      const FOCUS_DELAY_MS = 100;
       const timer = setTimeout(() => {
         const firstFocusable = modalRef.current?.querySelector(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         ) as HTMLElement;
         firstFocusable?.focus();
-      }, 100);
+      }, FOCUS_DELAY_MS);
 
       return () => {
         document.removeEventListener('keydown', handleEscape);
