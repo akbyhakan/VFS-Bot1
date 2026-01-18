@@ -75,7 +75,7 @@ class Database:
     """Database configuration."""
 
     DEFAULT_PATH = "vfs_bot.db"  # Default database path
-    POOL_SIZE = 5  # Connection pool size
+    POOL_SIZE = 10  # Connection pool size (unified with Defaults)
     TEST_PATH = "test.db"  # Test database path
     CONNECTION_TIMEOUT = 30.0  # Connection timeout in seconds
 
@@ -129,7 +129,7 @@ class Defaults:
     """Default configuration values."""
 
     API_TIMEOUT = 30  # API request timeout in seconds
-    DB_POOL_SIZE = 10  # Database connection pool size
+    DB_POOL_SIZE = Database.POOL_SIZE  # Database connection pool size (references Database.POOL_SIZE for consistency)
     RATE_LIMIT_REQUESTS = 60  # Maximum requests per time window
     RATE_LIMIT_WINDOW = 60  # Rate limit time window in seconds
     TOKEN_REFRESH_BUFFER_MINUTES = 5  # Token refresh buffer in minutes

@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
+# Allowed fields for personal_details table (SQL injection prevention)
+ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset({
+    'first_name', 'last_name', 'passport_number', 'passport_expiry',
+    'gender', 'mobile_code', 'mobile_number', 'email', 'nationality',
+    'date_of_birth', 'address_line1', 'address_line2', 'state', 'city', 'postcode'
+})
+
 
 def require_connection(func: F) -> F:
     """
@@ -767,11 +774,13 @@ class Database:
             updates.append("mobile_number = ?")
             params.append(mobile_number)
 
-        # Add other fields
+        # Add other fields - only allowed fields (SQL injection prevention)
         for field, value in other_fields.items():
-            if value is not None:
+            if field in ALLOWED_PERSONAL_DETAILS_FIELDS and value is not None:
                 updates.append(f"{field} = ?")
                 params.append(value)
+            elif value is not None:
+                logger.warning(f"Attempted to update disallowed field '{field}' in personal_details - ignored for security")
 
         if not updates:
             return True  # Nothing to update
@@ -1362,5 +1371,89 @@ class Database:
 
                 if deleted_count > 0:
                     logger.info(f"Cleaned up {deleted_count} old appointment requests")
+
+                return deleted_count
+
+    @require_connection
+    async def add_audit_log(
+        self,
+        action: str,
+        user_id: Optional[int] = None,
+        username: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        details: Optional[str] = None,
+        success: bool = True,
+    ) -> int:
+        """
+        Add an audit log entry.
+
+        Args:
+            action: Action performed (e.g., 'login', 'user_created', 'payment_initiated')
+            user_id: Optional user ID
+            username: Optional username
+            ip_address: Optional client IP address
+            user_agent: Optional client user agent
+            details: Optional JSON details
+            success: Whether the action was successful
+
+        Returns:
+            Audit log entry ID
+        """
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT INTO audit_log 
+                    (action, user_id, username, ip_address, user_agent, details, timestamp, success)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (action, user_id, username, ip_address, user_agent, details, timestamp, 1 if success else 0),
+                )
+                await conn.commit()
+                last_id = cursor.lastrowid
+                if last_id is None:
+                    raise RuntimeError("Failed to fetch lastrowid after insert")
+                logger.debug(f"Audit log entry added: {action}")
+                return int(last_id)
+
+    @require_connection
+    async def get_audit_logs(
+        self, 
+        limit: int = 100, 
+        action: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get audit log entries.
+
+        Args:
+            limit: Maximum number of entries to retrieve
+            action: Optional filter by action type
+            user_id: Optional filter by user ID
+
+        Returns:
+            List of audit log dictionaries
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                query = "SELECT * FROM audit_log WHERE 1=1"
+                params: List[Any] = []
+                
+                if action:
+                    query += " AND action = ?"
+                    params.append(action)
+                if user_id is not None:
+                    query += " AND user_id = ?"
+                    params.append(user_id)
+                
+                query += " ORDER BY created_at DESC LIMIT ?"
+                params.append(limit)
+                
+                await cursor.execute(query, params)
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
 
                 return deleted_count
