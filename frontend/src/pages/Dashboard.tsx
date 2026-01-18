@@ -3,11 +3,12 @@ import { LiveLogs } from '@/components/dashboard/LiveLogs';
 import { BotControls } from '@/components/dashboard/BotControls';
 import { useBotStore } from '@/store/botStore';
 import { useBotStatus } from '@/hooks/useApi';
-import { Target, Calendar, Users as UsersIcon, Clock } from 'lucide-react';
+import { Target, Calendar, Users as UsersIcon, Clock, RefreshCw } from 'lucide-react';
 import { formatNumber, formatRelativeTime } from '@/utils/helpers';
+import { Button } from '@/components/ui/Button';
 
 export function Dashboard() {
-  const { data: status } = useBotStatus();
+  const { data: status, refetch, isRefetching } = useBotStatus();
   const stats = useBotStore((state) => state.stats);
   const lastCheck = useBotStore((state) => state.last_check);
 
@@ -17,9 +18,19 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-dark-400">Bot performansını ve istatistikleri görüntüleyin</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="text-dark-400">Bot performansını ve istatistikleri görüntüleyin</p>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => refetch()}
+          disabled={isRefetching}
+          leftIcon={<RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />}
+        >
+          {isRefetching ? 'Yenileniyor...' : 'Yenile'}
+        </Button>
       </div>
 
       {/* Stats Grid */}

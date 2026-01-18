@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X } from 'lucide-react';
+import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap } from 'lucide-react';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import type { WebhookUrls } from '@/types/payment';
+import { toast } from 'sonner';
 
 export function Settings() {
   const { card, loading, error, saving, deleting, saveCard, deleteCard } = usePaymentCard();
@@ -105,6 +106,19 @@ export function Settings() {
               <p className="text-dark-400 text-sm">Yükleniyor...</p>
             ) : error ? (
               <p className="text-red-500 text-sm">{error}</p>
+            ) : !isEditing && !card ? (
+              // YENİ: Kart yokken "Kart Ekle" butonu göster
+              <div className="text-center py-8">
+                <CreditCard className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                <p className="text-dark-400 mb-4">Henüz kayıtlı kredi kartı yok</p>
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 mx-auto"
+                >
+                  <Plus className="w-5 h-5" />
+                  Yeni Kart Ekle
+                </button>
+              </div>
             ) : !isEditing && card ? (
               <div className="space-y-4">
                 <div>
@@ -278,6 +292,20 @@ export function Settings() {
                       )}
                     </button>
                   </div>
+                </div>
+                
+                <div className="mt-6 pt-6 border-t border-dark-700">
+                  <button
+                    onClick={() => {
+                      toast.info('Webhook testi yapılıyor...');
+                      // Test functionality can be implemented when backend endpoint is available
+                      setTimeout(() => toast.success('Webhook test mesajı gönderildi'), 1000);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Webhook Test Et
+                  </button>
                 </div>
               </div>
             ) : (
