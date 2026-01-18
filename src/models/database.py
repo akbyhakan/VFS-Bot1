@@ -1449,11 +1449,9 @@ class Database:
                     query += " AND user_id = ?"
                     params.append(user_id)
                 
-                query += " ORDER BY created_at DESC LIMIT ?"
+                query += " ORDER BY timestamp DESC LIMIT ?"
                 params.append(limit)
                 
                 await cursor.execute(query, params)
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
-
-                return deleted_count

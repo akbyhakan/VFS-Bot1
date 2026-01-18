@@ -65,7 +65,7 @@ templates = Jinja2Templates(directory=str(templates_dir))
 class ThreadSafeBotState:
     """Thread-safe wrapper for bot state."""
     
-    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _state: Dict[str, Any] = field(default_factory=lambda: {
         "running": False,
         "status": "stopped",
