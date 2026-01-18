@@ -4,10 +4,12 @@ import asyncio
 import gc
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Dict, Any, List, Set, Optional
 from datetime import datetime, timezone
 from collections import deque
+from dataclasses import dataclass, field
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -58,16 +60,43 @@ if static_dir.exists():
 
 templates = Jinja2Templates(directory=str(templates_dir))
 
-# Global state
-bot_state = {
-    "running": False,
-    "status": "stopped",
-    "last_check": None,
-    "slots_found": 0,
-    "appointments_booked": 0,
-    "active_users": 0,
-    "logs": deque(maxlen=500),  # Automatic size limit with deque
-}
+
+@dataclass
+class ThreadSafeBotState:
+    """Thread-safe wrapper for bot state."""
+    
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _state: Dict[str, Any] = field(default_factory=lambda: {
+        "running": False,
+        "status": "stopped",
+        "last_check": None,
+        "slots_found": 0,
+        "appointments_booked": 0,
+        "active_users": 0,
+        "logs": deque(maxlen=500),
+    })
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Thread-safe get."""
+        with self._lock:
+            return self._state.get(key, default)
+    
+    def set(self, key: str, value: Any) -> None:
+        """Thread-safe set."""
+        with self._lock:
+            self._state[key] = value
+    
+    def __getitem__(self, key: str) -> Any:
+        with self._lock:
+            return self._state[key]
+    
+    def __setitem__(self, key: str, value: Any) -> None:
+        with self._lock:
+            self._state[key] = value
+
+
+# Global state - thread-safe
+bot_state = ThreadSafeBotState()
 
 # Metrics storage
 metrics = {

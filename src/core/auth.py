@@ -69,13 +69,16 @@ def _get_jwt_settings() -> JWTSettings:
         raise ValueError(
             "API_SECRET_KEY environment variable must be set. "
             "Generate a secure random key with: "
-            "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
         )
-    if len(secret_key) < 32:
+    
+    # Minimum 64 characters for 256-bit security
+    MIN_SECRET_KEY_LENGTH = 64
+    if len(secret_key) < MIN_SECRET_KEY_LENGTH:
         raise ValueError(
-            "API_SECRET_KEY must be at least 32 characters for security. "
+            f"API_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters for security. "
             "Generate a secure random key with: "
-            "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
         )
 
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")

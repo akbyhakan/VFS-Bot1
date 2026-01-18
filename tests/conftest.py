@@ -6,7 +6,7 @@ import warnings
 from pathlib import Path
 
 # Test constants
-TEST_API_SECRET_KEY = "test-secret-key-for-testing-minimum-32-characters-long"
+TEST_API_SECRET_KEY = "test-secret-key-for-testing-minimum-64-characters-long-abcdef1234"
 
 # CRITICAL: Set environment variables BEFORE any src imports
 # These must be set before importing any modules that check for them at import time
@@ -154,7 +154,7 @@ def mock_notifier():
 def security_config():
     """Security-focused test configuration."""
     return {
-        "api_secret_key_min_length": 32,
+        "api_secret_key_min_length": 64,  # Updated from 32 to 64
         "encryption_key_required": True,
         "plaintext_password_allowed": False,
     }
