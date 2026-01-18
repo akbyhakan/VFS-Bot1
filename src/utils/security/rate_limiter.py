@@ -83,9 +83,9 @@ _limiter_lock = threading.Lock()
 def get_rate_limiter() -> RateLimiter:
     """
     Get global rate limiter instance (singleton) - thread-safe.
-    
+
     Uses double-checked locking pattern for efficiency.
-    
+
     Returns:
         RateLimiter instance
     """

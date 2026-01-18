@@ -114,7 +114,7 @@ def test_save_session_creates_directory():
 
 def test_save_session_error_handling():
     """Test session saving error handling."""
-    with patch("builtins.open", side_effect=Exception("Write error")):
+    with patch("tempfile.mkstemp", side_effect=Exception("Write error")):
         manager = SessionManager("test.json")
         manager.access_token = "test"
 
