@@ -43,6 +43,14 @@ def pytest_configure(config):
 
         os.environ["VFS_ENCRYPTION_KEY"] = secrets.token_urlsafe(32)
 
+    # Set API_KEY_SALT for security tests
+    if not os.getenv("API_KEY_SALT"):
+        import secrets
+        os.environ["API_KEY_SALT"] = secrets.token_urlsafe(32)
+
+    # Set ENV to development for tests
+    os.environ.setdefault("ENV", "development")
+
     # Suppress async mock warnings
     warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
     warnings.filterwarnings("ignore", category=RuntimeWarning)

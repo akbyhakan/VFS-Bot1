@@ -30,6 +30,7 @@ _shutdown_event = None
 
 def validate_environment():
     """Validate all required environment variables at startup."""
+    logger = logging.getLogger(__name__)
     env = os.getenv("ENV", "production").lower()
     
     # Always required
