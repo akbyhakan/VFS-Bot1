@@ -24,8 +24,20 @@ from src.core.monitoring import init_sentry
 from src.core.exceptions import ConfigurationError
 
 
-# Global shutdown event for coordinating graceful shutdown
-_shutdown_event = None
+# Global shutdown event for coordinating graceful shutdown - thread-safe singleton
+_shutdown_event: Optional[asyncio.Event] = None
+
+
+def get_shutdown_event() -> Optional[asyncio.Event]:
+    """Get shutdown event - singleton pattern."""
+    global _shutdown_event
+    return _shutdown_event
+
+
+def set_shutdown_event(event: asyncio.Event) -> None:
+    """Set shutdown event - singleton pattern."""
+    global _shutdown_event
+    _shutdown_event = event
 
 
 def validate_environment():
@@ -81,9 +93,9 @@ def setup_signal_handlers():
 
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
-        global _shutdown_event
-        if _shutdown_event and not _shutdown_event.is_set():
-            _shutdown_event.set()
+        shutdown_event = get_shutdown_event()
+        if shutdown_event and not shutdown_event.is_set():
+            shutdown_event.set()
             logger.info("Shutdown event set, waiting for active operations to complete...")
         else:
             logger.warning("Shutdown already in progress or no active event, forcing exit...")
@@ -101,13 +113,12 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         config: Configuration dictionary
         db: Optional shared database instance
     """
-    global _shutdown_event
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
 
     # Create shutdown event
     shutdown_event = asyncio.Event()
-    _shutdown_event = shutdown_event
+    set_shutdown_event(shutdown_event)
 
     # Initialize database if not provided
     db_owned = db is None
@@ -147,6 +158,15 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         # Wait for graceful shutdown with timeout
         from src.constants import Defaults
         await asyncio.sleep(Defaults.GRACEFUL_SHUTDOWN_TIMEOUT)
+        
+        # Cleanup OTP service
+        try:
+            from src.services.otp_webhook import get_otp_service
+            otp_service = get_otp_service()
+            await otp_service.stop_cleanup_scheduler()
+            logger.info("OTP service cleanup completed")
+        except Exception as e:
+            logger.error(f"Error cleaning up OTP service: {e}")
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
@@ -155,7 +175,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         if db_owned and db:
             await db.close()
         # Clear global shutdown event
-        _shutdown_event = None
+        set_shutdown_event(None)
 
 
 async def run_web_mode(
