@@ -77,19 +77,19 @@ class Database:
         self.conn = await aiosqlite.connect(self.db_path)
         self.conn.row_factory = aiosqlite.Row
         
-        # Enable WAL mode for better concurrency
+        # Enable WAL mode for better concurrency (database-wide setting)
         await self.conn.execute("PRAGMA journal_mode=WAL")
         await self.conn.commit()
         
         await self._create_tables()
 
         # Initialize connection pool
+        # Note: WAL mode is a database-wide setting, so we don't need to set it
+        # for each connection, but we do it anyway for explicitness and to handle
+        # cases where the database might be shared across processes
         for _ in range(self.pool_size):
             conn = await aiosqlite.connect(self.db_path)
             conn.row_factory = aiosqlite.Row
-            # Enable WAL mode for each pooled connection
-            await conn.execute("PRAGMA journal_mode=WAL")
-            await conn.commit()
             self._pool.append(conn)
             await self._available_connections.put(conn)
 

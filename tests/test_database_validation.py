@@ -7,7 +7,17 @@ from cryptography.fernet import Fernet
 
 @pytest.fixture(scope="function")
 def unique_encryption_key(monkeypatch):
-    """Set up unique encryption key for each test."""
+    """
+    Set up unique encryption key for each test and reset global encryption instance.
+    
+    This fixture ensures test isolation by:
+    1. Generating a fresh Fernet encryption key for each test
+    2. Setting it in the ENCRYPTION_KEY environment variable
+    3. Resetting the global encryption instance before and after the test
+    
+    Yields:
+        str: The generated encryption key
+    """
     from src.utils.encryption import reset_encryption
     
     key = Fernet.generate_key().decode()
