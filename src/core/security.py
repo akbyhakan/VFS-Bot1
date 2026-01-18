@@ -4,10 +4,13 @@ import secrets
 import hashlib
 import hmac
 import os
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -21,15 +24,32 @@ _API_KEY_SALT: Optional[bytes] = None
 
 
 def _get_api_key_salt() -> bytes:
-    """Get or generate API key salt."""
+    """Get API key salt from environment variable - REQUIRED in production."""
     global _API_KEY_SALT
     if _API_KEY_SALT is None:
         salt_env = os.getenv("API_KEY_SALT")
-        if salt_env:
-            _API_KEY_SALT = salt_env.encode()
+        env = os.getenv("ENV", "production").lower()
+        
+        if not salt_env:
+            if env == "production":
+                raise ValueError(
+                    "API_KEY_SALT environment variable MUST be set in production. "
+                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+                )
+            else:
+                # Development only - log warning
+                logger.warning(
+                    "⚠️ SECURITY WARNING: API_KEY_SALT not set. "
+                    "Using insecure default. This is only acceptable in development!"
+                )
+                _API_KEY_SALT = b"dev-only-insecure-salt-do-not-use-in-prod"
         else:
-            # Default salt for backward compatibility - should be overridden in production
-            _API_KEY_SALT = b"vfs-bot-default-salt-change-in-production"
+            if len(salt_env) < 32:
+                raise ValueError(
+                    f"API_KEY_SALT must be at least 32 characters (current: {len(salt_env)}). "
+                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+                )
+            _API_KEY_SALT = salt_env.encode()
     return _API_KEY_SALT
 
 

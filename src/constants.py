@@ -50,6 +50,14 @@ class RateLimits:
     CONCURRENT_USERS = 5  # Maximum concurrent user processing
 
 
+class CaptchaConfig:
+    """Captcha configuration."""
+    
+    MANUAL_TIMEOUT = 120  # Timeout for manual captcha solving (seconds)
+    TWOCAPTCHA_TIMEOUT = 180  # Timeout for 2Captcha API (seconds)
+    TURNSTILE_TIMEOUT = 120  # Timeout for Cloudflare Turnstile (seconds)
+
+
 class CircuitBreaker:
     """Circuit breaker configuration."""
 

@@ -3,11 +3,26 @@
 import logging
 import json
 import sys
+import contextvars
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from types import FrameType
 from pathlib import Path
 from loguru import logger
+
+
+# Context variable for request correlation ID
+correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    'correlation_id', default=None
+)
+
+
+class CorrelationIdFilter(logging.Filter):
+    """Add correlation ID to log records."""
+    
+    def filter(self, record):
+        record.correlation_id = correlation_id_ctx.get() or "N/A"
+        return True
 
 
 class JSONFormatter(logging.Formatter):
@@ -24,6 +39,10 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
+
+        # Add correlation ID if available
+        if hasattr(record, "correlation_id"):
+            log_data["correlation_id"] = record.correlation_id
 
         # Add exception info if present
         if record.exc_info:
