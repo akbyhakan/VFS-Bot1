@@ -1,22 +1,33 @@
 """Custom exception classes for VFS Bot."""
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class VFSBotError(Exception):
     """Base exception for VFS Bot."""
 
-    def __init__(self, message: str, recoverable: bool = True):
+    def __init__(self, message: str, recoverable: bool = True, details: Optional[Dict[str, Any]] = None):
         """
         Initialize VFS Bot error.
 
         Args:
             message: Error message
             recoverable: Whether the error is recoverable with retry
+            details: Additional error details
         """
         self.message = message
         self.recoverable = recoverable
+        self.details = details or {}
         super().__init__(self.message)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert exception to dictionary."""
+        return {
+            "error": self.__class__.__name__,
+            "message": self.message,
+            "recoverable": self.recoverable,
+            "details": self.details
+        }
 
 
 class LoginError(VFSBotError):
@@ -90,20 +101,59 @@ class RateLimitError(VFSBotError):
         super().__init__(message, recoverable=True)
 
 
+# Configuration Errors
 class ConfigurationError(VFSBotError):
     """Configuration error occurred."""
 
-    def __init__(self, message: str = "Configuration error", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Configuration error", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
+class MissingEnvironmentVariableError(ConfigurationError):
+    """Raised when a required environment variable is missing."""
+    
+    def __init__(self, variable_name: str):
+        super().__init__(
+            f"Required environment variable '{variable_name}' is not set",
+            recoverable=False,
+            details={"variable": variable_name}
+        )
+
+
+# Authentication Errors
 class AuthenticationError(VFSBotError):
     """Authentication failed."""
 
-    def __init__(self, message: str = "Authentication failed", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(self, message: str = "Authentication failed", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
 
 
+class InvalidCredentialsError(AuthenticationError):
+    """Raised when credentials are invalid."""
+    
+    def __init__(self):
+        super().__init__("Invalid username or password", recoverable=False)
+
+
+class TokenExpiredError(AuthenticationError):
+    """Raised when JWT token has expired."""
+    
+    def __init__(self):
+        super().__init__("Authentication token has expired", recoverable=True)
+
+
+class InsufficientPermissionsError(AuthenticationError):
+    """Raised when user lacks required permissions."""
+    
+    def __init__(self, required_permission: str):
+        super().__init__(
+            f"Insufficient permissions. Required: {required_permission}",
+            recoverable=False,
+            details={"required_permission": required_permission}
+        )
+
+
+# VFS API Errors
 class VFSApiError(VFSBotError):
     """Base class for VFS API-related errors."""
 
@@ -151,6 +201,14 @@ class VFSSessionExpiredError(VFSApiError):
         super().__init__(message, recoverable)
 
 
+class CaptchaRequiredError(VFSApiError):
+    """Raised when captcha solving is required."""
+    
+    def __init__(self, message: str = "Captcha solving is required"):
+        super().__init__(message, recoverable=True)
+
+
+# Validation Errors
 class ValidationError(VFSBotError):
     """Input validation error."""
 
@@ -165,4 +223,85 @@ class ValidationError(VFSBotError):
         self.field = field
         if field:
             message = f"Validation error for field '{field}': {message}"
-        super().__init__(message, recoverable=False)
+        super().__init__(message, recoverable=False, details={"field": field} if field else {})
+
+
+# Database Errors
+class DatabaseError(VFSBotError):
+    """Base class for database-related errors."""
+    
+    def __init__(self, message: str = "Database error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
+
+
+class DatabaseConnectionError(DatabaseError):
+    """Raised when database connection fails."""
+    
+    def __init__(self, message: str = "Failed to connect to database"):
+        super().__init__(message, recoverable=True)
+
+
+class DatabaseNotConnectedError(DatabaseError):
+    """Raised when operation attempted without connection."""
+    
+    def __init__(self):
+        super().__init__("Database connection is not established. Call connect() first.", recoverable=False)
+
+
+class RecordNotFoundError(DatabaseError):
+    """Raised when a database record is not found."""
+    
+    def __init__(self, resource_type: str, resource_id: Any):
+        super().__init__(
+            f"{resource_type} with id '{resource_id}' not found",
+            recoverable=False,
+            details={"resource_type": resource_type, "resource_id": resource_id}
+        )
+
+
+# Payment Errors
+class PaymentError(VFSBotError):
+    """Base class for payment-related errors."""
+    
+    def __init__(self, message: str = "Payment error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
+
+
+class PaymentCardNotFoundError(PaymentError):
+    """Raised when no payment card is saved."""
+    
+    def __init__(self):
+        super().__init__("No payment card found. Please save a card first.", recoverable=False)
+
+
+class PaymentProcessingError(PaymentError):
+    """Raised when payment processing fails."""
+    
+    def __init__(self, message: str = "Payment processing failed"):
+        super().__init__(message, recoverable=True)
+
+
+# OTP Errors
+class OTPError(VFSBotError):
+    """Base class for OTP-related errors."""
+    
+    def __init__(self, message: str = "OTP error occurred", recoverable: bool = True, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable, details)
+
+
+class OTPTimeoutError(OTPError):
+    """Raised when OTP is not received within timeout."""
+    
+    def __init__(self, timeout_seconds: int):
+        super().__init__(
+            f"OTP not received within {timeout_seconds} seconds",
+            recoverable=True,
+            details={"timeout_seconds": timeout_seconds}
+        )
+
+
+class OTPInvalidError(OTPError):
+    """Raised when OTP verification fails."""
+    
+    def __init__(self, message: str = "OTP verification failed"):
+        super().__init__(message, recoverable=True)
