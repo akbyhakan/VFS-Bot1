@@ -188,43 +188,7 @@ class CaptchaSolver:
             logger.error(f"Manual solving error: {e}")
             return None
 
-    async def solve_audio_captcha(self, audio_url: str) -> Optional[str]:
-        """
-        Solve audio captcha using speech recognition.
 
-        Args:
-            audio_url: URL to audio file
-
-        Returns:
-            Recognized text
-        """
-        try:
-            import speech_recognition as sr
-            import requests
-            from pydub import AudioSegment
-            import io
-
-            # Download audio
-            response = requests.get(audio_url)
-            audio_data = io.BytesIO(response.content)
-
-            # Convert to WAV if needed
-            audio = AudioSegment.from_file(audio_data)
-            wav_data = io.BytesIO()
-            audio.export(wav_data, format="wav")
-            wav_data.seek(0)
-
-            # Recognize speech
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(wav_data) as source:
-                audio_listened = recognizer.record(source)
-                text_result: Any = recognizer.recognize_google(audio_listened)
-                text: str = text_result if isinstance(text_result, str) else ""
-                logger.info(f"Audio captcha solved: {text}")
-                return text if text else None
-        except Exception as e:
-            logger.error(f"Audio captcha error: {e}")
-            return None
 
     async def inject_captcha_solution(self, page: Page, token: str) -> bool:
         """

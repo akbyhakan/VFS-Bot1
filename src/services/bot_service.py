@@ -411,7 +411,10 @@ class VFSBot:
         Args:
             user: User dictionary from database
         """
-        logger.info(f"Processing user: {user['email']}")
+        from ..utils.masking import mask_email
+        
+        masked_email = mask_email(user['email'])
+        logger.info(f"Processing user: {masked_email}")
 
         if self.context is None:
             logger.error("Browser context is not initialized")
@@ -434,7 +437,7 @@ class VFSBot:
 
             # Login
             if not await self.login_vfs(page, user["email"], user["password"]):
-                logger.error(f"Login failed for {user['email']}")
+                logger.error(f"Login failed for {masked_email}")
                 return
 
             # Check slots
@@ -469,7 +472,7 @@ class VFSBot:
                                 )
                     break
         except Exception as e:
-            logger.error(f"Error processing user {user['email']}: {e}")
+            logger.error(f"Error processing user {masked_email}: {e}")
             if self.config["bot"].get("screenshot_on_error", True):
                 await self.take_screenshot(page, f"error_{user['id']}_{datetime.now().timestamp()}")
         finally:
