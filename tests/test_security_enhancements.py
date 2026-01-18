@@ -214,6 +214,7 @@ class TestEnvironmentValidation:
         
         monkeypatch.setenv("ENV", "production")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+        # token_urlsafe(48) generates 64 chars (48 bytes * 4/3 for base64 encoding)
         monkeypatch.setenv("API_SECRET_KEY", secrets.token_urlsafe(48))
         monkeypatch.setenv("API_KEY_SALT", secrets.token_urlsafe(32))
         monkeypatch.setenv("VFS_ENCRYPTION_KEY", secrets.token_urlsafe(32))
