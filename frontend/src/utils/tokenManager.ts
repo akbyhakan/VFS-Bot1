@@ -25,14 +25,16 @@ class TokenManager {
         expiresAt: expiresInMs ? Date.now() + expiresInMs : undefined,
       };
       localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(tokenData));
+      sessionStorage.removeItem(AUTH_TOKEN_KEY); // Clear sessionStorage
     } else {
-      // Clear localStorage if not remembering
-      localStorage.removeItem(AUTH_TOKEN_KEY);
+      // Use sessionStorage for session-only tokens (more secure)
+      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.removeItem(AUTH_TOKEN_KEY); // Clear localStorage
     }
   }
 
   /**
-   * Get token from memory or localStorage
+   * Get token from memory or localStorage/sessionStorage
    */
   getToken(): string | null {
     // First check memory
@@ -40,37 +42,32 @@ class TokenManager {
       return this.memoryToken;
     }
 
-    // Then check localStorage
+    // Then check localStorage (remember me)
     const stored = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!stored) {
-      return null;
-    }
-
-    try {
-      const tokenData: TokenData = JSON.parse(stored);
-      
-      // Validate structure
-      if (!tokenData || typeof tokenData !== 'object' || typeof tokenData.token !== 'string') {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        return null;
-      }
-      
-      // Check expiration
-      if (tokenData.expiresAt) {
-        if (typeof tokenData.expiresAt !== 'number' || Date.now() > tokenData.expiresAt) {
-          this.clearToken();
-          return null;
+    if (stored) {
+      try {
+        const tokenData: TokenData = JSON.parse(stored);
+        if (tokenData?.token && typeof tokenData.token === 'string') {
+          if (tokenData.expiresAt && Date.now() > tokenData.expiresAt) {
+            this.clearToken();
+            return null;
+          }
+          this.memoryToken = tokenData.token;
+          return tokenData.token;
         }
+      } catch {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
       }
-
-      // Restore to memory
-      this.memoryToken = tokenData.token;
-      return tokenData.token;
-    } catch {
-      // Invalid format, clear it
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      return null;
     }
+
+    // Finally check sessionStorage (session-only)
+    const sessionToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
+    if (sessionToken) {
+      this.memoryToken = sessionToken;
+      return sessionToken;
+    }
+
+    return null;
   }
 
   /**
@@ -86,6 +83,7 @@ class TokenManager {
   clearToken(): void {
     this.memoryToken = null;
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
   }
 
   /**

@@ -28,59 +28,61 @@ export function Table<T>({
   onRowClick,
 }: TableProps<T>) {
   return (
-    <div className={cn('overflow-x-auto', className)}>
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-dark-700">
-            {columns.map((column, index) => (
-              <th
-                key={`header-${index}`}
-                className={cn(
-                  'px-4 py-3 text-left text-sm font-medium text-dark-300',
-                  column.className
-                )}
-              >
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.length === 0 ? (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="px-4 py-8 text-center text-dark-400"
-              >
-                {emptyMessage}
-              </td>
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="inline-block min-w-full align-middle">
+        <table className="min-w-full divide-y divide-dark-700">
+          <thead>
+            <tr className="border-b border-dark-700">
+              {columns.map((column, index) => (
+                <th
+                  key={`header-${index}`}
+                  className={cn(
+                    'px-4 py-3 text-left text-sm font-medium text-dark-300',
+                    column.className
+                  )}
+                >
+                  {column.header}
+                </th>
+              ))}
             </tr>
-          ) : (
-            data.map((item) => (
-              <tr
-                key={keyExtractor(item)}
-                className={cn(
-                  'border-b border-dark-800 transition-colors',
-                  hoverable && 'hover:bg-dark-800/50',
-                  onRowClick && 'cursor-pointer'
-                )}
-                onClick={() => onRowClick?.(item)}
-              >
-                {columns.map((column, index) => (
-                  <td
-                    key={`cell-${keyExtractor(item)}-${index}`}
-                    className={cn('px-4 py-3 text-sm', column.className)}
-                  >
-                    {column.render
-                      ? column.render(item)
-                      : String(item[column.key as keyof T] ?? '')}
-                  </td>
-                ))}
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-8 text-center text-dark-400"
+                >
+                  {emptyMessage}
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              data.map((item) => (
+                <tr
+                  key={keyExtractor(item)}
+                  className={cn(
+                    'border-b border-dark-800 transition-colors',
+                    hoverable && 'hover:bg-dark-800/50',
+                    onRowClick && 'cursor-pointer'
+                  )}
+                  onClick={() => onRowClick?.(item)}
+                >
+                  {columns.map((column, index) => (
+                    <td
+                      key={`cell-${keyExtractor(item)}-${index}`}
+                      className={cn('px-4 py-3 text-sm', column.className)}
+                    >
+                      {column.render
+                        ? column.render(item)
+                        : String(item[column.key as keyof T] ?? '')}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
