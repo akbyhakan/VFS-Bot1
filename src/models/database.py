@@ -263,7 +263,6 @@ class Database:
                     card_number_encrypted TEXT NOT NULL,
                     expiry_month TEXT NOT NULL,
                     expiry_year TEXT NOT NULL,
-                    cvv_encrypted TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -729,11 +728,14 @@ class Database:
     @require_connection
     async def save_payment_card(self, card_data: Dict[str, str]) -> int:
         """
-        Save or update payment card (only one card allowed).
+        Save or update payment card - PCI-DSS compliant (CVV NOT stored).
+
+        IMPORTANT: CVV is NOT stored per PCI-DSS requirements.
+        CVV must be re-entered for each payment transaction.
 
         Args:
             card_data: Dictionary containing card_holder_name, card_number,
-                      expiry_month, expiry_year, cvv
+                      expiry_month, expiry_year
 
         Returns:
             Card ID
@@ -741,14 +743,13 @@ class Database:
         Raises:
             ValueError: If card data is invalid
         """
-        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year", "cvv"]
+        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
         for field in required_fields:
             if field not in card_data:
                 raise ValueError(f"Missing required field: {field}")
 
-        # Encrypt sensitive data
+        # Encrypt sensitive data (card number only - CVV is NEVER stored)
         card_number_encrypted = encrypt_password(card_data["card_number"])
-        cvv_encrypted = encrypt_password(card_data["cvv"])
 
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
@@ -765,7 +766,6 @@ class Database:
                             card_number_encrypted = ?,
                             expiry_month = ?,
                             expiry_year = ?,
-                            cvv_encrypted = ?,
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
@@ -774,7 +774,6 @@ class Database:
                             card_number_encrypted,
                             card_data["expiry_month"],
                             card_data["expiry_year"],
-                            cvv_encrypted,
                             existing["id"],
                         ),
                     )
@@ -787,15 +786,14 @@ class Database:
                         """
                         INSERT INTO payment_card
                         (card_holder_name, card_number_encrypted, expiry_month,
-                         expiry_year, cvv_encrypted)
-                        VALUES (?, ?, ?, ?, ?)
+                         expiry_year)
+                        VALUES (?, ?, ?, ?)
                         """,
                         (
                             card_data["card_holder_name"],
                             card_number_encrypted,
                             card_data["expiry_month"],
                             card_data["expiry_year"],
-                            cvv_encrypted,
                         ),
                     )
                     await conn.commit()
@@ -808,10 +806,13 @@ class Database:
     @require_connection
     async def get_payment_card(self) -> Optional[Dict[str, Any]]:
         """
-        Get the saved payment card with decrypted data.
+        Get the saved payment card with decrypted card number.
+
+        IMPORTANT: CVV is NOT returned (PCI-DSS compliant).
+        CVV must be requested separately for each transaction.
 
         Returns:
-            Card dictionary with decrypted data or None if no card exists
+            Card dictionary with decrypted card number or None if no card exists
         """
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
@@ -823,17 +824,15 @@ class Database:
 
                 card = dict(row)
 
-                # Decrypt sensitive data
+                # Decrypt card number
                 try:
                     card["card_number"] = decrypt_password(card["card_number_encrypted"])
-                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
                 except Exception as e:
                     logger.error(f"Failed to decrypt card data: {e}")
                     raise ValueError("Failed to decrypt card data")
 
-                # Remove encrypted fields from response
+                # Remove encrypted field from response
                 del card["card_number_encrypted"]
-                del card["cvv_encrypted"]
 
                 return card
 
@@ -841,6 +840,8 @@ class Database:
     async def get_payment_card_masked(self) -> Optional[Dict[str, Any]]:
         """
         Get the saved payment card with masked card number (for frontend display).
+
+        IMPORTANT: CVV is NOT returned (PCI-DSS compliant).
 
         Returns:
             Card dictionary with masked card number or None if no card exists
@@ -864,9 +865,8 @@ class Database:
                     logger.error(f"Failed to decrypt card number: {e}")
                     card["card_number_masked"] = "**** **** **** ****"
 
-                # Remove encrypted and sensitive fields
+                # Remove encrypted field
                 del card["card_number_encrypted"]
-                del card["cvv_encrypted"]
 
                 return card
 
