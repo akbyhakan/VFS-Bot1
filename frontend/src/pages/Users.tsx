@@ -6,6 +6,8 @@ import { Table } from '@/components/ui/Table';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { Plus, Pencil, Trash2, Power } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +19,8 @@ import { cn, formatDate } from '@/utils/helpers';
 export function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
   const { data: users, isLoading } = useUsers();
   const createUser = useCreateUser();
@@ -75,11 +79,19 @@ export function Users() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
-    
+  const handleDelete = async (user: User) => {
+    const confirmed = await confirm({
+      title: 'Kullanıcıyı Sil',
+      message: `"${user.first_name} ${user.last_name}" kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      confirmText: 'Sil',
+      cancelText: 'İptal',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
     try {
-      await deleteUser.mutateAsync(id);
+      await deleteUser.mutateAsync(user.id);
       toast.success('Kullanıcı silindi');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Silme başarısız');
@@ -154,24 +166,27 @@ export function Users() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleToggleStatus(user)}
-                      className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                      className="text-yellow-400 hover:text-yellow-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      aria-label={user.is_active ? `${user.first_name} ${user.last_name} kullanıcısını pasifleştir` : `${user.first_name} ${user.last_name} kullanıcısını aktifleştir`}
                       title={user.is_active ? 'Pasifleştir' : 'Aktifleştir'}
                     >
-                      <Power className="w-4 h-4" />
+                      <Power className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => openEditModal(user)}
-                      className="text-blue-400 hover:text-blue-300 transition-colors"
+                      className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      aria-label={`${user.first_name} ${user.last_name} kullanıcısını düzenle`}
                       title="Düzenle"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      onClick={() => handleDelete(user.id)}
-                      className="text-red-400 hover:text-red-300 transition-colors"
+                      onClick={() => handleDelete(user)}
+                      className="text-red-400 hover:text-red-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                      aria-label={`${user.first_name} ${user.last_name} kullanıcısını sil`}
                       title="Sil"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                 ),
@@ -225,6 +240,21 @@ export function Users() {
           </div>
         </form>
       </Modal>
+
+      {/* Confirm Dialog */}
+      {confirmOptions && (
+        <ConfirmDialog
+          isOpen={isConfirmOpen}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+          title={confirmOptions.title}
+          message={confirmOptions.message}
+          confirmText={confirmOptions.confirmText}
+          cancelText={confirmOptions.cancelText}
+          variant={confirmOptions.variant}
+          isLoading={deleteUser.isPending}
+        />
+      )}
     </div>
   );
 }

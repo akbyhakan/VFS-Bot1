@@ -10,6 +10,7 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { SkipLink } from '@/components/common/SkipLink';
 import { Login } from '@/pages/Login';
 import { ROUTES } from '@/utils/constants';
+import { handleError } from '@/utils/errorHandler';
 import '@/styles/globals.css';
 
 // Lazy load pages for code splitting
@@ -24,9 +25,25 @@ const NotFound = lazy(() => import('@/pages/NotFound'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Don't retry on 401/403 errors
+        // Check both error message and response status if available
+        const errorMessage = error instanceof Error ? error.message : '';
+        const isAuthError = errorMessage.includes('401') || errorMessage.includes('403');
+        
+        if (isAuthError) {
+          return false;
+        }
+        return failureCount < 2;
+      },
       refetchOnWindowFocus: false,
-      staleTime: 5000,
+      staleTime: 30000, // 30 seconds default
+    },
+    mutations: {
+      onError: (error) => {
+        // Global mutation error handler
+        handleError(error, { showToast: true });
+      },
     },
   },
 });

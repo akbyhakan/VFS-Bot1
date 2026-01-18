@@ -214,11 +214,15 @@ export default function AppointmentRequest() {
 
               {/* Kişi Sayısı */}
               <div>
-                <label className="block text-sm font-medium mb-2">Kişi Sayısı</label>
+                <label htmlFor="person-count" className="block text-sm font-medium mb-2">
+                  Kişi Sayısı
+                </label>
                 <select
+                  id="person-count"
                   value={personCount}
                   onChange={(e) => handlePersonCountChange(Number(e.target.value))}
                   className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white"
+                  aria-describedby="person-count-hint"
                 >
                   {[1, 2, 3, 4, 5, 6].map((num) => (
                     <option key={num} value={num}>
@@ -226,21 +230,28 @@ export default function AppointmentRequest() {
                     </option>
                   ))}
                 </select>
+                <span id="person-count-hint" className="sr-only">
+                  Randevu için kişi sayısını seçin
+                </span>
               </div>
 
               {/* Hedef Ülke */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <Globe className="inline h-4 w-4 mr-1" />
+                <label htmlFor="target-country" className="block text-sm font-medium mb-2">
+                  <Globe className="inline h-4 w-4 mr-1" aria-hidden="true" />
                   Hedef Ülke
                 </label>
                 <select
+                  id="target-country"
                   value={selectedCountry}
                   onChange={(e) => {
                     setSelectedCountry(e.target.value);
                     setSelectedCentres([]);
                   }}
                   className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white"
+                  aria-required="true"
+                  aria-invalid={!!errors.country}
+                  aria-describedby={errors.country ? 'country-error' : undefined}
                 >
                   <option value="">Ülke Seçin</option>
                   {countries?.map((country) => (
@@ -249,7 +260,11 @@ export default function AppointmentRequest() {
                     </option>
                   ))}
                 </select>
-                {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+                {errors.country && (
+                  <p id="country-error" className="text-red-500 text-sm mt-1" role="alert">
+                    {errors.country}
+                  </p>
+                )}
               </div>
 
               {/* Merkezler */}
