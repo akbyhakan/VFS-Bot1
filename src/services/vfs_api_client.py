@@ -1,6 +1,7 @@
 """VFS Global Direct API Client for Turkey."""
 
 import base64
+import hashlib
 import logging
 import os
 import secrets
@@ -86,6 +87,14 @@ class VFSPasswordEncryption:
                 f"VFS_ENCRYPTION_KEY must be at least 32 bytes (current: {len(key_bytes)}). "
                 "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
+
+        # Warn and derive key if longer than 32 bytes
+        if len(key_bytes) > 32:
+            logger.warning(
+                f"VFS_ENCRYPTION_KEY is {len(key_bytes)} bytes, "
+                f"deriving 32-byte key using SHA-256 for consistency"
+            )
+            return hashlib.sha256(key_bytes).digest()
 
         # Use first 32 bytes for AES-256
         return key_bytes[:32]

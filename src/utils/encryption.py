@@ -102,7 +102,7 @@ class PasswordEncryption:
 
 # Global instance
 _encryption_instance: Optional[PasswordEncryption] = None
-_lock = threading.Lock()
+_encryption_lock = threading.Lock()
 
 
 def reset_encryption() -> None:
@@ -111,7 +111,7 @@ def reset_encryption() -> None:
     Thread-safe implementation.
     """
     global _encryption_instance
-    with _lock:
+    with _encryption_lock:
         _encryption_instance = None
         logger.info("Encryption instance reset")
 
@@ -127,17 +127,16 @@ def get_encryption() -> PasswordEncryption:
     """
     global _encryption_instance
 
+    current_key = os.getenv("ENCRYPTION_KEY")
+
     # First check without lock (fast path)
     if _encryption_instance is not None:
-        current_key = os.getenv("ENCRYPTION_KEY")
         if current_key and _encryption_instance._key == current_key:
             return _encryption_instance
 
     # Acquire lock for initialization
-    with _lock:
+    with _encryption_lock:
         # Double-check after acquiring lock
-        current_key = os.getenv("ENCRYPTION_KEY")
-
         if _encryption_instance is None:
             _encryption_instance = PasswordEncryption()
         elif current_key is not None and _encryption_instance._key != current_key:

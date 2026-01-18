@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import stat
+import tempfile
 import time
 from pathlib import Path
 from typing import Callable, Dict, Optional
@@ -83,14 +84,29 @@ class SessionManager:
                 "token_expiry": self.token_expiry,
             }
 
-            with open(self.session_file, "w") as f:
-                json.dump(data, f, indent=2)
-
-            # Set secure file permissions (0600 - owner read/write only)
-            os.chmod(self.session_file, stat.S_IRUSR | stat.S_IWUSR)
-
-            logger.info("Session saved securely to file")
-            return True
+            # Atomic write with secure permissions from start
+            fd, temp_path = tempfile.mkstemp(
+                dir=self.session_file.parent, text=True, prefix=".session_"
+            )
+            try:
+                # Set secure permissions (0600) before writing data
+                os.fchmod(fd, stat.S_IRUSR | stat.S_IWUSR)
+                with os.fdopen(fd, "w") as f:
+                    json.dump(data, f, indent=2)
+                # Atomically replace the old file
+                os.rename(temp_path, self.session_file)
+                logger.info("Session saved securely to file")
+                return True
+            except Exception as e:
+                # Close fd if it's still open (fdopen takes ownership normally)
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass  # fd was already closed by fdopen
+                logger.error(f"Failed to save session: {e}")
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                return False
 
         except Exception as e:
             logger.error(f"Error saving session: {e}")
