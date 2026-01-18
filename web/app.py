@@ -1115,11 +1115,26 @@ async def toggle_user_status(
         if not user_updated:
             raise HTTPException(status_code=404, detail="User not found")
 
-        users = await db.get_all_users_with_details()
-        updated_user = next((u for u in users if u["id"] == user_id), None)
-
-        if not updated_user:
-            raise HTTPException(status_code=404, detail="User not found after update")
+        # Efficiently fetch just the updated user with details
+        async with db.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT 
+                        u.id, u.email, u.centre as center_name, 
+                        u.category as visa_category, u.subcategory as visa_subcategory,
+                        u.active as is_active, u.created_at, u.updated_at,
+                        p.first_name, p.last_name, p.mobile_number as phone
+                    FROM users u
+                    LEFT JOIN personal_details p ON u.id = p.user_id
+                    WHERE u.id = ?
+                """,
+                    (user_id,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="User not found after update")
+                updated_user = dict(row)
 
         logger.info(
             f"User status toggled: {updated_user['email']} -> {status_update['is_active']} "

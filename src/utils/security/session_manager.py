@@ -98,6 +98,11 @@ class SessionManager:
                 logger.info("Session saved securely to file")
                 return True
             except Exception as e:
+                # Close fd if it's still open (fdopen takes ownership normally)
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass  # fd was already closed by fdopen
                 logger.error(f"Failed to save session: {e}")
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
