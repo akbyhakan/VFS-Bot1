@@ -107,8 +107,7 @@ class Limits:
 
     MAX_LOG_ENTRIES = 500  # Maximum log entries to keep
     MAX_ERRORS_IN_MEMORY = 100  # Maximum errors to keep in memory
-    DB_POOL_SIZE = 5  # Database connection pool size
-    DB_CONNECTION_TIMEOUT = 30.0  # Database connection timeout in seconds
+    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT  # Database connection timeout (reference)
 
 
 class Delays:

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from src.utils.encryption import encrypt_password, decrypt_password
 from src.utils.validators import validate_email, validate_phone
-from src.core.exceptions import ValidationError
+from src.core.exceptions import ValidationError, DatabaseNotConnectedError
 from src.constants import Defaults
 
 logger = logging.getLogger(__name__)
@@ -37,13 +37,13 @@ def require_connection(func: F) -> F:
         Wrapped function that checks for connection
 
     Raises:
-        RuntimeError: If database connection is not established
+        DatabaseNotConnectedError: If database connection is not established
     """
 
     @wraps(func)
     async def wrapper(self: "Database", *args: Any, **kwargs: Any) -> Any:
         if self.conn is None:
-            raise RuntimeError("Database connection is not established. " "Call connect() first.")
+            raise DatabaseNotConnectedError()
         return await func(self, *args, **kwargs)
 
     return wrapper  # type: ignore[return-value]

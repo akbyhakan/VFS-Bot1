@@ -227,11 +227,17 @@ class OTPWebhookService:
 
         event = asyncio.Event()
         self._waiting_events[wait_key] = event
+        
+        # Safety limit: maximum iteration count
+        max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
+        iteration = 0
 
         try:
             start_time = datetime.now(timezone.utc)
 
-            while True:
+            while iteration < max_iterations:
+                iteration += 1
+                
                 # Check existing OTPs
                 otp = await self._get_latest_otp_from_queue(
                     self._appointment_otp_queue, phone_number
@@ -253,6 +259,10 @@ class OTPWebhookService:
                     event.clear()
                 except asyncio.TimeoutError:
                     continue
+            
+            # Max iterations reached
+            logger.error(f"Appointment OTP wait exceeded max iterations ({max_iterations})")
+            return None
 
         finally:
             self._waiting_events.pop(wait_key, None)
@@ -275,11 +285,17 @@ class OTPWebhookService:
 
         event = asyncio.Event()
         self._waiting_events[wait_key] = event
+        
+        # Safety limit: maximum iteration count
+        max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
+        iteration = 0
 
         try:
             start_time = datetime.now(timezone.utc)
 
-            while True:
+            while iteration < max_iterations:
+                iteration += 1
+                
                 # Check existing OTPs
                 otp = await self._get_latest_otp_from_queue(self._payment_otp_queue, phone_number)
                 if otp:
@@ -299,6 +315,10 @@ class OTPWebhookService:
                     event.clear()
                 except asyncio.TimeoutError:
                     continue
+            
+            # Max iterations reached
+            logger.error(f"Payment OTP wait exceeded max iterations ({max_iterations})")
+            return None
 
         finally:
             self._waiting_events.pop(wait_key, None)
@@ -393,6 +413,44 @@ class OTPWebhookService:
                     f"(appointment: {appt_removed}, payment: {pay_removed})"
                 )
             return total_removed
+
+    async def start_cleanup_scheduler(self, interval_seconds: int = 60) -> None:
+        """
+        Start background task for periodic OTP cleanup.
+        
+        Args:
+            interval_seconds: Cleanup interval in seconds (default: 60)
+        """
+        self._cleanup_task = asyncio.create_task(self._cleanup_loop(interval_seconds))
+        logger.info(f"OTP cleanup scheduler started (interval: {interval_seconds}s)")
+
+    async def stop_cleanup_scheduler(self) -> None:
+        """Stop the cleanup scheduler."""
+        if hasattr(self, '_cleanup_task') and self._cleanup_task:
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("OTP cleanup scheduler stopped")
+
+    async def _cleanup_loop(self, interval: int) -> None:
+        """
+        Background loop for periodic cleanup.
+        
+        Args:
+            interval: Cleanup interval in seconds
+        """
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                removed = await self.cleanup_expired()
+                if removed > 0:
+                    logger.debug(f"Periodic cleanup removed {removed} expired OTPs")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in OTP cleanup loop: {e}")
 
 
 # Global instance with thread-safe initialization

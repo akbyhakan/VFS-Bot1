@@ -31,23 +31,22 @@ def _get_api_key_salt() -> bytes:
         env = os.getenv("ENV", "production").lower()
         
         if not salt_env:
-            if env == "production":
+            # Explicitly allowed development environments
+            allowed_dev_envs = ["development", "dev", "test", "testing", "local"]
+            if env not in allowed_dev_envs:
                 raise ValueError(
-                    "API_KEY_SALT environment variable MUST be set in production. "
+                    f"API_KEY_SALT environment variable MUST be set in '{env}' environment. "
                     "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
                 )
-            else:
-                # Development only - log warning
-                logger.warning(
-                    "⚠️ SECURITY WARNING: API_KEY_SALT not set. "
-                    "Using insecure default. This is only acceptable in development!"
-                )
-                _API_KEY_SALT = b"dev-only-insecure-salt-do-not-use-in-prod"
+            logger.warning(
+                "⚠️ SECURITY WARNING: API_KEY_SALT not set. "
+                "Using insecure default. This is only acceptable in development!"
+            )
+            _API_KEY_SALT = b"dev-only-insecure-salt-do-not-use-in-prod"
         else:
             if len(salt_env) < 32:
                 raise ValueError(
-                    f"API_KEY_SALT must be at least 32 characters (current: {len(salt_env)}). "
-                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+                    f"API_KEY_SALT must be at least 32 characters (current: {len(salt_env)})"
                 )
             _API_KEY_SALT = salt_env.encode()
     return _API_KEY_SALT
