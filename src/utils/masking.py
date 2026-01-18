@@ -46,7 +46,7 @@ def mask_phone(phone: str) -> str:
     """
     Mask phone number for logging purposes.
     
-    Example: +905551234567 -> +90***1234567
+    Example: +905551234567 -> +90***4567
     
     Args:
         phone: Phone number to mask
@@ -72,7 +72,7 @@ def mask_password(_password: str) -> str:
         _password: Password to mask (unused, parameter for API consistency)
     
     Returns:
-        Masked password (always ***)
+        Masked password (always ******** - 8 asterisks)
     """
     return "********"
 

@@ -102,7 +102,8 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         logger.info("Bot stopped by user")
         shutdown_event.set()
         # Wait for graceful shutdown with timeout
-        await asyncio.sleep(5)  # Give 5 seconds for cleanup
+        from src.constants import Defaults
+        await asyncio.sleep(Defaults.GRACEFUL_SHUTDOWN_TIMEOUT)
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
