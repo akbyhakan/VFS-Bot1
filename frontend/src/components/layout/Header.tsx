@@ -17,10 +17,12 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-4">
         {/* Mobile menu button */}
         <button
-          className="md:hidden text-dark-300 hover:text-dark-100"
+          className="md:hidden text-dark-300 hover:text-dark-100 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
           onClick={onMenuClick}
+          aria-label="Menüyü aç"
+          aria-expanded="false"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-6 h-6" aria-hidden="true" />
         </button>
 
         {/* Bot Status */}

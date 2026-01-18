@@ -20,7 +20,8 @@ export function LiveLogs() {
           <CardTitle className="text-lg">📋 Canlı Loglar</CardTitle>
           <button
             onClick={clearLogs}
-            className="text-xs text-dark-400 hover:text-dark-200 transition-colors"
+            className="px-3 py-1.5 text-xs text-dark-400 hover:text-dark-200 hover:bg-dark-700 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+            aria-label="Tüm logları temizle"
           >
             Temizle
           </button>
