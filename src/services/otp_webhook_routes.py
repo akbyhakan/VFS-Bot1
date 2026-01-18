@@ -40,23 +40,49 @@ async def get_verified_otp_service(
     """
     Dependency to verify webhook signature and return OTP service.
 
-    Production mode requires signature verification.
+    Production mode STRICTLY requires signature verification.
+    Development mode also requires signature if SMS_WEBHOOK_SECRET is set.
     """
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
     env = os.getenv("ENV", "production").lower()
 
-    # Signature required in production
-    if env == "production" and webhook_secret:
+    # In production, webhook secret MUST be configured
+    if env == "production" and not webhook_secret:
+        logger.error("🚨 SMS_WEBHOOK_SECRET not set in production environment")
+        raise HTTPException(
+            status_code=500,
+            detail="SMS_WEBHOOK_SECRET must be configured in production"
+        )
+
+    # Signature verification is REQUIRED in production
+    if env == "production":
         if not x_webhook_signature:
-            raise HTTPException(status_code=401, detail="Webhook signature required in production")
+            logger.warning(f"⚠️ Webhook signature missing in production (IP: {request.client.host if request.client else 'unknown'})")
+            raise HTTPException(
+                status_code=401,
+                detail="X-Webhook-Signature header required in production"
+            )
 
         # Verify signature
         body = await request.body()
         if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
+            logger.error(f"❌ Invalid webhook signature from IP: {request.client.host if request.client else 'unknown'}")
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
-    elif webhook_secret and not x_webhook_signature:
-        # Development mode - just log warning
-        logger.warning("Webhook signature missing (development mode)")
+        
+        logger.debug("✅ Webhook signature verified")
+    
+    # Development mode - still enforce signature if webhook_secret is set
+    elif webhook_secret:
+        if not x_webhook_signature:
+            logger.warning("⚠️ DEV MODE: Webhook signature missing (but secret is configured)")
+        else:
+            body = await request.body()
+            if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
+                logger.warning("⚠️ DEV MODE: Invalid webhook signature (continuing anyway)")
+            else:
+                logger.debug("✅ DEV MODE: Webhook signature verified")
+    else:
+        logger.warning("⚠️ DEV MODE: No webhook secret configured - signature validation disabled")
 
     return get_otp_service()
 

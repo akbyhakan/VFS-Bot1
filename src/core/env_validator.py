@@ -25,22 +25,27 @@ class EnvValidator:
         "EMAIL_PASSWORD": "Email password/app password",
         "EMAIL_RECEIVER": "Email receiver address",
         "CAPTCHA_API_KEY": "Captcha solver API key",
+        "VFS_ENCRYPTION_KEY": "VFS API encryption key",
+        "API_SECRET_KEY": "JWT secret key for API authentication",
+        "ADMIN_PASSWORD": "Admin password for dashboard access",
+        "SMS_WEBHOOK_SECRET": "SMS webhook signature secret",
     }
 
     @classmethod
     def validate(cls, strict: bool = False) -> bool:
         """
-        Validate environment variables.
+        Validate environment variables with enhanced security checks.
 
         Args:
-            strict: If True, exit on missing required vars
+            strict: If True, exit on missing required vars or validation errors
 
         Returns:
-            True if all required vars present
+            True if all required vars present and valid
         """
         missing_required: List[str] = []
         missing_optional: List[str] = []
         validation_errors: List[str] = []
+        env = os.getenv("ENV", "production").lower()
 
         # Check required
         for var, description in cls.REQUIRED_VARS.items():
@@ -52,13 +57,16 @@ class EnvValidator:
                 if var == "VFS_EMAIL":
                     if not cls._validate_email(value):
                         validation_errors.append(f"{var}: Invalid email format")
+                elif var == "VFS_PASSWORD":
+                    if len(value) < 8:
+                        validation_errors.append(f"{var}: Password too short (minimum 8 characters)")
                 elif var == "ENCRYPTION_KEY":
                     if not cls._validate_encryption_key(value):
                         validation_errors.append(
-                            f"{var}: Invalid encryption key (must be base64-encoded Fernet key)"
+                            f"{var}: Invalid encryption key (must be 44-char base64-encoded Fernet key)"
                         )
 
-        # Check optional
+        # Check optional vars with enhanced validation
         for var, description in cls.OPTIONAL_VARS.items():
             value = os.getenv(var)
             if not value:
@@ -67,6 +75,36 @@ class EnvValidator:
                 # Validate optional var formats
                 if var == "CAPTCHA_API_KEY" and len(value) < 16:
                     validation_errors.append(f"{var}: API key too short (minimum 16 characters)")
+                
+                # VFS_ENCRYPTION_KEY validation
+                elif var == "VFS_ENCRYPTION_KEY" and len(value) < 32:
+                    validation_errors.append(
+                        f"{var}: Encryption key too short (minimum 32 bytes for AES-256)"
+                    )
+                
+                # API_SECRET_KEY validation
+                elif var == "API_SECRET_KEY":
+                    if len(value) < 32:
+                        validation_errors.append(
+                            f"{var}: JWT secret too short (minimum 32 characters for security)"
+                        )
+                
+                # ADMIN_PASSWORD validation (production only)
+                elif var == "ADMIN_PASSWORD" and env == "production":
+                    # In production, admin password should be bcrypt hashed
+                    if not value.startswith("$2b$") and not value.startswith("$2a$"):
+                        validation_errors.append(
+                            f"{var}: Must be bcrypt hashed in production. "
+                            "Use: python -c \"from passlib.context import CryptContext; "
+                            "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
+                        )
+                
+                # SMS_WEBHOOK_SECRET validation
+                elif var == "SMS_WEBHOOK_SECRET":
+                    if len(value) < 32:
+                        validation_errors.append(
+                            f"{var}: Webhook secret too short (minimum 32 characters)"
+                        )
 
         # Report errors
         if missing_required:
