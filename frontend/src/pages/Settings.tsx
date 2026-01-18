@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X } from 'lucide-react';
+import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap } from 'lucide-react';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import type { WebhookUrls } from '@/types/payment';
@@ -134,6 +134,19 @@ export function Settings() {
               <p className="text-dark-400 text-sm">Yükleniyor...</p>
             ) : error ? (
               <p className="text-red-500 text-sm">{error}</p>
+            ) : !isEditing && !card ? (
+              // Kart yokken "Yeni Kart Ekle" butonu göster
+              <div className="text-center py-8">
+                <CreditCard className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                <p className="text-dark-400 mb-4">Henüz kayıtlı kredi kartı yok</p>
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 mx-auto"
+                >
+                  <Plus className="w-5 h-5" />
+                  Yeni Kart Ekle
+                </button>
+              </div>
             ) : !isEditing && card ? (
               <div className="space-y-4">
                 <div>
@@ -177,7 +190,9 @@ export function Settings() {
                     value={formData.card_holder_name}
                     onChange={(e) => {
                       setFormData({ ...formData, card_holder_name: e.target.value });
-                      setFormErrors({ ...formErrors, cardholderName: undefined });
+                      const newErrors = { ...formErrors };
+                      delete newErrors.cardholderName;
+                      setFormErrors(newErrors);
                     }}
                     placeholder="JOHN DOE"
                     className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
@@ -197,7 +212,9 @@ export function Settings() {
                       const value = e.target.value.replace(/\s/g, '');
                       if (/^\d*$/.test(value) && value.length <= 19) {
                         setFormData({ ...formData, card_number: value });
-                        setFormErrors({ ...formErrors, cardNumber: undefined });
+                        const newErrors = { ...formErrors };
+                        delete newErrors.cardNumber;
+                        setFormErrors(newErrors);
                       }
                     }}
                     placeholder="4111 1111 1111 1234"
@@ -222,7 +239,9 @@ export function Settings() {
                         const value = e.target.value;
                         if (/^\d{0,2}$/.test(value)) {
                           setFormData({ ...formData, expiry_month: value });
-                          setFormErrors({ ...formErrors, expiryMonth: undefined });
+                          const newErrors = { ...formErrors };
+                          delete newErrors.expiryMonth;
+                          setFormErrors(newErrors);
                         }
                       }}
                       placeholder="12"
@@ -242,7 +261,9 @@ export function Settings() {
                         const value = e.target.value;
                         if (/^\d{0,4}$/.test(value)) {
                           setFormData({ ...formData, expiry_year: value });
-                          setFormErrors({ ...formErrors, expiryYear: undefined });
+                          const newErrors = { ...formErrors };
+                          delete newErrors.expiryYear;
+                          setFormErrors(newErrors);
                         }
                       }}
                       placeholder="2025"
@@ -262,7 +283,9 @@ export function Settings() {
                         const value = e.target.value;
                         if (/^\d{0,4}$/.test(value)) {
                           setFormData({ ...formData, cvv: value });
-                          setFormErrors({ ...formErrors, cvv: undefined });
+                          const newErrors = { ...formErrors };
+                          delete newErrors.cvv;
+                          setFormErrors(newErrors);
                         }
                       }}
                       placeholder="•••"
@@ -364,6 +387,31 @@ export function Settings() {
                       )}
                     </button>
                   </div>
+                </div>
+
+                {/* Webhook Test Butonu */}
+                <div className="pt-4 border-t border-dark-700">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/webhook/test', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                        });
+                        if (response.ok) {
+                          toast.success('Webhook bağlantısı başarılı!');
+                        } else {
+                          toast.error('Webhook bağlantısı başarısız');
+                        }
+                      } catch (error) {
+                        toast.info('Webhook test edilemedi - Lütfen backend\'i kontrol edin');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600 w-full justify-center"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Webhook Bağlantısını Test Et
+                  </button>
                 </div>
               </div>
             ) : (

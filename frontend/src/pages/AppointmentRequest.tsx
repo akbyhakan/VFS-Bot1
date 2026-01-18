@@ -4,7 +4,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
-import { Calendar, Plus, Trash2, User, MapPin, Globe } from 'lucide-react';
+import { Calendar, Plus, Trash2, User, MapPin, Globe, Eye, Copy, RotateCcw } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { toast } from 'sonner';
 import {
   useCountries,
@@ -13,7 +16,7 @@ import {
   useAppointmentRequests,
   useDeleteAppointmentRequest,
 } from '@/hooks/useAppointmentRequest';
-import type { AppointmentRequest, AppointmentPerson } from '@/types/appointment';
+import type { AppointmentRequest, AppointmentPerson, AppointmentRequestResponse } from '@/types/appointment';
 import {
   validateBirthDate,
   validatePassportIssueDate,
@@ -32,6 +35,8 @@ export default function AppointmentRequest() {
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [dateInput, setDateInput] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [viewingRequest, setViewingRequest] = useState<AppointmentRequestResponse | null>(null);
+  const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirmDialog();
 
   const { data: countries, isLoading: loadingCountries } = useCountries();
   const { data: centres, isLoading: loadingCentres } = useCentres(selectedCountry);
@@ -184,7 +189,15 @@ export default function AppointmentRequest() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Bu talebi silmek istediğinizden emin misiniz?')) return;
+    const confirmed = await confirm({
+      title: 'Talebi Sil',
+      message: 'Bu talebi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      confirmText: 'Sil',
+      cancelText: 'İptal',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
 
     try {
       await deleteRequest.mutateAsync(id);
@@ -192,6 +205,30 @@ export default function AppointmentRequest() {
     } catch (error) {
       toast.error('Silme işlemi başarısız');
     }
+  };
+
+  const handleView = (request: AppointmentRequestResponse) => {
+    setViewingRequest(request);
+  };
+
+  const handleCopyRequest = (request: AppointmentRequestResponse) => {
+    setSelectedCountry(request.country_code);
+    setSelectedCentres([...request.centres]);
+    setSelectedDates([...request.preferred_dates]);
+    setPersonCount(request.person_count);
+    setValue('persons', request.persons.map(p => ({ ...p })));
+    toast.success('Talep bilgileri forma kopyalandı');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleClearForm = () => {
+    reset();
+    setPersonCount(1);
+    setSelectedCountry('');
+    setSelectedCentres([]);
+    setSelectedDates([]);
+    setErrors({});
+    toast.info('Form temizlendi');
   };
 
   if (loadingCountries) return <Loading />;
@@ -344,7 +381,15 @@ export default function AppointmentRequest() {
               />
             ))}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <Button 
+                type="button" 
+                variant="secondary"
+                onClick={handleClearForm}
+                leftIcon={<RotateCcw className="w-4 h-4" />}
+              >
+                Formu Temizle
+              </Button>
               <Button type="submit" disabled={createRequest.isPending}>
                 {createRequest.isPending ? 'Kaydediliyor...' : '💾 Talebi Kaydet'}
               </Button>
@@ -380,13 +425,32 @@ export default function AppointmentRequest() {
                         Tarih: {new Date(request.created_at).toLocaleDateString('tr-TR')}
                       </p>
                     </div>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(request.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleView(request)}
+                        title="Detay Görüntüle"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCopyRequest(request)}
+                        title="Forma Kopyala"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(request.id)}
+                        title="Sil"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -396,6 +460,98 @@ export default function AppointmentRequest() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detay Modal */}
+      {viewingRequest && (
+        <Modal
+          isOpen={!!viewingRequest}
+          onClose={() => setViewingRequest(null)}
+          title={`Talep #${viewingRequest.id} Detayları`}
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-dark-400">Durum</label>
+                <p className="font-medium">{viewingRequest.status}</p>
+              </div>
+              <div>
+                <label className="text-sm text-dark-400">Ülke</label>
+                <p className="font-medium">{viewingRequest.country_code}</p>
+              </div>
+              <div>
+                <label className="text-sm text-dark-400">Kişi Sayısı</label>
+                <p className="font-medium">{viewingRequest.person_count}</p>
+              </div>
+              <div>
+                <label className="text-sm text-dark-400">Oluşturulma</label>
+                <p className="font-medium">{new Date(viewingRequest.created_at).toLocaleString('tr-TR')}</p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm text-dark-400">Merkezler</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {viewingRequest.centres.map((centre) => (
+                  <span key={centre} className="px-2 py-1 bg-dark-700 rounded text-sm">
+                    {centre}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm text-dark-400">Tercih Edilen Tarihler</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {viewingRequest.preferred_dates.map((date) => (
+                  <span key={date} className="px-2 py-1 bg-primary-600/20 text-primary-400 rounded text-sm">
+                    {date}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm text-dark-400 mb-2 block">Kişiler</label>
+              {viewingRequest.persons.map((person, index) => (
+                <div key={index} className="p-3 bg-dark-800 rounded mb-2">
+                  <p className="font-medium">{person.first_name} {person.last_name}</p>
+                  <p className="text-sm text-dark-400">{person.email} | +{person.phone_code} {person.phone_number}</p>
+                  <p className="text-sm text-dark-400">Pasaport: {person.passport_number}</p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="secondary" onClick={() => setViewingRequest(null)}>
+                Kapat
+              </Button>
+              <Button variant="primary" onClick={() => {
+                handleCopyRequest(viewingRequest);
+                setViewingRequest(null);
+              }}>
+                <Copy className="w-4 h-4 mr-2" />
+                Forma Kopyala
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmOptions && (
+        <ConfirmDialog
+          isOpen={isConfirmOpen}
+          onConfirm={handleConfirm}
+          onCancel={handleConfirmCancel}
+          title={confirmOptions.title}
+          message={confirmOptions.message}
+          confirmText={confirmOptions.confirmText}
+          cancelText={confirmOptions.cancelText}
+          variant={confirmOptions.variant}
+          isLoading={deleteRequest.isPending}
+        />
+      )}
     </div>
   );
 }

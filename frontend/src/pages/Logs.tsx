@@ -3,8 +3,9 @@ import { useLogs } from '@/hooks/useApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Loading } from '@/components/common/Loading';
 import { cn, getLogLevelColor } from '@/utils/helpers';
-import { FileText, Search, Filter, Download, X } from 'lucide-react';
+import { FileText, Search, Filter, Download, X, RefreshCw, Trash2 } from 'lucide-react';
 import DOMPurify from 'dompurify';
+import { toast } from 'sonner';
 
 type LogLevel = 'ALL' | 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
 
@@ -29,11 +30,14 @@ const extractLogLevel = (log: string): string => {
 };
 
 export function Logs() {
-  const { data, isLoading, refetch } = useLogs(500);
+  const { data, isLoading, refetch, isRefetching } = useLogs(500);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<LogLevel>('ALL');
+  const [localLogs, setLocalLogs] = useState<string[] | null>(null);
 
-  const logs = data?.logs || [];
+  // Use local logs if cleared, otherwise use API data
+  const apiLogs = data?.logs || [];
+  const logs = localLogs !== null ? localLogs : apiLogs;
 
   // Filter and search logs
   const filteredLogs = useMemo(() => {
@@ -65,6 +69,17 @@ export function Logs() {
     setSelectedLevel('ALL');
   };
 
+  const handleRefresh = () => {
+    setLocalLogs(null);
+    refetch();
+    toast.success('Loglar yenileniyor...');
+  };
+
+  const handleClear = () => {
+    setLocalLogs([]);
+    toast.success('Loglar temizlendi (sadece görünüm)');
+  };
+
   const handleExport = () => {
     const content = filteredLogs.join('\n');
     const blob = new Blob([content], { type: 'text/plain' });
@@ -86,9 +101,28 @@ export function Logs() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Loglar</h1>
-        <p className="text-dark-400">Tüm bot aktivitelerini görüntüleyin</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Loglar</h1>
+          <p className="text-dark-400">Tüm bot aktivitelerini görüntüleyin</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleClear}
+            className="flex items-center gap-2 px-4 py-2 bg-dark-700 text-dark-200 rounded-lg hover:bg-dark-600 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Temizle
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefetching}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            {isRefetching ? 'Yenileniyor...' : 'Yenile'}
+          </button>
+        </div>
       </div>
 
       <Card>
