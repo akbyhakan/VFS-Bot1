@@ -1100,20 +1100,52 @@ async def toggle_user_status(
     Returns:
         Updated user
     """
-    # TODO: Replace with actual database update
-    for user in mock_users:
-        if user.id == user_id:
-            if "is_active" in status_update:
-                user.is_active = status_update["is_active"]
-                user.updated_at = datetime.now(timezone.utc).isoformat()
+    db = Database()
+    try:
+        await db.connect()
 
-                logger.info(
-                    f"User status toggled: {user.email} -> {user.is_active} "
-                    f"by {token_data.get('sub', 'unknown')}"
-                )
-                return user
+        if "is_active" not in status_update:
+            raise HTTPException(status_code=400, detail="is_active field required")
 
-    raise HTTPException(status_code=404, detail="User not found")
+        user_updated = await db.update_user(
+            user_id=user_id,
+            active=status_update["is_active"],
+        )
+
+        if not user_updated:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        users = await db.get_all_users_with_details()
+        updated_user = next((u for u in users if u["id"] == user_id), None)
+
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found after update")
+
+        logger.info(
+            f"User status toggled: {updated_user['email']} -> {status_update['is_active']} "
+            f"by {token_data.get('sub', 'unknown')}"
+        )
+
+        return UserModel(
+            id=updated_user["id"],
+            email=updated_user["email"],
+            phone=updated_user.get("phone") or "",
+            first_name=updated_user.get("first_name") or "",
+            last_name=updated_user.get("last_name") or "",
+            center_name=updated_user["center_name"],
+            visa_category=updated_user["visa_category"],
+            visa_subcategory=updated_user["visa_subcategory"],
+            is_active=bool(updated_user["is_active"]),
+            created_at=updated_user["created_at"],
+            updated_at=updated_user["updated_at"],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling user status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to toggle user status")
+    finally:
+        await db.close()
 
 
 # Payment card endpoints

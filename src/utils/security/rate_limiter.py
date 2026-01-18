@@ -1,10 +1,13 @@
 """Rate limiting for API requests."""
 
 import asyncio
+import threading
 import time
 import logging
 from typing import Optional
 from collections import deque
+
+from ...core.constants import RateLimitDefaults
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +77,31 @@ class RateLimiter:
 
 # Global rate limiter instance
 _global_limiter: Optional[RateLimiter] = None
+_limiter_lock = threading.Lock()
 
 
 def get_rate_limiter() -> RateLimiter:
-    """Get global rate limiter instance."""
+    """
+    Get global rate limiter instance (singleton) - thread-safe.
+    
+    Uses double-checked locking pattern for efficiency.
+    
+    Returns:
+        RateLimiter instance
+    """
     global _global_limiter
     if _global_limiter is None:
-        _global_limiter = RateLimiter(max_requests=60, time_window=60)
+        with _limiter_lock:
+            if _global_limiter is None:  # Double-checked locking
+                _global_limiter = RateLimiter(
+                    max_requests=RateLimitDefaults.MAX_REQUESTS,
+                    time_window=RateLimitDefaults.TIME_WINDOW,
+                )
     return _global_limiter
+
+
+def reset_rate_limiter() -> None:
+    """Reset the global rate limiter instance. Thread-safe."""
+    global _global_limiter
+    with _limiter_lock:
+        _global_limiter = None
