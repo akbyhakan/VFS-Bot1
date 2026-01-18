@@ -4,12 +4,17 @@ import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edi
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import type { WebhookUrls } from '@/types/payment';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { validateCardForm, formatCardNumber } from '@/utils/validators/creditCard';
+import { toast } from 'sonner';
 
 export function Settings() {
   const { card, loading, error, saving, deleting, saveCard, deleteCard } = usePaymentCard();
   const [isEditing, setIsEditing] = useState(false);
   const [webhookUrls, setWebhookUrls] = useState<WebhookUrls | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirmDialog();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -19,6 +24,7 @@ export function Settings() {
     expiry_year: '',
     cvv: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     // Load webhook URLs
@@ -58,7 +64,22 @@ export function Settings() {
   };
 
   const handleSave = async () => {
-    const success = await saveCard(formData);
+    // Validate form
+    const validation = validateCardForm(formData);
+    
+    if (!validation.isValid) {
+      setFormErrors(validation.errors);
+      toast.error('Lütfen form hatalarını düzeltin');
+      return;
+    }
+    
+    setFormErrors({});
+    
+    const success = await saveCard({
+      ...formData,
+      card_number: formData.card_number.replace(/\s/g, ''), // Remove spaces
+    });
+    
     if (success) {
       setIsEditing(false);
       setFormData({
@@ -68,13 +89,21 @@ export function Settings() {
         expiry_year: '',
         cvv: '',
       });
+      toast.success('Kart bilgileri kaydedildi');
     }
   };
 
   const handleDelete = async () => {
-    if (confirm('Kredi kartı bilgilerini silmek istediğinizden emin misiniz?')) {
-      await deleteCard();
-    }
+    const confirmed = await confirm({
+      title: 'Kredi Kartını Sil',
+      message: 'Kayıtlı kredi kartı bilgilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      confirmText: 'Sil',
+      cancelText: 'İptal',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+    await deleteCard();
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -146,21 +175,42 @@ export function Settings() {
                   <input
                     type="text"
                     value={formData.card_holder_name}
-                    onChange={(e) => setFormData({ ...formData, card_holder_name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, card_holder_name: e.target.value });
+                      setFormErrors({ ...formErrors, cardholderName: undefined });
+                    }}
                     placeholder="JOHN DOE"
-                    className="w-full px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white"
+                    className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
+                      formErrors.cardholderName ? 'border-red-500' : 'border-dark-600'
+                    }`}
                   />
+                  {formErrors.cardholderName && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.cardholderName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">Kart Numarası</label>
                   <input
                     type="text"
-                    value={formData.card_number}
-                    onChange={(e) => setFormData({ ...formData, card_number: e.target.value.replace(/\s/g, '') })}
+                    value={formatCardNumber(formData.card_number)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\s/g, '');
+                      if (/^\d*$/.test(value) && value.length <= 19) {
+                        setFormData({ ...formData, card_number: value });
+                        setFormErrors({ ...formErrors, cardNumber: undefined });
+                      }
+                    }}
                     placeholder="4111 1111 1111 1234"
-                    maxLength={16}
-                    className="w-full px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white font-mono"
+                    maxLength={23}
+                    autoComplete="cc-number"
+                    inputMode="numeric"
+                    className={`w-full px-3 py-2 border rounded bg-dark-800 text-white font-mono ${
+                      formErrors.cardNumber ? 'border-red-500' : 'border-dark-600'
+                    }`}
                   />
+                  {formErrors.cardNumber && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.cardNumber}</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
@@ -168,10 +218,19 @@ export function Settings() {
                     <input
                       type="text"
                       value={formData.expiry_month}
-                      onChange={(e) => setFormData({ ...formData, expiry_month: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d{0,2}$/.test(value)) {
+                          setFormData({ ...formData, expiry_month: value });
+                          setFormErrors({ ...formErrors, expiryMonth: undefined });
+                        }
+                      }}
                       placeholder="12"
                       maxLength={2}
-                      className="w-full px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white"
+                      inputMode="numeric"
+                      className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
+                        formErrors.expiryMonth ? 'border-red-500' : 'border-dark-600'
+                      }`}
                     />
                   </div>
                   <div>
@@ -179,23 +238,50 @@ export function Settings() {
                     <input
                       type="text"
                       value={formData.expiry_year}
-                      onChange={(e) => setFormData({ ...formData, expiry_year: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d{0,4}$/.test(value)) {
+                          setFormData({ ...formData, expiry_year: value });
+                          setFormErrors({ ...formErrors, expiryYear: undefined });
+                        }
+                      }}
                       placeholder="2025"
                       maxLength={4}
-                      className="w-full px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white"
+                      inputMode="numeric"
+                      className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
+                        formErrors.expiryYear ? 'border-red-500' : 'border-dark-600'
+                      }`}
                     />
                   </div>
                   <div>
                     <label className="block text-sm text-dark-400 mb-1">CVV</label>
                     <input
-                      type="text"
+                      type="password"
                       value={formData.cvv}
-                      onChange={(e) => setFormData({ ...formData, cvv: e.target.value })}
-                      placeholder="123"
-                      maxLength={3}
-                      className="w-full px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d{0,4}$/.test(value)) {
+                          setFormData({ ...formData, cvv: value });
+                          setFormErrors({ ...formErrors, cvv: undefined });
+                        }
+                      }}
+                      placeholder="•••"
+                      maxLength={4}
+                      autoComplete="cc-csc"
+                      inputMode="numeric"
+                      className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
+                        formErrors.cvv ? 'border-red-500' : 'border-dark-600'
+                      }`}
                     />
+                    {formErrors.cvv && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.cvv}</p>
+                    )}
                   </div>
+                  {formErrors.expiryMonth && (
+                    <div className="col-span-2">
+                      <p className="text-red-500 text-xs mt-1">{formErrors.expiryMonth}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -338,6 +424,21 @@ export function Settings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Confirm Dialog */}
+      {confirmOptions && (
+        <ConfirmDialog
+          isOpen={isConfirmOpen}
+          onConfirm={handleConfirm}
+          onCancel={handleConfirmCancel}
+          title={confirmOptions.title}
+          message={confirmOptions.message}
+          confirmText={confirmOptions.confirmText}
+          cancelText={confirmOptions.cancelText}
+          variant={confirmOptions.variant}
+          isLoading={deleting}
+        />
+      )}
     </div>
   );
 }
