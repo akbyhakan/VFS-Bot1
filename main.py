@@ -20,6 +20,7 @@ from src.services.bot_service import VFSBot
 from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
+from src.core.monitoring import init_sentry
 
 
 def setup_signal_handlers():
@@ -217,6 +218,9 @@ def main() -> None:
     setup_signal_handlers()
 
     try:
+        # Initialize Sentry monitoring
+        init_sentry()
+        
         # Validate environment variables
         logger.info("Validating environment variables...")
         EnvValidator.validate(strict=True)
