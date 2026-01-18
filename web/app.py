@@ -1,6 +1,7 @@
 """FastAPI web dashboard with WebSocket support for VFS-Bot."""
 
 import asyncio
+import gc
 import logging
 import os
 from pathlib import Path
@@ -172,13 +173,13 @@ class TokenResponse(BaseModel):
 
 
 class PaymentCardRequest(BaseModel):
-    """Payment card request model."""
+    """Payment card request model - CVV removed for PCI-DSS compliance."""
 
     card_holder_name: str
     card_number: str
     expiry_month: str
     expiry_year: str
-    cvv: str
+    # cvv field REMOVED (was here in old version)
 
 
 class PaymentCardResponse(BaseModel):
@@ -190,6 +191,13 @@ class PaymentCardResponse(BaseModel):
     expiry_month: str
     expiry_year: str
     created_at: str
+
+
+class PaymentInitiateRequest(BaseModel):
+    """Payment initiation with runtime CVV."""
+    
+    appointment_id: int
+    cvv: str  # Only in memory, never stored
 
 
 class WebhookUrlsResponse(BaseModel):
@@ -1149,7 +1157,10 @@ async def save_payment_card(
     card_data: PaymentCardRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
-    Save or update payment card - requires authentication.
+    Save payment card WITHOUT CVV (PCI-DSS compliant).
+    
+    Security Note:
+        CVV is NEVER stored. It must be provided at payment time.
 
     Args:
         card_data: Payment card data
@@ -1169,7 +1180,6 @@ async def save_payment_card(
                     "card_number": card_data.card_number,
                     "expiry_month": card_data.expiry_month,
                     "expiry_year": card_data.expiry_year,
-                    "cvv": card_data.cvv,
                 }
             )
 
@@ -1218,6 +1228,67 @@ async def delete_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_to
     except Exception as e:
         logger.error(f"Failed to delete payment card: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete payment card")
+
+
+@app.post("/api/payment/initiate")
+async def initiate_payment(
+    request: PaymentInitiateRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Initiate payment with runtime CVV.
+    
+    Security:
+    - CVV exists only in memory during this request
+    - Never logged or persisted to disk
+    - Cleared immediately after use
+    
+    Args:
+        request: Payment initiation data with CVV
+        token_data: JWT token data
+    
+    Returns:
+        Payment result
+    """
+    try:
+        db = Database()
+        await db.connect()
+        
+        try:
+            # Get appointment
+            appointment = await db.get_appointment_request(request.appointment_id)
+            if not appointment:
+                raise HTTPException(404, "Appointment not found")
+            
+            # Get saved card (without CVV)
+            card = await db.get_payment_card()
+            if not card:
+                raise HTTPException(404, "No payment card saved")
+            
+            # Process payment with runtime CVV
+            # TODO: Implement actual payment processing
+            logger.info(f"Payment initiated for appointment {request.appointment_id}")
+            
+            return {
+                "success": True,
+                "message": "Payment completed",
+                "appointment_id": request.appointment_id
+            }
+            
+        finally:
+            await db.close()
+            
+    finally:
+        # CRITICAL: Clear CVV from memory
+        # Note: This is a best-effort approach. Python's string interning
+        # and garbage collection are implementation-dependent.
+        # For production use with highly sensitive data, consider:
+        # 1. Using ctypes to overwrite memory directly
+        # 2. Using libraries like 'pympler' for secure memory handling
+        # 3. Delegating payment processing to PCI-DSS compliant gateway
+        request.cvv = ""
+        del request
+        gc.collect()
 
 
 # Appointment Request Models

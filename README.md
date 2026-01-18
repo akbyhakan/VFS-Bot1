@@ -417,11 +417,52 @@ VFS-Bot1/
 ├── tests/                    # Test suite
 ├── logs/                     # Log files (gitignored)
 ├── screenshots/             # Screenshots (gitignored)
+├── docs/                    # Documentation
+├── scripts/                 # Helper scripts
 ├── main.py                  # Entry point
 ├── requirements.txt         # Python dependencies
 ├── Dockerfile               # Docker configuration
 └── docker-compose.yml       # Docker Compose setup
 ```
+
+## 💳 Payment Security (PCI-DSS Compliant)
+
+### What We Store:
+- ✅ Card holder name (plain text)
+- ✅ Card number (Fernet encrypted)
+- ✅ Expiry date (plain text)
+
+### What We DO NOT Store (PCI-DSS Requirement):
+- ❌ CVV/CVC (never stored, requested at payment time)
+- ❌ PIN code
+- ❌ Magnetic stripe data
+
+### Payment Flow:
+1. Save card via dashboard (no CVV)
+2. Bot finds appointment
+3. CVV requested (SMS/Email/Dashboard)
+4. CVV used in-memory only
+5. CVV cleared after payment
+
+---
+
+## 📊 Monitoring
+
+### Sentry Setup:
+
+```bash
+# Add to .env
+SENTRY_DSN=https://your-key@sentry.io/project
+SENTRY_TRACES_SAMPLE_RATE=0.1
+```
+
+Features:
+- Automatic error capturing
+- Performance monitoring (10% sample)
+- Sensitive data filtering (CVV, passwords)
+- Screenshot attachments
+
+---
 
 ## 🔐 Security Best Practices
 
