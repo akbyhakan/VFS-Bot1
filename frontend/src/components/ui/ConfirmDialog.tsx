@@ -55,15 +55,23 @@ export function ConfirmDialog({
     }
   }, [isOpen]);
 
-  // Handle escape key
+  // Handle escape key (only if this is the active modal)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onCancel();
+        // Check if this dialog is in focus (topmost modal)
+        const dialogElement = document.querySelector('[role="alertdialog"]');
+        if (dialogElement && document.activeElement && 
+            (dialogElement === document.activeElement || dialogElement.contains(document.activeElement))) {
+          onCancel();
+        }
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    
+    if (isOpen) {
+      window.addEventListener('keydown', handleEscape);
+      return () => window.removeEventListener('keydown', handleEscape);
+    }
   }, [isOpen, onCancel]);
 
   return (

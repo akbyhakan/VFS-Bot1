@@ -24,9 +24,16 @@ export const sanitizeText = (dirty: string): string => {
  * Sanitize URL to prevent javascript: protocol attacks
  */
 export const sanitizeUrl = (url: string): string => {
-  const sanitized = DOMPurify.sanitize(url);
-  if (sanitized.toLowerCase().startsWith('javascript:')) {
+  const sanitized = DOMPurify.sanitize(url, {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+  });
+  
+  // Check for dangerous protocols (case-insensitive)
+  const dangerous = /^(javascript|data|vbscript):/i;
+  if (dangerous.test(sanitized)) {
     return '';
   }
+  
   return sanitized;
 };

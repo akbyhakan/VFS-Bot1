@@ -51,5 +51,15 @@ describe('sanitize utilities', () => {
       const input = 'JavaScript:alert(1)';
       expect(sanitizeUrl(input)).toBe('');
     });
+
+    it('blocks data: protocol', () => {
+      const input = 'data:text/html,<script>alert(1)</script>';
+      expect(sanitizeUrl(input)).toBe('');
+    });
+
+    it('blocks vbscript: protocol', () => {
+      const input = 'vbscript:alert(1)';
+      expect(sanitizeUrl(input)).toBe('');
+    });
   });
 });

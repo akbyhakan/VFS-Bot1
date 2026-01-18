@@ -48,6 +48,13 @@ class TokenManager {
       try {
         const tokenData: TokenData = JSON.parse(stored);
         if (tokenData?.token && typeof tokenData.token === 'string') {
+          // Basic JWT structure validation (three base64url parts separated by dots)
+          const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+          if (!jwtPattern.test(tokenData.token)) {
+            this.clearToken();
+            return null;
+          }
+          
           if (tokenData.expiresAt && Date.now() > tokenData.expiresAt) {
             this.clearToken();
             return null;
@@ -63,6 +70,12 @@ class TokenManager {
     // Finally check sessionStorage (session-only)
     const sessionToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
     if (sessionToken) {
+      // Validate JWT structure for session tokens too
+      const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+      if (!jwtPattern.test(sessionToken)) {
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+      }
       this.memoryToken = sessionToken;
       return sessionToken;
     }

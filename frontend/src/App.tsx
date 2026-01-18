@@ -27,7 +27,11 @@ const queryClient = new QueryClient({
     queries: {
       retry: (failureCount, error) => {
         // Don't retry on 401/403 errors
-        if (error instanceof Error && error.message.includes('401')) {
+        // Check both error message and response status if available
+        const errorMessage = error instanceof Error ? error.message : '';
+        const isAuthError = errorMessage.includes('401') || errorMessage.includes('403');
+        
+        if (isAuthError) {
           return false;
         }
         return failureCount < 2;
