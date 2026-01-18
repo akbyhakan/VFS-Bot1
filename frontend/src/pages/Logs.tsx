@@ -57,8 +57,8 @@ export function Logs() {
   const logs = data?.logs || [];
 
   const handleClearLogs = () => {
-    if (confirm('Tüm logları temizlemek istediğinizden emin misiniz?')) {
-      // This would call a backend endpoint to clear logs
+    // Note: Backend endpoint for clearing logs needs to be implemented
+    if (confirm('Tüm logları temizlemek istediğinizden emin misiniz?\n\nNot: Bu özellik henüz backend tarafında implement edilmemiştir.')) {
       toast.info('Log temizleme özelliği yakında eklenecek');
     }
   };

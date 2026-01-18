@@ -124,6 +124,16 @@ export function Users() {
   const handleExport = () => {
     if (!filteredUsers.length) return;
     
+    // CSV escaping function
+    const escapeCSV = (value: string | number) => {
+      const strValue = String(value);
+      // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+      if (strValue.includes(',') || strValue.includes('"') || strValue.includes('\n')) {
+        return `"${strValue.replace(/"/g, '""')}"`;
+      }
+      return strValue;
+    };
+    
     const headers = ['ID', 'Ad', 'Soyad', 'E-posta', 'Telefon', 'Merkez', 'Vize Kategorisi', 'Durum', 'Oluşturulma'];
     const rows = filteredUsers.map(user => [
       user.id,
@@ -135,9 +145,9 @@ export function Users() {
       user.visa_category,
       user.is_active ? 'Aktif' : 'Pasif',
       new Date(user.created_at).toLocaleDateString('tr-TR')
-    ]);
+    ].map(escapeCSV));
     
-    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csvContent = [headers.map(escapeCSV), ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

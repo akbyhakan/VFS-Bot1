@@ -215,6 +215,7 @@ export default function AppointmentRequest() {
     setSelectedCentres([...request.centres]);
     setSelectedDates([...request.preferred_dates]);
     setPersonCount(request.person_count);
+    // Deep clone persons array to avoid mutating original data
     setValue('persons', request.persons.map(p => ({ ...p })));
     toast.success('Talep bilgileri forma kopyalandı');
     // Scroll to form
