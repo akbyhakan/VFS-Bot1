@@ -32,35 +32,28 @@ def test_production_requires_hashed_password():
 
 
 @pytest.mark.asyncio
-async def test_cvv_not_in_database_schema():
+async def test_cvv_not_in_database_schema(database):
     """Test: payment_card table has no CVV column."""
-    from src.models.database import Database
+    db = database
     
-    db = Database(":memory:")
-    await db.connect()
+    # Get table schema
+    async with db.get_connection() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("PRAGMA table_info(payment_card)")
+            columns_info = await cursor.fetchall()
     
-    try:
-        # Get table schema
-        async with db.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("PRAGMA table_info(payment_card)")
-                columns_info = await cursor.fetchall()
-        
-        # Extract column names
-        columns = [col[1] for col in columns_info]
-        
-        # Verify CVV columns do not exist
-        assert "cvv" not in columns
-        assert "cvv_encrypted" not in columns
-        
-        # Verify expected columns exist
-        assert "card_holder_name" in columns
-        assert "card_number_encrypted" in columns
-        assert "expiry_month" in columns
-        assert "expiry_year" in columns
-        
-    finally:
-        await db.close()
+    # Extract column names
+    columns = [col[1] for col in columns_info]
+    
+    # Verify CVV columns do not exist
+    assert "cvv" not in columns
+    assert "cvv_encrypted" not in columns
+    
+    # Verify expected columns exist
+    assert "card_holder_name" in columns
+    assert "card_number_encrypted" in columns
+    assert "expiry_month" in columns
+    assert "expiry_year" in columns
 
 
 def test_encryption_key_validation():
@@ -139,34 +132,27 @@ def test_email_format_validation():
 
 
 @pytest.mark.asyncio
-async def test_password_encryption_in_database():
+async def test_password_encryption_in_database(database):
     """Test: User passwords are encrypted in database."""
-    from src.models.database import Database
+    db = database
     
-    db = Database(":memory:")
-    await db.connect()
+    # Add user with password
+    plaintext_password = "my_secure_password"
+    user_id = await db.add_user(
+        email="test@example.com",
+        password=plaintext_password,
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay"
+    )
     
-    try:
-        # Add user with password
-        plaintext_password = "my_secure_password"
-        user_id = await db.add_user(
-            email="test@example.com",
-            password=plaintext_password,
-            centre="Istanbul",
-            category="Tourism",
-            subcategory="Short Stay"
-        )
-        
-        # Read password directly from database
-        async with db.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
-                row = await cursor.fetchone()
-                stored_password = row[0]
-        
-        # Verify password is encrypted (not plaintext)
-        assert stored_password != plaintext_password
-        assert len(stored_password) > len(plaintext_password)
-        
-    finally:
-        await db.close()
+    # Read password directly from database
+    async with db.get_connection() as conn:
+        async with conn.cursor() as cursor:
+            await cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
+            row = await cursor.fetchone()
+            stored_password = row[0]
+    
+    # Verify password is encrypted (not plaintext)
+    assert stored_password != plaintext_password
+    assert len(stored_password) > len(plaintext_password)
