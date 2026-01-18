@@ -188,9 +188,15 @@ def verify_token(token: str) -> Dict[str, Any]:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return cast(dict[str, Any], payload)
     except JWTError as e:
+        # Production: Don't expose internal error details for security
+        if os.getenv("ENV", "production").lower() == "production":
+            detail = "Could not validate credentials"
+        else:
+            detail = f"Could not validate credentials: {str(e)}"
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not validate credentials: {str(e)}",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"},
         )
 

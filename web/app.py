@@ -28,6 +28,7 @@ from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
 from src.utils.encryption import encrypt_password
+from src.middleware.request_tracking import RequestTrackingMiddleware
 
 security_scheme = HTTPBearer()
 
@@ -35,6 +36,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+# Add request tracking middleware
+app.add_middleware(RequestTrackingMiddleware)
 
 # Include OTP webhook router
 app.include_router(otp_router)
@@ -379,6 +383,100 @@ async def readiness_check() -> Dict[str, Any]:
         "checks": {
             "database": db_ready,
             "environment": env_ready,
+        },
+    }
+
+
+@app.get("/health/detailed")
+async def detailed_health_check() -> Dict[str, Any]:
+    """
+    Detailed health check with component diagnostics.
+    
+    Returns:
+        Comprehensive health status with system metrics
+    """
+    import sys
+    
+    try:
+        import psutil
+    except ImportError:
+        # If psutil is not installed, provide basic health check
+        from src.utils.metrics import get_metrics
+        
+        db_healthy = await check_database_health()
+        bot_metrics = await get_metrics()
+        snapshot = await bot_metrics.get_snapshot()
+        
+        # Configurable health threshold (default 50%)
+        health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
+        bot_healthy = snapshot.success_rate > health_threshold
+        
+        return {
+            "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "version": "2.1.0",
+            "python_version": sys.version,
+            "system": {
+                "note": "psutil not installed - install for detailed system metrics"
+            },
+            "components": {
+                "database": {
+                    "status": "healthy" if db_healthy else "unhealthy",
+                },
+                "bot": {
+                    "status": "healthy" if bot_healthy else "degraded",
+                    "running": bot_state.get("running", False),
+                    "success_rate": snapshot.success_rate,
+                    "total_checks": snapshot.total_checks,
+                },
+            },
+        }
+    
+    # System metrics (requires psutil)
+    from src.utils.metrics import get_metrics
+    
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    # Database check
+    db_healthy = await check_database_health()
+    
+    # Bot metrics
+    bot_metrics = await get_metrics()
+    snapshot = await bot_metrics.get_snapshot()
+    
+    # Configurable health threshold (default 50%)
+    health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
+    bot_healthy = snapshot.success_rate > health_threshold
+    
+    return {
+        "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": "2.1.0",
+        "python_version": sys.version,
+        "system": {
+            "cpu_percent": psutil.cpu_percent(interval=1),
+            "memory": {
+                "total_gb": round(memory.total / (1024**3), 2),
+                "available_gb": round(memory.available / (1024**3), 2),
+                "percent_used": memory.percent,
+            },
+            "disk": {
+                "total_gb": round(disk.total / (1024**3), 2),
+                "free_gb": round(disk.free / (1024**3), 2),
+                "percent_used": disk.percent,
+            },
+        },
+        "components": {
+            "database": {
+                "status": "healthy" if db_healthy else "unhealthy",
+            },
+            "bot": {
+                "status": "healthy" if bot_healthy else "degraded",
+                "running": bot_state.get("running", False),
+                "success_rate": snapshot.success_rate,
+                "total_checks": snapshot.total_checks,
+            },
         },
     }
 

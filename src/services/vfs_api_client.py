@@ -30,10 +30,10 @@ from ..constants import Defaults
 logger = logging.getLogger(__name__)
 
 
-# VFS Global API Base URLs
-VFS_API_BASE = "https://lift-api.vfsglobal.com"
-VFS_ASSETS_BASE = "https://liftassets.vfsglobal.com"
-CONTENTFUL_BASE = "https://d2ab400qlgxn2g.cloudfront.net/dev/spaces"
+# VFS Global API Base URLs - configurable via environment variables
+VFS_API_BASE = os.getenv("VFS_API_BASE", "https://lift-api.vfsglobal.com")
+VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE", "https://liftassets.vfsglobal.com")
+CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE", "https://d2ab400qlgxn2g.cloudfront.net/dev/spaces")
 
 
 @dataclass
@@ -163,7 +163,7 @@ class VFSApiClient:
         await self.close()
 
     async def _init_http_session(self) -> None:
-        """Initialize HTTP session with proper headers."""
+        """Initialize HTTP session with connection pooling."""
         if self._http_session is None:
             self._client_source = self._generate_client_source()
 
@@ -181,9 +181,26 @@ class VFSApiClient:
                 "clientsource": self._client_source,
             }
 
-            self._http_session = aiohttp.ClientSession(
-                headers=headers, timeout=aiohttp.ClientTimeout(total=self.timeout)
+            # Connection pooling configuration
+            connector = aiohttp.TCPConnector(
+                limit=100,  # Total connection limit
+                limit_per_host=30,  # Per-host limit
+                ttl_dns_cache=300,  # DNS cache TTL (5 minutes)
+                enable_cleanup_closed=True,  # Enable closed connection cleanup
             )
+            
+            timeout = aiohttp.ClientTimeout(
+                total=self.timeout,
+                connect=10,  # Connection timeout
+                sock_read=20,  # Socket read timeout
+            )
+
+            self._http_session = aiohttp.ClientSession(
+                connector=connector,
+                headers=headers,
+                timeout=timeout,
+            )
+            logger.info("HTTP session initialized with connection pooling")
 
     def _generate_client_source(self) -> str:
         """Generate clientsource header value."""
@@ -250,9 +267,17 @@ class VFSApiClient:
                     "TOKEN_REFRESH_BUFFER_MINUTES", str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
                 )
             )
-            expires_at = datetime.now() + timedelta(
-                minutes=data.get("expiresIn", 60) - token_refresh_buffer
-            )
+            expires_in = data.get("expiresIn", 60)
+            # Ensure buffer doesn't exceed expiry time
+            # If expires_in is very short (<=2 min), use 50% of the time as buffer
+            # Otherwise use the configured buffer, but never more than expires_in - 1
+            if expires_in <= 2:
+                effective_expiry = max(1, expires_in // 2)
+            else:
+                buffer_minutes = min(token_refresh_buffer, expires_in - 1)
+                effective_expiry = max(1, expires_in - buffer_minutes)
+            
+            expires_at = datetime.now() + timedelta(minutes=effective_expiry)
 
             self.session = VFSSession(
                 access_token=data["accessToken"],
@@ -444,11 +469,19 @@ class VFSApiClient:
                         "TOKEN_REFRESH_BUFFER_MINUTES", str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
                     )
                 )
+                expires_in = data.get("expiresIn", 60)
+                # Ensure buffer doesn't exceed expiry time
+                # If expires_in is very short (<=2 min), use 50% of the time as buffer
+                # Otherwise use the configured buffer, but never more than expires_in - 1
+                if expires_in <= 2:
+                    effective_expiry = max(1, expires_in // 2)
+                else:
+                    buffer_minutes = min(token_refresh_buffer, expires_in - 1)
+                    effective_expiry = max(1, expires_in - buffer_minutes)
+                
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now() + timedelta(
-                    minutes=data.get("expiresIn", 60) - token_refresh_buffer
-                )
+                self.session.expires_at = datetime.now() + timedelta(minutes=effective_expiry)
 
                 # Update session headers with new auth token
                 self._session.headers.update(
