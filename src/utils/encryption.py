@@ -121,6 +121,7 @@ def get_encryption() -> PasswordEncryption:
     Get global encryption instance (singleton) - thread-safe.
 
     Uses double-checked locking pattern for efficiency.
+    Recreates instance if encryption key changes.
 
     Returns:
         PasswordEncryption instance
@@ -131,15 +132,17 @@ def get_encryption() -> PasswordEncryption:
 
     # First check without lock (fast path)
     if _encryption_instance is not None:
-        if current_key and _encryption_instance._key == current_key:
+        # Check if key matches - if so, return existing instance
+        if current_key and _normalize_key(current_key) == _encryption_instance._key:
             return _encryption_instance
 
-    # Acquire lock for initialization
+    # Acquire lock for initialization or key change
     with _encryption_lock:
         # Double-check after acquiring lock
         if _encryption_instance is None:
             _encryption_instance = PasswordEncryption()
-        elif current_key is not None and _encryption_instance._key != current_key:
+        elif current_key is not None and _normalize_key(current_key) != _encryption_instance._key:
+            # Key changed - create new instance
             logger.warning("Encryption key changed, reinitializing...")
             _encryption_instance = PasswordEncryption()
 

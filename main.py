@@ -23,19 +23,28 @@ from src.core.config_validator import ConfigValidator
 from src.core.monitoring import init_sentry
 
 
+# Global shutdown event for coordinating graceful shutdown
+_shutdown_event = None
+
+
 def setup_signal_handlers():
     """
-    Setup graceful shutdown handlers.
-
-    Note: Uses sys.exit(0) for immediate shutdown. asyncio.run() will handle
-    cleanup of running tasks, and the bot/web modes have their own cleanup
-    logic in finally blocks.
+    Setup graceful shutdown handlers with timeout.
+    
+    Signals the shutdown event to allow running tasks to complete gracefully.
+    If tasks don't complete within timeout, forces exit.
     """
     logger = logging.getLogger(__name__)
 
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
-        sys.exit(0)
+        global _shutdown_event
+        if _shutdown_event and not _shutdown_event.is_set():
+            _shutdown_event.set()
+            logger.info("Shutdown event set, waiting for active operations to complete...")
+        else:
+            logger.warning("Shutdown already in progress or no active event, forcing exit...")
+            sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
@@ -49,11 +58,13 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         config: Configuration dictionary
         db: Optional shared database instance
     """
+    global _shutdown_event
     logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
 
     # Create shutdown event
     shutdown_event = asyncio.Event()
+    _shutdown_event = shutdown_event
 
     # Initialize database if not provided
     db_owned = db is None
@@ -90,6 +101,9 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
         shutdown_event.set()
+        # Wait for graceful shutdown with timeout
+        from src.constants import Defaults
+        await asyncio.sleep(Defaults.GRACEFUL_SHUTDOWN_TIMEOUT)
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
@@ -97,6 +111,8 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         # Only close if we own the database instance
         if db_owned and db:
             await db.close()
+        # Clear global shutdown event
+        _shutdown_event = None
 
 
 async def run_web_mode(

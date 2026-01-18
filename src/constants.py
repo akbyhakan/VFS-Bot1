@@ -133,3 +133,4 @@ class Defaults:
     RATE_LIMIT_REQUESTS = 60  # Maximum requests per time window
     RATE_LIMIT_WINDOW = 60  # Rate limit time window in seconds
     TOKEN_REFRESH_BUFFER_MINUTES = 5  # Token refresh buffer in minutes
+    GRACEFUL_SHUTDOWN_TIMEOUT = 5  # Graceful shutdown timeout in seconds

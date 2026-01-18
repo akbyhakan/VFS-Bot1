@@ -76,16 +76,22 @@ class Database:
         # Create main connection for schema management
         self.conn = await aiosqlite.connect(self.db_path)
         self.conn.row_factory = aiosqlite.Row
+        
+        # Enable WAL mode for better concurrency (database-wide setting)
+        await self.conn.execute("PRAGMA journal_mode=WAL")
+        await self.conn.commit()
+        
         await self._create_tables()
 
         # Initialize connection pool
+        # Note: WAL mode is a database-wide setting that persists across connections
         for _ in range(self.pool_size):
             conn = await aiosqlite.connect(self.db_path)
             conn.row_factory = aiosqlite.Row
             self._pool.append(conn)
             await self._available_connections.put(conn)
 
-        logger.info(f"Database connected with pool size {self.pool_size}: {self.db_path}")
+        logger.info(f"Database connected with pool size {self.pool_size} (WAL mode enabled): {self.db_path}")
 
     async def close(self) -> None:
         """Close database connection pool."""
@@ -494,7 +500,14 @@ class Database:
 
         Returns:
             User dictionary with decrypted password or None
+            
+        Raises:
+            ValueError: If user_id is invalid (negative or zero)
         """
+        # Validate user_id parameter
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
+        
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -562,7 +575,12 @@ class Database:
 
         Raises:
             ValidationError: If email or phone format is invalid
+            ValueError: If user_id is invalid
         """
+        # Validate user_id parameter
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
+        
         # Validate email if provided
         email = details.get("email")
         if email and not validate_email(email):
@@ -621,7 +639,14 @@ class Database:
 
         Returns:
             Personal details dictionary or None
+            
+        Raises:
+            ValueError: If user_id is invalid
         """
+        # Validate user_id parameter
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
+        
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
@@ -809,7 +834,14 @@ class Database:
 
         Returns:
             True if user was deleted, False if not found
+            
+        Raises:
+            ValueError: If user_id is invalid
         """
+        # Validate user_id parameter
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
+        
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))

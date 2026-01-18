@@ -352,6 +352,37 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
+@app.get("/ready")
+async def readiness_check() -> Dict[str, Any]:
+    """
+    Readiness check endpoint for Kubernetes and container orchestration.
+    
+    This endpoint checks if the application is ready to accept traffic.
+    Unlike /health, this endpoint focuses on dependencies being ready.
+    
+    Returns:
+        Readiness status with component checks
+    """
+    # Check database connectivity
+    db_ready = await check_database_health()
+    
+    # Check if all required environment variables are set
+    required_env_vars = ["ENCRYPTION_KEY"]
+    env_ready = all(os.getenv(var) for var in required_env_vars)
+    
+    # Overall readiness
+    ready = db_ready and env_ready
+    
+    return {
+        "ready": ready,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": {
+            "database": db_ready,
+            "environment": env_ready,
+        },
+    }
+
+
 async def check_database_health() -> bool:
     """
     Check database connectivity with actual query.
