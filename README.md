@@ -462,11 +462,25 @@ ENCRYPTION_KEY=your-generated-key-here
 
 ### Environment Variable Validation
 
-The bot validates all required environment variables on startup:
+The bot validates all required environment variables on startup with enhanced security checks:
 
-- **Email format** - Must be a valid email address
-- **Encryption key** - Must be a valid 44-character Fernet key
-- **API keys** - Minimum length validation
+#### Required Variables:
+- **VFS_EMAIL** - Must be a valid email address format
+- **VFS_PASSWORD** - Must be at least 8 characters
+- **ENCRYPTION_KEY** - Must be a valid 44-character Fernet key
+
+#### Optional Variables (with validation):
+- **API_SECRET_KEY** - JWT secret key (minimum 32 characters for security)
+- **VFS_ENCRYPTION_KEY** - VFS API encryption key (minimum 32 bytes for AES-256)
+- **ADMIN_PASSWORD** - Must be bcrypt hashed in production (starts with `$2b$`)
+- **SMS_WEBHOOK_SECRET** - Webhook signature secret (minimum 32 characters)
+- **CAPTCHA_API_KEY** - Minimum 16 characters
+
+#### Validation Features:
+- **Format validation** - Email, encryption keys checked for proper format
+- **Security requirements** - Password strength, key length enforced
+- **Production mode** - Stricter validation in production environment
+- **Error messages** - Clear instructions for fixing validation errors
 
 If validation fails in strict mode, the bot will not start.
 
@@ -475,6 +489,47 @@ If validation fails in strict mode, the bot will not start.
 - **Connection pooling** - Prevents race conditions with concurrent operations
 - **Encrypted passwords** - All VFS passwords are encrypted before storage
 - **SQL injection protection** - Uses parameterized queries throughout
+- **Thread-safe operations** - Connection pool with proper resource management
+- **Persistent storage** - User data persists across server restarts
+
+### 💳 Payment Card Security (PCI-DSS Compliant)
+
+VFS-Bot implements **PCI-DSS Level 1** compliant payment card storage:
+
+#### What is Stored:
+- ✅ **Card holder name** (plain text - not sensitive per PCI-DSS)
+- ✅ **Card number** (Fernet encrypted with AES-128)
+- ✅ **Expiry date** (plain text - not sensitive per PCI-DSS)
+
+#### What is NOT Stored:
+- ❌ **CVV/CVC** (PCI-DSS violation to store CVV - NEVER stored)
+- ❌ **3D Secure OTP codes** (one-time use only)
+
+#### Payment Flow:
+1. Save card details (without CVV) via dashboard
+2. When payment is needed, CVV must be entered at transaction time
+3. CVV is used only in-memory for the transaction
+4. CVV is immediately cleared after payment completion
+
+#### Security Features:
+- **No CVV persistence** - CVV never touches disk storage
+- **Encrypted card numbers** - AES-128 encryption at rest
+- **TLS 1.2+** - All network communication is encrypted
+- **Webhook signature validation** - SMS OTP webhooks are cryptographically verified
+- **Runtime CVV input** - CVV requested only when needed for payment
+
+#### 3D Secure Support:
+- OTP codes received via SMS webhook
+- Automatically entered during payment
+- Configurable timeout (default 120 seconds)
+- Secure webhook signature validation
+
+⚠️ **Production Note**: For full PCI-DSS compliance in production, consider:
+- External PCI audit (required for Level 1 compliance)
+- Hardware Security Module (HSM) for key storage
+- Payment gateway tokenization
+- Network segmentation
+- Regular security audits
 
 ### Rate Limiting
 
