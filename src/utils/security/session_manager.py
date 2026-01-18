@@ -14,6 +14,8 @@ try:
 except ImportError:
     jwt_module = None  # type: ignore[assignment]
 
+from src.utils.encryption import encrypt_password, decrypt_password
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +45,7 @@ class SessionManager:
 
     def load_session(self) -> bool:
         """
-        Load session from file.
+        Load session from encrypted file.
 
         Returns:
             True if session loaded successfully
@@ -54,7 +56,20 @@ class SessionManager:
                 return False
 
             with open(self.session_file, "r") as f:
-                data = json.load(f)
+                encrypted_data = f.read()
+
+            # Decrypt the session data
+            try:
+                decrypted_data = decrypt_password(encrypted_data)
+                data = json.loads(decrypted_data)
+            except Exception as e:
+                logger.warning(f"Failed to decrypt session (may be old format): {e}")
+                # Try loading as plain JSON for backward compatibility
+                try:
+                    data = json.loads(encrypted_data)
+                    logger.warning("Loaded unencrypted session - will be encrypted on next save")
+                except:
+                    return False
 
             self.access_token = data.get("access_token")
             self.refresh_token = data.get("refresh_token")
@@ -69,7 +84,7 @@ class SessionManager:
 
     def save_session(self) -> bool:
         """
-        Save session to file.
+        Save session to file with encryption.
 
         Returns:
             True if session saved successfully
@@ -83,6 +98,10 @@ class SessionManager:
                 "refresh_token": self.refresh_token,
                 "token_expiry": self.token_expiry,
             }
+            
+            # Encrypt sensitive data before writing
+            json_data = json.dumps(data)
+            encrypted_data = encrypt_password(json_data)
 
             # Atomic write with secure permissions from start
             fd, temp_path = tempfile.mkstemp(
@@ -92,10 +111,10 @@ class SessionManager:
                 # Set secure permissions (0600) before writing data
                 os.fchmod(fd, stat.S_IRUSR | stat.S_IWUSR)
                 with os.fdopen(fd, "w") as f:
-                    json.dump(data, f, indent=2)
+                    f.write(encrypted_data)
                 # Atomically replace the old file
                 os.rename(temp_path, self.session_file)
-                logger.info("Session saved securely to file")
+                logger.info("Session saved securely (encrypted)")
                 return True
             except Exception as e:
                 # Close fd if it's still open (fdopen takes ownership normally)

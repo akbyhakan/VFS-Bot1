@@ -79,6 +79,10 @@ class Database:
         
         # Enable WAL mode for better concurrency (database-wide setting)
         await self.conn.execute("PRAGMA journal_mode=WAL")
+        # Add busy timeout for concurrent access
+        await self.conn.execute("PRAGMA busy_timeout=30000")
+        # Enable foreign keys
+        await self.conn.execute("PRAGMA foreign_keys=ON")
         await self.conn.commit()
         
         await self._create_tables()
