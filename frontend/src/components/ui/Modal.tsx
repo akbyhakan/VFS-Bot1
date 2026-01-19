@@ -22,7 +22,7 @@ export function Modal({
   showClose = true,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const previousActiveElement = useRef<HTMLElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const sizeClasses = {
     sm: 'max-w-md',

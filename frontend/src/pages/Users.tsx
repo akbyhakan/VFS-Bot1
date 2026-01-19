@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleUserStatus } from '@/hooks/useApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { Plus, Pencil, Trash2, Power } from 'lucide-react';
+import { Plus, Pencil, Trash2, Power, Search, Download, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userSchema, type UserFormData } from '@/utils/validators';
@@ -19,6 +19,7 @@ import { cn, formatDate } from '@/utils/helpers';
 export function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
@@ -27,6 +28,20 @@ export function Users() {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const toggleStatus = useToggleUserStatus();
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    if (!searchQuery) return users;
+    
+    const query = searchQuery.toLowerCase();
+    return users.filter(user => 
+      user.first_name.toLowerCase().includes(query) ||
+      user.last_name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.phone.includes(query) ||
+      user.center_name.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
 
   const {
     register,
@@ -107,6 +122,35 @@ export function Users() {
     }
   };
 
+  const handleExport = () => {
+    if (!filteredUsers.length) return;
+    
+    const headers = ['ID', 'Ad', 'Soyad', 'E-posta', 'Telefon', 'Merkez', 'Vize Kategorisi', 'Durum', 'Oluşturulma'];
+    const rows = filteredUsers.map(user => [
+      user.id,
+      user.first_name,
+      user.last_name,
+      user.email,
+      user.phone,
+      user.center_name,
+      user.visa_category,
+      user.is_active ? 'Aktif' : 'Pasif',
+      new Date(user.created_at).toLocaleDateString('tr-TR')
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kullanicilar-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Kullanıcı listesi indirildi');
+  };
+
   if (isLoading) {
     return <Loading fullScreen text="Kullanıcılar yükleniyor..." />;
   }
@@ -118,9 +162,19 @@ export function Users() {
           <h1 className="text-3xl font-bold mb-2">Kullanıcı Yönetimi</h1>
           <p className="text-dark-400">VFS kullanıcılarını görüntüleyin ve yönetin</p>
         </div>
-        <Button variant="primary" onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
-          Yeni Kullanıcı
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="secondary" 
+            onClick={handleExport}
+            disabled={!filteredUsers.length}
+            leftIcon={<Download className="w-4 h-4" />}
+          >
+            Export
+          </Button>
+          <Button variant="primary" onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
+            Yeni Kullanıcı
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -128,8 +182,35 @@ export function Users() {
           <CardTitle>Kullanıcı Listesi</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Search */}
+          <div className="mb-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="İsim, e-posta, telefon veya merkez ile ara..."
+                className="w-full pl-10 pr-10 py-2 bg-dark-800 border border-dark-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {searchQuery && (
+              <p className="text-sm text-dark-400 mt-2">
+                {filteredUsers.length} kullanıcı bulundu
+              </p>
+            )}
+          </div>
+          
           <Table
-            data={users || []}
+            data={filteredUsers}
             columns={[
               {
                 key: 'first_name',
