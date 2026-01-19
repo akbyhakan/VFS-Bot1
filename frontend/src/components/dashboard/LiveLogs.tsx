@@ -1,17 +1,34 @@
 import { useBotStore } from '@/store/botStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { cn, getLogLevelColor } from '@/utils/helpers';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 export function LiveLogs() {
   const logs = useBotStore((state) => state.logs);
   const clearLogs = useBotStore((state) => state.clearLogs);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<number | null>(null);
 
-  // Auto-scroll to bottom when new logs arrive
+  // Debounced auto-scroll to bottom when new logs arrive
+  const scrollToBottom = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100); // 100ms debounce
+  }, []);
+
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+    scrollToBottom();
+    
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [logs, scrollToBottom]);
 
   return (
     <Card className="h-96">

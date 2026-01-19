@@ -5,4 +5,5 @@ export { useAppointmentRequest } from './useAppointmentRequest';
 export { useFocusTrap } from './useFocusTrap';
 export { useOnlineStatus } from './useOnlineStatus';
 export { usePaymentCard } from './usePaymentCard';
+export { useAsyncAction } from './useAsyncAction';
 export * from './useApi';

@@ -3,6 +3,7 @@ import { useBotStore } from '@/store/botStore';
 import { Button } from '@/components/ui/Button';
 import { LogOut, Menu, Wifi, WifiOff } from 'lucide-react';
 import { cn, getStatusColor } from '@/utils/helpers';
+import { useState } from 'react';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -11,6 +12,12 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const { logout } = useAuth();
   const { status, isConnected } = useBotStore();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleMenuClick = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+    onMenuClick?.();
+  };
 
   return (
     <header className="glass border-b border-dark-700 h-16 flex items-center justify-between px-6">
@@ -18,9 +25,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Mobile menu button */}
         <button
           className="md:hidden text-dark-300 hover:text-dark-100 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-          onClick={onMenuClick}
+          onClick={handleMenuClick}
           aria-label="Menüyü aç"
-          aria-expanded="false"
+          aria-expanded={isMobileMenuOpen}
         >
           <Menu className="w-6 h-6" aria-hidden="true" />
         </button>

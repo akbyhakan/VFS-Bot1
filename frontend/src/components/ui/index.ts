@@ -1,5 +1,5 @@
 export { Button } from './Button';
-export { Card, CardHeader, CardTitle, CardContent } from './Card';
+export { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from './Card';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { Table } from './Table';
