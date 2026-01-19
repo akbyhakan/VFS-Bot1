@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 
 interface UseAsyncActionOptions<T> {
@@ -81,8 +81,8 @@ interface UseAsyncActionResult<T, Args extends unknown[]> {
  * </Button>
  * ```
  * 
- * @note The action function should be wrapped with useCallback to prevent unnecessary
- * recreations of the execute function on every render.
+ * @important The action function MUST be wrapped with useCallback to prevent unnecessary
+ * recreations of the execute function on every render. Not doing so will cause performance issues.
  */
 export function useAsyncAction<T, Args extends unknown[] = []>(
   action: (...args: Args) => Promise<T>,
@@ -100,13 +100,20 @@ export function useAsyncAction<T, Args extends unknown[] = []>(
   const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<T | null>(null);
 
+  // Use ref to avoid recreating execute when action changes
+  // This allows for better performance while still supporting dynamic actions
+  const actionRef = useRef(action);
+  useEffect(() => {
+    actionRef.current = action;
+  }, [action]);
+
   const execute = useCallback(
     async (...args: Args): Promise<T | undefined> => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const result = await action(...args);
+        const result = await actionRef.current(...args);
         setData(result);
         
         if (showToast && successMessage) {
@@ -132,7 +139,7 @@ export function useAsyncAction<T, Args extends unknown[] = []>(
         setIsLoading(false);
       }
     },
-    [action, successMessage, errorMessage, onSuccess, onError, showToast]
+    [successMessage, errorMessage, onSuccess, onError, showToast]
   );
 
   const reset = useCallback(() => {

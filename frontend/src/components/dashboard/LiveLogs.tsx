@@ -15,7 +15,7 @@ export function LiveLogs() {
       clearTimeout(scrollTimeoutRef.current);
     }
     
-    scrollTimeoutRef.current = window.setTimeout(() => {
+    scrollTimeoutRef.current = setTimeout(() => {
       logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100); // 100ms debounce
   }, []);

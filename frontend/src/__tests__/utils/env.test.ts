@@ -1,7 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { env, isDev, isProd, getMode, validateEnv } from '@/utils/env';
 
 describe('env utility', () => {
+  // Store original env mode
+  const originalMode = import.meta.env.MODE;
+
+  afterEach(() => {
+    // Restore original mode
+    import.meta.env.MODE = originalMode;
+  });
+
   it('should export environment configuration', () => {
     expect(env).toBeDefined();
     expect(env.API_BASE_URL).toBeDefined();
@@ -18,6 +26,12 @@ describe('env utility', () => {
   });
 
   it('should validate env without throwing in development', () => {
+    // Ensure we're in dev mode for this test
+    if (!isDev()) {
+      import.meta.env.MODE = 'development';
+      import.meta.env.DEV = true;
+      import.meta.env.PROD = false;
+    }
     expect(() => validateEnv()).not.toThrow();
   });
 

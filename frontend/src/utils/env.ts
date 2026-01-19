@@ -53,6 +53,8 @@ const REQUIRED_ENV_VARS = ['VITE_API_BASE_URL', 'VITE_WS_BASE_URL'] as const;
 
 /**
  * Type-safe environment configuration
+ * Note: API_BASE_URL and WS_BASE_URL use empty string defaults for development flexibility,
+ * but are validated as required in production via validateEnv()
  */
 export const env = {
   API_BASE_URL: getOptionalEnv('VITE_API_BASE_URL', ''),
@@ -65,6 +67,7 @@ export const env = {
 /**
  * Validate that all required environment variables are set
  * Call this at app initialization
+ * @throws Error in production if required variables are missing
  */
 export function validateEnv(): void {
   const missing = REQUIRED_ENV_VARS.filter((key) => {
@@ -72,10 +75,13 @@ export function validateEnv(): void {
     return value === undefined || value === '';
   });
   
-  if (missing.length > 0 && isProd()) {
-    console.warn(
-      `Missing environment variables in production: ${missing.join(', ')}`
-    );
+  if (missing.length > 0) {
+    const message = `Missing required environment variables: ${missing.join(', ')}`;
+    if (isProd()) {
+      throw new Error(message);
+    } else {
+      console.warn(message);
+    }
   }
 }
 
