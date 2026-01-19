@@ -1,6 +1,4 @@
-import { Component, ReactNode, ErrorInfo } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -9,53 +7,37 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  state: State = { hasError: false };
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="glass max-w-md w-full p-8 text-center">
-            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Bir Hata Oluştu</h1>
-            <p className="text-dark-400 mb-4">
-              Üzgünüz, bir şeyler yanlış gitti. Lütfen sayfayı yenileyin.
-            </p>
-            {this.state.error && (
-              <pre className="text-xs text-left bg-dark-800 p-4 rounded mb-4 overflow-auto">
-                {this.state.error.message}
-              </pre>
-            )}
-            <Button
-              variant="primary"
-              onClick={() => window.location.reload()}
+      return this.props.fallback || (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-dark-900">
+          <div className="text-center">
+            <h2 className="text-xl text-red-500 mb-4">Bir hata oluştu</h2>
+            <p className="text-dark-400 mb-4">Sayfa yüklenirken beklenmeyen bir hata oluştu.</p>
+            <button 
+              onClick={() => this.setState({ hasError: false })}
+              className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
             >
-              Sayfayı Yenile
-            </Button>
+              Tekrar Dene
+            </button>
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }

@@ -3,12 +3,16 @@ import { API_BASE_URL } from '@/utils/constants';
 import { tokenManager } from '@/utils/tokenManager';
 import type { ApiError } from '@/types/api';
 
+// Default timeout: 30 seconds
+const DEFAULT_TIMEOUT = 30000;
+
 class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
+      timeout: DEFAULT_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
       },
