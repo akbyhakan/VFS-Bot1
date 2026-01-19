@@ -47,6 +47,11 @@ export const isProd = (): boolean => import.meta.env.PROD;
 export const getMode = (): string => import.meta.env.MODE;
 
 /**
+ * Required environment variables for production
+ */
+const REQUIRED_ENV_VARS = ['VITE_API_BASE_URL', 'VITE_WS_BASE_URL'] as const;
+
+/**
  * Type-safe environment configuration
  */
 export const env = {
@@ -62,9 +67,7 @@ export const env = {
  * Call this at app initialization
  */
 export function validateEnv(): void {
-  const required = ['VITE_API_BASE_URL', 'VITE_WS_BASE_URL'];
-  
-  const missing = required.filter((key) => {
+  const missing = REQUIRED_ENV_VARS.filter((key) => {
     const value = import.meta.env[key];
     return value === undefined || value === '';
   });

@@ -61,10 +61,15 @@ interface UseAsyncActionResult<T, Args extends unknown[]> {
  * 
  * @example
  * ```tsx
- * const { execute, isLoading, error } = useAsyncAction(
+ * const deleteUser = useCallback(
  *   async (userId: string) => {
  *     return await api.deleteUser(userId);
  *   },
+ *   []
+ * );
+ * 
+ * const { execute, isLoading, error } = useAsyncAction(
+ *   deleteUser,
  *   {
  *     successMessage: 'User deleted successfully',
  *     errorMessage: 'Failed to delete user',
@@ -75,6 +80,9 @@ interface UseAsyncActionResult<T, Args extends unknown[]> {
  *   Delete
  * </Button>
  * ```
+ * 
+ * @note The action function should be wrapped with useCallback to prevent unnecessary
+ * recreations of the execute function on every render.
  */
 export function useAsyncAction<T, Args extends unknown[] = []>(
   action: (...args: Args) => Promise<T>,
