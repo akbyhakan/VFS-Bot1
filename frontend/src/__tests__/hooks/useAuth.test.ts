@@ -1,0 +1,106 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/authStore';
+import { authService } from '@/services/auth';
+
+vi.mock('@/services/auth', () => ({
+  authService: {
+    login: vi.fn(),
+    logout: vi.fn(),
+    isAuthenticated: vi.fn(),
+  },
+}));
+
+describe('useAuth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset store state
+    useAuthStore.setState({
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it('should return authentication state', () => {
+    const { result } = renderHook(() => useAuth());
+
+    expect(result.current).toHaveProperty('isAuthenticated');
+    expect(result.current).toHaveProperty('isLoading');
+    expect(result.current).toHaveProperty('error');
+    expect(result.current).toHaveProperty('login');
+    expect(result.current).toHaveProperty('logout');
+    expect(result.current).toHaveProperty('checkAuth');
+    expect(result.current).toHaveProperty('clearError');
+  });
+
+  it('should handle successful login', async () => {
+    vi.mocked(authService.login).mockResolvedValue(undefined);
+    vi.mocked(authService.isAuthenticated).mockReturnValue(true);
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.login({ username: 'test', password: 'password' });
+    });
+
+    expect(authService.login).toHaveBeenCalledWith(
+      { username: 'test', password: 'password' },
+      false
+    );
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.error).toBe(null);
+  });
+
+  it('should handle login error', async () => {
+    const error = new Error('Invalid credentials');
+    vi.mocked(authService.login).mockRejectedValue(error);
+
+    const { result } = renderHook(() => useAuth());
+
+    try {
+      await act(async () => {
+        await result.current.login({ username: 'test', password: 'wrong' });
+      });
+    } catch (e) {
+      // Expected to throw
+      expect(result.current.isAuthenticated).toBe(false);
+    }
+  });
+
+  it('should handle logout', () => {
+    useAuthStore.setState({ isAuthenticated: true });
+    const { result } = renderHook(() => useAuth());
+
+    act(() => {
+      result.current.logout();
+    });
+
+    expect(authService.logout).toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('should check authentication status', () => {
+    vi.mocked(authService.isAuthenticated).mockReturnValue(true);
+    const { result } = renderHook(() => useAuth());
+
+    act(() => {
+      result.current.checkAuth();
+    });
+
+    expect(authService.isAuthenticated).toHaveBeenCalled();
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it('should clear error', () => {
+    useAuthStore.setState({ error: 'Some error' });
+    const { result } = renderHook(() => useAuth());
+
+    act(() => {
+      result.current.clearError();
+    });
+
+    expect(result.current.error).toBe(null);
+  });
+});
