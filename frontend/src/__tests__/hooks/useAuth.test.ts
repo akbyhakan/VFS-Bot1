@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth';
@@ -36,7 +36,8 @@ describe('useAuth', () => {
   });
 
   it('should handle successful login', async () => {
-    vi.mocked(authService.login).mockResolvedValue(undefined);
+    const mockTokenResponse = { access_token: 'token123', token_type: 'bearer' };
+    vi.mocked(authService.login).mockResolvedValue(mockTokenResponse);
     vi.mocked(authService.isAuthenticated).mockReturnValue(true);
 
     const { result } = renderHook(() => useAuth());

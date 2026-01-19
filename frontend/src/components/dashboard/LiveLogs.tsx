@@ -1,34 +1,20 @@
 import { useBotStore } from '@/store/botStore';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { cn, getLogLevelColor } from '@/utils/helpers';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { FixedSizeList } from 'react-window';
 
 export function LiveLogs() {
   const logs = useBotStore((state) => state.logs);
   const clearLogs = useBotStore((state) => state.clearLogs);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-  const scrollTimeoutRef = useRef<number | null>(null);
+  const listRef = useRef<FixedSizeList>(null);
 
-  // Debounced auto-scroll to bottom when new logs arrive
-  const scrollToBottom = useCallback(() => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-    
-    scrollTimeoutRef.current = setTimeout(() => {
-      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100); // 100ms debounce
-  }, []);
-
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    scrollToBottom();
-    
-    return () => {
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, [logs, scrollToBottom]);
+    if (listRef.current && logs.length > 0) {
+      listRef.current.scrollToItem(logs.length - 1, 'end');
+    }
+  }, [logs]);
 
   return (
     <Card className="h-96">
@@ -45,25 +31,34 @@ export function LiveLogs() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="bg-dark-900 rounded-lg p-4 h-72 overflow-y-auto font-mono text-xs">
+        <div className="bg-dark-900 rounded-lg p-4">
           {logs.length === 0 ? (
             <p className="text-dark-500 text-center py-8">Log mesajı bekleniyor...</p>
           ) : (
-            <>
-              {logs.map((log, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    'py-1 hover:bg-dark-800/50 transition-colors',
-                    getLogLevelColor(log.level)
-                  )}
-                >
-                  <span className="text-dark-500">[{log.timestamp}]</span>{' '}
-                  <span className="font-semibold">[{log.level}]</span> {log.message}
-                </div>
-              ))}
-              <div ref={logsEndRef} />
-            </>
+            <FixedSizeList
+              ref={listRef}
+              height={288}
+              itemCount={logs.length}
+              itemSize={24}
+              width="100%"
+              className="font-mono text-xs scrollbar-thin scrollbar-thumb-dark-700 scrollbar-track-dark-900"
+            >
+              {({ index, style }: { index: number; style: React.CSSProperties }) => {
+                const log = logs[index];
+                return (
+                  <div
+                    style={style}
+                    className={cn(
+                      'py-1 hover:bg-dark-800/50 transition-colors',
+                      getLogLevelColor(log.level)
+                    )}
+                  >
+                    <span className="text-dark-500">[{log.timestamp}]</span>{' '}
+                    <span className="font-semibold">[{log.level}]</span> {log.message}
+                  </div>
+                );
+              }}
+            </FixedSizeList>
           )}
         </div>
       </CardContent>

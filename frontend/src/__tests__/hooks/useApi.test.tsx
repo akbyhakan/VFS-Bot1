@@ -69,14 +69,13 @@ describe('useApi hooks', () => {
 
       const { result } = renderHook(() => useStartBot(), { wrapper: createWrapper() });
 
-      result.current.mutate({ user_id: 1, appointment_type: 'visa' });
+      result.current.mutate({ action: 'start' });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toEqual(mockResponse);
       expect(api.post).toHaveBeenCalledWith('/api/bot/start', {
-        user_id: 1,
-        appointment_type: 'visa',
+        action: 'start',
       });
     });
   });

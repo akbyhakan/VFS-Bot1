@@ -14,6 +14,7 @@ vi.mock('@/services/paymentCard', () => ({
 describe('Settings', () => {
   const mockSaveCard = vi.fn();
   const mockDeleteCard = vi.fn();
+  const mockReload = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,11 +26,12 @@ describe('Settings', () => {
       deleting: false,
       saveCard: mockSaveCard,
       deleteCard: mockDeleteCard,
+      reload: mockReload,
     });
     vi.mocked(webhookApi.getWebhookUrls).mockResolvedValue({
-      notification_url: 'https://example.com/webhook',
-      success_url: 'https://example.com/success',
-      failure_url: 'https://example.com/failure',
+      appointment_webhook: 'https://example.com/appointment',
+      payment_webhook: 'https://example.com/payment',
+      base_url: 'https://example.com',
     });
   });
 
@@ -56,7 +58,6 @@ describe('Settings', () => {
         expiry_month: '12',
         expiry_year: '2025',
         created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
       },
       loading: false,
       error: null,
@@ -64,6 +65,7 @@ describe('Settings', () => {
       deleting: false,
       saveCard: mockSaveCard,
       deleteCard: mockDeleteCard,
+      reload: mockReload,
     });
 
     render(<Settings />);
@@ -80,6 +82,7 @@ describe('Settings', () => {
       deleting: false,
       saveCard: mockSaveCard,
       deleteCard: mockDeleteCard,
+      reload: mockReload,
     });
 
     render(<Settings />);

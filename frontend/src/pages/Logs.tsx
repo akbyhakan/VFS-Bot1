@@ -6,6 +6,7 @@ import { cn, getLogLevelColor } from '@/utils/helpers';
 import { FileText, Search, Filter, Download, X, RefreshCw, Trash2 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { toast } from 'sonner';
+import { FixedSizeList } from 'react-window';
 
 type LogLevel = 'ALL' | 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
 
@@ -199,29 +200,37 @@ export function Logs() {
           </div>
 
           {/* Logs */}
-          <div className="bg-dark-900 rounded-lg p-4 max-h-[600px] overflow-y-auto font-mono text-xs">
+          <div className="bg-dark-900 rounded-lg p-4">
             {filteredLogs.length === 0 ? (
               <p className="text-dark-500 text-center py-8">
                 {hasFilters ? 'Filtreye uygun log bulunamadı' : 'Henüz log kaydı yok'}
               </p>
             ) : (
-              filteredLogs.map((log, index) => {
-                const sanitizedLog = sanitizeLog(log);
-                const level = extractLogLevel(sanitizedLog);
+              <FixedSizeList
+                height={600}
+                itemCount={filteredLogs.length}
+                itemSize={28}
+                width="100%"
+                className="font-mono text-xs scrollbar-thin scrollbar-thumb-dark-700 scrollbar-track-dark-900"
+              >
+                {({ index, style }: { index: number; style: React.CSSProperties }) => {
+                  const log = filteredLogs[index];
+                  const sanitizedLog = sanitizeLog(log);
+                  const level = extractLogLevel(sanitizedLog);
 
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      'py-1 hover:bg-dark-800/50 transition-colors border-l-2 pl-2 mb-1',
-                      getLogLevelColor(level)
-                    )}
-                    style={{ borderLeftColor: 'currentColor' }}
-                  >
-                    {sanitizedLog}
-                  </div>
-                );
-              })
+                  return (
+                    <div
+                      style={style}
+                      className={cn(
+                        'py-1 hover:bg-dark-800/50 transition-colors border-l-2 pl-2',
+                        getLogLevelColor(level)
+                      )}
+                    >
+                      {sanitizedLog}
+                    </div>
+                  );
+                }}
+              </FixedSizeList>
             )}
           </div>
         </CardContent>
