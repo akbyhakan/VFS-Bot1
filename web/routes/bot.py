@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -281,7 +281,7 @@ async def update_bot_stats(
     if active_users is not None:
         bot_state["active_users"] = active_users
 
-    bot_state["last_check"] = datetime.now().isoformat()
+    bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
 
     await broadcast_message(
         {
@@ -304,7 +304,7 @@ async def add_log(message: str, level: str = "INFO") -> None:
         message: Log message
         level: Log level
     """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] [{level}] {message}"
 
     bot_state["logs"].append(log_entry)
