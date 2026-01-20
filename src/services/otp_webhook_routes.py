@@ -71,16 +71,21 @@ async def get_verified_otp_service(
         
         logger.debug("✅ Webhook signature verified")
     
-    # Development mode - still enforce signature if webhook_secret is set
+    # Development mode - enforce signature if webhook_secret is set
     elif webhook_secret:
         if not x_webhook_signature:
-            logger.warning("⚠️ DEV MODE: Webhook signature missing (but secret is configured)")
-        else:
-            body = await request.body()
-            if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
-                logger.warning("⚠️ DEV MODE: Invalid webhook signature (continuing anyway)")
-            else:
-                logger.debug("✅ DEV MODE: Webhook signature verified")
+            logger.warning("⚠️ DEV MODE: Webhook signature missing")
+            raise HTTPException(
+                status_code=401,
+                detail="X-Webhook-Signature header required when secret is configured"
+            )
+        
+        body = await request.body()
+        if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
+            logger.error("❌ DEV MODE: Invalid webhook signature")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+        
+        logger.debug("✅ DEV MODE: Webhook signature verified")
     else:
         logger.warning("⚠️ DEV MODE: No webhook secret configured - signature validation disabled")
 

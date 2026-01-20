@@ -119,6 +119,9 @@ def _truncate_password(password: str) -> str:
 
     Returns:
         Truncated password (max 72 bytes when encoded as UTF-8)
+        
+    Raises:
+        ValueError: If unable to truncate to valid UTF-8 boundary
     """
     password_bytes = password.encode("utf-8")
     if len(password_bytes) > MAX_PASSWORD_BYTES:
@@ -130,9 +133,8 @@ def _truncate_password(password: str) -> str:
                 return truncated_bytes[:i].decode("utf-8")
             except UnicodeDecodeError:
                 continue
-        # Fallback: return empty string if no valid boundary found (should never happen)
-        # This would only occur if the entire password is invalid UTF-8
-        return ""
+        # This should never happen with valid UTF-8 input, but handle it safely
+        raise ValueError("Failed to truncate password to valid UTF-8 boundary")
     return password
 
 

@@ -56,11 +56,14 @@ class APIKeyManager:
                     f"API_KEY_SALT environment variable MUST be set in '{env}' environment. "
                     "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
                 )
+            
+            # Development: generate random salt for this session
             logger.warning(
                 "⚠️ SECURITY WARNING: API_KEY_SALT not set. "
-                "Using insecure default. This is only acceptable in development!"
+                "Generating random salt for this session. This is only acceptable in development!"
             )
-            self._salt = b"dev-only-insecure-salt-do-not-use-in-prod"
+            self._salt = secrets.token_bytes(32)
+            logger.info(f"Generated random salt for development session (length: {len(self._salt)} bytes)")
         else:
             if len(salt_env) < 32:
                 raise ValueError(

@@ -11,6 +11,7 @@ import sys
 import os
 import argparse
 import signal
+import threading
 from typing import Optional
 
 from src.core.config_loader import load_config
@@ -26,18 +27,20 @@ from src.core.exceptions import ConfigurationError
 
 # Global shutdown event for coordinating graceful shutdown - thread-safe singleton
 _shutdown_event: Optional[asyncio.Event] = None
+_shutdown_lock = threading.Lock()
 
 
 def get_shutdown_event() -> Optional[asyncio.Event]:
-    """Get shutdown event - singleton pattern."""
-    global _shutdown_event
-    return _shutdown_event
+    """Get shutdown event - thread-safe singleton pattern."""
+    with _shutdown_lock:
+        return _shutdown_event
 
 
-def set_shutdown_event(event: asyncio.Event) -> None:
-    """Set shutdown event - singleton pattern."""
+def set_shutdown_event(event: Optional[asyncio.Event]) -> None:
+    """Set shutdown event - thread-safe singleton pattern."""
     global _shutdown_event
-    _shutdown_event = event
+    with _shutdown_lock:
+        _shutdown_event = event
 
 
 def validate_environment():
@@ -245,6 +248,7 @@ async def run_web_mode(
         db = Database()
         await db.connect()
 
+    cleanup_service = None  # Initialize to None
     cleanup_task = None
     try:
         # Start cleanup service in background (only if requested)
@@ -261,7 +265,7 @@ async def run_web_mode(
         await server.serve()
     finally:
         # Stop cleanup service
-        if start_cleanup and "cleanup_service" in locals():
+        if cleanup_service is not None:
             cleanup_service.stop()
         if cleanup_task:
             cleanup_task.cancel()

@@ -356,34 +356,47 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
-@app.get("/ready")
-async def readiness_check() -> Dict[str, Any]:
+@app.get("/health/live")
+async def liveness_probe() -> Dict[str, str]:
     """
-    Readiness check endpoint for Kubernetes and container orchestration.
+    Kubernetes liveness probe - checks if application is running.
     
-    This endpoint checks if the application is ready to accept traffic.
-    Unlike /health, this endpoint focuses on dependencies being ready.
+    This endpoint always returns 200 if the app is running.
+    Used to detect if the application needs to be restarted.
     
     Returns:
-        Readiness status with component checks
+        Liveness status
+    """
+    return {"status": "alive"}
+
+
+@app.get("/ready")
+@app.get("/health/ready")
+async def readiness_probe() -> Dict[str, Any]:
+    """
+    Kubernetes readiness probe - checks if application is ready to serve traffic.
+    
+    This endpoint checks critical dependencies like database connectivity.
+    Returns 503 if the service is not ready.
+    
+    Returns:
+        Readiness status
+        
+    Raises:
+        HTTPException: 503 if service is not ready
     """
     # Check database connectivity
     db_ready = await check_database_health()
     
-    # Check if all required environment variables are set
-    required_env_vars = ["ENCRYPTION_KEY"]
-    env_ready = all(os.getenv(var) for var in required_env_vars)
-    
-    # Overall readiness
-    ready = db_ready and env_ready
+    if not db_ready:
+        raise HTTPException(status_code=503, detail="Database not ready")
     
     return {
-        "ready": ready,
+        "status": "ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {
-            "database": db_ready,
-            "environment": env_ready,
-        },
+            "database": "ok"
+        }
     }
 
 
