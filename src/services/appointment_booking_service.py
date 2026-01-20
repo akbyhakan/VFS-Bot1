@@ -13,53 +13,76 @@ from .otp_webhook import get_otp_service
 logger = logging.getLogger(__name__)
 
 
-# VFS Form Selector'ları
+# VFS Form Selectors with Fallback Support
+# Each selector can be a string (single selector) or a list (fallback chain)
 VFS_SELECTORS = {
     # Detaylar Formu - Başvuru Sahibi
-    "first_name": "#mat-input-3",
-    "last_name": "#mat-input-4",
-    "gender_dropdown": "#mat-select-value-3",
+    "first_name": ["#mat-input-3", 'input[formcontrolname="firstName"]', 'input[name="firstName"]'],
+    "last_name": ["#mat-input-4", 'input[formcontrolname="lastName"]', 'input[name="lastName"]'],
+    "gender_dropdown": ["#mat-select-value-3", 'mat-select[formcontrolname="gender"]'],
     "gender_female": '//mat-option[contains(., "Female")]',
     "gender_male": '//mat-option[contains(., "Male")]',
-    "birth_date": "#dateOfBirth",
-    "nationality_dropdown": "#mat-select-value-4",
+    "birth_date": ["#dateOfBirth", 'input[formcontrolname="dateOfBirth"]', 'input[name="dateOfBirth"]'],
+    "nationality_dropdown": ["#mat-select-value-4", 'mat-select[formcontrolname="nationality"]'],
     "nationality_turkey": (
         '(//mat-option[contains(., "Turkey")])[1] | ' '(//mat-option[contains(., "Türkiye")])[1]'
     ),
-    "passport_number": "#mat-input-5",
-    "passport_expiry": "#passportExpirtyDate",
-    "phone_code": "#mat-input-6",
-    "phone_number": "#mat-input-7",
-    "email": "#mat-input-8",
-    "child_checkbox": "#mat-mdc-checkbox-0-input",
+    "passport_number": ["#mat-input-5", 'input[formcontrolname="passportNumber"]', 'input[name="passportNumber"]'],
+    "passport_expiry": ["#passportExpirtyDate", 'input[formcontrolname="passportExpiry"]', 'input[name="passportExpiry"]'],
+    "phone_code": ["#mat-input-6", 'input[formcontrolname="phoneCode"]', 'input[name="phoneCode"]'],
+    "phone_number": ["#mat-input-7", 'input[formcontrolname="phoneNumber"]', 'input[name="phoneNumber"]'],
+    "email": ["#mat-input-8", 'input[formcontrolname="email"]', 'input[name="email"]', 'input[type="email"]'],
+    "child_checkbox": ["#mat-mdc-checkbox-0-input", 'input[formcontrolname="childWithParent"]'],
     # Butonlar
-    "save_button": '//button[contains(., "Kaydet")]',
-    "add_another_button": '//button[contains(., "Başka Başvuru ekle")]',
-    "continue_button": '//button[contains(., "Devam et")]',
-    "back_button": '//button[contains(., "Geri Dön")]',
-    "online_pay_button": "#trigger",
+    "save_button": ['//button[contains(., "Kaydet")]', 'button[type="submit"]'],
+    "add_another_button": ['//button[contains(., "Başka Başvuru ekle")]', '//button[contains(., "Add Another")]'],
+    "continue_button": ['//button[contains(., "Devam et")]', '//button[contains(., "Continue")]', 'button.continue-btn'],
+    "back_button": ['//button[contains(., "Geri Dön")]', '//button[contains(., "Back")]'],
+    "online_pay_button": ["#trigger", 'button[id*="pay"]', '//button[contains(., "Online")]'],
     # Takvim
-    "available_date_cell": ".fc-daygrid-day.available",
-    "time_slot_button": '//button[contains(., "Seç")]',
-    "load_more_times": '//button[contains(., "Daha Fazla Yükle")]',
-    "next_month_button": '//button[contains(@aria-label, "next")]',
+    "available_date_cell": [".fc-daygrid-day.available", ".available-date"],
+    "time_slot_button": ['//button[contains(., "Seç")]', '//button[contains(., "Select")]', '.time-slot-btn'],
+    "load_more_times": ['//button[contains(., "Daha Fazla Yükle")]', '//button[contains(., "Load More")]'],
+    "next_month_button": ['//button[contains(@aria-label, "next")]', '.next-month', 'button.fc-next-button'],
     # Checkboxlar (Gözden Geçir ve Öde)
-    "terms_checkbox": 'input[type="checkbox"]',
+    "terms_checkbox": ['input[type="checkbox"]', '.terms-checkbox'],
     # Ödeme Sayfası (Banka)
-    "card_number": 'input[name="pan"]',
-    "expiry_month": 'select[name="Ecom_Payment_Card_ExpDate_Month"]',
-    "expiry_year": 'select[name="Ecom_Payment_Card_ExpDate_Year"]',
-    "cvv": 'input[name="cv2"]',
-    "payment_submit": "#btnSbmt",
+    "card_number": ['input[name="pan"]', 'input[name="cardNumber"]', 'input[placeholder*="Card"]'],
+    "expiry_month": ['select[name="Ecom_Payment_Card_ExpDate_Month"]', 'select[name="expiryMonth"]'],
+    "expiry_year": ['select[name="Ecom_Payment_Card_ExpDate_Year"]', 'select[name="expiryYear"]'],
+    "cvv": ['input[name="cv2"]', 'input[name="cvv"]', 'input[placeholder*="CVV"]'],
+    "payment_submit": ["#btnSbmt", 'button[type="submit"]', '.payment-submit'],
     # 3D Secure OTP
-    "otp_input": "#sifre3dinput",
-    "otp_submit": "#DevamEt",
+    "otp_input": ["#sifre3dinput", 'input[name="otp"]', 'input[placeholder*="OTP"]'],
+    "otp_submit": ["#DevamEt", 'button[type="submit"]', '//button[contains(., "Submit")]'],
     # Overlay/Spinner
-    "overlay": ".ngx-overlay",
+    "overlay": [".ngx-overlay", ".loading-overlay", ".spinner-overlay"],
     # Captcha Modal
-    "captcha_modal": '//*[contains(text(), "Captcha")]',
-    "captcha_submit": '//button[contains(., "Submit")]',
+    "captcha_modal": ['//*[contains(text(), "Captcha")]', '.captcha-modal'],
+    "captcha_submit": ['//button[contains(., "Submit")]', 'button.captcha-submit'],
 }
+
+
+def get_selector_with_fallback(selector_name: str) -> list:
+    """
+    Get selector(s) for a given name, ensuring it's always a list for fallback support.
+    
+    Args:
+        selector_name: Name of the selector in VFS_SELECTORS
+        
+    Returns:
+        List of selector strings to try in order
+    """
+    selector = VFS_SELECTORS.get(selector_name)
+    if selector is None:
+        raise ValueError(f"Unknown selector name: {selector_name}")
+    
+    # Ensure we always return a list
+    if isinstance(selector, list):
+        return selector
+    else:
+        return [selector]
+
 
 
 class AppointmentBookingService:

@@ -1,8 +1,11 @@
-"""Background service for cleaning up old appointment requests."""
+"""Background service for cleaning up old appointment requests and screenshots."""
 
 import asyncio
 import logging
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
+from datetime import datetime, timedelta
 
 if TYPE_CHECKING:
     from src.models.database import Database
@@ -15,18 +18,28 @@ MAX_BACKOFF_SECONDS = 5400  # 90 minutes (1.5 hours)
 
 
 class CleanupService:
-    """Service for cleaning up old completed appointment requests."""
+    """Service for cleaning up old completed appointment requests and screenshots."""
 
-    def __init__(self, db: "Database", cleanup_days: int = 30):
+    def __init__(
+        self, 
+        db: "Database", 
+        cleanup_days: int = 30,
+        screenshot_cleanup_days: int = 7,
+        screenshot_dir: str = "screenshots"
+    ):
         """
         Initialize cleanup service.
 
         Args:
             db: Database instance
-            cleanup_days: Age threshold in days for cleanup (default 30)
+            cleanup_days: Age threshold in days for appointment cleanup (default 30)
+            screenshot_cleanup_days: Age threshold in days for screenshot cleanup (default 7)
+            screenshot_dir: Directory containing screenshots (default "screenshots")
         """
         self.db = db
         self.cleanup_days = cleanup_days
+        self.screenshot_cleanup_days = screenshot_cleanup_days
+        self.screenshot_dir = Path(screenshot_dir)
         self._running = False
         self._consecutive_errors = 0
 
@@ -44,6 +57,45 @@ class CleanupService:
             logger.error(f"Error during cleanup: {e}", exc_info=True)
             return 0
 
+    async def cleanup_old_screenshots(self) -> int:
+        """
+        Delete screenshots older than specified days.
+
+        Returns:
+            Number of screenshots deleted
+        """
+        try:
+            if not self.screenshot_dir.exists():
+                logger.info(f"Screenshot directory {self.screenshot_dir} does not exist, skipping cleanup")
+                return 0
+            
+            deleted_count = 0
+            cutoff_time = datetime.now().timestamp() - (self.screenshot_cleanup_days * 24 * 3600)
+            
+            # Iterate through all files in screenshot directory
+            for screenshot_file in self.screenshot_dir.glob("*.png"):
+                try:
+                    # Check file modification time
+                    file_mtime = screenshot_file.stat().st_mtime
+                    
+                    if file_mtime < cutoff_time:
+                        screenshot_file.unlink()
+                        deleted_count += 1
+                        logger.debug(f"Deleted old screenshot: {screenshot_file.name}")
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to delete screenshot {screenshot_file.name}: {e}")
+                    continue
+            
+            if deleted_count > 0:
+                logger.info(f"✅ Deleted {deleted_count} old screenshots (older than {self.screenshot_cleanup_days} days)")
+            
+            return deleted_count
+            
+        except Exception as e:
+            logger.error(f"Error during screenshot cleanup: {e}", exc_info=True)
+            return 0
+
     async def _send_critical_alert(self, message: str) -> None:
         """
         Send critical alert to administrators.
@@ -59,6 +111,7 @@ class CleanupService:
     ) -> None:
         """
         Run periodic cleanup with exponential backoff on errors.
+        Cleans both appointment requests and screenshots.
 
         Args:
             interval_hours: Interval between cleanups in hours (default 24)
@@ -69,14 +122,22 @@ class CleanupService:
         
         logger.info(
             f"Starting periodic cleanup service "
-            f"(interval: {interval_hours}h, age: {self.cleanup_days} days, "
+            f"(interval: {interval_hours}h, "
+            f"appointment age: {self.cleanup_days} days, "
+            f"screenshot age: {self.screenshot_cleanup_days} days, "
             f"max_retries: {max_retries})"
         )
 
         while self._running:
             try:
-                deleted = await self.cleanup_old_requests()
-                logger.info(f"✅ Cleanup completed - deleted {deleted} old requests")
+                # Clean up old appointment requests
+                deleted_requests = await self.cleanup_old_requests()
+                logger.info(f"✅ Cleanup completed - deleted {deleted_requests} old appointment requests")
+                
+                # Clean up old screenshots
+                deleted_screenshots = await self.cleanup_old_screenshots()
+                logger.info(f"✅ Cleanup completed - deleted {deleted_screenshots} old screenshots")
+                
                 self._consecutive_errors = 0  # Reset on success
                 
             except Exception as e:
@@ -128,4 +189,6 @@ class CleanupService:
             "running": self._running,
             "consecutive_errors": self._consecutive_errors,
             "cleanup_days": self.cleanup_days,
+            "screenshot_cleanup_days": self.screenshot_cleanup_days,
+            "screenshot_dir": str(self.screenshot_dir),
         }
