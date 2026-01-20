@@ -3,6 +3,7 @@
 import os
 import logging
 import threading
+import hashlib
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -52,12 +53,67 @@ class PasswordEncryption:
         try:
             # Normalize and store key for comparison
             self._key = _normalize_key(key)
+            # Generate key hash for identification
+            self._key_hash = hashlib.sha256(self._key.encode()).hexdigest()[:16]
             # Create cipher with normalized key
             cipher_key = key.encode() if isinstance(key, str) else key
             self.cipher = Fernet(cipher_key)
-            logger.info("Password encryption initialized successfully")
+            logger.info(f"Password encryption initialized (key hash: {self._key_hash})")
         except Exception as e:
             raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
+
+    @property
+    def key_hash(self) -> str:
+        """Return truncated hash of current key for identification."""
+        return self._key_hash
+    
+    def can_decrypt(self, encrypted_data: str) -> bool:
+        """
+        Check if current key can decrypt the given data.
+        
+        Args:
+            encrypted_data: Encrypted data to test
+            
+        Returns:
+            True if data can be decrypted with current key
+        """
+        try:
+            self.cipher.decrypt(encrypted_data.encode())
+            return True
+        except InvalidToken:
+            return False
+        except Exception:
+            return False
+    
+    @staticmethod
+    def migrate_data(old_key: str, new_key: str, encrypted_data: str) -> str:
+        """
+        Re-encrypt data with a new key.
+        
+        Args:
+            old_key: Old encryption key (base64 encoded)
+            new_key: New encryption key (base64 encoded)
+            encrypted_data: Data encrypted with old key
+            
+        Returns:
+            Data encrypted with new key
+            
+        Raises:
+            ValueError: If decryption with old key or encryption with new key fails
+        """
+        try:
+            # Create ciphers with both keys
+            old_cipher = Fernet(old_key.encode() if isinstance(old_key, str) else old_key)
+            new_cipher = Fernet(new_key.encode() if isinstance(new_key, str) else new_key)
+            
+            # Decrypt with old key
+            decrypted = old_cipher.decrypt(encrypted_data.encode())
+            
+            # Encrypt with new key
+            return new_cipher.encrypt(decrypted).decode()
+        except Exception as e:
+            logger.error(f"Failed to migrate encryption data: {e}")
+            raise ValueError(f"Encryption migration failed: {e}") from e
 
     def encrypt_password(self, password: str) -> str:
         """

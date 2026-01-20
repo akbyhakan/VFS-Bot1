@@ -30,6 +30,8 @@ from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
 from src.middleware.request_tracking import RequestTrackingMiddleware
+from src.utils.prometheus_metrics import get_metrics
+from fastapi.responses import Response
 
 security_scheme = HTTPBearer()
 
@@ -2052,6 +2054,16 @@ async def errors_dashboard(request: Request):
     """
     return templates.TemplateResponse(
         "errors.html", {"request": request, "title": "Error Dashboard - VFS Bot"}
+    )
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    from prometheus_client import CONTENT_TYPE_LATEST
+    return Response(
+        content=get_metrics(),
+        media_type=CONTENT_TYPE_LATEST
     )
 
 

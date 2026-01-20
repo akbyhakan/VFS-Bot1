@@ -1,17 +1,40 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
 import logging
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
+from datetime import datetime, timedelta
 from playwright.async_api import Page
 import asyncio
 
 logger = logging.getLogger(__name__)
 
 
+class CacheEntry:
+    """Cache entry with TTL support."""
+    
+    def __init__(self, value: Any, ttl_seconds: int = 3600):
+        """
+        Initialize cache entry.
+        
+        Args:
+            value: Value to cache
+            ttl_seconds: Time to live in seconds (default: 3600 = 1 hour)
+        """
+        self.value = value
+        self.created_at = datetime.now()
+        self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
+    
+    def is_expired(self) -> bool:
+        """Check if cache entry has expired."""
+        return datetime.now() >= self.expires_at
+
+
 class CentreFetcher:
     """Fetch available centres and categories from VFS website."""
 
-    def __init__(self, base_url: str, country: str, mission: str, language: str = "tr"):
+    DEFAULT_CACHE_TTL = 3600  # 1 hour
+
+    def __init__(self, base_url: str, country: str, mission: str, language: str = "tr", cache_ttl: int = None):
         """
         Initialize centre fetcher.
 
@@ -20,17 +43,77 @@ class CentreFetcher:
             country: Country code (e.g., 'tur')
             mission: Mission code (e.g., 'deu')
             language: Language code (e.g., 'tr')
+            cache_ttl: Cache TTL in seconds (default: 3600)
         """
         self.base_url = base_url
         self.country = country
         self.mission = mission
         self.language = language
-        self.cache: Dict[str, Any] = {}
-        logger.info(f"CentreFetcher initialized for {country}/{language}/{mission}")
+        self.cache_ttl = cache_ttl or self.DEFAULT_CACHE_TTL
+        self._cache: Dict[str, CacheEntry] = {}
+        self._cache_lock = asyncio.Lock()
+        logger.info(f"CentreFetcher initialized for %s/%s/%s (cache TTL: %ss)", country, language, mission, self.cache_ttl)
+
+    def _get_from_cache(self, key: str) -> Optional[Any]:
+        """
+        Get value from cache if not expired.
+        
+        Args:
+            key: Cache key
+            
+        Returns:
+            Cached value or None if expired/missing
+        """
+        entry = self._cache.get(key)
+        if entry and not entry.is_expired():
+            return entry.value
+        elif entry:
+            # Remove expired entry
+            del self._cache[key]
+        return None
+
+    def _set_cache(self, key: str, value: Any, ttl: int = None) -> None:
+        """
+        Set cache value with TTL.
+        
+        Args:
+            key: Cache key
+            value: Value to cache
+            ttl: Time to live in seconds (default: use instance cache_ttl)
+        """
+        self._cache[key] = CacheEntry(value, ttl or self.cache_ttl)
+
+    async def clear_cache(self) -> int:
+        """
+        Clear all cache entries.
+        
+        Returns:
+            Number of entries cleared
+        """
+        async with self._cache_lock:
+            count = len(self._cache)
+            self._cache.clear()
+            logger.info(f"Cache cleared ({count} entries)")
+            return count
+
+    async def cleanup_expired(self) -> int:
+        """
+        Remove expired cache entries.
+        
+        Returns:
+            Number of entries removed
+        """
+        async with self._cache_lock:
+            expired_keys = [k for k, v in self._cache.items() if v.is_expired()]
+            for key in expired_keys:
+                del self._cache[key]
+            if expired_keys:
+                logger.debug(f"Removed {len(expired_keys)} expired cache entries")
+            return len(expired_keys)
 
     async def get_available_centres(self, page: Page) -> List[str]:
         """
-        Fetch available VFS centres from the website.
+        Fetch available VFS centres from the website with caching.
 
         Args:
             page: Playwright page object
@@ -38,11 +121,13 @@ class CentreFetcher:
         Returns:
             List of centre names
         """
-        cache_key = "centres"
-        if cache_key in self.cache:
-            logger.info("Returning cached centres")
-            cached_value = self.cache[cache_key]
-            return cached_value if isinstance(cached_value, list) else []
+        cache_key = f"centres_{self.mission}"
+        
+        # Check cache first
+        cached = self._get_from_cache(cache_key)
+        if cached is not None:
+            logger.debug(f"Returning cached centres for {self.mission}")
+            return cached
 
         try:
             # Navigate to appointment page
@@ -66,8 +151,10 @@ class CentreFetcher:
             )
 
             centres: List[str] = centres_result if isinstance(centres_result, list) else []
-            self.cache[cache_key] = centres
-            logger.info(f"Fetched {len(centres)} centres: {centres}")
+            
+            # Cache the result
+            self._set_cache(cache_key, centres)
+            logger.info(f"Fetched and cached {len(centres)} centres: {centres}")
             return centres
         except Exception as e:
             logger.error(f"Failed to fetch centres: {e}")
@@ -75,7 +162,7 @@ class CentreFetcher:
 
     async def get_categories(self, page: Page, centre: str) -> List[str]:
         """
-        Fetch available categories for a specific centre.
+        Fetch available categories for a specific centre with caching.
 
         Args:
             page: Playwright page object
@@ -85,10 +172,12 @@ class CentreFetcher:
             List of category names
         """
         cache_key = f"categories_{centre}"
-        if cache_key in self.cache:
-            logger.info(f"Returning cached categories for {centre}")
-            cached_value = self.cache[cache_key]
-            return cached_value if isinstance(cached_value, list) else []
+        
+        # Check cache first
+        cached = self._get_from_cache(cache_key)
+        if cached is not None:
+            logger.debug(f"Returning cached categories for {centre}")
+            return cached
 
         try:
             # Select the centre
@@ -112,8 +201,10 @@ class CentreFetcher:
             )
 
             categories: List[str] = categories_result if isinstance(categories_result, list) else []
-            self.cache[cache_key] = categories
-            logger.info(f"Fetched {len(categories)} categories for {centre}: {categories}")
+            
+            # Cache the result
+            self._set_cache(cache_key, categories)
+            logger.info(f"Fetched and cached {len(categories)} categories for {centre}: {categories}")
             return categories
         except Exception as e:
             logger.error(f"Failed to fetch categories for {centre}: {e}")
@@ -121,7 +212,7 @@ class CentreFetcher:
 
     async def get_subcategories(self, page: Page, centre: str, category: str) -> List[str]:
         """
-        Fetch available subcategories for a centre and category.
+        Fetch available subcategories for a centre and category with caching.
 
         Args:
             page: Playwright page object
@@ -132,10 +223,12 @@ class CentreFetcher:
             List of subcategory names
         """
         cache_key = f"subcategories_{centre}_{category}"
-        if cache_key in self.cache:
-            logger.info(f"Returning cached subcategories for {centre}/{category}")
-            cached_value = self.cache[cache_key]
-            return cached_value if isinstance(cached_value, list) else []
+        
+        # Check cache first
+        cached = self._get_from_cache(cache_key)
+        if cached is not None:
+            logger.debug(f"Returning cached subcategories for {centre}/{category}")
+            return cached
 
         try:
             # Select the centre and category
@@ -163,17 +256,37 @@ class CentreFetcher:
             subcategories: List[str] = (
                 subcategories_result if isinstance(subcategories_result, list) else []
             )
-            self.cache[cache_key] = subcategories
-            logger.info(f"Fetched {len(subcategories)} subcategories: {subcategories}")
+            
+            # Cache the result
+            self._set_cache(cache_key, subcategories)
+            logger.info(f"Fetched and cached {len(subcategories)} subcategories: {subcategories}")
             return subcategories
         except Exception as e:
             logger.error(f"Failed to fetch subcategories: {e}")
             return []
 
     def clear_cache(self) -> None:
-        """Clear the cache."""
-        self.cache.clear()
+        """
+        Clear the cache (synchronous version for backward compatibility).
+        
+        Note: This is provided for backward compatibility. For new code,
+        prefer using clear_cache_async() for proper async operation.
+        """
+        self._cache.clear()
         logger.info("Cache cleared")
+    
+    async def clear_cache_async(self) -> int:
+        """
+        Clear all cache entries (async version).
+        
+        Returns:
+            Number of entries cleared
+        """
+        async with self._cache_lock:
+            count = len(self._cache)
+            self._cache.clear()
+            logger.info(f"Cache cleared ({count} entries)")
+            return count
 
     async def fetch_all_data(self, page: Page) -> Dict[str, Any]:
         """
