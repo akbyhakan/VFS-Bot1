@@ -47,48 +47,44 @@ def validate_environment():
     """Validate all required environment variables at startup."""
     logger = logging.getLogger(__name__)
     env = os.getenv("ENV", "production").lower()
-    
+
     # Always required
     required_vars = ["ENCRYPTION_KEY"]
-    
+
     # Required in production
     production_required = [
         "API_SECRET_KEY",
         "API_KEY_SALT",
         "VFS_ENCRYPTION_KEY",
     ]
-    
+
     missing = [var for var in required_vars if not os.getenv(var)]
-    
+
     if env == "production":
         missing.extend([var for var in production_required if not os.getenv(var)])
-    
+
     if missing:
         raise ConfigurationError(
             f"Missing required environment variables: {', '.join(missing)}. "
             "Please check your .env file or environment configuration."
         )
-    
+
     # Validate minimum lengths
     api_secret = os.getenv("API_SECRET_KEY", "")
     if api_secret and len(api_secret) < 64:
-        raise ConfigurationError(
-            f"API_SECRET_KEY must be at least 64 characters (current: {len(api_secret)})"
-        )
-    
+        raise ConfigurationError(f"API_SECRET_KEY must be at least 64 characters (current: {len(api_secret)})")
+
     api_key_salt = os.getenv("API_KEY_SALT", "")
     if api_key_salt and len(api_key_salt) < 32:
-        raise ConfigurationError(
-            f"API_KEY_SALT must be at least 32 characters (current: {len(api_key_salt)})"
-        )
-    
+        raise ConfigurationError(f"API_KEY_SALT must be at least 32 characters (current: {len(api_key_salt)})")
+
     logger.info("✅ Environment validation passed")
 
 
 def setup_signal_handlers():
     """
     Setup graceful shutdown handlers with timeout.
-    
+
     Signals the shutdown event to allow running tasks to complete gracefully.
     If tasks don't complete within timeout, forces exit.
     """
@@ -109,13 +105,11 @@ def setup_signal_handlers():
 
 
 async def graceful_shutdown(
-    loop: asyncio.AbstractEventLoop, 
-    signal_name: Optional[str] = None,
-    timeout: float = 30.0
+    loop: asyncio.AbstractEventLoop, signal_name: Optional[str] = None, timeout: float = 30.0
 ) -> None:
     """
     Cancel all running tasks during shutdown.
-    
+
     Args:
         loop: Event loop
         signal_name: Name of signal that triggered shutdown (optional)
@@ -123,31 +117,28 @@ async def graceful_shutdown(
     """
     logger = logging.getLogger(__name__)
     logger.info(f"Initiating graceful shutdown{f' (signal: {signal_name})' if signal_name else ''}...")
-    
+
     # Get all tasks except current
     tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
-    
+
     if tasks:
         logger.info(f"Cancelling {len(tasks)} outstanding tasks...")
-        
+
         for task in tasks:
             task.cancel()
-        
+
         # Wait for all tasks to be cancelled with timeout
         try:
-            results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=timeout
-            )
-            
+            results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=timeout)
+
             # Log any exceptions
             for task, result in zip(tasks, results):
                 if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
-                    task_name = task.get_name() if hasattr(task, 'get_name') else 'unknown'
+                    task_name = task.get_name() if hasattr(task, "get_name") else "unknown"
                     logger.error(f"Task {task_name} raised exception during shutdown: {result}")
         except asyncio.TimeoutError:
             logger.warning(f"Graceful shutdown timed out after {timeout}s, some tasks may not have completed")
-    
+
     logger.info("Graceful shutdown complete")
 
 
@@ -203,11 +194,13 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         shutdown_event.set()
         # Wait for graceful shutdown with timeout
         from src.constants import Defaults
+
         await asyncio.sleep(Defaults.GRACEFUL_SHUTDOWN_TIMEOUT)
-        
+
         # Cleanup OTP service
         try:
             from src.services.otp_webhook import get_otp_service
+
             otp_service = get_otp_service()
             await otp_service.stop_cleanup_scheduler()
             logger.info("OTP service cleanup completed")
@@ -224,9 +217,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         set_shutdown_event(None)
 
 
-async def run_web_mode(
-    config: dict, start_cleanup: bool = True, db: Optional[Database] = None
-) -> None:
+async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Database] = None) -> None:
     """
     Run bot with web dashboard.
 
@@ -254,9 +245,7 @@ async def run_web_mode(
         # Start cleanup service in background (only if requested)
         if start_cleanup:
             cleanup_service = CleanupService(db, cleanup_days=30)
-            cleanup_task = asyncio.create_task(
-                cleanup_service.run_periodic_cleanup(interval_hours=24)
-            )
+            cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
             logger.info("Cleanup service started (runs every 24 hours)")
 
         # Run uvicorn server
@@ -346,7 +335,7 @@ def main() -> None:
     try:
         # Initialize Sentry monitoring
         init_sentry()
-        
+
         # Validate environment variables
         logger.info("Validating environment variables...")
         validate_environment()

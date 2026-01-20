@@ -71,7 +71,7 @@ def _get_jwt_settings() -> JWTSettings:
             "Generate a secure random key with: "
             "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
         )
-    
+
     # Minimum 64 characters for 256-bit security
     MIN_SECRET_KEY_LENGTH = 64
     if len(secret_key) < MIN_SECRET_KEY_LENGTH:
@@ -119,7 +119,7 @@ def _truncate_password(password: str) -> str:
 
     Returns:
         Truncated password (max 72 bytes when encoded as UTF-8)
-        
+
     Raises:
         ValueError: If unable to truncate to valid UTF-8 boundary
     """
@@ -141,25 +141,25 @@ def _truncate_password(password: str) -> str:
 def validate_password_length(password: str) -> None:
     """
     Validate password doesn't exceed bcrypt limit.
-    
+
     Raises ValidationError if password exceeds the maximum length,
     providing clear feedback to users instead of silently truncating.
-    
+
     Args:
         password: Password to validate
-        
+
     Raises:
         ValidationError: If password exceeds maximum byte length
     """
     from ..core.exceptions import ValidationError
-    
+
     password_bytes = password.encode("utf-8")
     if len(password_bytes) > MAX_PASSWORD_BYTES:
         raise ValidationError(
             f"Password exceeds maximum length of {MAX_PASSWORD_BYTES} bytes. "
             f"Current length: {len(password_bytes)} bytes. "
             "Please use a shorter password.",
-            field="password"
+            field="password",
         )
 
 
@@ -220,7 +220,7 @@ def verify_token(token: str) -> Dict[str, Any]:
             detail = "Could not validate credentials"
         else:
             detail = f"Could not validate credentials: {str(e)}"
-        
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,

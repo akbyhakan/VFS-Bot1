@@ -9,16 +9,24 @@ from typing import Optional, Literal
 from playwright.async_api import Page
 
 from ..constants import Intervals, Timeouts
-from ..utils.masking import mask_email, mask_password, mask_sensitive_dict
+from ..utils.masking import mask_email, mask_password
 
 logger = logging.getLogger(__name__)
 
 
 # Re-export masking functions for backward compatibility
 # These are now imported from utils.masking
-__all__ = ['mask_email', 'mask_password', 'mask_sensitive_data', 
-           'smart_fill', 'smart_click', 'wait_for_selector_smart',
-           'random_delay', 'safe_navigate', 'safe_screenshot']
+__all__ = [
+    "mask_email",
+    "mask_password",
+    "mask_sensitive_data",
+    "smart_fill",
+    "smart_click",
+    "wait_for_selector_smart",
+    "random_delay",
+    "safe_navigate",
+    "safe_screenshot",
+]
 
 
 def mask_sensitive_data(text: str) -> str:
@@ -123,9 +131,7 @@ async def wait_for_selector_smart(
         raise
 
 
-async def random_delay(
-    min_seconds: Optional[float] = None, max_seconds: Optional[float] = None
-) -> None:
+async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optional[float] = None) -> None:
     """
     Add a random delay to simulate human behavior.
 
@@ -142,9 +148,7 @@ async def random_delay(
 async def safe_navigate(
     page: Page,
     url: str,
-    wait_until: Optional[
-        Literal["commit", "domcontentloaded", "load", "networkidle"]
-    ] = "networkidle",
+    wait_until: Optional[Literal["commit", "domcontentloaded", "load", "networkidle"]] = "networkidle",
     timeout: Optional[int] = None,
 ) -> bool:
     """
