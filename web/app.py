@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 
 from src.services.otp_webhook_routes import router as otp_router
 from src.middleware.request_tracking import RequestTrackingMiddleware
+from src.middleware import CorrelationMiddleware
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
     auth_router,
@@ -37,7 +38,10 @@ app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
 # 1. Security headers middleware first
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 2. Configure CORS
+# 2. Correlation ID middleware for request tracking
+app.add_middleware(CorrelationMiddleware)
+
+# 3. Configure CORS
 allowed_origins_str = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
 )
@@ -60,7 +64,7 @@ app.add_middleware(
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
-# 3. Add request tracking middleware
+# 4. Add request tracking middleware
 app.add_middleware(RequestTrackingMiddleware)
 
 
