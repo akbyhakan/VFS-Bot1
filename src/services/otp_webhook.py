@@ -5,7 +5,7 @@ import logging
 import re
 import threading
 from datetime import datetime, timezone
-from typing import Optional, Dict, List, Pattern
+from typing import Optional, Dict, List, Pattern, Callable
 from collections import deque
 from dataclasses import dataclass
 
@@ -397,6 +397,43 @@ class OTPWebhookService:
                     f"(appointment: {appt_removed}, payment: {pay_removed})"
                 )
             return total_removed
+
+    async def wait_for_otp_with_fallback(
+        self,
+        phone_number: Optional[str] = None,
+        timeout: Optional[int] = None,
+        fallback_callback: Optional[Callable] = None
+    ) -> Optional[str]:
+        """
+        Wait for OTP with graceful degradation.
+        
+        If OTP service fails or times out, calls fallback_callback
+        for manual OTP input.
+        
+        Args:
+            phone_number: Optional phone number filter
+            timeout: Maximum wait time in seconds
+            fallback_callback: Async function to call for manual input
+        
+        Returns:
+            OTP code or None
+        """
+        try:
+            otp = await self.wait_for_appointment_otp(phone_number, timeout)
+            if otp:
+                return otp
+        except Exception as e:
+            logger.warning(f"OTP service error: {e}, switching to fallback")
+        
+        # Fallback to manual input if provided
+        if fallback_callback:
+            logger.info("Requesting manual OTP input")
+            try:
+                return await fallback_callback()
+            except Exception as e:
+                logger.error(f"Fallback OTP input failed: {e}")
+        
+        return None
 
     async def start_cleanup_scheduler(self, interval_seconds: int = 60) -> None:
         """

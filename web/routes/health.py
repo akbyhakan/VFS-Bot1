@@ -109,12 +109,15 @@ async def liveness_probe() -> Dict[str, str]:
     Returns:
         Liveness status
     """
-    return {"status": "alive"}
+    return {
+        "status": "alive",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
 @router.get("/ready")
 @router.get("/health/ready")
-async def readiness_probe() -> Dict[str, Any]:
+async def readiness_probe(response: Response) -> Dict[str, Any]:
     """
     Kubernetes readiness probe - checks if application is ready to serve traffic.
 
@@ -127,16 +130,40 @@ async def readiness_probe() -> Dict[str, Any]:
     Raises:
         HTTPException: 503 if service is not ready
     """
-    # Check database connectivity
-    db_ready = await check_database_health()
-
-    if not db_ready:
-        raise HTTPException(status_code=503, detail="Database not ready")
-
+    # Import Response from fastapi
+    from fastapi import Response
+    
+    # Check critical services
+    checks = {
+        "database": await check_database(),
+        "encryption": await check_encryption(),
+    }
+    
+    all_healthy = all(c.get("status") == "healthy" for c in checks.values())
+    
+    if not all_healthy:
+        response.status_code = 503
+    
     return {
-        "status": "ready",
+        "status": "ready" if all_healthy else "not_ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "checks": {"database": "ok"},
+        "checks": checks
+    }
+
+
+@router.get("/health/startup")
+async def startup_probe() -> Dict[str, str]:
+    """
+    Kubernetes startup probe - checks if application has started.
+    
+    Used by Kubernetes to know when the app has finished starting.
+    
+    Returns:
+        Startup status
+    """
+    return {
+        "status": "started",
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
@@ -265,6 +292,36 @@ async def check_database_health() -> bool:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
+
+
+async def check_database() -> Dict[str, Any]:
+    """Check database connectivity."""
+    try:
+        from src.models.database import Database
+        db = Database()
+        await db.connect()
+        is_healthy = await check_database_health()
+        await db.close()
+        return {"status": "healthy" if is_healthy else "unhealthy", "latency_ms": 0}
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {"status": "unhealthy", "error": str(e)}
+
+
+async def check_encryption() -> Dict[str, Any]:
+    """Check encryption service."""
+    try:
+        from src.utils.encryption import get_encryption
+        enc = get_encryption()
+        # Test encrypt/decrypt cycle
+        test_data = "health_check_test"
+        encrypted = enc.encrypt_password(test_data)
+        decrypted = enc.decrypt_password(encrypted)
+        is_healthy = decrypted == test_data
+        return {"status": "healthy" if is_healthy else "unhealthy"}
+    except Exception as e:
+        logger.error(f"Encryption health check failed: {e}")
+        return {"status": "unhealthy", "error": str(e)}
 
 
 def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:
