@@ -183,9 +183,10 @@ class VFSApiClient:
 
             # Connection pooling configuration
             connector = aiohttp.TCPConnector(
-                limit=100,  # Total connection limit
-                limit_per_host=30,  # Per-host limit
-                ttl_dns_cache=300,  # DNS cache TTL (5 minutes)
+                limit=50,  # Reduced from 100 for better memory management
+                limit_per_host=20,  # Per-host limit
+                ttl_dns_cache=120,  # DNS cache TTL (2 minutes)
+                keepalive_timeout=30,  # Keepalive timeout
                 enable_cleanup_closed=True,  # Enable closed connection cleanup
             )
             

@@ -136,6 +136,31 @@ def _truncate_password(password: str) -> str:
     return password
 
 
+def validate_password_length(password: str) -> None:
+    """
+    Validate password doesn't exceed bcrypt limit.
+    
+    Raises ValidationError if password exceeds the maximum length,
+    providing clear feedback to users instead of silently truncating.
+    
+    Args:
+        password: Password to validate
+        
+    Raises:
+        ValidationError: If password exceeds maximum byte length
+    """
+    from ..core.exceptions import ValidationError
+    
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > MAX_PASSWORD_BYTES:
+        raise ValidationError(
+            f"Password exceeds maximum length of {MAX_PASSWORD_BYTES} bytes. "
+            f"Current length: {len(password_bytes)} bytes. "
+            "Please use a shorter password.",
+            field="password"
+        )
+
+
 def create_access_token(
     data: Dict[str, Any],
     expires_delta: Optional[timedelta] = None,

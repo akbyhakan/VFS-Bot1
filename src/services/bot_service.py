@@ -80,7 +80,7 @@ class VFSBot:
 
         # Circuit breaker state
         self.consecutive_errors = 0
-        self.total_errors: deque = deque()  # Track error timestamps
+        self.total_errors: deque = deque(maxlen=CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR * 2)
         self.circuit_breaker_open = False
         self.circuit_breaker_open_time: Optional[float] = None
 

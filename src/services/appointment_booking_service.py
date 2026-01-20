@@ -562,7 +562,7 @@ class AppointmentBookingService:
 
             # Enter OTP
             await page.fill(VFS_SELECTORS["otp_input"], otp_code)
-            logger.info(f"OTP entered: {otp_code[:2]}****")
+            logger.info("OTP entered successfully")
 
             # Small delay
             await asyncio.sleep(random.uniform(0.5, 1.5))
