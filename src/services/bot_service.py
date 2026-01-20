@@ -158,7 +158,7 @@ class VFSBot:
 
         logger.info("VFSBot initialized")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "VFSBot":
         """
         Async context manager entry.
 
@@ -167,7 +167,7 @@ class VFSBot:
         """
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """
         Async context manager exit - ensure cleanup.
 

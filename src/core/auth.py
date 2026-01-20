@@ -197,7 +197,11 @@ def create_access_token(
 
 def verify_token(token: str) -> Dict[str, Any]:
     """
-    Verify and decode JWT token.
+    Verify and decode JWT token with key rotation support.
+    
+    First tries to verify with current API_SECRET_KEY.
+    If that fails, falls back to API_SECRET_KEY_PREVIOUS for backward compatibility
+    during key rotation periods.
 
     Args:
         token: JWT token to verify
@@ -210,16 +214,29 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     secret_key = get_secret_key()
     algorithm = get_algorithm()
-
+    
+    # Try current key first
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return cast(dict[str, Any], payload)
-    except JWTError as e:
+    except JWTError as primary_error:
+        # Try previous key for rotation support
+        previous_key = os.getenv("API_SECRET_KEY_PREVIOUS")
+        if previous_key:
+            try:
+                logger.debug("Attempting token verification with previous key")
+                payload = jwt.decode(token, previous_key, algorithms=[algorithm])
+                logger.info("Token verified with previous key - consider refreshing token")
+                return cast(dict[str, Any], payload)
+            except JWTError:
+                # Both keys failed, raise original error
+                pass
+        
         # Production: Don't expose internal error details for security
         if os.getenv("ENV", "production").lower() == "production":
             detail = "Could not validate credentials"
         else:
-            detail = f"Could not validate credentials: {str(e)}"
+            detail = f"Could not validate credentials: {str(primary_error)}"
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
