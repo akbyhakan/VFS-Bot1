@@ -26,6 +26,7 @@ from ..core.exceptions import (
     ConfigurationError,
 )
 from ..constants import Defaults
+from ..utils.token_utils import calculate_effective_expiry
 
 logger = logging.getLogger(__name__)
 
@@ -269,15 +270,7 @@ class VFSApiClient:
                 )
             )
             expires_in = data.get("expiresIn", 60)
-            # Ensure buffer doesn't exceed expiry time
-            # If expires_in is very short (<=2 min), use 50% of the time as buffer
-            # Otherwise use the configured buffer, but never more than expires_in - 1
-            if expires_in <= 2:
-                effective_expiry = max(1, expires_in // 2)
-            else:
-                buffer_minutes = min(token_refresh_buffer, expires_in - 1)
-                effective_expiry = max(1, expires_in - buffer_minutes)
-            
+            effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
             expires_at = datetime.now() + timedelta(minutes=effective_expiry)
 
             self.session = VFSSession(
@@ -471,14 +464,7 @@ class VFSApiClient:
                     )
                 )
                 expires_in = data.get("expiresIn", 60)
-                # Ensure buffer doesn't exceed expiry time
-                # If expires_in is very short (<=2 min), use 50% of the time as buffer
-                # Otherwise use the configured buffer, but never more than expires_in - 1
-                if expires_in <= 2:
-                    effective_expiry = max(1, expires_in // 2)
-                else:
-                    buffer_minutes = min(token_refresh_buffer, expires_in - 1)
-                    effective_expiry = max(1, expires_in - buffer_minutes)
+                effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
                 
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)

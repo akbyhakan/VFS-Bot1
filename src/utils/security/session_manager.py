@@ -62,13 +62,17 @@ class SessionManager:
             try:
                 decrypted_data = decrypt_password(encrypted_data)
                 data = json.loads(decrypted_data)
-            except Exception as e:
+            except (ValueError, KeyError, json.JSONDecodeError) as e:
                 logger.warning(f"Failed to decrypt session (may be old format): {e}")
                 # Try loading as plain JSON for backward compatibility
                 try:
                     data = json.loads(encrypted_data)
                     logger.warning("Loaded unencrypted session - will be encrypted on next save")
-                except:
+                    # Delete the unencrypted file for security
+                    logger.info("Removing insecure unencrypted session file")
+                    self.session_file.unlink()
+                except (json.JSONDecodeError, ValueError) as json_err:
+                    logger.error(f"Failed to load session as JSON: {json_err}")
                     return False
 
             self.access_token = data.get("access_token")

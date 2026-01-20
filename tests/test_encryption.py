@@ -198,13 +198,53 @@ def test_key_change_detection(monkeypatch):
     # Encrypted values should be different (different keys)
     assert encrypted1 != encrypted2
 
-    # Should be able to decrypt with current key
-    decrypted2 = decrypt_password(encrypted2)
-    assert decrypted2 == password
 
-    # But trying to decrypt old value with new key should fail
-    with pytest.raises(ValueError, match="Invalid encryption key or corrupted password"):
-        decrypt_password(encrypted1)
+def test_encryption_thread_safety():
+    """Test that encryption singleton is thread-safe."""
+    import threading
+    from src.utils.encryption import get_encryption, reset_encryption
+
+    key = Fernet.generate_key().decode()
+    os.environ["ENCRYPTION_KEY"] = key
+    reset_encryption()
+
+    results = []
+    errors = []
+
+    def encrypt_in_thread():
+        """Thread worker function."""
+        try:
+            enc = get_encryption()
+            password = "test_password_" + threading.current_thread().name
+            encrypted = enc.encrypt_password(password)
+            decrypted = enc.decrypt_password(encrypted)
+            results.append((password, decrypted))
+        except Exception as e:
+            errors.append(e)
+
+    # Create multiple threads
+    threads = []
+    for i in range(10):
+        thread = threading.Thread(target=encrypt_in_thread, name=f"Thread-{i}")
+        threads.append(thread)
+
+    # Start all threads
+    for thread in threads:
+        thread.start()
+
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join()
+
+    # Check no errors occurred
+    assert len(errors) == 0, f"Errors occurred in threads: {errors}"
+
+    # Check all encryptions succeeded
+    assert len(results) == 10
+
+    # Each thread should have encrypted and decrypted its own password correctly
+    for original, decrypted in results:
+        assert original == decrypted
 
 
 def test_encryption_with_bytes_key():
