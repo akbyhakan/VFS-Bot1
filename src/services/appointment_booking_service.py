@@ -651,3 +651,87 @@ class AppointmentBookingService:
         except Exception as e:
             logger.error(f"Booking flow error: {e}", exc_info=True)
             return False
+
+    async def verify_booking_confirmation(self, page: Page) -> Dict[str, Any]:
+        """
+        Verify booking was successful by checking confirmation elements.
+        
+        This provides more reliable validation than simple URL checking by looking for:
+        - Reference numbers (e.g., ABC123456)
+        - Confirmation success messages
+        - Booking confirmed indicators
+        
+        Args:
+            page: Playwright page instance
+            
+        Returns:
+            Dictionary with:
+                - success: bool - Whether confirmation was verified
+                - reference: str or None - Booking reference number if found
+                - error: str or None - Error message if verification failed
+        """
+        try:
+            # Try to find reference number
+            # Common patterns: ABC123456, XX-123456, etc.
+            reference_element = None
+            reference = None
+            
+            try:
+                reference_element = await page.wait_for_selector(
+                    ".reference-number, [data-testid='reference'], text=/[A-Z]{2,3}\\d{6,}/",
+                    timeout=15000
+                )
+                if reference_element:
+                    reference = await reference_element.text_content()
+                    if reference:
+                        reference = reference.strip()
+            except Exception:
+                pass  # Reference not found, continue checking other indicators
+            
+            # Check for success indicators in order of specificity
+            success_indicators = [
+                ".confirmation-success",
+                ".booking-confirmed", 
+                "text=/appointment.*confirmed/i",
+                "text=/randevu.*onaylandı/i",
+                "text=/booking.*successful/i",
+                "text=/successfully.*booked/i",
+            ]
+            
+            for indicator in success_indicators:
+                try:
+                    count = await page.locator(indicator).count()
+                    if count > 0:
+                        logger.info(f"✅ Booking confirmation verified via indicator: {indicator}")
+                        return {
+                            "success": True, 
+                            "reference": reference,
+                            "error": None
+                        }
+                except Exception:
+                    continue
+            
+            # If we found a reference but no explicit success message, consider it successful
+            if reference:
+                logger.info(f"✅ Booking reference found: {reference}")
+                return {
+                    "success": True,
+                    "reference": reference,
+                    "error": None
+                }
+            
+            # No confirmation found
+            logger.warning("⚠️ No booking confirmation elements found")
+            return {
+                "success": False, 
+                "reference": None, 
+                "error": "Confirmation elements not found on page"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error verifying booking confirmation: {e}")
+            return {
+                "success": False, 
+                "reference": None, 
+                "error": str(e)
+            }
