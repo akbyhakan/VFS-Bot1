@@ -52,7 +52,7 @@ class CentreFetcher:
         self.cache_ttl = cache_ttl or self.DEFAULT_CACHE_TTL
         self._cache: Dict[str, CacheEntry] = {}
         self._cache_lock = asyncio.Lock()
-        logger.info(f"CentreFetcher initialized for {country}/{language}/{mission} (cache TTL: {self.cache_ttl}s)")
+        logger.info(f"CentreFetcher initialized for %s/%s/%s (cache TTL: %ss)", country, language, mission, self.cache_ttl)
 
     def _get_from_cache(self, key: str) -> Optional[Any]:
         """
@@ -266,7 +266,12 @@ class CentreFetcher:
             return []
 
     def clear_cache(self) -> None:
-        """Clear the cache (synchronous version for backward compatibility)."""
+        """
+        Clear the cache (synchronous version for backward compatibility).
+        
+        Note: This is provided for backward compatibility. For new code,
+        prefer using clear_cache_async() for proper async operation.
+        """
         self._cache.clear()
         logger.info("Cache cleared")
     

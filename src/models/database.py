@@ -913,13 +913,18 @@ class Database:
             updates.append("mobile_number = ?")
             params.append(mobile_number)
 
-        # Filter only allowed fields and log rejected fields (SQL injection prevention)
-        valid_fields = {k: v for k, v in other_fields.items() 
-                        if k in ALLOWED_PERSONAL_DETAILS_FIELDS and v is not None}
+        # Filter only allowed fields and log rejected fields in a single pass
+        valid_fields = {}
+        rejected = set()
+        
+        for field, value in other_fields.items():
+            if value is not None:
+                if field in ALLOWED_PERSONAL_DETAILS_FIELDS:
+                    valid_fields[field] = value
+                else:
+                    rejected.add(field)
         
         # Log rejected fields (potential attack attempt)
-        rejected = {k for k, v in other_fields.items() 
-                   if k not in ALLOWED_PERSONAL_DETAILS_FIELDS and v is not None}
         if rejected:
             logger.warning(f"Rejected disallowed fields for user {user_id}: {rejected}")
 
@@ -929,7 +934,7 @@ class Database:
             params.append(value)
 
         if not updates:
-            return False  # Nothing to update
+            return True  # Nothing to update (success case)
 
         # Add updated_at timestamp and user_id
         updates.append("updated_at = ?")
