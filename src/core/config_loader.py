@@ -2,11 +2,15 @@
 
 import os
 import re
+import logging
 from pathlib import Path
 from typing import Any, Dict
+from functools import lru_cache
 
 import yaml
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 
 def load_env_variables() -> None:
@@ -102,3 +106,59 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
             return default
 
     return value
+
+
+@lru_cache(maxsize=1)
+def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict[str, Any]]:
+    """
+    Load selectors from YAML config file with caching.
+    
+    Args:
+        config_path: Path to selectors YAML file
+        
+    Returns:
+        Dictionary of selector groups
+    """
+    path = Path(config_path)
+    if not path.exists():
+        logger.warning(f"Selectors config not found: {config_path}, using defaults")
+        return {}
+    
+    with open(path, 'r', encoding='utf-8') as f:
+        selectors = yaml.safe_load(f)
+    
+    # Count total selectors
+    total = 0
+    if isinstance(selectors, dict):
+        for value in selectors.values():
+            if isinstance(value, dict):
+                total += len(value)
+    
+    logger.info(f"Loaded {total} selectors from {config_path}")
+    return selectors if isinstance(selectors, dict) else {}
+
+
+def get_selector(group: str, name: str, default: str = "") -> str:
+    """
+    Get a specific selector by group and name.
+    
+    Args:
+        group: Selector group (e.g., 'login', 'appointment')
+        name: Selector name
+        default: Default value if not found
+        
+    Returns:
+        Selector string
+    """
+    selectors = load_selectors()
+    group_selectors = selectors.get(group, {})
+    
+    if isinstance(group_selectors, dict):
+        selector = group_selectors.get(name)
+        # Handle both simple strings and objects with primary/fallbacks
+        if isinstance(selector, dict) and "primary" in selector:
+            return selector["primary"]
+        elif isinstance(selector, str):
+            return selector
+    
+    return default

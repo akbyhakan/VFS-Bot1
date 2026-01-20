@@ -143,3 +143,31 @@ class Defaults:
     RATE_LIMIT_WINDOW = 60  # Rate limit time window in seconds
     TOKEN_REFRESH_BUFFER_MINUTES = 5  # Token refresh buffer in minutes
     GRACEFUL_SHUTDOWN_TIMEOUT = 5  # Graceful shutdown timeout in seconds
+
+
+class BookingTimeouts:
+    """Timeout constants for booking operations (in seconds or milliseconds)."""
+    
+    TIME_SLOTS_LOAD = 2.0  # Time to wait for slot data to load (seconds)
+    DROPDOWN_ANIMATION = 0.5  # Wait for dropdown animations (seconds)
+    ELEMENT_WAIT_MS = 10000  # Element wait timeout (milliseconds)
+    PAGE_LOAD_MS = 30000  # Page load timeout (milliseconds)
+    PAYMENT_CONFIRMATION = 60  # Payment confirmation wait (seconds)
+    OTP_WAIT = 120  # OTP wait timeout (seconds)
+
+
+class BookingDelays:
+    """Delay constants for human-like behavior (in seconds or milliseconds)."""
+    
+    # Typing simulation
+    TYPING_MIN_MS = 50  # Minimum typing delay per character (milliseconds)
+    TYPING_MAX_MS = 150  # Maximum typing delay per character (milliseconds)
+    
+    # Random pauses during typing
+    PAUSE_CHANCE = 0.1  # 10% chance of pause during typing
+    PAUSE_MIN = 0.1  # Minimum pause duration (seconds)
+    PAUSE_MAX = 0.3  # Maximum pause duration (seconds)
+    
+    # Delays between form fields
+    BETWEEN_FIELDS_MIN = 0.3  # Minimum delay between fields (seconds)
+    BETWEEN_FIELDS_MAX = 0.8  # Maximum delay between fields (seconds)

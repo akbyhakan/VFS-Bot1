@@ -80,6 +80,38 @@ def mask_password(_password: str) -> str:
     return "********"
 
 
+def mask_card_number(card_number: str) -> str:
+    """
+    Mask credit card number showing only last 4 digits.
+    
+    Example: 1234567890123456 -> ************3456
+    
+    Args:
+        card_number: Credit card number to mask
+    
+    Returns:
+        Masked card number showing only last 4 digits
+    """
+    if not card_number or len(card_number) < 4:
+        return "****"
+    return "*" * (len(card_number) - 4) + card_number[-4:]
+
+
+def mask_otp(otp: str) -> str:
+    """
+    Mask OTP code completely.
+    
+    Args:
+        otp: OTP code to mask
+    
+    Returns:
+        Completely masked OTP (all asterisks)
+    """
+    if not otp:
+        return "****"
+    return "*" * len(otp)
+
+
 def mask_sensitive_dict(
     data: Dict[str, Any],
     sensitive_keys: Set[str] = None
@@ -99,7 +131,8 @@ def mask_sensitive_dict(
     if sensitive_keys is None:
         sensitive_keys = {
             "password", "cvv", "card_number", "api_key", "secret", 
-            "token", "access_token", "refresh_token", "encryption_key"
+            "token", "access_token", "refresh_token", "encryption_key",
+            "otp", "otp_code"
         }
     
     masked_data = {}

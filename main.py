@@ -105,6 +105,49 @@ def setup_signal_handlers():
     signal.signal(signal.SIGINT, handle_signal)
 
 
+async def graceful_shutdown(
+    loop: asyncio.AbstractEventLoop, 
+    signal_name: Optional[str] = None,
+    timeout: float = 30.0
+) -> None:
+    """
+    Cancel all running tasks during shutdown.
+    
+    Args:
+        loop: Event loop
+        signal_name: Name of signal that triggered shutdown (optional)
+        timeout: Maximum time to wait for tasks to complete (default: 30 seconds)
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Initiating graceful shutdown{f' (signal: {signal_name})' if signal_name else ''}...")
+    
+    # Get all tasks except current
+    tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
+    
+    if tasks:
+        logger.info(f"Cancelling {len(tasks)} outstanding tasks...")
+        
+        for task in tasks:
+            task.cancel()
+        
+        # Wait for all tasks to be cancelled with timeout
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True),
+                timeout=timeout
+            )
+            
+            # Log any exceptions
+            for task, result in zip(tasks, results):
+                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                    task_name = task.get_name() if hasattr(task, 'get_name') else 'unknown'
+                    logger.error(f"Task {task_name} raised exception during shutdown: {result}")
+        except asyncio.TimeoutError:
+            logger.warning(f"Graceful shutdown timed out after {timeout}s, some tasks may not have completed")
+    
+    logger.info("Graceful shutdown complete")
+
+
 async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
