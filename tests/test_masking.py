@@ -78,6 +78,24 @@ class TestMaskPassword:
         assert mask_password("password123") == "********"
         assert mask_password("") == "********"
         assert mask_password("very_long_password_12345") == "********"
+    
+    def test_mask_password_never_reveals_characters(self):
+        """Password masking should never reveal any characters."""
+        test_passwords = [
+            "a",
+            "ab",
+            "abc",
+            "password",
+            "verylongpassword123!@#",
+            "p@$$w0rd",
+        ]
+        
+        for password in test_passwords:
+            masked = mask_password(password)
+            # Masked password should not contain any original characters
+            assert masked == "********", f"Password '{password}' was not properly masked"
+            # Password length should not be disclosed
+            assert len(masked) == 8, "Masked password length should always be 8"
 
 
 class TestMaskSensitiveDict:

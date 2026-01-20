@@ -49,38 +49,36 @@ async def get_verified_otp_service(
     # In production, webhook secret MUST be configured
     if env == "production" and not webhook_secret:
         logger.error("🚨 SMS_WEBHOOK_SECRET not set in production environment")
-        raise HTTPException(
-            status_code=500,
-            detail="SMS_WEBHOOK_SECRET must be configured in production"
-        )
+        raise HTTPException(status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production")
 
     # Signature verification is REQUIRED in production
     if env == "production":
         if not x_webhook_signature:
-            logger.warning(f"⚠️ Webhook signature missing in production (IP: {request.client.host if request.client else 'unknown'})")
-            raise HTTPException(
-                status_code=401,
-                detail="X-Webhook-Signature header required in production"
+            logger.warning(
+                f"⚠️ Webhook signature missing in production (IP: {request.client.host if request.client else 'unknown'})"
             )
+            raise HTTPException(status_code=401, detail="X-Webhook-Signature header required in production")
 
         # Verify signature
         body = await request.body()
         if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
             logger.error(f"❌ Invalid webhook signature from IP: {request.client.host if request.client else 'unknown'}")
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
-        
+
         logger.debug("✅ Webhook signature verified")
-    
-    # Development mode - still enforce signature if webhook_secret is set
+
+    # Development mode - enforce signature if webhook_secret is set
     elif webhook_secret:
         if not x_webhook_signature:
-            logger.warning("⚠️ DEV MODE: Webhook signature missing (but secret is configured)")
-        else:
-            body = await request.body()
-            if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
-                logger.warning("⚠️ DEV MODE: Invalid webhook signature (continuing anyway)")
-            else:
-                logger.debug("✅ DEV MODE: Webhook signature verified")
+            logger.warning("⚠️ DEV MODE: Webhook signature missing")
+            raise HTTPException(status_code=401, detail="X-Webhook-Signature header required when secret is configured")
+
+        body = await request.body()
+        if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
+            logger.error("❌ DEV MODE: Invalid webhook signature")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+        logger.debug("✅ DEV MODE: Webhook signature verified")
     else:
         logger.warning("⚠️ DEV MODE: No webhook secret configured - signature validation disabled")
 
@@ -102,9 +100,7 @@ async def receive_sms(
     }
     """
     try:
-        otp = await otp_service.process_appointment_sms(
-            phone_number=payload.phone_number, message=payload.message
-        )
+        otp = await otp_service.process_appointment_sms(phone_number=payload.phone_number, message=payload.message)
 
         if otp:
             return OTPResponse(
@@ -135,9 +131,7 @@ async def receive_appointment_sms(
     }
     """
     try:
-        otp = await otp_service.process_appointment_sms(
-            phone_number=payload.phone_number, message=payload.message
-        )
+        otp = await otp_service.process_appointment_sms(phone_number=payload.phone_number, message=payload.message)
 
         if otp:
             return OTPResponse(
@@ -168,9 +162,7 @@ async def receive_payment_sms(
     }
     """
     try:
-        otp = await otp_service.process_payment_sms(
-            phone_number=payload.phone_number, message=payload.message
-        )
+        otp = await otp_service.process_payment_sms(phone_number=payload.phone_number, message=payload.message)
 
         if otp:
             return OTPResponse(

@@ -120,9 +120,9 @@ class TestDataMasking:
 
     def test_mask_email(self):
         """Test email masking function."""
-        assert mask_email("test@example.com") == "te***@example.com"
-        assert mask_email("ab@example.com") == "a***@example.com"
-        assert mask_email("a@example.com") == "a***@example.com"
+        assert mask_email("test@example.com") == "t***@e***.com"
+        assert mask_email("ab@example.com") == "a***@e***.com"
+        assert mask_email("a@example.com") == "a***@e***.com"
         assert mask_email("") == "***"
         assert mask_email("invalid") == "***"
 
@@ -131,7 +131,7 @@ class TestDataMasking:
         text = "User test@example.com logged in"
         masked = mask_sensitive_data(text)
         assert "test@example.com" not in masked
-        assert "te***@example.com" in masked
+        assert "t***@e***.com" in masked
 
     def test_mask_sensitive_data_multiple_emails(self):
         """Test masking multiple emails in one text."""
@@ -139,8 +139,8 @@ class TestDataMasking:
         masked = mask_sensitive_data(text)
         assert "test@example.com" not in masked
         assert "admin@site.org" not in masked
-        assert "te***@example.com" in masked
-        assert "ad***@site.org" in masked
+        assert "t***@e***.com" in masked
+        assert "a***@s***.org" in masked
 
     def test_mask_sensitive_data_tokens(self):
         """Test masking long alphanumeric tokens."""
@@ -155,7 +155,7 @@ class TestDataMasking:
         masked = mask_sensitive_data(text)
         assert "user@test.com" not in masked
         assert "abc123def456ghi789jkl012mno345pqr" not in masked
-        assert "us***@test.com" in masked
+        assert "u***@t***.com" in masked
         assert "***REDACTED***" in masked
 
     def test_mask_sensitive_data_preserves_short_strings(self):

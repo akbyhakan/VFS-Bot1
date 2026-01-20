@@ -9,55 +9,24 @@ from typing import Optional, Literal
 from playwright.async_api import Page
 
 from ..constants import Intervals, Timeouts
+from ..utils.masking import mask_email, mask_password
 
 logger = logging.getLogger(__name__)
 
 
-def mask_email(email: str) -> str:
-    """
-    Mask email for safe logging.
-
-    Args:
-        email: Email address to mask
-
-    Returns:
-        Masked email address
-    """
-    if not email or "@" not in email:
-        return "***"
-    parts = email.split("@")
-    local = parts[0]
-
-    if len(local) > 2:
-        masked_local = local[:2] + "***"  # test -> te***
-    elif len(local) >= 1:
-        masked_local = local[:1] + "***"  # ab -> a***, a -> a***
-    else:
-        masked_local = "***"  # empty local part
-
-    return f"{masked_local}@{parts[1]}"
-
-
-def mask_password(password: str) -> str:
-    """
-    Mask password for safe logging.
-
-    Args:
-        password: Password to mask
-
-    Returns:
-        Masked password (e.g., "pa****rd")
-    """
-    if not password:
-        return "****"
-
-    length = len(password)
-    if length <= 4:
-        return "*" * length
-    elif length <= 8:
-        return password[:1] + "*" * (length - 2) + password[-1:]
-    else:
-        return password[:2] + "*" * (length - 4) + password[-2:]
+# Re-export masking functions for backward compatibility
+# These are now imported from utils.masking
+__all__ = [
+    "mask_email",
+    "mask_password",
+    "mask_sensitive_data",
+    "smart_fill",
+    "smart_click",
+    "wait_for_selector_smart",
+    "random_delay",
+    "safe_navigate",
+    "safe_screenshot",
+]
 
 
 def mask_sensitive_data(text: str) -> str:
@@ -162,9 +131,7 @@ async def wait_for_selector_smart(
         raise
 
 
-async def random_delay(
-    min_seconds: Optional[float] = None, max_seconds: Optional[float] = None
-) -> None:
+async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optional[float] = None) -> None:
     """
     Add a random delay to simulate human behavior.
 
@@ -181,9 +148,7 @@ async def random_delay(
 async def safe_navigate(
     page: Page,
     url: str,
-    wait_until: Optional[
-        Literal["commit", "domcontentloaded", "load", "networkidle"]
-    ] = "networkidle",
+    wait_until: Optional[Literal["commit", "domcontentloaded", "load", "networkidle"]] = "networkidle",
     timeout: Optional[int] = None,
 ) -> bool:
     """

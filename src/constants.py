@@ -50,6 +50,11 @@ class RateLimits:
     TIME_WINDOW = 60  # Time window in seconds
 
     CONCURRENT_USERS = 5  # Maximum concurrent user processing
+    
+    # Login-specific rate limits (more restrictive)
+    LOGIN_MAX_REQUESTS = 5  # Maximum login attempts per window
+    LOGIN_TIME_WINDOW = 300  # 5 minutes
+    LOGIN_LOCKOUT_DURATION = 900  # 15 minutes lockout after max attempts
 
 
 class CaptchaConfig:
