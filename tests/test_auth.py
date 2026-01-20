@@ -163,3 +163,68 @@ def test_hash_password_multibyte_characters():
     # The password is truncated to 72 bytes, which might cut off a multi-byte char
     # Verification should still work with the full password
     assert verify_password(multibyte_password, hashed) is True
+
+
+def test_jwt_key_rotation(monkeypatch):
+    """Test JWT key rotation support with API_SECRET_KEY_PREVIOUS."""
+    import secrets
+    
+    # Create two different keys
+    old_key = secrets.token_urlsafe(48)
+    new_key = secrets.token_urlsafe(48)
+    
+    # Set old key and create token
+    monkeypatch.setenv("API_SECRET_KEY", old_key)
+    
+    # Clear the LRU cache for _get_jwt_settings
+    from src.core.auth import _get_jwt_settings
+    _get_jwt_settings.cache_clear()
+    
+    data = {"sub": "testuser", "name": "Test User"}
+    old_token = create_access_token(data)
+    
+    # Change to new key and set old key as previous
+    monkeypatch.setenv("API_SECRET_KEY", new_key)
+    monkeypatch.setenv("API_SECRET_KEY_PREVIOUS", old_key)
+    _get_jwt_settings.cache_clear()
+    
+    # Old token should still verify using the previous key
+    payload = verify_token(old_token)
+    assert payload["sub"] == "testuser"
+    assert payload["name"] == "Test User"
+    
+    # New token should verify with new key
+    new_token = create_access_token(data)
+    payload = verify_token(new_token)
+    assert payload["sub"] == "testuser"
+
+
+def test_jwt_key_rotation_without_previous_key(monkeypatch):
+    """Test that tokens fail when key changes without API_SECRET_KEY_PREVIOUS."""
+    import secrets
+    
+    # Create two different keys
+    old_key = secrets.token_urlsafe(48)
+    new_key = secrets.token_urlsafe(48)
+    
+    # Set old key and create token
+    monkeypatch.setenv("API_SECRET_KEY", old_key)
+    
+    # Clear the LRU cache for _get_jwt_settings
+    from src.core.auth import _get_jwt_settings
+    _get_jwt_settings.cache_clear()
+    
+    data = {"sub": "testuser"}
+    old_token = create_access_token(data)
+    
+    # Change to new key WITHOUT setting previous
+    monkeypatch.setenv("API_SECRET_KEY", new_key)
+    if "API_SECRET_KEY_PREVIOUS" in os.environ:
+        monkeypatch.delenv("API_SECRET_KEY_PREVIOUS")
+    _get_jwt_settings.cache_clear()
+    
+    # Old token should fail to verify
+    with pytest.raises(HTTPException) as exc_info:
+        verify_token(old_token)
+    
+    assert exc_info.value.status_code == 401

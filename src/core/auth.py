@@ -1,12 +1,15 @@
 """JWT-based authentication for API endpoints."""
 
 import os
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast, NamedTuple
 from functools import lru_cache
 
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
+
+logger = logging.getLogger(__name__)
 
 # Bcrypt has a maximum password length of 72 bytes
 MAX_PASSWORD_BYTES = 72
