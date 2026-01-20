@@ -129,3 +129,36 @@ class TestOTPWebhookService:
         # Should get the latest unused one
         otp = await service.wait_for_otp(timeout=1)
         assert otp == "222222"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_otp_wait_and_process(self):
+        """Test race condition fix: concurrent wait and process operations."""
+        service = OTPWebhookService()
+
+        # Start multiple wait operations concurrently
+        wait_tasks = [
+            asyncio.create_task(service.wait_for_otp(timeout=3)),
+            asyncio.create_task(service.wait_for_otp(timeout=3)),
+            asyncio.create_task(service.wait_for_otp(timeout=3)),
+        ]
+
+        # Give wait tasks time to register
+        await asyncio.sleep(0.1)
+
+        # Send OTP while wait operations are active
+        await service.process_sms("+905551234567", "Code: 999888")
+        await asyncio.sleep(0.1)
+        await service.process_sms("+905551234567", "Code: 777666")
+        await asyncio.sleep(0.1)
+        await service.process_sms("+905551234567", "Code: 555444")
+
+        # Wait for all tasks to complete
+        results = await asyncio.gather(*wait_tasks, return_exceptions=True)
+
+        # At least one task should have received an OTP
+        valid_otps = [r for r in results if isinstance(r, str) and r is not None]
+        assert len(valid_otps) >= 1, "At least one wait operation should receive an OTP"
+        
+        # All results should be either None or a valid OTP (no exceptions)
+        for result in results:
+            assert result is None or isinstance(result, str), f"Unexpected result: {result}"

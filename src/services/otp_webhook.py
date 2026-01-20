@@ -231,8 +231,10 @@ class OTPWebhookService:
         timeout = timeout or self._otp_timeout
         wait_key = f"{queue_type}_{phone_number or 'any'}"
         
-        event = asyncio.Event()
-        self._waiting_events[wait_key] = event
+        # Create event and add to waiting events inside lock to prevent race condition
+        async with self._lock:
+            event = asyncio.Event()
+            self._waiting_events[wait_key] = event
         
         # Safety limit: maximum iteration count
         max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin

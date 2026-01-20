@@ -184,13 +184,29 @@ def get_encryption() -> PasswordEncryption:
     """
     global _encryption_instance
 
-    # Acquire lock for all checks to prevent race condition
-    with _encryption_lock:
+    # Fast path without lock (most common case)
+    # Capture instance reference atomically to avoid race condition
+    instance = _encryption_instance
+    if instance is not None:
+        # Check if key has changed (only if instance exists)
         current_key = os.getenv("ENCRYPTION_KEY")
-        if _encryption_instance is None or (
-            current_key and _normalize_key(current_key) != _encryption_instance._key
-        ):
+        if current_key and _normalize_key(current_key) != instance._key:
+            # Key changed, need to recreate - fall through to slow path
+            pass
+        else:
+            # Instance is valid, return it
+            return instance
+
+    # Slow path with lock (only during initialization or key change)
+    with _encryption_lock:
+        # Double-check after acquiring lock
+        if _encryption_instance is None:
             _encryption_instance = PasswordEncryption()
+        else:
+            # Check if key changed while we were waiting for the lock
+            current_key = os.getenv("ENCRYPTION_KEY")
+            if current_key and _normalize_key(current_key) != _encryption_instance._key:
+                _encryption_instance = PasswordEncryption()
         return _encryption_instance
 
 

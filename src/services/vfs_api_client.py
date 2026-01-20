@@ -6,9 +6,9 @@ import logging
 import os
 import secrets
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 from Crypto.Cipher import AES
@@ -35,6 +35,36 @@ logger = logging.getLogger(__name__)
 VFS_API_BASE = os.getenv("VFS_API_BASE", "https://lift-api.vfsglobal.com")
 VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE", "https://liftassets.vfsglobal.com")
 CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE", "https://d2ab400qlgxn2g.cloudfront.net/dev/spaces")
+
+
+class CentreInfo(TypedDict):
+    """Type definition for VFS Centre information."""
+    id: str
+    name: str
+    code: str
+    address: str
+
+
+class VisaCategoryInfo(TypedDict):
+    """Type definition for Visa Category information."""
+    id: str
+    name: str
+    code: str
+
+
+class VisaSubcategoryInfo(TypedDict):
+    """Type definition for Visa Subcategory information."""
+    id: str
+    name: str
+    code: str
+    visaCategoryId: str
+
+
+class BookingResponse(TypedDict):
+    """Type definition for Appointment Booking response."""
+    bookingId: str
+    status: str
+    message: str
 
 
 @dataclass
@@ -257,7 +287,8 @@ class VFSApiClient:
         ) as response:
             if response.status != 200:
                 error_text = await response.text()
-                logger.error(f"Login failed: {response.status} - {error_text}")
+                logger.error(f"Login failed: {response.status}")
+                logger.debug(f"Error details: {error_text[:200]}...")
                 raise VFSAuthenticationError(f"Login failed with status {response.status}")
 
             data = await response.json()
@@ -271,7 +302,7 @@ class VFSApiClient:
             )
             expires_in = data.get("expiresIn", 60)
             effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
-            expires_at = datetime.now() + timedelta(minutes=effective_expiry)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
 
             self.session = VFSSession(
                 access_token=data["accessToken"],
@@ -284,10 +315,10 @@ class VFSApiClient:
             # Update session headers with auth token
             self._session.headers.update({"Authorization": f"Bearer {self.session.access_token}"})
 
-            logger.info(f"Login successful for {email[:3]}***, token expires at {expires_at}")
+            logger.info(f"Login successful for {email[:3]}***")
             return self.session
 
-    async def get_centres(self) -> List[Dict[str, Any]]:
+    async def get_centres(self) -> List[CentreInfo]:
         """
         Get available VFS centres.
 
@@ -299,9 +330,9 @@ class VFSApiClient:
         async with self._session.get(f"{VFS_API_BASE}/master/center") as response:
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
-            return data  # type: ignore[no-any-return]
+            return data
 
-    async def get_visa_categories(self, centre_id: str) -> List[Dict[str, Any]]:
+    async def get_visa_categories(self, centre_id: str) -> List[VisaCategoryInfo]:
         """
         Get visa categories for a centre.
 
@@ -317,11 +348,11 @@ class VFSApiClient:
             f"{VFS_API_BASE}/master/visacategory", params={"centerId": centre_id}
         ) as response:
             data = await response.json()
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def get_visa_subcategories(
         self, centre_id: str, category_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> List[VisaSubcategoryInfo]:
         """
         Get visa subcategories.
 
@@ -339,7 +370,7 @@ class VFSApiClient:
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
             data = await response.json()
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def check_slot_availability(
         self, centre_id: str, category_id: str, subcategory_id: str
@@ -389,7 +420,7 @@ class VFSApiClient:
 
     async def book_appointment(
         self, slot_date: str, slot_time: str, applicant_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> BookingResponse:
         """
         Book an appointment.
 
@@ -415,7 +446,7 @@ class VFSApiClient:
             else:
                 logger.error(f"Booking failed: {data}")
 
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def _ensure_authenticated(self) -> None:
         """
@@ -428,7 +459,7 @@ class VFSApiClient:
             raise VFSSessionExpiredError("Not authenticated. Call login() first.")
 
         # Check if token has expired or is about to expire
-        if datetime.now() >= self.session.expires_at:
+        if datetime.now(timezone.utc) >= self.session.expires_at:
             logger.warning("Token has expired, attempting refresh")
             await self._refresh_token()
 
@@ -468,7 +499,7 @@ class VFSApiClient:
                 
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now() + timedelta(minutes=effective_expiry)
+                self.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
 
                 # Update session headers with new auth token
                 self._session.headers.update(

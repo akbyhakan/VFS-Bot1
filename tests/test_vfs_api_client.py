@@ -2,7 +2,7 @@
 
 import base64
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
@@ -233,7 +233,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -262,7 +262,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -290,7 +290,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -324,7 +324,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -353,7 +353,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired
             user_id="user123",
             email="test@example.com",
         )
@@ -387,7 +387,7 @@ class TestVFSApiClient:
         client.session = VFSSession(
             access_token="token",
             refresh_token="refresh",
-            expires_at=datetime.now() + timedelta(hours=1),  # Token not expired yet
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),  # Token not expired yet
             user_id="user123",
             email="test@example.com",
         )
@@ -414,7 +414,7 @@ class TestVFSSession:
         session = VFSSession(
             access_token="access123",
             refresh_token="refresh123",
-            expires_at=datetime(2024, 1, 1, 12, 0, 0),
+            expires_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
             user_id="user123",
             email="test@example.com",
         )
