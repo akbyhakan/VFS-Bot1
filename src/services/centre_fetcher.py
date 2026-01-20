@@ -21,11 +21,12 @@ class CacheEntry:
             ttl_seconds: Time to live in seconds (default: 3600 = 1 hour)
         """
         self.value = value
-        self.expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
+        self.created_at = datetime.now()
+        self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
     
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
-        return datetime.now() > self.expires_at
+        return datetime.now() >= self.expires_at
 
 
 class CentreFetcher:
@@ -265,9 +266,22 @@ class CentreFetcher:
             return []
 
     def clear_cache(self) -> None:
-        """Clear the cache (deprecated - use async clear_cache instead)."""
+        """Clear the cache (synchronous version for backward compatibility)."""
         self._cache.clear()
         logger.info("Cache cleared")
+    
+    async def clear_cache_async(self) -> int:
+        """
+        Clear all cache entries (async version).
+        
+        Returns:
+            Number of entries cleared
+        """
+        async with self._cache_lock:
+            count = len(self._cache)
+            self._cache.clear()
+            logger.info(f"Cache cleared ({count} entries)")
+            return count
 
     async def fetch_all_data(self, page: Page) -> Dict[str, Any]:
         """

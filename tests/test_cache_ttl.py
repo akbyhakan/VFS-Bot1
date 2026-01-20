@@ -58,12 +58,12 @@ class TestCentreFetcherCache:
     
     def test_cache_expiration(self, fetcher):
         """Test cache expiration."""
-        # Set cache with 0 second TTL
-        fetcher._set_cache("test_key", "value", ttl=0)
+        # Set cache with very short TTL (1 second)
+        fetcher._set_cache("test_key", "value", ttl=1)
         
-        # Small sleep to ensure expiration
+        # Sleep longer than TTL to ensure expiration
         import time
-        time.sleep(0.01)
+        time.sleep(1.1)
         
         # Should return None as entry expired
         result = fetcher._get_from_cache("test_key")
@@ -75,7 +75,7 @@ class TestCentreFetcherCache:
         fetcher._set_cache("key1", "value1")
         fetcher._set_cache("key2", "value2")
         
-        cleared = await fetcher.clear_cache()
+        cleared = await fetcher.clear_cache_async()
         assert cleared == 2
         assert fetcher._get_from_cache("key1") is None
     
@@ -85,13 +85,13 @@ class TestCentreFetcherCache:
         # Add one valid entry
         fetcher._set_cache("valid_key", "valid_value", ttl=3600)
         
-        # Add two expired entries
-        fetcher._set_cache("expired_key1", "value1", ttl=0)
-        fetcher._set_cache("expired_key2", "value2", ttl=0)
+        # Add two expired entries with 1 second TTL
+        fetcher._set_cache("expired_key1", "value1", ttl=1)
+        fetcher._set_cache("expired_key2", "value2", ttl=1)
         
-        # Small sleep to ensure expiration
+        # Sleep longer than TTL to ensure expiration
         import time
-        time.sleep(0.01)
+        time.sleep(1.1)
         
         # Cleanup should remove 2 expired entries
         removed = await fetcher.cleanup_expired()
