@@ -112,6 +112,43 @@ def mask_otp(otp: str) -> str:
     return "*" * len(otp)
 
 
+def mask_expiry_date(month: str, year: str) -> str:
+    """
+    Mask credit card expiry date.
+    
+    Args:
+        month: Expiry month (MM)
+        year: Expiry year (YYYY or YY)
+    
+    Returns:
+        Masked expiry date (e.g., "**/****")
+    """
+    # Validate inputs
+    if not month or not year:
+        return "**/**"
+    
+    # Determine year format based on length
+    try:
+        year_mask = "****" if len(year) == 4 else "**"
+    except (TypeError, AttributeError):
+        year_mask = "**"
+    
+    return f"**/{year_mask}"
+
+
+def mask_cvv(cvv: str) -> str:
+    """
+    Mask CVV code completely.
+    
+    Args:
+        cvv: CVV code to mask
+    
+    Returns:
+        Completely masked CVV (always "***")
+    """
+    return "***"
+
+
 def mask_sensitive_dict(
     data: Dict[str, Any],
     sensitive_keys: Set[str] = None

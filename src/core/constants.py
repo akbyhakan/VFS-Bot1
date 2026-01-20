@@ -1,6 +1,54 @@
 """Application-wide constants."""
 
 
+class LogEmoji:
+    """Emoji constants for consistent logging."""
+
+    # Status indicators
+    SUCCESS = "✅"
+    ERROR = "❌"
+    WARNING = "⚠️"
+    INFO = "ℹ️"
+    DEBUG = "🔍"
+    
+    # Actions
+    START = "🚀"
+    STOP = "🛑"
+    PROCESSING = "⚙️"
+    WAITING = "⏳"
+    RETRY = "🔄"
+    
+    # Results
+    FOUND = "🎯"
+    NOT_FOUND = "🔍"
+    COMPLETE = "✔️"
+    FAILED = "❌"
+    
+    # Security
+    LOCK = "🔒"
+    UNLOCK = "🔓"
+    KEY = "🔑"
+    SHIELD = "🛡️"
+    ALERT = "🚨"
+    
+    # Network
+    UPLOAD = "⬆️"
+    DOWNLOAD = "⬇️"
+    NETWORK = "🌐"
+    API = "🔌"
+    
+    # Bot specific
+    BOT = "🤖"
+    USER = "👤"
+    CALENDAR = "📅"
+    TIME = "⏰"
+    PAYMENT = "💳"
+    EMAIL = "📧"
+    PHONE = "📱"
+    CAPTCHA = "🧩"
+    SCREENSHOT = "📸"
+
+
 class RateLimitDefaults:
     """Default rate limiting configuration."""
 

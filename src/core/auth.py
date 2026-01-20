@@ -256,3 +256,37 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     truncated = _truncate_password(plain_password)
     return bool(pwd_context.verify(truncated, hashed_password))
+
+
+def validate_admin_password_format() -> bool:
+    """
+    Validate that ADMIN_PASSWORD is in bcrypt hash format in production.
+    
+    This function should be called at startup to ensure the admin password
+    is properly hashed in production environments.
+    
+    Returns:
+        True if validation passes
+        
+    Raises:
+        ValueError: If ADMIN_PASSWORD is not properly formatted in production
+    """
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    env = os.getenv("ENV", "production").lower()
+    
+    # Skip validation if no password is set (optional var)
+    if not admin_password:
+        return True
+    
+    # In production, require bcrypt hash format
+    if env == "production":
+        bcrypt_prefixes = ("$2b$", "$2a$", "$2y$")
+        if not admin_password.startswith(bcrypt_prefixes):
+            raise ValueError(
+                "ADMIN_PASSWORD must be bcrypt hashed in production environment. "
+                "Current value appears to be plain text. "
+                "Generate a hash using: python -c \"from passlib.context import CryptContext; "
+                "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
+            )
+    
+    return True

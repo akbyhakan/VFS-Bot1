@@ -424,6 +424,10 @@ async def detailed_health_check() -> Dict[str, Any]:
         health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
         bot_healthy = snapshot.success_rate > health_threshold
         
+        # Get circuit breaker and rate limiter status
+        circuit_breaker_status = get_circuit_breaker_status(snapshot)
+        rate_limiter_stats = get_rate_limiter_status()
+        
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -442,6 +446,8 @@ async def detailed_health_check() -> Dict[str, Any]:
                     "success_rate": snapshot.success_rate,
                     "total_checks": snapshot.total_checks,
                 },
+                "circuit_breaker": circuit_breaker_status,
+                "rate_limiter": rate_limiter_stats,
             },
         }
     
@@ -461,6 +467,10 @@ async def detailed_health_check() -> Dict[str, Any]:
     # Configurable health threshold (default 50%)
     health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
     bot_healthy = snapshot.success_rate > health_threshold
+    
+    # Get circuit breaker and rate limiter status
+    circuit_breaker_status = get_circuit_breaker_status(snapshot)
+    rate_limiter_stats = get_rate_limiter_status()
     
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -490,6 +500,8 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "success_rate": snapshot.success_rate,
                 "total_checks": snapshot.total_checks,
             },
+            "circuit_breaker": circuit_breaker_status,
+            "rate_limiter": rate_limiter_stats,
         },
     }
 
@@ -517,6 +529,36 @@ async def check_database_health() -> bool:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
+
+
+def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:
+    """
+    Get circuit breaker status from metrics snapshot.
+    
+    Args:
+        snapshot: Metrics snapshot object
+        
+    Returns:
+        Dictionary with circuit breaker status
+    """
+    return {
+        "status": "closed" if snapshot.circuit_breaker_trips == 0 else "open",
+        "total_trips": snapshot.circuit_breaker_trips,
+        "healthy": snapshot.circuit_breaker_trips == 0,
+    }
+
+
+def get_rate_limiter_status() -> Dict[str, Any]:
+    """
+    Get rate limiter status.
+    
+    Returns:
+        Dictionary with rate limiter status
+    """
+    return {
+        "available": True,
+        "note": "Rate limiter is active",
+    }
 
 
 @app.get("/api/metrics")

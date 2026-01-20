@@ -658,6 +658,52 @@ class Database:
                 return dict(row) if row else None
 
     @require_connection
+    async def get_personal_details_batch(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        """
+        Get personal details for multiple users in a single query (N+1 query prevention).
+
+        Args:
+            user_ids: List of user IDs
+
+        Returns:
+            Dictionary mapping user_id to personal details dictionary
+            
+        Raises:
+            ValueError: If user_ids is empty or contains invalid IDs
+        """
+        if not user_ids:
+            return {}
+        
+        # Validate all user_ids
+        for user_id in user_ids:
+            if not isinstance(user_id, int) or user_id <= 0:
+                raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
+        
+        # Build SQL query with parameterized placeholders
+        # SQL Injection Safety: This is safe because:
+        # 1. user_ids are validated as positive integers above (no SQL can be injected)
+        # 2. placeholders contains only "?" characters (no dynamic SQL)
+        # 3. SQLite uses parameter binding - values never enter the SQL string
+        # 4. Alternative would be to use: "... WHERE user_id IN (SELECT value FROM json_each(?))"
+        #    but that's less readable and not significantly safer
+        num_placeholders = len(user_ids)
+        placeholders = ",".join(["?"] * num_placeholders)
+        query = f"SELECT * FROM personal_details WHERE user_id IN ({placeholders})"
+        
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(query, user_ids)
+                rows = await cursor.fetchall()
+                
+                # Map results by user_id
+                result = {}
+                for row in rows:
+                    details = dict(row)
+                    result[details["user_id"]] = details
+                
+                return result
+
+    @require_connection
     async def get_all_users_with_details(self) -> List[Dict[str, Any]]:
         """
         Get all users with their personal details joined.
