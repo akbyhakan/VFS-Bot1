@@ -395,6 +395,35 @@ class Database:
             """
             )
 
+            # Appointment history table
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS appointment_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    centre TEXT NOT NULL,
+                    mission TEXT NOT NULL,
+                    category TEXT,
+                    slot_date TEXT,
+                    slot_time TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    attempt_count INTEGER DEFAULT 1,
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """
+            )
+
+            # Index for faster queries
+            await cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status 
+                ON appointment_history(user_id, status)
+            """
+            )
+
             await self.conn.commit()
 
             # Migration: Add new columns if they don't exist
@@ -844,7 +873,7 @@ class Database:
         **other_fields: Any,
     ) -> bool:
         """
-        Update personal details for a user.
+        Update personal details for a user with SQL injection protection.
 
         Args:
             user_id: User ID
@@ -858,7 +887,12 @@ class Database:
 
         Raises:
             ValidationError: If phone format is invalid
+            ValueError: If user_id is invalid
         """
+        # Validate user_id
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError("Invalid user_id")
+
         # Validate phone if provided
         if mobile_number and not validate_phone(mobile_number):
             raise ValidationError(
@@ -879,20 +913,27 @@ class Database:
             updates.append("mobile_number = ?")
             params.append(mobile_number)
 
-        # Add other fields - only allowed fields (SQL injection prevention)
-        for field, value in other_fields.items():
-            if field in ALLOWED_PERSONAL_DETAILS_FIELDS and value is not None:
-                updates.append(f"{field} = ?")
-                params.append(value)
-            elif value is not None:
-                logger.warning(
-                    f"Attempted to update disallowed field '{field}' in "
-                    f"personal_details - ignored for security"
-                )
+        # Filter only allowed fields and log rejected fields (SQL injection prevention)
+        valid_fields = {k: v for k, v in other_fields.items() 
+                        if k in ALLOWED_PERSONAL_DETAILS_FIELDS and v is not None}
+        
+        # Log rejected fields (potential attack attempt)
+        rejected = {k for k, v in other_fields.items() 
+                   if k not in ALLOWED_PERSONAL_DETAILS_FIELDS and v is not None}
+        if rejected:
+            logger.warning(f"Rejected disallowed fields for user {user_id}: {rejected}")
+
+        # Add valid fields to update
+        for field, value in valid_fields.items():
+            updates.append(f"{field} = ?")
+            params.append(value)
 
         if not updates:
-            return True  # Nothing to update
+            return False  # Nothing to update
 
+        # Add updated_at timestamp and user_id
+        updates.append("updated_at = ?")
+        params.append(datetime.now(timezone.utc))
         params.append(user_id)
 
         async with self.get_connection() as conn:
@@ -1579,3 +1620,96 @@ class Database:
                 await cursor.execute(query, params)
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
+
+    @require_connection
+    async def add_appointment_history(
+        self,
+        user_id: int,
+        centre: str,
+        mission: str,
+        status: str,
+        category: str = None,
+        slot_date: str = None,
+        slot_time: str = None,
+        error_message: str = None
+    ) -> int:
+        """
+        Add appointment history record.
+        
+        Args:
+            user_id: User ID
+            centre: VFS centre
+            mission: Target country mission code
+            status: Status ('found', 'booked', 'failed', 'cancelled')
+            category: Visa category
+            slot_date: Appointment date
+            slot_time: Appointment time
+            error_message: Error message if failed
+        
+        Returns:
+            History record ID
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                INSERT INTO appointment_history 
+                (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
+            )
+            await conn.commit()
+            return cursor.lastrowid
+
+    @require_connection
+    async def get_appointment_history(
+        self,
+        user_id: int,
+        limit: int = 50,
+        status: str = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get appointment history for user.
+        
+        Args:
+            user_id: User ID
+            limit: Maximum records to return
+            status: Filter by status (optional)
+        
+        Returns:
+            List of history records
+        """
+        query = "SELECT * FROM appointment_history WHERE user_id = ?"
+        params = [user_id]
+        
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+        
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(query, params)
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    @require_connection
+    async def update_appointment_status(
+        self,
+        history_id: int,
+        status: str,
+        error_message: str = None
+    ) -> bool:
+        """Update appointment history status."""
+        async with self.get_connection() as conn:
+            await conn.execute(
+                """
+                UPDATE appointment_history 
+                SET status = ?, error_message = ?, updated_at = ?, attempt_count = attempt_count + 1
+                WHERE id = ?
+                """,
+                (status, error_message, datetime.now(timezone.utc), history_id)
+            )
+            await conn.commit()
+            return True

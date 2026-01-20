@@ -5,8 +5,7 @@ import random
 import logging
 import re
 from typing import Optional, Literal
-
-from playwright.async_api import Page
+from playwright.async_api import Page, TimeoutError
 
 from ..constants import Intervals, Timeouts
 from ..utils.masking import mask_email, mask_password
@@ -23,6 +22,7 @@ __all__ = [
     "smart_fill",
     "smart_click",
     "wait_for_selector_smart",
+    "wait_for_element_with_retry",
     "random_delay",
     "safe_navigate",
     "safe_screenshot",
@@ -129,6 +129,42 @@ async def wait_for_selector_smart(
     except Exception as e:
         logger.error(f"Selector '{selector}' not found within {timeout}ms: {e}")
         raise
+
+
+async def wait_for_element_with_retry(
+    page: Page,
+    selector: str,
+    max_retries: int = 3,
+    initial_timeout: int = 5000,
+    backoff_factor: float = 1.5,
+) -> bool:
+    """
+    Wait for element with exponential backoff retry.
+    
+    Args:
+        page: Playwright page
+        selector: CSS selector
+        max_retries: Maximum retry attempts
+        initial_timeout: Initial timeout in ms
+        backoff_factor: Multiplier for each retry
+    
+    Returns:
+        True if element found, False otherwise
+    """
+    timeout = initial_timeout
+    
+    for attempt in range(max_retries):
+        try:
+            await page.wait_for_selector(selector, timeout=timeout, state="visible")
+            return True
+        except TimeoutError:
+            if attempt < max_retries - 1:
+                logger.debug(f"Selector '{selector}' not found, retry {attempt + 1}/{max_retries}")
+                timeout = int(timeout * backoff_factor)
+            else:
+                logger.warning(f"Selector '{selector}' not found after {max_retries} attempts")
+    
+    return False
 
 
 async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optional[float] = None) -> None:

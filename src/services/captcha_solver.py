@@ -60,21 +60,30 @@ class CaptchaSolver:
             url: Page URL
 
         Returns:
-            Captcha solution token
+            Captcha solution token or None if solving failed
         """
-        from twocaptcha import TwoCaptcha
+        try:
+            from twocaptcha import TwoCaptcha
+            
+            solver = TwoCaptcha(self.api_key)
 
-        solver = TwoCaptcha(self.api_key)
+            # Run in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            result: Any = await loop.run_in_executor(
+                None, lambda: solver.recaptcha(sitekey=site_key, url=url)
+            )
 
-        # Run in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        result: Any = await loop.run_in_executor(
-            None, lambda: solver.recaptcha(sitekey=site_key, url=url)
-        )
-
-        logger.info("2Captcha solved successfully")
-        solution: str = result["code"]
-        return solution
+            # Safe key access - KeyError fix
+            if result and isinstance(result, dict) and "code" in result:
+                logger.info("2Captcha solved successfully")
+                return result["code"]
+            
+            logger.warning(f"2Captcha returned unexpected result: {result}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"2Captcha error: {e}")
+            return None
 
     async def _solve_manually(self, page: Page) -> Optional[str]:
         """
