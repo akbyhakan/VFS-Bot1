@@ -4,7 +4,7 @@ import asyncio
 import logging
 import random
 import re
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from playwright.async_api import Page
 
@@ -63,7 +63,7 @@ VFS_SELECTORS = {
 }
 
 
-def get_selector_with_fallback(selector_name: str) -> list:
+def get_selector_with_fallback(selector_name: str) -> List[str]:
     """
     Get selector(s) for a given name, ensuring it's always a list for fallback support.
     

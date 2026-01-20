@@ -25,7 +25,7 @@ async def temp_db():
     # Clean up
     try:
         os.unlink(db_path)
-    except:
+    except OSError:
         pass
 
 
@@ -178,5 +178,5 @@ async def test_get_personal_details_batch_invalid_ids():
         await db.close()
         try:
             os.unlink(db_path)
-        except:
+        except OSError:
             pass

@@ -680,6 +680,10 @@ class Database:
                 raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
         
         # Build placeholders for SQL IN clause
+        # Note: This is safe from SQL injection because:
+        # 1. placeholders is internally generated (contains only "?" characters)
+        # 2. user_ids are validated as positive integers above
+        # 3. SQLite uses parameterized queries with the actual values passed separately
         placeholders = ",".join("?" * len(user_ids))
         
         async with self.get_connection() as conn:

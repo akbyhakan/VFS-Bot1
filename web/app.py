@@ -544,7 +544,7 @@ def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:
     return {
         "status": "closed" if snapshot.circuit_breaker_trips == 0 else "open",
         "total_trips": snapshot.circuit_breaker_trips,
-        "healthy": snapshot.circuit_breaker_trips == 0 or not bot_state.get("running", False),
+        "healthy": snapshot.circuit_breaker_trips == 0,
     }
 
 
