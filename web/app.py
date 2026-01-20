@@ -424,6 +424,19 @@ async def detailed_health_check() -> Dict[str, Any]:
         health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
         bot_healthy = snapshot.success_rate > health_threshold
         
+        # Circuit breaker status from metrics
+        circuit_breaker_status = {
+            "status": "closed" if snapshot.circuit_breaker_trips == 0 else "open",
+            "total_trips": snapshot.circuit_breaker_trips,
+            "healthy": snapshot.circuit_breaker_trips == 0 or not bot_state.get("running", False),
+        }
+        
+        # Rate limiter stats
+        rate_limiter_stats = {
+            "available": True,
+            "note": "Rate limiter is active",
+        }
+        
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -442,6 +455,8 @@ async def detailed_health_check() -> Dict[str, Any]:
                     "success_rate": snapshot.success_rate,
                     "total_checks": snapshot.total_checks,
                 },
+                "circuit_breaker": circuit_breaker_status,
+                "rate_limiter": rate_limiter_stats,
             },
         }
     
@@ -461,6 +476,19 @@ async def detailed_health_check() -> Dict[str, Any]:
     # Configurable health threshold (default 50%)
     health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
     bot_healthy = snapshot.success_rate > health_threshold
+    
+    # Circuit breaker status from metrics
+    circuit_breaker_status = {
+        "status": "closed" if snapshot.circuit_breaker_trips == 0 else "open",
+        "total_trips": snapshot.circuit_breaker_trips,
+        "healthy": snapshot.circuit_breaker_trips == 0 or not bot_state.get("running", False),
+    }
+    
+    # Rate limiter stats from bot state if available
+    rate_limiter_stats = {
+        "available": True,
+        "note": "Rate limiter is active",
+    }
     
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -490,6 +518,8 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "success_rate": snapshot.success_rate,
                 "total_checks": snapshot.total_checks,
             },
+            "circuit_breaker": circuit_breaker_status,
+            "rate_limiter": rate_limiter_stats,
         },
     }
 

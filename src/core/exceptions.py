@@ -194,6 +194,12 @@ class VFSSlotNotFoundError(VFSApiError):
         super().__init__(message, recoverable)
 
 
+class SlotNotAvailableError(VFSSlotNotFoundError):
+    """Alias for VFSSlotNotFoundError - No appointment slots available."""
+    
+    pass
+
+
 class VFSSessionExpiredError(VFSApiError):
     """VFS session or token has expired."""
 
@@ -279,6 +285,12 @@ class PaymentProcessingError(PaymentError):
     
     def __init__(self, message: str = "Payment processing failed"):
         super().__init__(message, recoverable=True)
+
+
+class PaymentFailedError(PaymentProcessingError):
+    """Alias for PaymentProcessingError - Payment transaction failed."""
+    
+    pass
 
 
 # OTP Errors
