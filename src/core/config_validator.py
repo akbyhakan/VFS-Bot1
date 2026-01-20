@@ -206,7 +206,7 @@ class ConfigValidator:
             if len(api_secret) < MIN_API_KEY_LENGTH:
                 errors.append(
                     f"API_SECRET_KEY must be at least {MIN_API_KEY_LENGTH} characters "
-                    "for security. Current length: {len(api_secret)}"
+                    f"for security. Current length: {len(api_secret)}"
                 )
         
         # 3. ENCRYPTION_KEY validation
