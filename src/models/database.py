@@ -679,16 +679,19 @@ class Database:
             if not isinstance(user_id, int) or user_id <= 0:
                 raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
         
-        # Build placeholders for SQL IN clause
-        # Note: This is safe from SQL injection because:
-        # 1. placeholders is internally generated (contains only "?" characters)
-        # 2. user_ids are validated as positive integers above
-        # 3. SQLite uses parameterized queries with the actual values passed separately
-        placeholders = ",".join("?" * len(user_ids))
+        # Build SQL query with parameterized placeholders
+        # SQL Injection Safety: This is safe because:
+        # 1. user_ids are validated as positive integers above (no SQL can be injected)
+        # 2. placeholders contains only "?" characters (no dynamic SQL)
+        # 3. SQLite uses parameter binding - values never enter the SQL string
+        # 4. Alternative would be to use: "... WHERE user_id IN (SELECT value FROM json_each(?))"
+        #    but that's less readable and not significantly safer
+        num_placeholders = len(user_ids)
+        placeholders = ",".join(["?"] * num_placeholders)
+        query = f"SELECT * FROM personal_details WHERE user_id IN ({placeholders})"
         
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
-                query = f"SELECT * FROM personal_details WHERE user_id IN ({placeholders})"
                 await cursor.execute(query, user_ids)
                 rows = await cursor.fetchall()
                 

@@ -213,6 +213,8 @@ class ConfigValidator:
         if encryption_key:
             try:
                 import base64
+                from binascii import Error as Base64Error
+                
                 if len(encryption_key) != 44:
                     errors.append(
                         "ENCRYPTION_KEY must be 44 characters (Fernet key format). "
@@ -221,9 +223,12 @@ class ConfigValidator:
                     )
                 else:
                     # Validate it's valid base64
-                    decoded = base64.urlsafe_b64decode(encryption_key.encode())
-                    if len(decoded) != 32:
-                        errors.append("ENCRYPTION_KEY is not a valid Fernet key (must decode to 32 bytes)")
+                    try:
+                        decoded = base64.urlsafe_b64decode(encryption_key.encode())
+                        if len(decoded) != 32:
+                            errors.append("ENCRYPTION_KEY is not a valid Fernet key (must decode to 32 bytes)")
+                    except (Base64Error, ValueError) as e:
+                        errors.append(f"ENCRYPTION_KEY is not valid base64: {e}")
             except Exception as e:
                 errors.append(f"ENCRYPTION_KEY validation failed: {e}")
         

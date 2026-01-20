@@ -123,8 +123,16 @@ def mask_expiry_date(month: str, year: str) -> str:
     Returns:
         Masked expiry date (e.g., "**/****")
     """
-    # Determine year format
-    year_mask = "****" if len(year) == 4 else "**"
+    # Validate inputs
+    if not month or not year:
+        return "**/**"
+    
+    # Determine year format based on length
+    try:
+        year_mask = "****" if len(year) == 4 else "**"
+    except (TypeError, AttributeError):
+        year_mask = "**"
+    
     return f"**/{year_mask}"
 
 
