@@ -10,6 +10,9 @@ from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
+# Support for key rotation
+ENCRYPTION_KEY_OLD = os.getenv("ENCRYPTION_KEY_OLD")  # For key rotation
+
 
 def _normalize_key(key: Optional[str | bytes]) -> str:
     """
@@ -134,7 +137,7 @@ class PasswordEncryption:
 
     def decrypt_password(self, encrypted_password: str) -> str:
         """
-        Decrypt an encrypted password.
+        Decrypt an encrypted password with key rotation support.
 
         Args:
             encrypted_password: Encrypted password (base64 encoded)
@@ -148,9 +151,20 @@ class PasswordEncryption:
         try:
             decrypted = self.cipher.decrypt(encrypted_password.encode())
             return decrypted.decode()
-        except InvalidToken as e:
-            logger.error("Failed to decrypt password: invalid token or key")
-            raise ValueError("Invalid encryption key or corrupted password") from e
+        except InvalidToken:
+            # Try old key if available (key rotation support)
+            if ENCRYPTION_KEY_OLD:
+                logger.info("Trying old encryption key for backward compatibility")
+                try:
+                    old_cipher = Fernet(ENCRYPTION_KEY_OLD.encode() if isinstance(ENCRYPTION_KEY_OLD, str) else ENCRYPTION_KEY_OLD)
+                    decrypted = old_cipher.decrypt(encrypted_password.encode())
+                    return decrypted.decode()
+                except InvalidToken:
+                    logger.error("Failed to decrypt with both current and old encryption keys")
+                    raise ValueError("Invalid encryption key or corrupted password")
+            else:
+                logger.error("Failed to decrypt password: invalid token or key")
+                raise ValueError("Invalid encryption key or corrupted password")
         except Exception as e:
             logger.error(f"Failed to decrypt password: {e}")
             raise

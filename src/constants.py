@@ -1,178 +1,221 @@
-"""Constants and configuration values for VFS-Bot."""
+"""Unified constants and configuration values for VFS-Bot."""
 
 import os
+from typing import Final
 
 
+# =============================================================================
+# TIMEOUTS
+# =============================================================================
 class Timeouts:
-    """Timeout values in milliseconds."""
-
-    PAGE_LOAD = 30000  # 30 seconds
-    NAVIGATION = 30000  # 30 seconds
-    SELECTOR_WAIT = 10000  # 10 seconds
-    NETWORK_IDLE = 30000  # 30 seconds
-    CAPTCHA_MANUAL = 120000  # 2 minutes
-    CLOUDFLARE_CHALLENGE = 30000  # 30 seconds
+    """Timeout values - MILLISECONDS for Playwright, SECONDS noted separately."""
+    
+    # Playwright timeouts (milliseconds)
+    PAGE_LOAD: Final[int] = 30_000
+    NAVIGATION: Final[int] = 30_000
+    SELECTOR_WAIT: Final[int] = 10_000
+    NETWORK_IDLE: Final[int] = 30_000
+    CAPTCHA_MANUAL: Final[int] = 120_000
+    CLOUDFLARE_CHALLENGE: Final[int] = 30_000
+    
+    # API/Service timeouts (seconds)
+    HTTP_REQUEST_SECONDS: Final[int] = 30
+    OTP_WAIT_SECONDS: Final[int] = 300  # FIXED: Was 120 in BookingTimeouts
+    PAYMENT_WAIT_SECONDS: Final[int] = 300
+    DATABASE_CONNECTION_SECONDS: Final[float] = 30.0
+    WEBSOCKET_PING_SECONDS: Final[int] = 30
+    GRACEFUL_SHUTDOWN_SECONDS: Final[int] = 5
 
 
 class Intervals:
-    """Interval values in seconds."""
-
-    CHECK_SLOTS_MIN = 10  # Minimum slot check interval
-    CHECK_SLOTS_DEFAULT = 30  # Default slot check interval
-    CHECK_SLOTS_MAX = 3600  # Maximum slot check interval (1 hour)
-
-    HUMAN_DELAY_MIN = 0.1  # Minimum human-like delay
-    HUMAN_DELAY_MAX = 0.5  # Maximum human-like delay
-
-    TYPING_DELAY_MIN = 0.05  # Minimum typing delay
-    TYPING_DELAY_MAX = 0.15  # Maximum typing delay
-
-    ERROR_RECOVERY = 60  # Error recovery wait time
-    CIRCUIT_BREAKER_RECOVERY = 300  # Circuit breaker recovery time (5 minutes)
+    """Interval values in SECONDS."""
+    
+    CHECK_SLOTS_MIN: Final[int] = 10
+    CHECK_SLOTS_DEFAULT: Final[int] = 30
+    CHECK_SLOTS_MAX: Final[int] = 3600
+    HUMAN_DELAY_MIN: Final[float] = 0.1
+    HUMAN_DELAY_MAX: Final[float] = 0.5
+    TYPING_DELAY_MIN: Final[float] = 0.05
+    TYPING_DELAY_MAX: Final[float] = 0.15
+    ERROR_RECOVERY: Final[int] = 60
+    CIRCUIT_BREAKER_RECOVERY: Final[int] = 300
+    CLEANUP_INTERVAL: Final[int] = 60
 
 
 class Retries:
     """Retry configuration."""
-
-    MAX_PROCESS_USER_ATTEMPTS = 3  # Max retries for processing single user
-    MAX_LOGIN_ATTEMPTS = 3  # Max login attempts
-    MAX_BOOKING_ATTEMPTS = 2  # Max booking attempts
-
-    EXPONENTIAL_MULTIPLIER = 1  # Exponential backoff multiplier
-    EXPONENTIAL_MIN = 4  # Minimum exponential backoff (seconds)
-    EXPONENTIAL_MAX = 10  # Maximum exponential backoff (seconds)
+    
+    MAX_PROCESS_USER: Final[int] = 3
+    MAX_LOGIN: Final[int] = 3
+    MAX_BOOKING: Final[int] = 2
+    MAX_NETWORK: Final[int] = 3
+    BACKOFF_MULTIPLIER: Final[int] = 1
+    BACKOFF_MIN_SECONDS: Final[int] = 4
+    BACKOFF_MAX_SECONDS: Final[int] = 10
 
 
 class RateLimits:
     """Rate limiting configuration."""
-
-    MAX_REQUESTS = 60  # Maximum requests per time window
-    TIME_WINDOW = 60  # Time window in seconds
-
-    CONCURRENT_USERS = 5  # Maximum concurrent user processing
     
-    # Login-specific rate limits (more restrictive)
-    LOGIN_MAX_REQUESTS = 5  # Maximum login attempts per window
-    LOGIN_TIME_WINDOW = 300  # 5 minutes
-    LOGIN_LOCKOUT_DURATION = 900  # 15 minutes lockout after max attempts
+    MAX_REQUESTS: Final[int] = 60
+    TIME_WINDOW_SECONDS: Final[int] = 60
+    CONCURRENT_USERS: Final[int] = 5
+    LOGIN_MAX_REQUESTS: Final[int] = 5
+    LOGIN_WINDOW_SECONDS: Final[int] = 300
+    LOGIN_LOCKOUT_SECONDS: Final[int] = 900
+
+
+class Security:
+    """Security configuration."""
+    
+    MIN_SECRET_KEY_LENGTH: Final[int] = 64
+    MIN_API_KEY_SALT_LENGTH: Final[int] = 32
+    MIN_ENCRYPTION_KEY_LENGTH: Final[int] = 32
+    JWT_ALGORITHM: Final[str] = "HS256"
+    JWT_EXPIRY_HOURS: Final[int] = 24
+    PASSWORD_HASH_ROUNDS: Final[int] = 12
+    MAX_LOGIN_ATTEMPTS: Final[int] = 5
+    LOCKOUT_DURATION_MINUTES: Final[int] = 15
+    SESSION_FILE_PERMISSIONS: Final[int] = 0o600
 
 
 class CaptchaConfig:
     """Captcha configuration."""
     
-    MANUAL_TIMEOUT = 120  # Timeout for manual captcha solving (seconds)
-    TWOCAPTCHA_TIMEOUT = 180  # Timeout for 2Captcha API (seconds)
-    TURNSTILE_TIMEOUT = 120  # Timeout for Cloudflare Turnstile (seconds)
+    MANUAL_TIMEOUT: Final[int] = 120
+    TWOCAPTCHA_TIMEOUT: Final[int] = 180
+    TURNSTILE_TIMEOUT: Final[int] = 120
 
 
 class CircuitBreaker:
     """Circuit breaker configuration."""
+    
+    FAIL_THRESHOLD: Final[int] = 5
+    MAX_ERRORS_PER_HOUR: Final[int] = 20
+    ERROR_WINDOW_SECONDS: Final[int] = 3600
+    RESET_TIMEOUT_SECONDS: Final[int] = 60
+    HALF_OPEN_MAX_CALLS: Final[int] = 3
+    BACKOFF_BASE_SECONDS: Final[int] = 60
+    BACKOFF_MAX_SECONDS: Final[int] = 600
 
-    MAX_CONSECUTIVE_ERRORS = 5  # Maximum consecutive errors before opening circuit
-    MAX_TOTAL_ERRORS_PER_HOUR = 20  # Maximum total errors per hour
-    ERROR_TRACKING_WINDOW = 3600  # Error tracking window in seconds (1 hour)
 
-    # Exponential backoff: min(60 * 2^(errors-1), 600)
-    BACKOFF_BASE = 60  # Base backoff time in seconds
-    BACKOFF_MAX = 600  # Maximum backoff time in seconds (10 minutes)
+class OTP:
+    """OTP service configuration."""
+    
+    MAX_ENTRIES: Final[int] = 100
+    TIMEOUT_SECONDS: Final[int] = 300
+    CLEANUP_INTERVAL_SECONDS: Final[int] = 60
 
 
 class ErrorCapture:
     """Error capture configuration."""
-
-    MAX_ERRORS_IN_MEMORY = 100  # Maximum errors to keep in memory
-    CLEANUP_DAYS = 7  # Days to keep error files before cleanup
-    CLEANUP_INTERVAL_SECONDS = 3600  # Cleanup check interval (1 hour)
-    SCREENSHOTS_DIR = "screenshots/errors"  # Directory for error screenshots
+    
+    MAX_IN_MEMORY: Final[int] = 100
+    CLEANUP_DAYS: Final[int] = 7
+    CLEANUP_INTERVAL_SECONDS: Final[int] = 3600
+    SCREENSHOTS_DIR: Final[str] = "screenshots/errors"
 
 
 class Database:
     """Database configuration."""
-
-    DEFAULT_PATH = os.getenv("DATABASE_PATH", "vfs_bot.db")  # Configurable database path
-    POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))  # Configurable pool size
-    TEST_PATH = "test.db"  # Test database path
-    CONNECTION_TIMEOUT = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))  # Configurable timeout
-
-
-class API:
-    """API configuration."""
-
-    DEFAULT_PORT = 8000  # Default API port
-    DEFAULT_HOST = "0.0.0.0"  # Default API host
-    RATE_LIMIT = "100/minute"  # API rate limit
+    
+    DEFAULT_PATH: Final[str] = os.getenv("DATABASE_PATH", "vfs_bot.db")
+    TEST_PATH: Final[str] = "test.db"
+    POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
+    CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
+    QUERY_TIMEOUT: Final[float] = 30.0
 
 
-class Metrics:
-    """Metrics configuration."""
-
-    RETENTION_DAYS = 30  # Days to keep metrics data
-
-
-class Limits:
-    """Application limits."""
-
-    MAX_LOG_ENTRIES = 500  # Maximum log entries to keep
-    MAX_ERRORS_IN_MEMORY = 100  # Maximum errors to keep in memory
-    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT  # Database connection timeout (reference)
+class Pools:
+    """Connection pool sizes."""
+    
+    DATABASE: Final[int] = Database.POOL_SIZE
+    HTTP_LIMIT: Final[int] = 50
+    HTTP_LIMIT_PER_HOST: Final[int] = 20
+    DNS_CACHE_TTL: Final[int] = 120
+    KEEPALIVE_TIMEOUT: Final[int] = 30
 
 
 class Delays:
-    """UI interaction delays in seconds."""
-
-    DROPDOWN_WAIT = 2.0  # Wait after dropdown selection
-    BUTTON_CLICK_WAIT = 0.5  # Wait after button click
-    FORM_SUBMIT_WAIT = 3.0  # Wait after form submission
-    PAGE_LOAD_BUFFER = 1.0  # Extra buffer for page loads
-
-    # Random delay ranges for human-like behavior
-    SHORT_MIN = 0.3
-    SHORT_MAX = 0.7
-    MEDIUM_MIN = 1.5
-    MEDIUM_MAX = 3.0
-    LONG_MIN = 2.5
-    LONG_MAX = 5.0
-
-    # Specific action delays (min, max)
-    AFTER_LOGIN_FIELD = (0.3, 0.7)
-    AFTER_SELECT_OPTION = (1.5, 3.0)
-    AFTER_CLICK_CHECK = (2.5, 4.0)
-
-
-class Defaults:
-    """Default configuration values."""
-
-    API_TIMEOUT = 30  # API request timeout in seconds
-    DB_POOL_SIZE = Database.POOL_SIZE  # Database connection pool size (references Database.POOL_SIZE for consistency)
-    RATE_LIMIT_REQUESTS = 60  # Maximum requests per time window
-    RATE_LIMIT_WINDOW = 60  # Rate limit time window in seconds
-    TOKEN_REFRESH_BUFFER_MINUTES = 5  # Token refresh buffer in minutes
-    GRACEFUL_SHUTDOWN_TIMEOUT = 5  # Graceful shutdown timeout in seconds
+    """UI interaction delays in SECONDS."""
+    
+    DROPDOWN_WAIT: Final[float] = 2.0
+    BUTTON_CLICK_WAIT: Final[float] = 0.5
+    FORM_SUBMIT_WAIT: Final[float] = 3.0
+    PAGE_LOAD_BUFFER: Final[float] = 1.0
+    SHORT: Final[tuple] = (0.3, 0.7)
+    MEDIUM: Final[tuple] = (1.5, 3.0)
+    LONG: Final[tuple] = (2.5, 5.0)
+    AFTER_LOGIN_FIELD: Final[tuple] = (0.3, 0.7)
+    AFTER_SELECT_OPTION: Final[tuple] = (1.5, 3.0)
+    AFTER_CLICK_CHECK: Final[tuple] = (2.5, 4.0)
 
 
 class BookingTimeouts:
-    """Timeout constants for booking operations (in seconds or milliseconds)."""
+    """Booking operation timeouts."""
     
-    TIME_SLOTS_LOAD = 2.0  # Time to wait for slot data to load (seconds)
-    DROPDOWN_ANIMATION = 0.5  # Wait for dropdown animations (seconds)
-    ELEMENT_WAIT_MS = 10000  # Element wait timeout (milliseconds)
-    PAGE_LOAD_MS = 30000  # Page load timeout (milliseconds)
-    PAYMENT_CONFIRMATION = 60  # Payment confirmation wait (seconds)
-    OTP_WAIT = 120  # OTP wait timeout (seconds)
+    TIME_SLOTS_LOAD: Final[float] = 2.0
+    DROPDOWN_ANIMATION: Final[float] = 0.5
+    ELEMENT_WAIT_MS: Final[int] = 10000
+    PAGE_LOAD_MS: Final[int] = 30000
+    PAYMENT_CONFIRMATION: Final[int] = 60
+    OTP_WAIT: Final[int] = 300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
 
 
 class BookingDelays:
-    """Delay constants for human-like behavior (in seconds or milliseconds)."""
+    """Human-like behavior delays."""
     
-    # Typing simulation
-    TYPING_MIN_MS = 50  # Minimum typing delay per character (milliseconds)
-    TYPING_MAX_MS = 150  # Maximum typing delay per character (milliseconds)
+    TYPING_MIN_MS: Final[int] = 50
+    TYPING_MAX_MS: Final[int] = 150
+    PAUSE_CHANCE: Final[float] = 0.1
+    PAUSE_MIN: Final[float] = 0.1
+    PAUSE_MAX: Final[float] = 0.3
+    BETWEEN_FIELDS_MIN: Final[float] = 0.3
+    BETWEEN_FIELDS_MAX: Final[float] = 0.8
+
+
+class LogEmoji:
+    """Emoji constants for consistent logging."""
     
-    # Random pauses during typing
-    PAUSE_CHANCE = 0.1  # 10% chance of pause during typing
-    PAUSE_MIN = 0.1  # Minimum pause duration (seconds)
-    PAUSE_MAX = 0.3  # Maximum pause duration (seconds)
+    SUCCESS: Final[str] = "✅"
+    ERROR: Final[str] = "❌"
+    WARNING: Final[str] = "⚠️"
+    INFO: Final[str] = "ℹ️"
+    DEBUG: Final[str] = "🔍"
+    START: Final[str] = "🚀"
+    STOP: Final[str] = "🛑"
+    PROCESSING: Final[str] = "⚙️"
+    WAITING: Final[str] = "⏳"
+    RETRY: Final[str] = "🔄"
+    FOUND: Final[str] = "🎯"
+    COMPLETE: Final[str] = "✔️"
+    LOCK: Final[str] = "🔒"
+    UNLOCK: Final[str] = "🔓"
+    KEY: Final[str] = "🔑"
+    SHIELD: Final[str] = "🛡️"
+    ALERT: Final[str] = "🚨"
+    BOT: Final[str] = "🤖"
+    CALENDAR: Final[str] = "📅"
+    PAYMENT: Final[str] = "💳"
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY (Deprecated - will be removed in v3.0)
+# =============================================================================
+class Defaults:
+    """DEPRECATED: Use specific classes instead."""
     
-    # Delays between form fields
-    BETWEEN_FIELDS_MIN = 0.3  # Minimum delay between fields (seconds)
-    BETWEEN_FIELDS_MAX = 0.8  # Maximum delay between fields (seconds)
+    API_TIMEOUT = Timeouts.HTTP_REQUEST_SECONDS
+    DB_POOL_SIZE = Database.POOL_SIZE
+    RATE_LIMIT_REQUESTS = RateLimits.MAX_REQUESTS
+    RATE_LIMIT_WINDOW = RateLimits.TIME_WINDOW_SECONDS
+    TOKEN_REFRESH_BUFFER_MINUTES = 5
+    GRACEFUL_SHUTDOWN_TIMEOUT = Timeouts.GRACEFUL_SHUTDOWN_SECONDS
+
+
+class Limits:
+    """DEPRECATED: Use specific classes instead."""
+    
+    MAX_LOG_ENTRIES = 500
+    MAX_ERRORS_IN_MEMORY = ErrorCapture.MAX_IN_MEMORY
+    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT

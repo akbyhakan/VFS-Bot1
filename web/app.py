@@ -4,12 +4,11 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from src.services.otp_webhook_routes import router as otp_router
@@ -29,6 +28,32 @@ from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
 
 logger = logging.getLogger(__name__)
+
+
+def get_real_client_ip(request: Request) -> str:
+    """
+    Get real client IP considering reverse proxies.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        Client IP address
+    """
+    # Check X-Forwarded-For header (set by reverse proxy)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # First IP in the list is the original client
+        return forwarded.split(",")[0].strip()
+    
+    # Check X-Real-IP header (alternative)
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    
+    # Fallback to direct connection
+    return request.client.host if request.client else "unknown"
+
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
@@ -68,8 +93,8 @@ app.add_middleware(
 app.add_middleware(RequestTrackingMiddleware)
 
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# Initialize rate limiter with improved IP detection
+limiter = Limiter(key_func=get_real_client_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
