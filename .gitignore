@@ -100,3 +100,13 @@ config/proxies.txt
 web/static/dist/
 frontend/node_modules/
 frontend/dist/
+
+# Old/deprecated files
+*_old.py
+*_backup.py
+*.bak
+
+# Sensitive data
+*.pem
+*.key
+secrets/
