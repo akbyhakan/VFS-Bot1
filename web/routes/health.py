@@ -130,9 +130,6 @@ async def readiness_probe(response: Response) -> Dict[str, Any]:
     Raises:
         HTTPException: 503 if service is not ready
     """
-    # Import Response from fastapi
-    from fastapi import Response
-    
     # Check critical services
     checks = {
         "database": await check_database(),
@@ -300,8 +297,14 @@ async def check_database() -> Dict[str, Any]:
         from src.models.database import Database
         db = Database()
         await db.connect()
-        is_healthy = await check_database_health()
-        await db.close()
+        try:
+            async with db.get_connection(timeout=5.0) as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+                    result = await cursor.fetchone()
+                    is_healthy = result is not None
+        finally:
+            await db.close()
         return {"status": "healthy" if is_healthy else "unhealthy", "latency_ms": 0}
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
