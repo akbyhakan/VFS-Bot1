@@ -19,11 +19,25 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 # Allowed fields for personal_details table (SQL injection prevention)
-ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset({
-    'first_name', 'last_name', 'passport_number', 'passport_expiry',
-    'gender', 'mobile_code', 'mobile_number', 'email', 'nationality',
-    'date_of_birth', 'address_line1', 'address_line2', 'state', 'city', 'postcode'
-})
+ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
+    {
+        "first_name",
+        "last_name",
+        "passport_number",
+        "passport_expiry",
+        "gender",
+        "mobile_code",
+        "mobile_number",
+        "email",
+        "nationality",
+        "date_of_birth",
+        "address_line1",
+        "address_line2",
+        "state",
+        "city",
+        "postcode",
+    }
+)
 
 
 def require_connection(func: F) -> F:
@@ -77,7 +91,7 @@ class Database:
             # Create main connection for schema management
             self.conn = await aiosqlite.connect(self.db_path)
             self.conn.row_factory = aiosqlite.Row
-            
+
             # Enable WAL mode for better concurrency (database-wide setting)
             await self.conn.execute("PRAGMA journal_mode=WAL")
             # Add busy timeout for concurrent access
@@ -85,7 +99,7 @@ class Database:
             # Enable foreign keys
             await self.conn.execute("PRAGMA foreign_keys=ON")
             await self.conn.commit()
-            
+
             await self._create_tables()
 
             # Initialize connection pool
@@ -93,21 +107,24 @@ class Database:
             for _ in range(self.pool_size):
                 conn = await aiosqlite.connect(self.db_path)
                 conn.row_factory = aiosqlite.Row
-                
+
                 # Verify WAL mode is enabled for this connection
                 cursor = await conn.execute("PRAGMA journal_mode")
                 mode = await cursor.fetchone()
                 if mode and mode[0].lower() != "wal":
                     logger.warning(f"Connection not in WAL mode, enabling: {mode}")
                     await conn.execute("PRAGMA journal_mode=WAL")
-                
+
                 # Add busy timeout for this connection
                 await conn.execute("PRAGMA busy_timeout=30000")
-                
+
                 self._pool.append(conn)
                 await self._available_connections.put(conn)
 
-            logger.info(f"Database connected with pool size {self.pool_size} (WAL mode enabled): {self.db_path}")
+            logger.info(
+                f"Database connected with pool size {self.pool_size} "
+                f"(WAL mode enabled): {self.db_path}"
+            )
 
     async def close(self) -> None:
         """Close database connection pool."""
@@ -517,14 +534,14 @@ class Database:
 
         Returns:
             User dictionary with decrypted password or None
-            
+
         Raises:
             ValueError: If user_id is invalid (negative or zero)
         """
         # Validate user_id parameter
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -597,7 +614,7 @@ class Database:
         # Validate user_id parameter
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
-        
+
         # Validate email if provided
         email = details.get("email")
         if email and not validate_email(email):
@@ -656,14 +673,14 @@ class Database:
 
         Returns:
             Personal details dictionary or None
-            
+
         Raises:
             ValueError: If user_id is invalid
         """
         # Validate user_id parameter
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
@@ -680,18 +697,18 @@ class Database:
 
         Returns:
             Dictionary mapping user_id to personal details dictionary
-            
+
         Raises:
             ValueError: If user_ids is empty or contains invalid IDs
         """
         if not user_ids:
             return {}
-        
+
         # Validate all user_ids
         for user_id in user_ids:
             if not isinstance(user_id, int) or user_id <= 0:
                 raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
-        
+
         # Build SQL query with parameterized placeholders
         # SQL Injection Safety: This is safe because:
         # 1. user_ids are validated as positive integers above (no SQL can be injected)
@@ -702,18 +719,18 @@ class Database:
         num_placeholders = len(user_ids)
         placeholders = ",".join(["?"] * num_placeholders)
         query = f"SELECT * FROM personal_details WHERE user_id IN ({placeholders})"
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(query, user_ids)
                 rows = await cursor.fetchall()
-                
+
                 # Map results by user_id
                 result = {}
                 for row in rows:
                     details = dict(row)
                     result[details["user_id"]] = details
-                
+
                 return result
 
     @require_connection
@@ -728,8 +745,8 @@ class Database:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    SELECT 
-                        u.id, u.email, u.centre as center_name, 
+                    SELECT
+                        u.id, u.email, u.centre as center_name,
                         u.category as visa_category, u.subcategory as visa_subcategory,
                         u.active as is_active, u.created_at, u.updated_at,
                         p.first_name, p.last_name, p.mobile_number as phone
@@ -743,14 +760,14 @@ class Database:
 
     @require_connection
     async def update_user(
-        self, 
-        user_id: int, 
+        self,
+        user_id: int,
         email: Optional[str] = None,
         password: Optional[str] = None,
         centre: Optional[str] = None,
         category: Optional[str] = None,
         subcategory: Optional[str] = None,
-        active: Optional[bool] = None
+        active: Optional[bool] = None,
     ) -> bool:
         """
         Update user information.
@@ -777,7 +794,7 @@ class Database:
         # Build dynamic update query
         updates = []
         params = []
-        
+
         if email is not None:
             updates.append("email = ?")
             params.append(email)
@@ -810,21 +827,21 @@ class Database:
                 query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
                 await cursor.execute(query, params)
                 await conn.commit()
-                
+
                 if cursor.rowcount == 0:
                     return False
-                
+
                 logger.info(f"User {user_id} updated")
                 return True
 
     @require_connection
     async def update_personal_details(
-        self, 
+        self,
         user_id: int,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         mobile_number: Optional[str] = None,
-        **other_fields: Any
+        **other_fields: Any,
     ) -> bool:
         """
         Update personal details for a user.
@@ -851,7 +868,7 @@ class Database:
         # Build dynamic update query
         updates = []
         params = []
-        
+
         if first_name is not None:
             updates.append("first_name = ?")
             params.append(first_name)
@@ -868,7 +885,10 @@ class Database:
                 updates.append(f"{field} = ?")
                 params.append(value)
             elif value is not None:
-                logger.warning(f"Attempted to update disallowed field '{field}' in personal_details - ignored for security")
+                logger.warning(
+                    f"Attempted to update disallowed field '{field}' in "
+                    f"personal_details - ignored for security"
+                )
 
         if not updates:
             return True  # Nothing to update
@@ -880,10 +900,10 @@ class Database:
                 query = f"UPDATE personal_details SET {', '.join(updates)} WHERE user_id = ?"
                 await cursor.execute(query, params)
                 await conn.commit()
-                
+
                 if cursor.rowcount == 0:
                     return False
-                
+
                 logger.info(f"Personal details updated for user {user_id}")
                 return True
 
@@ -897,22 +917,22 @@ class Database:
 
         Returns:
             True if user was deleted, False if not found
-            
+
         Raises:
             ValueError: If user_id is invalid
         """
         # Validate user_id parameter
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
                 await conn.commit()
-                
+
                 if cursor.rowcount == 0:
                     return False
-                
+
                 logger.info(f"User {user_id} deleted")
                 return True
 
@@ -1496,16 +1516,25 @@ class Database:
             Audit log entry ID
         """
         timestamp = datetime.now(timezone.utc).isoformat()
-        
+
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    INSERT INTO audit_log 
+                    INSERT INTO audit_log
                     (action, user_id, username, ip_address, user_agent, details, timestamp, success)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (action, user_id, username, ip_address, user_agent, details, timestamp, 1 if success else 0),
+                    (
+                        action,
+                        user_id,
+                        username,
+                        ip_address,
+                        user_agent,
+                        details,
+                        timestamp,
+                        1 if success else 0,
+                    ),
                 )
                 await conn.commit()
                 last_id = cursor.lastrowid
@@ -1516,8 +1545,8 @@ class Database:
 
     @require_connection
     async def get_audit_logs(
-        self, 
-        limit: int = 100, 
+        self,
+        limit: int = 100,
         action: Optional[str] = None,
         user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
@@ -1536,17 +1565,17 @@ class Database:
             async with conn.cursor() as cursor:
                 query = "SELECT * FROM audit_log WHERE 1=1"
                 params: List[Any] = []
-                
+
                 if action:
                     query += " AND action = ?"
                     params.append(action)
                 if user_id is not None:
                     query += " AND user_id = ?"
                     params.append(user_id)
-                
+
                 query += " ORDER BY timestamp DESC LIMIT ?"
                 params.append(limit)
-                
+
                 await cursor.execute(query, params)
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]

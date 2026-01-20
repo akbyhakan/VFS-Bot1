@@ -1,6 +1,5 @@
 """Application settings with Pydantic validation."""
 
-import os
 from typing import Optional, List
 from pydantic import SecretStr, field_validator, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,7 +10,10 @@ class VFSSettings(BaseSettings):
 
     # VFS Credentials
     vfs_email: str = Field(default="", description="VFS Global account email")
-    vfs_password: SecretStr = Field(default=SecretStr(""), description="VFS Global account password")
+    vfs_password: SecretStr = Field(
+        default=SecretStr(""),
+        description="VFS Global account password"
+    )
 
     # Encryption Keys
     encryption_key: SecretStr = Field(

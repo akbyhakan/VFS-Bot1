@@ -69,7 +69,7 @@ class PaymentService:
             "user_id": user_id,
             "method": self.method.value,
             "amount": amount if amount else "not_specified",
-            "has_card_details": card_details is not None
+            "has_card_details": card_details is not None,
         }
         logger.info(f"Processing payment: {safe_log_data}")
 

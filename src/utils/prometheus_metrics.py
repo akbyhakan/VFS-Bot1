@@ -1,7 +1,6 @@
 """Prometheus metrics integration for VFS-Bot."""
 
 import logging
-from typing import Optional
 
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, REGISTRY
 from prometheus_client.core import CollectorRegistry

@@ -74,8 +74,10 @@ class NotificationConfig(BaseModel):
 
 # TypedDict definitions for type-safe configuration
 
+
 class TelegramConfig(TypedDict, total=False):
     """Telegram notification configuration."""
+
     enabled: bool
     bot_token: str
     chat_id: str
@@ -83,6 +85,7 @@ class TelegramConfig(TypedDict, total=False):
 
 class EmailConfig(TypedDict, total=False):
     """Email notification configuration."""
+
     enabled: bool
     smtp_server: str
     smtp_port: int
@@ -93,12 +96,14 @@ class EmailConfig(TypedDict, total=False):
 
 class NotificationConfigTyped(TypedDict, total=False):
     """Complete notification configuration with type safety."""
+
     telegram: TelegramConfig
     email: EmailConfig
 
 
 class VFSConfigTyped(TypedDict, total=False):
     """VFS bot configuration with type safety."""
+
     base_url: str
     country: str
     language: str
@@ -110,6 +115,7 @@ class VFSConfigTyped(TypedDict, total=False):
 
 class BotConfigTyped(TypedDict, total=False):
     """Bot runtime configuration with type safety."""
+
     check_interval: int
     max_retries: int
     headless: bool
@@ -119,6 +125,7 @@ class BotConfigTyped(TypedDict, total=False):
 
 class DatabaseConfigTyped(TypedDict, total=False):
     """Database configuration with type safety."""
+
     path: str
     pool_size: int
     connection_timeout: float
@@ -126,6 +133,7 @@ class DatabaseConfigTyped(TypedDict, total=False):
 
 class SecurityConfigTyped(TypedDict, total=False):
     """Security configuration with type safety."""
+
     api_secret_key: str
     api_key_salt: str
     encryption_key: str
@@ -135,8 +143,8 @@ class SecurityConfigTyped(TypedDict, total=False):
 
 class ProxyConfigTyped(TypedDict, total=False):
     """Proxy configuration with type safety."""
+
     enabled: bool
     server: str
     username: str
     password: str
-

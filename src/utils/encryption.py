@@ -145,10 +145,8 @@ def get_encryption() -> PasswordEncryption:
         elif current_key is not None and _normalize_key(current_key) != _encryption_instance._key:
             # Key changed - create new instance with proper cleanup
             logger.warning("Encryption key changed, reinitializing...")
-            old_instance = _encryption_instance
-            _encryption_instance = PasswordEncryption()
             # Old instance will be garbage collected
-            del old_instance
+            _encryption_instance = PasswordEncryption()
         elif _encryption_instance is not None and current_key is not None:
             # Instance exists and key matches - return it
             if _normalize_key(current_key) == _encryption_instance._key:
