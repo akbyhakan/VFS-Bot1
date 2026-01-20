@@ -18,7 +18,12 @@ class VFSSettings(BaseSettings):
     # Encryption Keys
     encryption_key: SecretStr = Field(
         ...,  # Required field
-        description="Base64-encoded Fernet encryption key for password encryption"
+        description=(
+            "Base64-encoded Fernet encryption key for password encryption. "
+            "Must be 32 bytes (44 characters when base64 encoded). "
+            "Generate with: python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\""
+        )
     )
     vfs_encryption_key: Optional[SecretStr] = Field(
         default=None,

@@ -57,7 +57,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
         # Content Security Policy (adjust as needed for your frontend)
-        # This is a restrictive policy - customize based on your needs
+        # Note: 'unsafe-inline' and 'unsafe-eval' are included for compatibility
+        # with some frontend frameworks. For production, consider using nonces.
+        # TODO: Replace 'unsafe-inline' and 'unsafe-eval' with nonces or hashes
         csp_policy = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
@@ -89,12 +91,20 @@ allowed_origins_str = os.getenv(
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 
 # Add CORS middleware
+# Note: For production, consider restricting allowed_headers to a specific list
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-CSRF-Token",
+    ],
     expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
     max_age=3600,  # Cache preflight requests for 1 hour
 )

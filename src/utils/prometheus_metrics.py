@@ -3,12 +3,8 @@
 import logging
 
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, REGISTRY
-from prometheus_client.core import CollectorRegistry
 
 logger = logging.getLogger(__name__)
-
-# Create custom registry (optional - can use default REGISTRY)
-custom_registry = CollectorRegistry()
 
 # Slot checking metrics
 SLOT_CHECKS_TOTAL = Counter(
