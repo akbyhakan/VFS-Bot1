@@ -15,11 +15,11 @@ def get_request_id() -> str:
     Get current request ID or generate new one.
     
     Returns:
-        Request ID (8-character hex string)
+        Request ID (12-character hex string for lower collision risk)
     """
     rid = request_id_var.get()
     if not rid:
-        rid = str(uuid.uuid4())[:8]
+        rid = str(uuid.uuid4())[:12]
         request_id_var.set(rid)
     return rid
 
@@ -34,7 +34,7 @@ def set_request_id(request_id: Optional[str] = None) -> str:
     Returns:
         The request ID that was set
     """
-    rid = request_id or str(uuid.uuid4())[:8]
+    rid = request_id or str(uuid.uuid4())[:12]
     request_id_var.set(rid)
     return rid
 

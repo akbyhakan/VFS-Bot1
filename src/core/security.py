@@ -27,9 +27,15 @@ class APIKeyManager:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
+                # Initialize in __new__ to ensure it happens once
                 cls._instance._keys: Dict[str, Dict[str, Any]] = {}
                 cls._instance._salt: Optional[bytes] = None
+                cls._instance._initialized = True
             return cls._instance
+    
+    def __init__(self) -> None:
+        """Initialize is a no-op since we use __new__ for singleton."""
+        pass
     
     def get_salt(self) -> bytes:
         """Get API key salt from environment variable - REQUIRED in production."""
