@@ -73,48 +73,61 @@ class Database:
 
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
-        # Create main connection for schema management
-        self.conn = await aiosqlite.connect(self.db_path)
-        self.conn.row_factory = aiosqlite.Row
-        
-        # Enable WAL mode for better concurrency (database-wide setting)
-        await self.conn.execute("PRAGMA journal_mode=WAL")
-        # Add busy timeout for concurrent access
-        await self.conn.execute("PRAGMA busy_timeout=30000")
-        # Enable foreign keys
-        await self.conn.execute("PRAGMA foreign_keys=ON")
-        await self.conn.commit()
-        
-        await self._create_tables()
+        async with self._pool_lock:
+            # Create main connection for schema management
+            self.conn = await aiosqlite.connect(self.db_path)
+            self.conn.row_factory = aiosqlite.Row
+            
+            # Enable WAL mode for better concurrency (database-wide setting)
+            await self.conn.execute("PRAGMA journal_mode=WAL")
+            # Add busy timeout for concurrent access
+            await self.conn.execute("PRAGMA busy_timeout=30000")
+            # Enable foreign keys
+            await self.conn.execute("PRAGMA foreign_keys=ON")
+            await self.conn.commit()
+            
+            await self._create_tables()
 
-        # Initialize connection pool
-        # Note: WAL mode is a database-wide setting that persists across connections
-        for _ in range(self.pool_size):
-            conn = await aiosqlite.connect(self.db_path)
-            conn.row_factory = aiosqlite.Row
-            self._pool.append(conn)
-            await self._available_connections.put(conn)
+            # Initialize connection pool
+            # Note: WAL mode is a database-wide setting that persists across connections
+            for _ in range(self.pool_size):
+                conn = await aiosqlite.connect(self.db_path)
+                conn.row_factory = aiosqlite.Row
+                
+                # Verify WAL mode is enabled for this connection
+                cursor = await conn.execute("PRAGMA journal_mode")
+                mode = await cursor.fetchone()
+                if mode and mode[0].lower() != "wal":
+                    logger.warning(f"Connection not in WAL mode, enabling: {mode}")
+                    await conn.execute("PRAGMA journal_mode=WAL")
+                
+                # Add busy timeout for this connection
+                await conn.execute("PRAGMA busy_timeout=30000")
+                
+                self._pool.append(conn)
+                await self._available_connections.put(conn)
 
-        logger.info(f"Database connected with pool size {self.pool_size} (WAL mode enabled): {self.db_path}")
+            logger.info(f"Database connected with pool size {self.pool_size} (WAL mode enabled): {self.db_path}")
 
     async def close(self) -> None:
         """Close database connection pool."""
-        # Close pooled connections
-        for conn in self._pool:
-            await conn.close()
-        self._pool.clear()
+        async with self._pool_lock:
+            # Close pooled connections
+            for conn in self._pool:
+                await conn.close()
+            self._pool.clear()
 
-        # Clear the queue
-        while not self._available_connections.empty():
-            try:
-                self._available_connections.get_nowait()
-            except asyncio.QueueEmpty:
-                break
+            # Clear the queue
+            while not self._available_connections.empty():
+                try:
+                    self._available_connections.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
 
-        # Close main connection
-        if self.conn:
-            await self.conn.close()
-        logger.info("Database connection pool closed")
+            # Close main connection
+            if self.conn:
+                await self.conn.close()
+            logger.info("Database connection pool closed")
 
     @asynccontextmanager
     async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[aiosqlite.Connection]:

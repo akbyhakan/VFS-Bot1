@@ -55,6 +55,7 @@ class PaymentService:
             user_id: User ID for logging
             amount: Payment amount (if known)
             card_details: Encrypted card details for automated payment
+                         WARNING: CVV must NEVER be logged or stored
 
         Returns:
             True if payment successful
@@ -62,13 +63,22 @@ class PaymentService:
         Raises:
             ValueError: If automated payment selected but no card details provided
         """
-        logger.info(f"Processing payment for user {user_id} using method: {self.method.value}")
+        # SECURITY: Ensure card_details are never logged
+        # Create safe version for logging (without sensitive data)
+        safe_log_data = {
+            "user_id": user_id,
+            "method": self.method.value,
+            "amount": amount if amount else "not_specified",
+            "has_card_details": card_details is not None
+        }
+        logger.info(f"Processing payment: {safe_log_data}")
 
         if self.method == PaymentMethod.MANUAL:
             return await self._process_manual_payment(page, user_id, amount)
         elif self.method == PaymentMethod.AUTOMATED_CARD:
             if not card_details:
                 raise ValueError("Automated card payment requires encrypted card details")
+            # SECURITY: Never log card_details directly
             return await self._process_automated_payment(page, user_id, card_details)
         else:
             logger.error(f"Unknown payment method: {self.method}")

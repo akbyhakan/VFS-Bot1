@@ -40,47 +40,60 @@ async def get_verified_otp_service(
     """
     Dependency to verify webhook signature and return OTP service.
 
+    Signature verification is MANDATORY by default.
+    Explicit development mode with ENV=development allows bypassing if no secret is set.
     Production mode STRICTLY requires signature verification.
-    Development mode also requires signature if SMS_WEBHOOK_SECRET is set.
     """
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
     env = os.getenv("ENV", "production").lower()
+    
+    # Explicit development mode check (must be exactly "development")
+    is_development_mode = env == "development"
 
-    # In production, webhook secret MUST be configured
-    if env == "production" and not webhook_secret:
+    # MANDATORY: Webhook secret MUST be configured in production
+    if not is_development_mode and not webhook_secret:
         logger.error("🚨 SMS_WEBHOOK_SECRET not set in production environment")
-        raise HTTPException(status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production")
+        raise HTTPException(
+            status_code=500, 
+            detail="SMS_WEBHOOK_SECRET must be configured in production"
+        )
 
-    # Signature verification is REQUIRED in production
-    if env == "production":
+    # DEFAULT: Signature verification is REQUIRED (unless explicitly in dev mode without secret)
+    if webhook_secret:
+        # Signature header is mandatory when secret is configured
         if not x_webhook_signature:
+            client_ip = request.client.host if request.client else 'unknown'
             logger.warning(
-                f"⚠️ Webhook signature missing in production (IP: {request.client.host if request.client else 'unknown'})"
+                f"⚠️ Webhook signature missing from IP: {client_ip} "
+                f"(ENV: {env})"
             )
-            raise HTTPException(status_code=401, detail="X-Webhook-Signature header required in production")
+            raise HTTPException(
+                status_code=401, 
+                detail="X-Webhook-Signature header required"
+            )
 
         # Verify signature
         body = await request.body()
         if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
-            logger.error(f"❌ Invalid webhook signature from IP: {request.client.host if request.client else 'unknown'}")
+            client_ip = request.client.host if request.client else 'unknown'
+            logger.error(f"❌ Invalid webhook signature from IP: {client_ip} (ENV: {env})")
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
-        logger.debug("✅ Webhook signature verified")
-
-    # Development mode - enforce signature if webhook_secret is set
-    elif webhook_secret:
-        if not x_webhook_signature:
-            logger.warning("⚠️ DEV MODE: Webhook signature missing")
-            raise HTTPException(status_code=401, detail="X-Webhook-Signature header required when secret is configured")
-
-        body = await request.body()
-        if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
-            logger.error("❌ DEV MODE: Invalid webhook signature")
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-        logger.debug("✅ DEV MODE: Webhook signature verified")
+        logger.debug(f"✅ Webhook signature verified (ENV: {env})")
+    
+    elif is_development_mode:
+        # Only bypass in explicit development mode without secret
+        logger.warning(
+            "⚠️ DEVELOPMENT MODE: No webhook secret configured - "
+            "signature validation disabled. DO NOT use in production!"
+        )
     else:
-        logger.warning("⚠️ DEV MODE: No webhook secret configured - signature validation disabled")
+        # Not development mode and no secret = production mode violation
+        logger.error("🚨 Production mode requires SMS_WEBHOOK_SECRET")
+        raise HTTPException(
+            status_code=500,
+            detail="Webhook secret required in production mode"
+        )
 
     return get_otp_service()
 
