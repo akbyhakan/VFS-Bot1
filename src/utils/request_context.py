@@ -10,6 +10,16 @@ from typing import Optional
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 
 
+def _generate_request_id() -> str:
+    """
+    Generate a new request ID.
+    
+    Returns:
+        12-character hex string from UUID
+    """
+    return str(uuid.uuid4())[:12]
+
+
 def get_request_id() -> str:
     """
     Get current request ID or generate new one.
@@ -19,7 +29,7 @@ def get_request_id() -> str:
     """
     rid = request_id_var.get()
     if not rid:
-        rid = str(uuid.uuid4())[:12]
+        rid = _generate_request_id()
         request_id_var.set(rid)
     return rid
 
@@ -34,7 +44,7 @@ def set_request_id(request_id: Optional[str] = None) -> str:
     Returns:
         The request ID that was set
     """
-    rid = request_id or str(uuid.uuid4())[:12]
+    rid = request_id or _generate_request_id()
     request_id_var.set(rid)
     return rid
 

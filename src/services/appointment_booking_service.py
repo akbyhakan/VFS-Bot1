@@ -671,22 +671,42 @@ class AppointmentBookingService:
                 - error: str or None - Error message if verification failed
         """
         try:
-            # Try to find reference number
+            # Try to find reference number with multiple selector approaches
             # Common patterns: ABC123456, XX-123456, etc.
             reference_element = None
             reference = None
             
-            try:
-                reference_element = await page.wait_for_selector(
-                    ".reference-number, [data-testid='reference'], text=/[A-Z]{2,3}\\d{6,}/",
-                    timeout=15000
-                )
-                if reference_element:
-                    reference = await reference_element.text_content()
-                    if reference:
-                        reference = reference.strip()
-            except Exception:
-                pass  # Reference not found, continue checking other indicators
+            # Try different selector strategies
+            reference_selectors = [
+                ".reference-number",
+                "[data-testid='reference']",
+                "text=/[A-Z]{2,3}\\d{6,}/",
+            ]
+            
+            for selector in reference_selectors:
+                try:
+                    reference_element = await page.wait_for_selector(selector, timeout=5000)
+                    if reference_element:
+                        reference = await reference_element.text_content()
+                        if reference:
+                            reference = reference.strip()
+                            break
+                except Exception:
+                    continue  # Try next selector
+            
+            if not reference_element:
+                # Final attempt with longer timeout on first selector
+                try:
+                    reference_element = await page.wait_for_selector(
+                        ".reference-number",
+                        timeout=15000
+                    )
+                    if reference_element:
+                        reference = await reference_element.text_content()
+                        if reference:
+                            reference = reference.strip()
+                except Exception:
+                    pass  # Reference not found, continue checking other indicators
             
             # Check for success indicators in order of specificity
             success_indicators = [

@@ -30,7 +30,6 @@ class APIKeyManager:
                 # Initialize in __new__ to ensure it happens once
                 cls._instance._keys: Dict[str, Dict[str, Any]] = {}
                 cls._instance._salt: Optional[bytes] = None
-                cls._instance._initialized = True
             return cls._instance
     
     def __init__(self) -> None:
