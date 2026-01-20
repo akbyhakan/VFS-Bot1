@@ -8,7 +8,7 @@ import secrets
 import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 from Crypto.Cipher import AES
@@ -257,7 +257,8 @@ class VFSApiClient:
         ) as response:
             if response.status != 200:
                 error_text = await response.text()
-                logger.error(f"Login failed: {response.status} - {error_text}")
+                logger.error(f"Login failed: {response.status}")
+                logger.debug(f"Error details: {error_text[:200]}...")
                 raise VFSAuthenticationError(f"Login failed with status {response.status}")
 
             data = await response.json()
@@ -271,7 +272,7 @@ class VFSApiClient:
             )
             expires_in = data.get("expiresIn", 60)
             effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
-            expires_at = datetime.now() + timedelta(minutes=effective_expiry)
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
 
             self.session = VFSSession(
                 access_token=data["accessToken"],
@@ -284,7 +285,7 @@ class VFSApiClient:
             # Update session headers with auth token
             self._session.headers.update({"Authorization": f"Bearer {self.session.access_token}"})
 
-            logger.info(f"Login successful for {email[:3]}***, token expires at {expires_at}")
+            logger.info(f"Login successful for {email[:3]}***")
             return self.session
 
     async def get_centres(self) -> List[Dict[str, Any]]:
@@ -428,7 +429,7 @@ class VFSApiClient:
             raise VFSSessionExpiredError("Not authenticated. Call login() first.")
 
         # Check if token has expired or is about to expire
-        if datetime.now() >= self.session.expires_at:
+        if datetime.now(timezone.utc) >= self.session.expires_at:
             logger.warning("Token has expired, attempting refresh")
             await self._refresh_token()
 
@@ -468,7 +469,7 @@ class VFSApiClient:
                 
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now() + timedelta(minutes=effective_expiry)
+                self.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
 
                 # Update session headers with new auth token
                 self._session.headers.update(
