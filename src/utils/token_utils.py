@@ -1,7 +1,6 @@
 """Token utility functions for handling token expiry calculations."""
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

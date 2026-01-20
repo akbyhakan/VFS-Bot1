@@ -68,5 +68,6 @@ class TestCalculateEffectiveExpiry:
     def test_edge_case_expiry_3_min(self):
         """Test edge case just above 2 min expiry boundary."""
         # At 3 min, uses normal buffer logic
+        # buffer = min(10, 3-1) = 2, effective = max(1, 3-2) = 1
         result = calculate_effective_expiry(3, 10)
-        assert result == 1  # min(10, 3-1) = 2, max(1, 3-2) = 1
+        assert result == 1
