@@ -517,11 +517,11 @@ class AppointmentBookingService:
 
         # Expiry month
         await page.select_option(VFS_SELECTORS["expiry_month"], card_info["expiry_month"])
-        logger.info(f"Expiry month selected: {card_info['expiry_month']}")
+        logger.info("Expiry month selected: **")
 
         # Expiry year
         await page.select_option(VFS_SELECTORS["expiry_year"], card_info["expiry_year"])
-        logger.info(f"Expiry year selected: {card_info['expiry_year']}")
+        logger.info("Expiry year selected: ****")
 
         # CVV
         await self.human_type(page, VFS_SELECTORS["cvv"], card_info["cvv"])
