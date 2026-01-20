@@ -6,7 +6,7 @@ import logging
 import os
 import secrets
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -35,6 +35,36 @@ logger = logging.getLogger(__name__)
 VFS_API_BASE = os.getenv("VFS_API_BASE", "https://lift-api.vfsglobal.com")
 VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE", "https://liftassets.vfsglobal.com")
 CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE", "https://d2ab400qlgxn2g.cloudfront.net/dev/spaces")
+
+
+class CentreInfo(TypedDict):
+    """Type definition for VFS Centre information."""
+    id: str
+    name: str
+    code: str
+    address: str
+
+
+class VisaCategoryInfo(TypedDict):
+    """Type definition for Visa Category information."""
+    id: str
+    name: str
+    code: str
+
+
+class VisaSubcategoryInfo(TypedDict):
+    """Type definition for Visa Subcategory information."""
+    id: str
+    name: str
+    code: str
+    visaCategoryId: str
+
+
+class BookingResponse(TypedDict):
+    """Type definition for Appointment Booking response."""
+    bookingId: str
+    status: str
+    message: str
 
 
 @dataclass
@@ -288,7 +318,7 @@ class VFSApiClient:
             logger.info(f"Login successful for {email[:3]}***")
             return self.session
 
-    async def get_centres(self) -> List[Dict[str, Any]]:
+    async def get_centres(self) -> List[CentreInfo]:
         """
         Get available VFS centres.
 
@@ -300,9 +330,9 @@ class VFSApiClient:
         async with self._session.get(f"{VFS_API_BASE}/master/center") as response:
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
-            return data  # type: ignore[no-any-return]
+            return data
 
-    async def get_visa_categories(self, centre_id: str) -> List[Dict[str, Any]]:
+    async def get_visa_categories(self, centre_id: str) -> List[VisaCategoryInfo]:
         """
         Get visa categories for a centre.
 
@@ -318,11 +348,11 @@ class VFSApiClient:
             f"{VFS_API_BASE}/master/visacategory", params={"centerId": centre_id}
         ) as response:
             data = await response.json()
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def get_visa_subcategories(
         self, centre_id: str, category_id: str
-    ) -> List[Dict[str, Any]]:
+    ) -> List[VisaSubcategoryInfo]:
         """
         Get visa subcategories.
 
@@ -340,7 +370,7 @@ class VFSApiClient:
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
             data = await response.json()
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def check_slot_availability(
         self, centre_id: str, category_id: str, subcategory_id: str
@@ -390,7 +420,7 @@ class VFSApiClient:
 
     async def book_appointment(
         self, slot_date: str, slot_time: str, applicant_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> BookingResponse:
         """
         Book an appointment.
 
@@ -416,7 +446,7 @@ class VFSApiClient:
             else:
                 logger.error(f"Booking failed: {data}")
 
-            return data  # type: ignore[no-any-return]
+            return data
 
     async def _ensure_authenticated(self) -> None:
         """
