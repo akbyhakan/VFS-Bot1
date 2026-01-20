@@ -156,6 +156,16 @@ def load_api_keys() -> None:
     """Load API keys from environment or file."""
     manager = APIKeyManager()
     manager.load_keys()
+    
+    # Backward compatibility: sync to global API_KEYS dict
+    master_key = os.getenv("DASHBOARD_API_KEY")
+    if master_key:
+        key_hash = hash_api_key(master_key)
+        API_KEYS[key_hash] = {
+            "name": "master",
+            "created": datetime.now().isoformat(),
+            "scopes": ["read", "write", "admin"],
+        }
 
 
 async def verify_api_key(
