@@ -17,17 +17,18 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.security import verify_api_key, generate_api_key
 from src.core.auth import create_access_token, verify_token
 from src.services.otp_webhook_routes import router as otp_router
 from src.models.database import Database
 from src.core.exceptions import ValidationError
-from src.utils.encryption import encrypt_password
 from src.middleware.request_tracking import RequestTrackingMiddleware
 
 security_scheme = HTTPBearer()
@@ -36,6 +37,77 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+
+
+# Security Headers Middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        """Add security headers to response."""
+        response = await call_next(request)
+
+        # Prevent clickjacking attacks
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Enable XSS protection (for older browsers)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+
+        # Content Security Policy (adjust as needed for your frontend)
+        # Note: 'unsafe-inline' and 'unsafe-eval' are included for compatibility
+        # with some frontend frameworks. For production, consider using nonces.
+        # TODO: Replace 'unsafe-inline' and 'unsafe-eval' with nonces or hashes
+        csp_policy = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers["Content-Security-Policy"] = csp_policy
+
+        # Referrer policy
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # Permissions policy
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+        return response
+
+
+# Add security headers middleware first
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Configure CORS
+# Get allowed origins from environment or use defaults
+allowed_origins_str = os.getenv(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
+)
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+# Add CORS middleware
+# Note: For production, consider restricting allowed_headers to a specific list
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-CSRF-Token",
+    ],
+    expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
+    max_age=3600,  # Cache preflight requests for 1 hour
+)
 
 # Add request tracking middleware
 app.add_middleware(RequestTrackingMiddleware)
@@ -68,32 +140,34 @@ templates = Jinja2Templates(directory=str(templates_dir))
 @dataclass
 class ThreadSafeBotState:
     """Thread-safe wrapper for bot state."""
-    
+
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _state: Dict[str, Any] = field(default_factory=lambda: {
-        "running": False,
-        "status": "stopped",
-        "last_check": None,
-        "slots_found": 0,
-        "appointments_booked": 0,
-        "active_users": 0,
-        "logs": deque(maxlen=500),
-    })
-    
+    _state: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "running": False,
+            "status": "stopped",
+            "last_check": None,
+            "slots_found": 0,
+            "appointments_booked": 0,
+            "active_users": 0,
+            "logs": deque(maxlen=500),
+        }
+    )
+
     def get(self, key: str, default: Any = None) -> Any:
         """Thread-safe get."""
         with self._lock:
             return self._state.get(key, default)
-    
+
     def set(self, key: str, value: Any) -> None:
         """Thread-safe set."""
         with self._lock:
             self._state[key] = value
-    
+
     def __getitem__(self, key: str) -> Any:
         with self._lock:
             return self._state[key]
-    
+
     def __setitem__(self, key: str, value: Any) -> None:
         with self._lock:
             self._state[key] = value
@@ -228,7 +302,7 @@ class PaymentCardResponse(BaseModel):
 
 class PaymentInitiateRequest(BaseModel):
     """Payment initiation with runtime CVV."""
-    
+
     appointment_id: int
     cvv: str  # Only in memory, never stored
 
@@ -360,10 +434,10 @@ async def health_check() -> Dict[str, Any]:
 async def liveness_probe() -> Dict[str, str]:
     """
     Kubernetes liveness probe - checks if application is running.
-    
+
     This endpoint always returns 200 if the app is running.
     Used to detect if the application needs to be restarted.
-    
+
     Returns:
         Liveness status
     """
@@ -375,28 +449,26 @@ async def liveness_probe() -> Dict[str, str]:
 async def readiness_probe() -> Dict[str, Any]:
     """
     Kubernetes readiness probe - checks if application is ready to serve traffic.
-    
+
     This endpoint checks critical dependencies like database connectivity.
     Returns 503 if the service is not ready.
-    
+
     Returns:
         Readiness status
-        
+
     Raises:
         HTTPException: 503 if service is not ready
     """
     # Check database connectivity
     db_ready = await check_database_health()
-    
+
     if not db_ready:
         raise HTTPException(status_code=503, detail="Database not ready")
-    
+
     return {
         "status": "ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "checks": {
-            "database": "ok"
-        }
+        "checks": {"database": "ok"},
     }
 
 
@@ -404,38 +476,36 @@ async def readiness_probe() -> Dict[str, Any]:
 async def detailed_health_check() -> Dict[str, Any]:
     """
     Detailed health check with component diagnostics.
-    
+
     Returns:
         Comprehensive health status with system metrics
     """
     import sys
-    
+
     try:
         import psutil
     except ImportError:
         # If psutil is not installed, provide basic health check
         from src.utils.metrics import get_metrics
-        
+
         db_healthy = await check_database_health()
         bot_metrics = await get_metrics()
         snapshot = await bot_metrics.get_snapshot()
-        
+
         # Configurable health threshold (default 50%)
         health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
         bot_healthy = snapshot.success_rate > health_threshold
-        
+
         # Get circuit breaker and rate limiter status
         circuit_breaker_status = get_circuit_breaker_status(snapshot)
         rate_limiter_stats = get_rate_limiter_status()
-        
+
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "version": "2.1.0",
             "python_version": sys.version,
-            "system": {
-                "note": "psutil not installed - install for detailed system metrics"
-            },
+            "system": {"note": "psutil not installed - install for detailed system metrics"},
             "components": {
                 "database": {
                     "status": "healthy" if db_healthy else "unhealthy",
@@ -450,28 +520,28 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "rate_limiter": rate_limiter_stats,
             },
         }
-    
+
     # System metrics (requires psutil)
     from src.utils.metrics import get_metrics
-    
+
     memory = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
-    
+    disk = psutil.disk_usage("/")
+
     # Database check
     db_healthy = await check_database_health()
-    
+
     # Bot metrics
     bot_metrics = await get_metrics()
     snapshot = await bot_metrics.get_snapshot()
-    
+
     # Configurable health threshold (default 50%)
     health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
     bot_healthy = snapshot.success_rate > health_threshold
-    
+
     # Get circuit breaker and rate limiter status
     circuit_breaker_status = get_circuit_breaker_status(snapshot)
     rate_limiter_stats = get_rate_limiter_status()
-    
+
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -534,10 +604,10 @@ async def check_database_health() -> bool:
 def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:
     """
     Get circuit breaker status from metrics snapshot.
-    
+
     Args:
         snapshot: Metrics snapshot object
-        
+
     Returns:
         Dictionary with circuit breaker status
     """
@@ -551,7 +621,7 @@ def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:
 def get_rate_limiter_status() -> Dict[str, Any]:
     """
     Get rate limiter status.
-    
+
     Returns:
         Dictionary with rate limiter status
     """
@@ -1070,24 +1140,26 @@ async def get_users(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     try:
         await db.connect()
         users_data = await db.get_all_users_with_details()
-        
+
         # Convert database records to UserModel format
         users = []
         for user in users_data:
-            users.append(UserModel(
-                id=user["id"],
-                email=user["email"],
-                phone=user.get("phone") or "",
-                first_name=user.get("first_name") or "",
-                last_name=user.get("last_name") or "",
-                center_name=user["center_name"],
-                visa_category=user["visa_category"],
-                visa_subcategory=user["visa_subcategory"],
-                is_active=bool(user["is_active"]),
-                created_at=user["created_at"],
-                updated_at=user["updated_at"],
-            ))
-        
+            users.append(
+                UserModel(
+                    id=user["id"],
+                    email=user["email"],
+                    phone=user.get("phone") or "",
+                    first_name=user.get("first_name") or "",
+                    last_name=user.get("last_name") or "",
+                    center_name=user["center_name"],
+                    visa_category=user["visa_category"],
+                    visa_subcategory=user["visa_subcategory"],
+                    is_active=bool(user["is_active"]),
+                    created_at=user["created_at"],
+                    updated_at=user["updated_at"],
+                )
+            )
+
         return users
     finally:
         await db.close()
@@ -1113,7 +1185,7 @@ async def create_user(
     db = Database()
     try:
         await db.connect()
-        
+
         # Create user record
         user_id = await db.add_user(
             email=user.email,
@@ -1122,7 +1194,7 @@ async def create_user(
             category=user.visa_category,
             subcategory=user.visa_subcategory,
         )
-        
+
         # Create personal details record
         await db.add_personal_details(
             user_id=user_id,
@@ -1132,22 +1204,22 @@ async def create_user(
                 "email": user.email,
                 "mobile_number": user.phone,
                 "passport_number": "",  # Required field, empty for now
-            }
+            },
         )
-        
+
         # Set user as active/inactive
         if not user.is_active:
             await db.update_user(user_id, active=False)
-        
+
         # Get the created user with details
         users = await db.get_all_users_with_details()
         created_user = next((u for u in users if u["id"] == user_id), None)
-        
+
         if not created_user:
             raise HTTPException(status_code=500, detail="Failed to retrieve created user")
-        
+
         logger.info(f"User created: {user.email} by {token_data.get('sub', 'unknown')}")
-        
+
         return UserModel(
             id=created_user["id"],
             email=created_user["email"],
@@ -1161,7 +1233,7 @@ async def create_user(
             created_at=created_user["created_at"],
             updated_at=created_user["updated_at"],
         )
-        
+
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -1194,7 +1266,7 @@ async def update_user(
     db = Database()
     try:
         await db.connect()
-        
+
         # Update user table fields (including password if provided)
         user_updated = await db.update_user(
             user_id=user_id,
@@ -1205,10 +1277,10 @@ async def update_user(
             subcategory=user_update.visa_subcategory,
             active=user_update.is_active,
         )
-        
+
         if not user_updated:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         # Update personal details if provided
         if any([user_update.first_name, user_update.last_name, user_update.phone]):
             await db.update_personal_details(
@@ -1217,16 +1289,16 @@ async def update_user(
                 last_name=user_update.last_name,
                 mobile_number=user_update.phone,
             )
-        
+
         # Get updated user
         users = await db.get_all_users_with_details()
         updated_user = next((u for u in users if u["id"] == user_id), None)
-        
+
         if not updated_user:
             raise HTTPException(status_code=404, detail="User not found after update")
-        
+
         logger.info(f"User updated: {updated_user['email']} by {token_data.get('sub', 'unknown')}")
-        
+
         return UserModel(
             id=updated_user["id"],
             email=updated_user["email"],
@@ -1240,7 +1312,7 @@ async def update_user(
             created_at=updated_user["created_at"],
             updated_at=updated_user["updated_at"],
         )
-        
+
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
@@ -1270,23 +1342,23 @@ async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_
     db = Database()
     try:
         await db.connect()
-        
+
         # Get user email before deletion for logging
         users = await db.get_all_users_with_details()
         user = next((u for u in users if u["id"] == user_id), None)
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         # Delete user (cascades to personal_details due to FOREIGN KEY)
         deleted = await db.delete_user(user_id)
-        
+
         if not deleted:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         logger.info(f"User deleted: {user['email']} by {token_data.get('sub', 'unknown')}")
         return {"message": "User deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1333,8 +1405,8 @@ async def toggle_user_status(
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
-                    SELECT 
-                        u.id, u.email, u.centre as center_name, 
+                    SELECT
+                        u.id, u.email, u.centre as center_name,
                         u.category as visa_category, u.subcategory as visa_subcategory,
                         u.active as is_active, u.created_at, u.updated_at,
                         p.first_name, p.last_name, p.mobile_number as phone
@@ -1418,7 +1490,7 @@ async def save_payment_card(
 ):
     """
     Save payment card WITHOUT CVV (PCI-DSS compliant).
-    
+
     Security Note:
         CVV is NEVER stored. It must be provided at payment time.
 
@@ -1492,52 +1564,51 @@ async def delete_payment_card(token_data: Dict[str, Any] = Depends(verify_jwt_to
 
 @app.post("/api/payment/initiate")
 async def initiate_payment(
-    request: PaymentInitiateRequest,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request: PaymentInitiateRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
     Initiate payment with runtime CVV.
-    
+
     Security:
     - CVV exists only in memory during this request
     - Never logged or persisted to disk
     - Cleared immediately after use
-    
+
     Args:
         request: Payment initiation data with CVV
         token_data: JWT token data
-    
+
     Returns:
         Payment result
     """
     try:
         db = Database()
         await db.connect()
-        
+
         try:
             # Get appointment
             appointment = await db.get_appointment_request(request.appointment_id)
             if not appointment:
                 raise HTTPException(404, "Appointment not found")
-            
+
             # Get saved card (without CVV)
             card = await db.get_payment_card()
             if not card:
                 raise HTTPException(404, "No payment card saved")
-            
+
             # Process payment with runtime CVV
             # TODO: Implement actual payment processing
             logger.info(f"Payment initiated for appointment {request.appointment_id}")
-            
+
             return {
                 "success": True,
                 "message": "Payment completed",
-                "appointment_id": request.appointment_id
+                "appointment_id": request.appointment_id,
             }
-            
+
         finally:
             await db.close()
-            
+
     finally:
         # CRITICAL: Clear CVV from memory
         # Note: This is a best-effort approach. Python's string interning

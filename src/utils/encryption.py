@@ -131,20 +131,26 @@ def get_encryption() -> PasswordEncryption:
     current_key = os.getenv("ENCRYPTION_KEY")
 
     # First check without lock (fast path)
-    if _encryption_instance is not None:
+    if _encryption_instance is not None and current_key is not None:
         # Check if key matches - if so, return existing instance
-        if current_key and _normalize_key(current_key) == _encryption_instance._key:
+        if _normalize_key(current_key) == _encryption_instance._key:
             return _encryption_instance
 
     # Acquire lock for initialization or key change
     with _encryption_lock:
-        # Double-check after acquiring lock
+        # Double-check after acquiring lock (complete double-checked locking pattern)
         if _encryption_instance is None:
+            # Create new instance
             _encryption_instance = PasswordEncryption()
         elif current_key is not None and _normalize_key(current_key) != _encryption_instance._key:
-            # Key changed - create new instance
+            # Key changed - create new instance with proper cleanup
             logger.warning("Encryption key changed, reinitializing...")
+            # Old instance will be garbage collected
             _encryption_instance = PasswordEncryption()
+        elif _encryption_instance is not None and current_key is not None:
+            # Instance exists and key matches - return it
+            if _normalize_key(current_key) == _encryption_instance._key:
+                return _encryption_instance
 
         return _encryption_instance
 
