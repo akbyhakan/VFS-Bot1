@@ -372,43 +372,42 @@ class OTPWebhookService:
     async def cleanup_expired(self) -> int:
         """
         Remove expired OTP entries from both queues.
+        Uses in-place modification to preserve queue references.
 
         Returns:
             Number of entries removed
         """
         async with self._lock:
             now = datetime.now(timezone.utc)
+            total_removed = 0
 
-            # Clean appointment queue
-            initial_appt_count = len(self._appointment_otp_queue)
-            self._appointment_otp_queue = deque(
-                (
-                    entry
-                    for entry in self._appointment_otp_queue
-                    if (now - entry.received_at).total_seconds() <= self._otp_timeout
-                ),
-                maxlen=self._appointment_otp_queue.maxlen,
-            )
-            appt_removed = initial_appt_count - len(self._appointment_otp_queue)
+            for otp_type in OTPType:
+                queue = self._queues[otp_type]
+                initial_count = len(queue)
+                
+                # Find expired entries
+                # Use list() to create a copy for safe iteration
+                expired_entries = [
+                    entry for entry in list(queue)
+                    if (now - entry.received_at).total_seconds() > self._otp_timeout
+                ]
+                
+                # Remove expired entries in-place
+                for entry in expired_entries:
+                    try:
+                        queue.remove(entry)
+                    except ValueError:
+                        pass  # Entry already removed
+                
+                removed = initial_count - len(queue)
+                total_removed += removed
+                
+                if removed > 0:
+                    logger.debug(f"Cleaned up {removed} expired {otp_type.value} OTPs")
 
-            # Clean payment queue
-            initial_pay_count = len(self._payment_otp_queue)
-            self._payment_otp_queue = deque(
-                (
-                    entry
-                    for entry in self._payment_otp_queue
-                    if (now - entry.received_at).total_seconds() <= self._otp_timeout
-                ),
-                maxlen=self._payment_otp_queue.maxlen,
-            )
-            pay_removed = initial_pay_count - len(self._payment_otp_queue)
-
-            total_removed = appt_removed + pay_removed
             if total_removed > 0:
-                logger.debug(
-                    f"Cleaned up {total_removed} expired OTP entries "
-                    f"(appointment: {appt_removed}, payment: {pay_removed})"
-                )
+                logger.info(f"Total expired OTPs cleaned: {total_removed}")
+            
             return total_removed
 
     async def wait_for_otp_with_fallback(

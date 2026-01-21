@@ -80,7 +80,7 @@ class VFSBot:
 
         # Circuit breaker state
         self.consecutive_errors = 0
-        self.total_errors: deque = deque(maxlen=CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR * 2)
+        self.total_errors: deque = deque(maxlen=CircuitBreaker.MAX_ERRORS_PER_HOUR)
         self.circuit_breaker_open = False
         self.circuit_breaker_open_time: Optional[float] = None
         self._error_lock = asyncio.Lock()  # Thread-safety for circuit breaker

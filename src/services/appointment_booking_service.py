@@ -84,6 +84,75 @@ def get_selector_with_fallback(selector_name: str) -> List[str]:
         return [selector]
 
 
+async def try_selectors(page: Page, selectors: List[str], action: str = "click", 
+                        text: str = None, timeout: int = 5000) -> bool:
+    """
+    Try multiple selectors in order until one works.
+    
+    Args:
+        page: Playwright page
+        selectors: List of CSS/XPath selectors to try
+        action: 'click', 'fill', 'wait', 'count'
+        text: Text to fill (for 'fill' action)
+        timeout: Timeout per selector in ms
+    
+    Returns:
+        True if action succeeded, False otherwise
+    
+    Raises:
+        SelectorNotFoundError: If no selector works
+    """
+    from ..core.exceptions import SelectorNotFoundError
+    
+    last_error = None
+    for selector in selectors:
+        try:
+            element = page.locator(selector)
+            
+            if action == "click":
+                await element.click(timeout=timeout)
+                return True
+            elif action == "fill":
+                await element.fill(text or "", timeout=timeout)
+                return True
+            elif action == "wait":
+                await element.wait_for(timeout=timeout)
+                return True
+            elif action == "count":
+                count = await element.count()
+                return count > 0
+            elif action == "wait_hidden":
+                await element.wait_for(state="hidden", timeout=timeout)
+                return True
+                
+        except Exception as e:
+            last_error = e
+            continue
+    
+    # Hiçbir selector çalışmadı
+    raise SelectorNotFoundError(
+        selector_name=str(selectors[0]) if selectors else "unknown",
+        tried_selectors=selectors
+    )
+
+
+def resolve_selector(selector_key: str) -> List[str]:
+    """
+    Resolve a selector key to a list of selectors.
+    Always returns a list for consistent handling.
+    
+    Args:
+        selector_key: Key in VFS_SELECTORS or direct selector string
+    
+    Returns:
+        List of selector strings
+    """
+    if selector_key in VFS_SELECTORS:
+        value = VFS_SELECTORS[selector_key]
+        return value if isinstance(value, list) else [value]
+    return [selector_key]
+
+
 
 class AppointmentBookingService:
     """
@@ -111,33 +180,63 @@ class AppointmentBookingService:
     async def wait_for_overlay(self, page: Page, timeout: int = 30000) -> None:
         """
         Wait for loading overlay to disappear.
+        Tries multiple overlay selectors.
 
         Args:
             page: Playwright page
             timeout: Maximum wait time in ms
         """
         try:
-            overlay = page.locator(VFS_SELECTORS["overlay"])
-            await overlay.wait_for(state="hidden", timeout=timeout)
+            selectors = resolve_selector("overlay")
+            for selector in selectors:
+                try:
+                    overlay = page.locator(selector)
+                    if await overlay.count() > 0:
+                        await overlay.wait_for(state="hidden", timeout=timeout)
+                        logger.debug(f"Overlay disappeared: {selector}")
+                        return
+                except Exception:
+                    continue
         except Exception:
-            pass  # Overlay might not exist
+            pass  # Overlay might not exist, continue
 
-    async def human_type(self, page: Page, selector: str, text: str) -> None:
+    async def human_type(self, page: Page, selector_key: str, text: str) -> None:
         """
-        Type text with human-like delays.
+        Type text with human-like delays and fallback selector support.
 
         Args:
             page: Playwright page
-            selector: Input selector
+            selector_key: Selector key in VFS_SELECTORS or direct selector
             text: Text to type
+        
+        Raises:
+            SelectorNotFoundError: If no selector works
         """
-        await page.click(selector)
-        await page.fill(selector, "")  # Clear first
+        from ..core.exceptions import SelectorNotFoundError
+        
+        selectors = resolve_selector(selector_key)
+        last_error = None
+        
+        for selector in selectors:
+            try:
+                await page.click(selector)
+                await page.fill(selector, "")  # Clear first
 
-        for char in text:
-            await page.type(selector, char, delay=random.randint(50, 150))
-            if random.random() < 0.1:  # 10% chance of small pause
-                await asyncio.sleep(random.uniform(0.1, 0.3))
+                for char in text:
+                    await page.type(selector, char, delay=random.randint(50, 150))
+                    if random.random() < 0.1:  # 10% chance of small pause
+                        await asyncio.sleep(random.uniform(0.1, 0.3))
+                
+                logger.debug(f"Successfully typed into: {selector}")
+                return  # Success
+                
+            except Exception as e:
+                last_error = e
+                logger.debug(f"Selector '{selector}' failed: {e}, trying next...")
+                continue
+        
+        # No selector worked
+        raise SelectorNotFoundError(selector_key, selectors)
 
     def normalize_date(self, date_str: str) -> str:
         """
@@ -154,6 +253,7 @@ class AppointmentBookingService:
     async def check_double_match(self, page: Page, reservation: Dict[str, Any]) -> Dict[str, Any]:
         """
         Çift eşleştirme kontrolü: Kapasite + Tarih
+        With improved error detection for page structure changes.
 
         Args:
             page: Playwright page
@@ -162,6 +262,8 @@ class AppointmentBookingService:
         Returns:
             Dict with match status and details
         """
+        from ..core.exceptions import SelectorNotFoundError
+        
         required_capacity = reservation["person_count"]
         preferred_dates = [self.normalize_date(d) for d in reservation["preferred_dates"]]
 
@@ -172,13 +274,30 @@ class AppointmentBookingService:
         match = re.search(pattern, page_content)
 
         if not match:
+            # Check if page structure might have changed
+            expected_keywords = ["Başvuru", "applicant", "appointment", "randevu"]
+            has_expected_content = any(kw.lower() in page_content.lower() for kw in expected_keywords)
+            
+            if not has_expected_content:
+                # Page structure likely changed - this is a critical error
+                logger.error(
+                    "CRITICAL: Page structure may have changed - "
+                    "expected keywords not found. Manual review required."
+                )
+                raise SelectorNotFoundError(
+                    "double_match_pattern",
+                    tried_selectors=[pattern]
+                )
+            
+            # Keywords found but pattern didn't match - might be no availability
+            logger.warning("Appointment info pattern not found, but page seems valid")
             return {
                 "match": False,
                 "capacity_match": False,
                 "date_match": False,
                 "found_capacity": 0,
                 "found_date": None,
-                "message": "Randevu bilgisi bulunamadı",
+                "message": "Randevu bilgisi bulunamadı (sayfa yapısı kontrol edildi)",
             }
 
         found_capacity = int(match.group(1))
@@ -217,7 +336,7 @@ class AppointmentBookingService:
 
     async def fill_applicant_form(self, page: Page, person: Dict[str, Any], index: int = 0) -> None:
         """
-        Fill single applicant form.
+        Fill single applicant form with fallback selector support.
 
         Args:
             page: Playwright page
@@ -228,60 +347,74 @@ class AppointmentBookingService:
             f"Filling form for person {index + 1}: {person['first_name']} {person['last_name']}"
         )
 
-        # Wait for VFS requirement (configurable, default 21 seconds)
-        vfs_wait = self.config.get("vfs", {}).get("form_wait_seconds", 21)
+        # Wait for VFS requirement - optimized for subsequent forms
+        if index == 0:
+            vfs_wait = self.config.get("vfs", {}).get("form_wait_seconds", 21)
+        else:
+            vfs_wait = self.config.get("vfs", {}).get("subsequent_form_wait_seconds", 5)
+        
         logger.info(f"Waiting {vfs_wait} seconds (VFS requirement)...")
         await asyncio.sleep(vfs_wait)
 
         # Child checkbox (if applicable)
         if person.get("is_child_with_parent", False):
-            checkbox = page.locator(VFS_SELECTORS["child_checkbox"])
-            if not await checkbox.is_checked():
-                await checkbox.click()
-                logger.info("Child checkbox marked")
+            selectors = resolve_selector("child_checkbox")
+            for selector in selectors:
+                try:
+                    checkbox = page.locator(selector)
+                    if await checkbox.count() > 0 and not await checkbox.is_checked():
+                        await checkbox.click()
+                        logger.info("Child checkbox marked")
+                        break
+                except Exception:
+                    continue
 
         # First name
-        await self.human_type(page, VFS_SELECTORS["first_name"], person["first_name"].upper())
+        await self.human_type(page, "first_name", person["first_name"].upper())
 
         # Last name
-        await self.human_type(page, VFS_SELECTORS["last_name"], person["last_name"].upper())
+        await self.human_type(page, "last_name", person["last_name"].upper())
 
         # Gender dropdown
-        await page.click(VFS_SELECTORS["gender_dropdown"])
+        gender_dropdown_selectors = resolve_selector("gender_dropdown")
+        await try_selectors(page, gender_dropdown_selectors, action="click")
         await asyncio.sleep(0.5)
-        gender_selector = (
-            VFS_SELECTORS["gender_female"]
-            if person["gender"].lower() == "female"
-            else VFS_SELECTORS["gender_male"]
-        )
-        await page.click(gender_selector)
+        
+        gender_option = "gender_female" if person["gender"].lower() == "female" else "gender_male"
+        gender_selectors = resolve_selector(gender_option)
+        await try_selectors(page, gender_selectors, action="click")
 
         # Birth date
-        await self.human_type(page, VFS_SELECTORS["birth_date"], person["birth_date"])
+        await self.human_type(page, "birth_date", person["birth_date"])
 
         # Nationality dropdown - Select Turkey
-        await page.click(VFS_SELECTORS["nationality_dropdown"])
+        nationality_selectors = resolve_selector("nationality_dropdown")
+        await try_selectors(page, nationality_selectors, action="click")
         await asyncio.sleep(0.5)
-        await page.click(VFS_SELECTORS["nationality_turkey"])
+        
+        turkey_selectors = resolve_selector("nationality_turkey")
+        await try_selectors(page, turkey_selectors, action="click")
 
         # Passport number
-        await self.human_type(
-            page, VFS_SELECTORS["passport_number"], person["passport_number"].upper()
-        )
+        await self.human_type(page, "passport_number", person["passport_number"].upper())
 
         # Passport expiry
-        await self.human_type(
-            page, VFS_SELECTORS["passport_expiry"], person["passport_expiry_date"]
-        )
+        await self.human_type(page, "passport_expiry", person["passport_expiry_date"])
 
         # Phone code
-        await page.fill(VFS_SELECTORS["phone_code"], person.get("phone_code", "90"))
+        phone_code_selectors = resolve_selector("phone_code")
+        for selector in phone_code_selectors:
+            try:
+                await page.fill(selector, person.get("phone_code", "90"))
+                break
+            except Exception:
+                continue
 
         # Phone number
-        await self.human_type(page, VFS_SELECTORS["phone_number"], person["phone_number"])
+        await self.human_type(page, "phone_number", person["phone_number"])
 
         # Email
-        await self.human_type(page, VFS_SELECTORS["email"], person["email"].upper())
+        await self.human_type(page, "email", person["email"].upper())
 
         logger.info(f"Form filled for person {index + 1}")
 
@@ -559,7 +692,7 @@ class AppointmentBookingService:
 
     async def handle_3d_secure(self, page: Page, phone_number: str) -> bool:
         """
-        Handle 3D Secure OTP verification.
+        Handle 3D Secure OTP verification with optimized waiting.
 
         Args:
             page: Playwright page
@@ -572,7 +705,8 @@ class AppointmentBookingService:
 
         try:
             # Wait for OTP input
-            await page.wait_for_selector(VFS_SELECTORS["otp_input"], timeout=10000)
+            otp_selectors = resolve_selector("otp_input")
+            await try_selectors(page, otp_selectors, action="wait", timeout=10000)
 
             # Wait for OTP from webhook
             otp_code = await self.otp_service.wait_for_payment_otp(
@@ -584,33 +718,87 @@ class AppointmentBookingService:
                 return False
 
             # Enter OTP
-            await page.fill(VFS_SELECTORS["otp_input"], otp_code)
+            await try_selectors(page, otp_selectors, action="fill", text=otp_code)
             logger.info("OTP entered successfully")
 
             # Small delay
             await asyncio.sleep(random.uniform(0.5, 1.5))
 
             # Click Continue
-            await page.click(VFS_SELECTORS["otp_submit"])
+            submit_selectors = resolve_selector("otp_submit")
+            await try_selectors(page, submit_selectors, action="click")
             logger.info("OTP submitted")
 
-            # Wait for payment confirmation (configurable, default 60 seconds)
-            payment_wait = self.config.get("payment", {}).get("confirmation_wait_seconds", 60)
-            logger.info(f"Waiting {payment_wait} seconds for payment confirmation...")
-            await asyncio.sleep(payment_wait)
-
-            # Check result
-            current_url = page.url
-            if "vfsglobal.com" in current_url:
-                logger.info("✅ Redirected to VFS - Payment likely successful")
-                return True
-            else:
-                logger.warning(f"Unexpected URL after payment: {current_url}")
-                return False
+            # Wait for payment confirmation with polling (not fixed sleep)
+            confirmation_result = await self._wait_for_payment_confirmation(page)
+            return confirmation_result
 
         except Exception as e:
             logger.error(f"3D Secure error: {e}")
             return False
+
+    async def _wait_for_payment_confirmation(
+        self, page: Page, max_wait: int = 60, check_interval: float = 2.0
+    ) -> bool:
+        """
+        Wait for payment confirmation with early exit polling.
+        
+        Args:
+            page: Playwright page
+            max_wait: Maximum wait time in seconds
+            check_interval: How often to check in seconds
+        
+        Returns:
+            True if payment confirmed, False otherwise
+        """
+        import time
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait:
+            # Check 1: Redirected to VFS
+            current_url = page.url
+            if "vfsglobal.com" in current_url:
+                logger.info("✅ Redirected to VFS - Payment successful")
+                return True
+            
+            # Check 2: Success indicators on page
+            success_indicators = [
+                ".payment-success",
+                ".confirmation-message",
+                "text=/payment.*successful/i",
+                "text=/ödeme.*başarılı/i",
+            ]
+            
+            for indicator in success_indicators:
+                try:
+                    count = await page.locator(indicator).count()
+                    if count > 0:
+                        logger.info(f"✅ Payment success indicator found: {indicator}")
+                        return True
+                except Exception:
+                    continue
+            
+            # Check 3: Error indicators
+            error_indicators = [
+                ".payment-error",
+                ".payment-failed",
+                "text=/payment.*failed/i",
+                "text=/ödeme.*başarısız/i",
+            ]
+            
+            for indicator in error_indicators:
+                try:
+                    count = await page.locator(indicator).count()
+                    if count > 0:
+                        logger.error(f"❌ Payment failed - error indicator: {indicator}")
+                        return False
+                except Exception:
+                    continue
+            
+            await asyncio.sleep(check_interval)
+        
+        logger.warning(f"Payment confirmation timeout after {max_wait}s")
+        return False
 
     async def run_booking_flow(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """
