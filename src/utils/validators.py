@@ -34,24 +34,6 @@ def validate_phone(phone: str) -> bool:
     return bool(re.match(pattern, clean_phone))
 
 
-def mask_sensitive_data(data: str, visible_chars: int = 4) -> str:
-    """
-    Mask sensitive data for logging.
-
-    Args:
-        data: Sensitive data to mask
-        visible_chars: Number of characters to show at start
-
-    Returns:
-        Masked string
-    """
-    if not data:
-        return "***"
-    if len(data) <= visible_chars:
-        return "*" * len(data)
-    return data[:visible_chars] + "*" * (len(data) - visible_chars)
-
-
 def validate_centre(centre: str, allowed_centres: List[str]) -> bool:
     """
     Validate centre against allowed list.

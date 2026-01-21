@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Pattern, Callable
 from collections import deque
 from dataclasses import dataclass
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ class OTPEntry:
     raw_message: str
     received_at: datetime
     used: bool = False
+
+
+class OTPType(Enum):
+    """OTP type enumeration."""
+    APPOINTMENT = "appointment"
+    PAYMENT = "payment"
 
 
 class OTPPatternMatcher:
@@ -98,8 +105,14 @@ class OTPWebhookService:
             custom_patterns: Optional custom regex patterns for OTP extraction
         """
         # Separate queues for appointment and payment OTPs
-        self._appointment_otp_queue: deque[OTPEntry] = deque(maxlen=max_entries)
-        self._payment_otp_queue: deque[OTPEntry] = deque(maxlen=max_entries)
+        self._queues: Dict[OTPType, deque] = {
+            OTPType.APPOINTMENT: deque(maxlen=max_entries),
+            OTPType.PAYMENT: deque(maxlen=max_entries),
+        }
+        # Keep backward compatibility aliases
+        self._appointment_otp_queue = self._queues[OTPType.APPOINTMENT]
+        self._payment_otp_queue = self._queues[OTPType.PAYMENT]
+        
         self._otp_timeout = otp_timeout_seconds
         self._pattern_matcher = OTPPatternMatcher(custom_patterns)
         self._waiting_events: Dict[str, asyncio.Event] = {}
@@ -123,6 +136,50 @@ class OTPWebhookService:
         """
         return await self.process_appointment_sms(phone_number, message)
 
+    async def _process_sms_generic(
+        self,
+        otp_type: OTPType,
+        phone_number: str,
+        message: str
+    ) -> Optional[str]:
+        """
+        Generic SMS processing - DRY implementation.
+        
+        Args:
+            otp_type: Type of OTP (APPOINTMENT or PAYMENT)
+            phone_number: Sender phone number
+            message: SMS message text
+            
+        Returns:
+            Extracted OTP code or None
+        """
+        otp_code = self._pattern_matcher.extract_otp(message)
+
+        if not otp_code:
+            logger.warning(f"No OTP found in {otp_type.value} SMS from {phone_number[:4]}***")
+            return None
+
+        entry = OTPEntry(
+            code=otp_code,
+            phone_number=phone_number,
+            raw_message=message,
+            received_at=datetime.now(timezone.utc),
+        )
+
+        queue = self._queues[otp_type]
+        event_prefix = f"{otp_type.value}_"
+
+        async with self._lock:
+            queue.append(entry)
+
+            # Notify waiting consumers - MUST BE INSIDE LOCK to prevent race condition
+            for key, event in self._waiting_events.items():
+                if key.startswith(event_prefix):
+                    event.set()
+
+        logger.info(f"{otp_type.value.capitalize()} OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
+        return otp_code
+
     async def process_appointment_sms(self, phone_number: str, message: str) -> Optional[str]:
         """
         Process incoming appointment SMS and extract OTP.
@@ -134,29 +191,7 @@ class OTPWebhookService:
         Returns:
             Extracted OTP code or None
         """
-        otp_code = self._pattern_matcher.extract_otp(message)
-
-        if not otp_code:
-            logger.warning(f"No OTP found in appointment SMS from {phone_number[:4]}***")
-            return None
-
-        entry = OTPEntry(
-            code=otp_code,
-            phone_number=phone_number,
-            raw_message=message,
-            received_at=datetime.now(timezone.utc),
-        )
-
-        async with self._lock:
-            self._appointment_otp_queue.append(entry)
-
-            # Notify waiting consumers - MUST BE INSIDE LOCK to prevent race condition
-            for key, event in self._waiting_events.items():
-                if key.startswith("appointment_"):
-                    event.set()
-
-        logger.info(f"Appointment OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
-        return otp_code
+        return await self._process_sms_generic(OTPType.APPOINTMENT, phone_number, message)
 
     async def process_payment_sms(self, phone_number: str, message: str) -> Optional[str]:
         """
@@ -169,29 +204,7 @@ class OTPWebhookService:
         Returns:
             Extracted OTP code or None
         """
-        otp_code = self._pattern_matcher.extract_otp(message)
-
-        if not otp_code:
-            logger.warning(f"No OTP found in payment SMS from {phone_number[:4]}***")
-            return None
-
-        entry = OTPEntry(
-            code=otp_code,
-            phone_number=phone_number,
-            raw_message=message,
-            received_at=datetime.now(timezone.utc),
-        )
-
-        async with self._lock:
-            self._payment_otp_queue.append(entry)
-
-            # Notify waiting consumers - MUST BE INSIDE LOCK to prevent race condition
-            for key, event in self._waiting_events.items():
-                if key.startswith("payment_"):
-                    event.set()
-
-        logger.info(f"Payment OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
-        return otp_code
+        return await self._process_sms_generic(OTPType.PAYMENT, phone_number, message)
 
     async def wait_for_otp(
         self, phone_number: Optional[str] = None, timeout: Optional[int] = None
