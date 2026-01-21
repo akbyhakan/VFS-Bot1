@@ -129,7 +129,7 @@ async def try_selectors(page: Page, selectors: List[str], action: str = "click",
             last_error = e
             continue
     
-    # Hiçbir selector çalışmadı
+    # No selector worked
     raise SelectorNotFoundError(
         selector_name=str(selectors[0]) if selectors else "unknown",
         tried_selectors=selectors

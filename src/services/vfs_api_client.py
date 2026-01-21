@@ -530,10 +530,10 @@ class VFSApiClient:
 
                 logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
         
-        except VFSAuthenticationError:
-            raise
         except Exception as e:
             logger.error(f"Token refresh failed: {e}")
+            if isinstance(e, VFSAuthenticationError):
+                raise
             raise VFSSessionExpiredError(f"Token refresh failed: {e}")
         finally:
             self._is_refreshing = False
