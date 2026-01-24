@@ -192,3 +192,24 @@ def test_get_selector_manager_singleton():
     manager2 = get_selector_manager()
 
     assert manager1 is manager2
+
+
+@pytest.mark.asyncio
+async def test_wait_for_selector_uses_visible_state(temp_selectors_file):
+    """Test that wait_for_selector uses state='visible'."""
+    manager = SelectorManager(str(temp_selectors_file))
+    
+    mock_page = AsyncMock()
+    mock_page.wait_for_selector = AsyncMock()
+    mock_page.locator = lambda x: f"locator({x})"
+    
+    await manager.wait_for_selector(mock_page, "login.email_input", timeout=5000)
+    
+    # Verify wait_for_selector was called with state="visible"
+    call_args = mock_page.wait_for_selector.call_args
+    assert call_args is not None
+    # Check keyword arguments
+    assert "state" in call_args.kwargs
+    assert call_args.kwargs["state"] == "visible"
+    assert call_args.kwargs["timeout"] == 5000
+

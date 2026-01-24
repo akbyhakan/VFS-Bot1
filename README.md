@@ -58,6 +58,57 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - Automatic failover on errors
 - Supports http/socks5 with auth
 
+## 🧠 Adaptive Selector Strategy
+
+VFS-Bot uses a multi-layered approach to find elements on the page, making it highly resilient to website changes:
+
+### 1. Semantic Locators (Priority 1)
+- Uses Playwright's user-facing locators (role, label, text, placeholder)
+- More resilient than CSS selectors (IDs can change, but button text rarely does)
+- Multi-language support (Turkish/English)
+- Example: Finding login button by role="button" and text="Giriş Yap"
+
+### 2. Adaptive Learning (Priority 2)
+- Automatically tracks which selectors succeed/fail
+- Auto-promotes fallback selectors after 5 consecutive successes
+- Demotes primary selectors after 3 consecutive failures
+- Reorders selectors based on performance data
+- Metrics stored in `data/selector_metrics.json`
+
+### 3. CSS Selectors (Priority 3)
+- Traditional CSS selectors with primary/fallback system
+- Multiple fallback options for each element
+- Optimized order based on learning system
+
+### 4. AI Auto-Repair (Optional)
+- LLM-powered selector recovery using Google Gemini
+- Activates when all selectors fail
+- Auto-updates `config/selectors.yaml` with successful suggestions
+- Graceful degradation when API key not provided
+
+### Configuration
+
+#### Enable AI Auto-Repair
+```bash
+# Get API key from: https://ai.google.dev/
+export GEMINI_API_KEY="your_api_key"
+```
+
+#### View Selector Performance
+```bash
+cat data/selector_metrics.json
+```
+
+### How It Works
+
+When a selector fails:
+1. ✅ Try semantic locators (role, label, text)
+2. ✅ Try CSS selectors in optimized order (learning-based)
+3. 🤖 If all fail, ask Gemini AI to find new selector
+4. 💾 Auto-update config and continue
+
+The system learns over time which selectors work best and automatically promotes them, reducing timeout delays and improving reliability.
+
 ## 📋 Requirements
 
 - Python 3.12 or higher

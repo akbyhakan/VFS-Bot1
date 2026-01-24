@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-24
+
+### 🚀 NEW FEATURES
+
+#### Adaptive Selector Learning System
+- Auto-promote fallback selectors after 5 consecutive successes
+- Track selector performance in `data/selector_metrics.json`
+- Reorder selectors dynamically based on success rates
+- Reduces timeout delays by trying best-performing selectors first
+- Automatic demotion of failing primary selectors after 3 consecutive failures
+
+#### Semantic Locator Support
+- Added Playwright's user-facing locators (role, label, text, placeholder)
+- More resilient to website changes (IDs can change, text rarely does)
+- Multi-language support (Turkish/English)
+- Priority given to semantic locators over CSS selectors
+- Updated `config/selectors.yaml` with semantic definitions for all login and appointment elements
+
+#### AI-Powered Selector Auto-Repair
+- Optional Gemini AI integration for automatic selector recovery
+- Activates when all selectors fail
+- Auto-updates `config/selectors.yaml` with successful suggestions
+- Graceful degradation when API key not provided
+- Validates AI suggestions before applying them
+
+### 🐛 BUG FIXES
+- Changed `state="attached"` to `state="visible"` in all selector waits
+- Fixes issues with VFS loading spinners and animations
+- Ensures elements are actually clickable before interaction
+- Prevents premature interactions with DOM-attached but invisible elements
+
+### 📦 DEPENDENCIES
+- Added `google-generativeai>=0.3.0` (optional, for AI repair)
+
+### ⚙️ CONFIGURATION
+- New environment variable: `GEMINI_API_KEY` (optional)
+- New data file: `data/selector_metrics.json` (auto-created)
+- Updated `config/selectors.yaml` structure with `semantic` field (backward compatible)
+
+### 📚 DOCUMENTATION
+- Added "Adaptive Selector Strategy" section to README.md
+- Updated .env.example with GEMINI_API_KEY
+- Added comprehensive test coverage for new features
+
+### ⚠️ BREAKING CHANGES
+- None - All changes are backward compatible
+- Existing `config/selectors.yaml` files will continue to work
+- New features are opt-in
+
 ## [2.1.0] - 2025-01-12
 
 ### 🚨 CRITICAL SECURITY FIXES
