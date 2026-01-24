@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/proxy", tags=["proxy"])
 
 # Global proxy manager instance
+# Note: This is safe for concurrent access as FastAPI handles requests
+# independently. For production use with multiple worker processes,
+# consider using a shared cache (Redis) or database backend.
 proxy_manager = NetNutProxyManager()
 
 
@@ -70,6 +73,15 @@ async def upload_proxy_csv(
 
         # Read file content
         content = await file.read()
+        
+        # Validate file size (max 10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB",
+            )
+        
         csv_content = content.decode("utf-8")
 
         # Clear existing proxies before loading new ones

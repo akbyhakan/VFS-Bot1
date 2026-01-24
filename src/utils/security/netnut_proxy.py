@@ -2,6 +2,7 @@
 
 import csv
 import logging
+import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -156,7 +157,6 @@ class NetNutProxyManager:
             self.failed_proxies.clear()
             available = self.proxies
 
-        import random
         proxy = random.choice(available)
         logger.debug(f"Selected random proxy: {proxy['server']}")
         return proxy
