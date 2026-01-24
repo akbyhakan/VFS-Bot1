@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class SelectorLearner:
                     self.metrics = json.load(f)
                 logger.debug(f"Loaded selector metrics from {self.metrics_file}")
             else:
-                logger.info(f"No existing metrics file, starting fresh")
+                logger.info("No existing metrics file, starting fresh")
                 self.metrics = {}
         except Exception as e:
             logger.error(f"Failed to load metrics: {e}")
@@ -246,8 +246,7 @@ class SelectorLearner:
                 for stats in metrics.get("fallback_stats", {}).values()
             )
             fallback_fail = sum(
-                stats.get("fail_count", 0)
-                for stats in metrics.get("fallback_stats", {}).values()
+                stats.get("fail_count", 0) for stats in metrics.get("fallback_stats", {}).values()
             )
 
             total_success = primary_success + fallback_success

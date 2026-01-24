@@ -3,9 +3,9 @@
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any
-import yaml
+from typing import Optional
 
+import yaml
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
@@ -24,14 +24,15 @@ class AISelectorRepair:
         self.selectors_file = Path(selectors_file)
         self.enabled = False
         self.model = None
-        
+
         # Try to initialize Gemini API
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-pro')
+                self.model = genai.GenerativeModel("gemini-pro")
                 self.enabled = True
                 logger.info("🤖 AI-powered selector auto-repair enabled")
             except ImportError:
@@ -73,26 +74,31 @@ class AISelectorRepair:
             # Query LLM
             logger.info(f"🤖 Asking AI for selector suggestion for: {selector_path}")
             response = self.model.generate_content(prompt)
-            
+
             if response and response.text:
                 suggested_selector = response.text.strip()
                 # Remove common markdown artifacts and clean up
-                suggested_selector = suggested_selector.replace('```css', '').replace('```', '').replace('`', '').strip()
+                suggested_selector = (
+                    suggested_selector.replace("```css", "")
+                    .replace("```", "")
+                    .replace("`", "")
+                    .strip()
+                )
                 # Remove any newlines and extra whitespace
-                suggested_selector = ' '.join(suggested_selector.split())
-                
+                suggested_selector = " ".join(suggested_selector.split())
+
                 logger.info(f"🤖 AI suggested selector: {suggested_selector}")
-                
+
                 # Validate the suggestion
                 is_valid = await self._validate_suggestion(page, suggested_selector)
-                
+
                 if is_valid:
-                    logger.info(f"✅ AI suggestion validated successfully!")
+                    logger.info("✅ AI suggestion validated successfully!")
                     # Auto-update YAML file
                     self._add_to_yaml(selector_path, suggested_selector)
                     return suggested_selector
                 else:
-                    logger.warning(f"❌ AI suggestion failed validation")
+                    logger.warning("❌ AI suggestion failed validation")
                     return None
             else:
                 logger.warning("AI returned empty response")
@@ -102,9 +108,7 @@ class AISelectorRepair:
             logger.error(f"AI selector repair failed: {e}")
             return None
 
-    def _build_prompt(
-        self, selector_path: str, element_description: str, html_content: str
-    ) -> str:
+    def _build_prompt(self, selector_path: str, element_description: str, html_content: str) -> str:
         """
         Build prompt for LLM.
 
@@ -135,7 +139,7 @@ class AISelectorRepair:
 4. Return format: Just the selector string (e.g., "input#email-field")
 
 **Your response (selector only):**"""
-        
+
         return prompt
 
     async def _validate_suggestion(self, page: Page, selector: str) -> bool:
@@ -176,7 +180,7 @@ class AISelectorRepair:
             # Navigate to the path and update
             keys = selector_path.split(".")
             current = selectors
-            
+
             for key in keys[:-1]:
                 if key not in current:
                     current[key] = {}
@@ -189,7 +193,7 @@ class AISelectorRepair:
                     # Add to fallbacks
                     if "fallbacks" not in current[final_key]:
                         current[final_key]["fallbacks"] = []
-                    
+
                     # Add AI suggestion as new fallback if not already present
                     if new_selector not in current[final_key]["fallbacks"]:
                         current[final_key]["fallbacks"].insert(0, new_selector)
@@ -197,17 +201,13 @@ class AISelectorRepair:
                 else:
                     # Convert to dict structure
                     old_selector = current[final_key]
-                    current[final_key] = {
-                        "primary": old_selector,
-                        "fallbacks": [new_selector]
-                    }
-                    logger.info(f"🤖 Converted to dict structure with AI suggestion: {selector_path}")
+                    current[final_key] = {"primary": old_selector, "fallbacks": [new_selector]}
+                    logger.info(
+                        f"🤖 Converted to dict structure with AI suggestion: {selector_path}"
+                    )
             else:
                 # Create new entry
-                current[final_key] = {
-                    "primary": new_selector,
-                    "fallbacks": []
-                }
+                current[final_key] = {"primary": new_selector, "fallbacks": []}
                 logger.info(f"🤖 Created new selector entry: {selector_path}")
 
             # Save updated YAML

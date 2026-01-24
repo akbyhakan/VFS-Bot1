@@ -3,12 +3,12 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from playwright.async_api import Page, Browser
+from playwright.async_api import Browser, Page
 
-from src.utils.selectors import SelectorManager
 from src.services.notification import NotificationService
+from src.utils.selectors import SelectorManager
 
 logger = logging.getLogger(__name__)
 

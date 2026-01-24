@@ -1,12 +1,13 @@
 """Tests for selector loading and fallback functionality."""
 
-import pytest
 from pathlib import Path
-import yaml
 from unittest.mock import AsyncMock, patch
 
-from src.utils.selectors import SelectorManager, get_selector_manager
+import pytest
+import yaml
+
 from src.core.exceptions import SelectorNotFoundError
+from src.utils.selectors import SelectorManager, get_selector_manager
 
 
 @pytest.fixture
@@ -198,13 +199,13 @@ def test_get_selector_manager_singleton():
 async def test_wait_for_selector_uses_visible_state(temp_selectors_file):
     """Test that wait_for_selector uses state='visible'."""
     manager = SelectorManager(str(temp_selectors_file))
-    
+
     mock_page = AsyncMock()
     mock_page.wait_for_selector = AsyncMock()
     mock_page.locator = lambda x: f"locator({x})"
-    
+
     await manager.wait_for_selector(mock_page, "login.email_input", timeout=5000)
-    
+
     # Verify wait_for_selector was called with state="visible"
     call_args = mock_page.wait_for_selector.call_args
     assert call_args is not None
@@ -212,4 +213,3 @@ async def test_wait_for_selector_uses_visible_state(temp_selectors_file):
     assert "state" in call_args.kwargs
     assert call_args.kwargs["state"] == "visible"
     assert call_args.kwargs["timeout"] == 5000
-

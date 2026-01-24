@@ -1,11 +1,12 @@
 """Tests for selector health check (selector watcher)."""
 
-import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+import pytest_asyncio
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

@@ -2,10 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import yaml
+from typing import Any, Dict, List, Optional
 
-from playwright.async_api import Page, Locator
+import yaml
+from playwright.async_api import Locator, Page
 
 from src.core.exceptions import SelectorNotFoundError
 
@@ -25,19 +25,21 @@ class SelectorManager:
         self.selectors_file = Path(selectors_file)
         self._selectors: Dict[str, Any] = {}
         self._load_selectors()
-        
+
         # Import and initialize learning system
         try:
             from src.utils.selector_learning import SelectorLearner
+
             self.learner = SelectorLearner()
             logger.info("♻️ Adaptive selector learning enabled")
         except Exception as e:
             logger.warning(f"Failed to initialize selector learning: {e}")
             self.learner = None
-        
+
         # Import and initialize AI repair system
         try:
             from src.utils.ai_selector_repair import AISelectorRepair
+
             self.ai_repair = AISelectorRepair(selectors_file)
         except Exception as e:
             logger.warning(f"Failed to initialize AI repair: {e}")
@@ -183,10 +185,15 @@ class SelectorManager:
             # Try role-based locator
             if "role" in semantic:
                 role = semantic["role"]
-                name = semantic.get("text") or semantic.get("text_en") or semantic.get("label") or semantic.get("label_en")
-                
+                name = (
+                    semantic.get("text")
+                    or semantic.get("text_en")
+                    or semantic.get("label")
+                    or semantic.get("label_en")
+                )
+
                 locator = page.get_by_role(role, name=name) if name else page.get_by_role(role)
-                
+
                 # Check if element exists and is visible
                 try:
                     await locator.wait_for(state="visible", timeout=timeout)
@@ -266,7 +273,7 @@ class SelectorManager:
 
         # Priority 2: Try CSS selectors with optimized order (learning-based)
         selectors = self.get_with_fallback(path)
-        
+
         # Apply learning-based reordering if learner is available
         if self.learner:
             selectors = self.learner.get_optimized_order(path, selectors)
@@ -275,40 +282,42 @@ class SelectorManager:
             try:
                 await page.wait_for_selector(selector, timeout=timeout, state="visible")
                 logger.debug(f"Found element with selector: {selector}")
-                
+
                 # Record success in learning system
                 if self.learner:
                     self.learner.record_success(path, i)
-                
+
                 return page.locator(selector)
             except Exception:
                 logger.debug(f"Selector failed: {selector}")
-                
+
                 # Record failure in learning system
                 if self.learner:
                     self.learner.record_failure(path, i)
-                
+
                 continue
 
         # Priority 3: Try AI repair as last resort
         if self.ai_repair and self.ai_repair.enabled:
             logger.warning(f"🤖 All selectors failed, trying AI repair for: {path}")
-            
+
             # Generate element description from path
             element_description = self._generate_element_description(path)
-            
+
             suggested_selector = await self.ai_repair.suggest_selector(
                 page, path, element_description
             )
-            
+
             if suggested_selector:
                 try:
-                    await page.wait_for_selector(suggested_selector, timeout=timeout, state="visible")
+                    await page.wait_for_selector(
+                        suggested_selector, timeout=timeout, state="visible"
+                    )
                     logger.info(f"✅ AI repair succeeded for: {path}")
-                    
+
                     # Reload selectors to pick up AI changes
                     self.reload()
-                    
+
                     return page.locator(suggested_selector)
                 except Exception as e:
                     logger.error(f"AI-suggested selector also failed: {e}")
