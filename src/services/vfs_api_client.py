@@ -1,5 +1,6 @@
 """VFS Global Direct API Client for Turkey."""
 
+import asyncio
 import base64
 import hashlib
 import logging
@@ -178,6 +179,9 @@ class VFSApiClient:
         self.session: Optional[VFSSession] = None
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._client_source: Optional[str] = None
+        self._is_refreshing = False  # Guard flag for token refresh
+        self._refresh_complete_event = asyncio.Event()  # Signal when refresh completes
+        self._refresh_complete_event.set()  # Initially set (no refresh in progress)
 
         logger.info(
             f"VFSApiClient initialized for {self.country_info.name_en} "
@@ -465,17 +469,35 @@ class VFSApiClient:
 
     async def _refresh_token(self) -> None:
         """
-        Refresh the authentication token.
+        Refresh the authentication token with guard against concurrent refresh.
 
         Raises:
-            VFSAuthenticationError: If token refresh fails
+            VFSAuthenticationError: If token refresh fails or already in progress
         """
-        if not self.session or not self.session.refresh_token:
-            raise VFSAuthenticationError(
-                "Cannot refresh token: No refresh token available. Please login again."
-            )
-
+        if self._is_refreshing:
+            logger.warning("Token refresh already in progress, waiting for completion...")
+            # Wait for ongoing refresh to complete (with timeout)
+            try:
+                await asyncio.wait_for(self._refresh_complete_event.wait(), timeout=10.0)
+                # Check if session is now valid
+                if self.session and datetime.now(timezone.utc) < self.session.expires_at:
+                    logger.info("Token refresh completed by another caller")
+                    return  # Another refresh completed successfully
+                else:
+                    raise VFSAuthenticationError("Token refresh completed but session invalid")
+            except asyncio.TimeoutError:
+                raise VFSAuthenticationError("Token refresh timeout - another refresh taking too long")
+        
+        # Clear the event to signal refresh in progress
+        self._refresh_complete_event.clear()
+        self._is_refreshing = True
+        
         try:
+            if not self.session or not self.session.refresh_token:
+                raise VFSAuthenticationError(
+                    "Cannot refresh token: No refresh token available. Please login again."
+                )
+
             async with self._session.post(
                 f"{VFS_API_BASE}/user/refresh", json={"refreshToken": self.session.refresh_token}
             ) as response:
@@ -507,11 +529,15 @@ class VFSApiClient:
                 )
 
                 logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
+        
         except Exception as e:
+            logger.error(f"Token refresh failed: {e}")
             if isinstance(e, VFSAuthenticationError):
                 raise
-            logger.error(f"Token refresh failed: {e}")
             raise VFSSessionExpiredError(f"Token refresh failed: {e}")
+        finally:
+            self._is_refreshing = False
+            self._refresh_complete_event.set()  # Signal completion
 
     async def solve_turnstile(self, page_url: str, site_key: str) -> str:
         """
