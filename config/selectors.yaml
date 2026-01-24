@@ -1,6 +1,6 @@
 # VFS Global Selectors - Update when website changes
-version: "2024.01"
-last_updated: "2024-01-09"
+version: "2024.02"
+last_updated: "2026-01-24"
 
 # Login page selectors
 login:
@@ -10,18 +10,33 @@ login:
       - "input[type='email']"
       - "input[name='email']"
       - "#email"
+    # Semantic locators (more resilient than CSS)
+    semantic:
+      role: "textbox"
+      label: "E-posta"
+      label_en: "Email"
+      placeholder: "ornek@email.com"
   password_input:
     primary: "input#mat-input-1"
     fallbacks:
       - "input[type='password']"
       - "input[name='password']"
       - "#password"
+    semantic:
+      role: "textbox"
+      label: "Şifre"
+      label_en: "Password"
+      type: "password"
   submit_button:
     primary: "button.mat-button-base[type='submit']"
     fallbacks:
       - "button[type='submit']"
       - "button.login-btn"
       - "#login-submit"
+    semantic:
+      role: "button"
+      text: "Giriş Yap"
+      text_en: "Login"
   error_message: "div.mat-error"
   
 # Appointment booking selectors
@@ -31,11 +46,17 @@ appointment:
     fallbacks:
       - "select[name='centre']"
       - "select#centres"
+    semantic:
+      role: "combobox"
+      label: "Centre"
   category_dropdown:
     primary: "select#SelectVisaCategory"
     fallbacks:
       - "select[name='category']"
       - "select#categories"
+    semantic:
+      role: "combobox"
+      label: "Visa Category"
   subcategory_dropdown:
     primary: "select#SelectVisaSubCategory"
     fallbacks:

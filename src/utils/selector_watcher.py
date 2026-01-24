@@ -61,7 +61,7 @@ class SelectorHealthCheck:
 
             # Try primary selector
             try:
-                element = await page.wait_for_selector(selector, timeout=timeout, state="attached")
+                element = await page.wait_for_selector(selector, timeout=timeout, state="visible")
                 if element:
                     result["valid"] = True
                     result["found"] = True
@@ -76,7 +76,7 @@ class SelectorHealthCheck:
                     for i, fallback in enumerate(fallbacks):
                         try:
                             element = await page.wait_for_selector(
-                                fallback, timeout=timeout, state="attached"
+                                fallback, timeout=timeout, state="visible"
                             )
                             if element:
                                 result["valid"] = True
