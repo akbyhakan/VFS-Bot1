@@ -40,8 +40,12 @@ def test_ai_repair_init_no_api_key(temp_selectors_file):
 
 def test_ai_repair_init_with_api_key(temp_selectors_file):
     """Test initialization with API key."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
+    # Mock the entire google.generativeai module before import
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
             mock_model = MagicMock()
             mock_genai.GenerativeModel.return_value = mock_model
             
@@ -55,9 +59,19 @@ def test_ai_repair_init_with_api_key(temp_selectors_file):
 def test_ai_repair_init_import_error(temp_selectors_file):
     """Test graceful handling when google-generativeai is not installed."""
     with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai", side_effect=ImportError()):
+        # Simulate ImportError by removing from sys.modules and making import fail
+        import sys
+        original_import = __builtins__['__import__']
+        
+        def mock_import(name, *args, **kwargs):
+            if 'google.generativeai' in name:
+                raise ImportError("No module named 'google.generativeai'")
+            return original_import(name, *args, **kwargs)
+        
+        with patch('builtins.__import__', side_effect=mock_import):
             repair = AISelectorRepair(str(temp_selectors_file))
             
+            # Should gracefully degrade
             assert repair.enabled is False
 
 
@@ -79,8 +93,11 @@ async def test_suggest_selector_disabled(temp_selectors_file):
 @pytest.mark.asyncio
 async def test_suggest_selector_success(temp_selectors_file):
     """Test successful selector suggestion."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
             # Mock model response
             mock_response = MagicMock()
             mock_response.text = "input#new-email-field"
@@ -106,53 +123,59 @@ async def test_suggest_selector_success(temp_selectors_file):
 @pytest.mark.asyncio
 async def test_suggest_selector_validation_fails(temp_selectors_file):
     """Test suggestion when validation fails."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
-            # Mock model response
-            mock_response = MagicMock()
-            mock_response.text = "input#invalid-selector"
-            
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
-            
-            repair = AISelectorRepair(str(temp_selectors_file))
-            
-            # Mock page - validation fails
-            mock_page = AsyncMock()
-            mock_page.content.return_value = "<html><body>Test</body></html>"
-            mock_page.wait_for_selector = AsyncMock(side_effect=Exception("Not found"))
-            
-            result = await repair.suggest_selector(
-                mock_page, "login.email_input", "Email Input"
-            )
-            
-            assert result is None
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                # Mock model response
+                mock_response = MagicMock()
+                mock_response.text = "input#invalid-selector"
+                
+                mock_model = MagicMock()
+                mock_model.generate_content.return_value = mock_response
+                mock_genai.GenerativeModel.return_value = mock_model
+                
+                repair = AISelectorRepair(str(temp_selectors_file))
+                
+                # Mock page - validation fails
+                mock_page = AsyncMock()
+                mock_page.content.return_value = "<html><body>Test</body></html>"
+                mock_page.wait_for_selector = AsyncMock(side_effect=Exception("Not found"))
+                
+                result = await repair.suggest_selector(
+                    mock_page, "login.email_input", "Email Input"
+                )
+                
+                assert result is None
 
 
 @pytest.mark.asyncio
 async def test_suggest_selector_empty_response(temp_selectors_file):
     """Test handling of empty AI response."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
-            # Mock empty response
-            mock_response = MagicMock()
-            mock_response.text = ""
-            
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
-            
-            repair = AISelectorRepair(str(temp_selectors_file))
-            
-            mock_page = AsyncMock()
-            mock_page.content.return_value = "<html><body>Test</body></html>"
-            
-            result = await repair.suggest_selector(
-                mock_page, "login.email_input", "Email Input"
-            )
-            
-            assert result is None
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                # Mock empty response
+                mock_response = MagicMock()
+                mock_response.text = ""
+                
+                mock_model = MagicMock()
+                mock_model.generate_content.return_value = mock_response
+                mock_genai.GenerativeModel.return_value = mock_model
+                
+                repair = AISelectorRepair(str(temp_selectors_file))
+                
+                mock_page = AsyncMock()
+                mock_page.content.return_value = "<html><body>Test</body></html>"
+                
+                result = await repair.suggest_selector(
+                    mock_page, "login.email_input", "Email Input"
+                )
+                
+                assert result is None
 
 
 def test_build_prompt(temp_selectors_file):
@@ -282,76 +305,85 @@ def test_add_to_yaml_file_not_found():
 @pytest.mark.asyncio
 async def test_suggest_selector_strips_markdown(temp_selectors_file):
     """Test that markdown artifacts are stripped from AI response."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
-            # Mock response with markdown
-            mock_response = MagicMock()
-            mock_response.text = "```css\ninput#email-field\n```"
-            
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
-            
-            repair = AISelectorRepair(str(temp_selectors_file))
-            
-            mock_page = AsyncMock()
-            mock_page.content.return_value = "<html></html>"
-            mock_page.wait_for_selector = AsyncMock()
-            
-            result = await repair.suggest_selector(
-                mock_page, "login.email_input", "Email Input"
-            )
-            
-            # Should have stripped markdown
-            assert result == "input#email-field"
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                # Mock response with markdown
+                mock_response = MagicMock()
+                mock_response.text = "```css\ninput#email-field\n```"
+                
+                mock_model = MagicMock()
+                mock_model.generate_content.return_value = mock_response
+                mock_genai.GenerativeModel.return_value = mock_model
+                
+                repair = AISelectorRepair(str(temp_selectors_file))
+                
+                mock_page = AsyncMock()
+                mock_page.content.return_value = "<html></html>"
+                mock_page.wait_for_selector = AsyncMock()
+                
+                result = await repair.suggest_selector(
+                    mock_page, "login.email_input", "Email Input"
+                )
+                
+                # Should have stripped markdown
+                assert result == "input#email-field"
 
 
 @pytest.mark.asyncio
 async def test_suggest_selector_limits_html_size(temp_selectors_file):
     """Test that HTML content is limited to 50KB."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
-            mock_response = MagicMock()
-            mock_response.text = "input#test"
-            
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
-            
-            repair = AISelectorRepair(str(temp_selectors_file))
-            
-            # Large HTML content
-            large_html = "<html>" + "x" * 100000 + "</html>"
-            
-            mock_page = AsyncMock()
-            mock_page.content.return_value = large_html
-            mock_page.wait_for_selector = AsyncMock()
-            
-            await repair.suggest_selector(mock_page, "login.email_input", "Email")
-            
-            # Check that prompt was called with limited HTML
-            call_args = mock_model.generate_content.call_args[0][0]
-            # HTML should be truncated to 50KB
-            assert len(call_args) < len(large_html)
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                mock_response = MagicMock()
+                mock_response.text = "input#test"
+                
+                mock_model = MagicMock()
+                mock_model.generate_content.return_value = mock_response
+                mock_genai.GenerativeModel.return_value = mock_model
+                
+                repair = AISelectorRepair(str(temp_selectors_file))
+                
+                # Large HTML content
+                large_html = "<html>" + "x" * 100000 + "</html>"
+                
+                mock_page = AsyncMock()
+                mock_page.content.return_value = large_html
+                mock_page.wait_for_selector = AsyncMock()
+                
+                await repair.suggest_selector(mock_page, "login.email_input", "Email")
+                
+                # Check that prompt was called with limited HTML
+                call_args = mock_model.generate_content.call_args[0][0]
+                # HTML should be truncated to 50KB
+                assert len(call_args) < len(large_html)
 
 
 @pytest.mark.asyncio
 async def test_suggest_selector_exception_handling(temp_selectors_file):
     """Test exception handling in suggest_selector."""
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        with patch("src.utils.ai_selector_repair.genai") as mock_genai:
-            mock_model = MagicMock()
-            mock_model.generate_content.side_effect = Exception("API Error")
-            mock_genai.GenerativeModel.return_value = mock_model
-            
-            repair = AISelectorRepair(str(temp_selectors_file))
-            
-            mock_page = AsyncMock()
-            mock_page.content.return_value = "<html></html>"
-            
-            # Should not crash, should return None
-            result = await repair.suggest_selector(
-                mock_page, "login.email_input", "Email Input"
-            )
-            
-            assert result is None
+    import sys
+    mock_genai = MagicMock()
+    
+    with patch.dict(sys.modules, {'google.generativeai': mock_genai}):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
+                mock_model = MagicMock()
+                mock_model.generate_content.side_effect = Exception("API Error")
+                mock_genai.GenerativeModel.return_value = mock_model
+                
+                repair = AISelectorRepair(str(temp_selectors_file))
+                
+                mock_page = AsyncMock()
+                mock_page.content.return_value = "<html></html>"
+                
+                # Should not crash, should return None
+                result = await repair.suggest_selector(
+                    mock_page, "login.email_input", "Email Input"
+                )
+                
+                assert result is None

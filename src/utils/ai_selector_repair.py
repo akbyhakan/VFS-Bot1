@@ -76,8 +76,10 @@ class AISelectorRepair:
             
             if response and response.text:
                 suggested_selector = response.text.strip()
-                # Remove common markdown artifacts
-                suggested_selector = suggested_selector.replace('```', '').replace('`', '').strip()
+                # Remove common markdown artifacts and clean up
+                suggested_selector = suggested_selector.replace('```css', '').replace('```', '').replace('`', '').strip()
+                # Remove any newlines and extra whitespace
+                suggested_selector = ' '.join(suggested_selector.split())
                 
                 logger.info(f"🤖 AI suggested selector: {suggested_selector}")
                 
