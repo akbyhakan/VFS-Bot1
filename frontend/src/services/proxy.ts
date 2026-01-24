@@ -2,7 +2,10 @@
  * Proxy management API service
  */
 
-import api from './api';
+import { api } from './api';
+import axios from 'axios';
+import { API_BASE_URL } from '@/utils/constants';
+import { tokenManager } from '@/utils/tokenManager';
 
 export interface ProxyStats {
   total: number;
@@ -36,11 +39,17 @@ export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await api.post<UploadProxyResponse>('/api/proxy/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  const token = tokenManager.getToken();
+  const response = await axios.post<UploadProxyResponse>(
+    `${API_BASE_URL}/api/proxy/upload`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    }
+  );
 
   return response.data;
 }
@@ -49,16 +58,14 @@ export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
  * Get proxy list with statistics
  */
 export async function getProxyList(): Promise<ProxyListResponse> {
-  const response = await api.get<ProxyListResponse>('/api/proxy/list');
-  return response.data;
+  return api.get<ProxyListResponse>('/api/proxy/list');
 }
 
 /**
  * Get proxy statistics
  */
 export async function getProxyStats(): Promise<ProxyStats> {
-  const response = await api.get<ProxyStats>('/api/proxy/stats');
-  return response.data;
+  return api.get<ProxyStats>('/api/proxy/stats');
 }
 
 /**
