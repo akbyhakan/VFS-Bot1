@@ -274,26 +274,32 @@ class SelectorManager:
         # Priority 2: Try CSS selectors with optimized order (learning-based)
         selectors = self.get_with_fallback(path)
 
+        # Keep track of original indices before reordering
+        # This maps selector string to its original index
+        original_indices = {selector: i for i, selector in enumerate(selectors)}
+
         # Apply learning-based reordering if learner is available
         if self.learner:
             selectors = self.learner.get_optimized_order(path, selectors)
 
-        for i, selector in enumerate(selectors):
+        for selector in selectors:
             try:
                 await page.wait_for_selector(selector, timeout=timeout, state="visible")
                 logger.debug(f"Found element with selector: {selector}")
 
-                # Record success in learning system
+                # Record success in learning system with original index
                 if self.learner:
-                    self.learner.record_success(path, i)
+                    original_idx = original_indices.get(selector, 0)
+                    self.learner.record_success(path, original_idx)
 
                 return page.locator(selector)
             except Exception:
                 logger.debug(f"Selector failed: {selector}")
 
-                # Record failure in learning system
+                # Record failure in learning system with original index
                 if self.learner:
-                    self.learner.record_failure(path, i)
+                    original_idx = original_indices.get(selector, 0)
+                    self.learner.record_failure(path, original_idx)
 
                 continue
 
