@@ -2,10 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import yaml
+from typing import Any, Dict, List, Optional
 
-from playwright.async_api import Page, Locator
+import yaml
+from playwright.async_api import Locator, Page
 
 from src.core.exceptions import SelectorNotFoundError
 
@@ -25,6 +25,25 @@ class SelectorManager:
         self.selectors_file = Path(selectors_file)
         self._selectors: Dict[str, Any] = {}
         self._load_selectors()
+
+        # Import and initialize learning system
+        try:
+            from src.utils.selector_learning import SelectorLearner
+
+            self.learner = SelectorLearner()
+            logger.info("♻️ Adaptive selector learning enabled")
+        except Exception as e:
+            logger.warning(f"Failed to initialize selector learning: {e}")
+            self.learner = None
+
+        # Import and initialize AI repair system
+        try:
+            from src.utils.ai_selector_repair import AISelectorRepair
+
+            self.ai_repair = AISelectorRepair(selectors_file)
+        except Exception as e:
+            logger.warning(f"Failed to initialize AI repair: {e}")
+            self.ai_repair = None
 
     def _load_selectors(self) -> None:
         """Load selectors from YAML file."""
@@ -123,6 +142,106 @@ class SelectorManager:
 
         return selectors
 
+    def _get_semantic(self, path: str) -> Optional[Dict[str, str]]:
+        """
+        Get semantic locator information for a path.
+
+        Args:
+            path: Dot-separated path
+
+        Returns:
+            Semantic locator dict or None
+        """
+        keys = path.split(".")
+        value = self._selectors
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+
+        # Extract semantic field if it exists
+        if isinstance(value, dict) and "semantic" in value:
+            return value["semantic"]
+
+        return None
+
+    async def _try_semantic_locator(
+        self, page: Page, semantic: Dict[str, str], timeout: int = 10000
+    ) -> Optional[Locator]:
+        """
+        Try to find element using Playwright's semantic locators.
+
+        Args:
+            page: Playwright page object
+            semantic: Semantic locator information
+            timeout: Timeout in milliseconds
+
+        Returns:
+            Element locator or None
+        """
+        try:
+            # Try role-based locator
+            if "role" in semantic:
+                role = semantic["role"]
+                name = (
+                    semantic.get("text")
+                    or semantic.get("text_en")
+                    or semantic.get("label")
+                    or semantic.get("label_en")
+                )
+
+                locator = page.get_by_role(role, name=name) if name else page.get_by_role(role)
+
+                # Check if element exists and is visible
+                try:
+                    await locator.wait_for(state="visible", timeout=timeout)
+                    logger.debug(f"Found element with semantic role: {role}, name: {name}")
+                    return locator
+                except Exception:
+                    pass
+
+            # Try label-based locator (for form inputs)
+            for label_key in ["label", "label_en"]:
+                if label_key in semantic:
+                    label = semantic[label_key]
+                    locator = page.get_by_label(label)
+                    try:
+                        await locator.wait_for(state="visible", timeout=timeout)
+                        logger.debug(f"Found element with label: {label}")
+                        return locator
+                    except Exception:
+                        pass
+
+            # Try text-based locator
+            for text_key in ["text", "text_en"]:
+                if text_key in semantic:
+                    text = semantic[text_key]
+                    locator = page.get_by_text(text, exact=True)
+                    try:
+                        await locator.wait_for(state="visible", timeout=timeout)
+                        logger.debug(f"Found element with text: {text}")
+                        return locator
+                    except Exception:
+                        pass
+
+            # Try placeholder-based locator
+            if "placeholder" in semantic:
+                placeholder = semantic["placeholder"]
+                locator = page.get_by_placeholder(placeholder)
+                try:
+                    await locator.wait_for(state="visible", timeout=timeout)
+                    logger.debug(f"Found element with placeholder: {placeholder}")
+                    return locator
+                except Exception:
+                    pass
+
+        except Exception as e:
+            logger.debug(f"Semantic locator failed: {e}")
+
+        return None
+
     async def wait_for_selector(
         self, page: Page, path: str, timeout: int = 10000
     ) -> Optional[Locator]:
@@ -140,20 +259,95 @@ class SelectorManager:
         Raises:
             SelectorNotFoundError: If all selectors fail
         """
+        # Priority 1: Try semantic locators first (most resilient)
+        semantic = self._get_semantic(path)
+        if semantic:
+            logger.debug(f"Trying semantic locators for: {path}")
+            locator = await self._try_semantic_locator(page, semantic, timeout)
+            if locator:
+                logger.info(f"✅ Found element using semantic locator for: {path}")
+                if self.learner:
+                    # Record semantic success (index -1 indicates semantic)
+                    pass  # We don't track semantic in learning metrics
+                return locator
+
+        # Priority 2: Try CSS selectors with optimized order (learning-based)
         selectors = self.get_with_fallback(path)
+
+        # Keep track of original indices before reordering
+        # This maps selector string to its original index
+        original_indices = {selector: i for i, selector in enumerate(selectors)}
+
+        # Apply learning-based reordering if learner is available
+        if self.learner:
+            selectors = self.learner.get_optimized_order(path, selectors)
 
         for selector in selectors:
             try:
-                await page.wait_for_selector(selector, timeout=timeout)
+                await page.wait_for_selector(selector, timeout=timeout, state="visible")
                 logger.debug(f"Found element with selector: {selector}")
+
+                # Record success in learning system with original index
+                if self.learner:
+                    original_idx = original_indices.get(selector, 0)
+                    self.learner.record_success(path, original_idx)
+
                 return page.locator(selector)
             except Exception:
                 logger.debug(f"Selector failed: {selector}")
+
+                # Record failure in learning system with original index
+                if self.learner:
+                    original_idx = original_indices.get(selector, 0)
+                    self.learner.record_failure(path, original_idx)
+
                 continue
+
+        # Priority 3: Try AI repair as last resort
+        if self.ai_repair and self.ai_repair.enabled:
+            logger.warning(f"🤖 All selectors failed, trying AI repair for: {path}")
+
+            # Generate element description from path
+            element_description = self._generate_element_description(path)
+
+            suggested_selector = await self.ai_repair.suggest_selector(
+                page, path, element_description
+            )
+
+            if suggested_selector:
+                try:
+                    await page.wait_for_selector(
+                        suggested_selector, timeout=timeout, state="visible"
+                    )
+                    logger.info(f"✅ AI repair succeeded for: {path}")
+
+                    # Reload selectors to pick up AI changes
+                    self.reload()
+
+                    return page.locator(suggested_selector)
+                except Exception as e:
+                    logger.error(f"AI-suggested selector also failed: {e}")
 
         # All selectors failed - raise exception with detailed info
         logger.error(f"All selectors failed for path: {path}. Tried: {', '.join(selectors)}")
         raise SelectorNotFoundError(selector_name=path, tried_selectors=selectors)
+
+    def _generate_element_description(self, path: str) -> str:
+        """
+        Generate human-readable element description from path.
+
+        Args:
+            path: Selector path
+
+        Returns:
+            Element description
+        """
+        parts = path.split(".")
+        if len(parts) >= 2:
+            section = parts[0].replace("_", " ").title()
+            element = parts[1].replace("_", " ").title()
+            return f"{element} in {section} section"
+        return path.replace("_", " ").title()
 
     def reload(self) -> None:
         """Reload selectors from file."""

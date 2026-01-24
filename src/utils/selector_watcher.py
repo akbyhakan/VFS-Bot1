@@ -3,12 +3,12 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from playwright.async_api import Page, Browser
+from playwright.async_api import Browser, Page
 
-from src.utils.selectors import SelectorManager
 from src.services.notification import NotificationService
+from src.utils.selectors import SelectorManager
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class SelectorHealthCheck:
 
             # Try primary selector
             try:
-                element = await page.wait_for_selector(selector, timeout=timeout, state="attached")
+                element = await page.wait_for_selector(selector, timeout=timeout, state="visible")
                 if element:
                     result["valid"] = True
                     result["found"] = True
@@ -76,7 +76,7 @@ class SelectorHealthCheck:
                     for i, fallback in enumerate(fallbacks):
                         try:
                             element = await page.wait_for_selector(
-                                fallback, timeout=timeout, state="attached"
+                                fallback, timeout=timeout, state="visible"
                             )
                             if element:
                                 result["valid"] = True
