@@ -7,6 +7,7 @@ from .payment import router as payment_router
 from .bot import router as bot_router
 from .health import router as health_router
 from .dashboard import router as dashboard_router
+from .proxy import router as proxy_router
 
 __all__ = [
     "auth_router",
@@ -16,4 +17,5 @@ __all__ = [
     "bot_router",
     "health_router",
     "dashboard_router",
+    "proxy_router",
 ]
