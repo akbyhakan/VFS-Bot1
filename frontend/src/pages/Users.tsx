@@ -7,23 +7,26 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { CSVImportModal } from '@/components/users/CSVImportModal';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { Plus, Pencil, Trash2, Power, Search, Download, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { userSchema, type UserFormData } from '@/utils/validators';
+import { userSchema, createUserSchema, type UserFormData } from '@/utils/validators';
 import { toast } from 'sonner';
 import type { User, CreateUserRequest } from '@/types/user';
 import { cn, formatDate } from '@/utils/helpers';
 
 export function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCSVImportModalOpen, setIsCSVImportModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, refetch } = useUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -49,13 +52,15 @@ export function Users() {
     formState: { errors },
     reset,
   } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    resolver: zodResolver(editingUser ? userSchema : createUserSchema),
   });
 
   const openCreateModal = () => {
     setEditingUser(null);
+    setShowPassword(false);
     reset({
       email: '',
+      password: '',
       phone: '',
       first_name: '',
       last_name: '',
@@ -69,20 +74,27 @@ export function Users() {
 
   const openEditModal = (user: User) => {
     setEditingUser(user);
-    reset(user);
+    setShowPassword(false);
+    reset({ ...user, password: '' }); // Don't populate password field
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
+    setShowPassword(false);
     reset();
   };
 
   const onSubmit = async (data: UserFormData) => {
     try {
       if (editingUser) {
-        await updateUser.mutateAsync({ id: editingUser.id, ...data });
+        // Only include password if it was filled in
+        const updateData = { ...data };
+        if (!updateData.password || updateData.password === '') {
+          delete updateData.password;
+        }
+        await updateUser.mutateAsync({ id: editingUser.id, ...updateData });
         toast.success('Kullanıcı güncellendi');
       } else {
         await createUser.mutateAsync(data as CreateUserRequest);
@@ -170,6 +182,13 @@ export function Users() {
             leftIcon={<Download className="w-4 h-4" />}
           >
             Export
+          </Button>
+          <Button 
+            variant="secondary" 
+            onClick={() => setIsCSVImportModalOpen(true)}
+            leftIcon={<Upload className="w-4 h-4" />}
+          >
+            CSV Import
           </Button>
           <Button variant="primary" onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
             Yeni Kullanıcı
@@ -293,6 +312,26 @@ export function Users() {
           </div>
 
           <Input label="E-posta" type="email" error={errors.email?.message} {...register('email')} />
+          
+          {/* Password field with show/hide toggle */}
+          <div className="relative">
+            <Input 
+              label="VFS Şifresi" 
+              type={showPassword ? "text" : "password"}
+              error={errors.password?.message} 
+              {...register('password')} 
+              placeholder={editingUser ? "Değiştirmek için yeni şifre girin (boş bırakılırsa değişmez)" : "VFS hesap şifresi"}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-8 text-dark-400 hover:text-dark-200 transition-colors"
+              aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
           <Input label="Telefon" error={errors.phone?.message} {...register('phone')} />
           <Input label="Merkez" error={errors.center_name?.message} {...register('center_name')} />
 
@@ -336,6 +375,16 @@ export function Users() {
           isLoading={deleteUser.isPending}
         />
       )}
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        isOpen={isCSVImportModalOpen}
+        onClose={() => setIsCSVImportModalOpen(false)}
+        onImportComplete={() => {
+          // Refresh the users list
+          refetch();
+        }}
+      />
     </div>
   );
 }

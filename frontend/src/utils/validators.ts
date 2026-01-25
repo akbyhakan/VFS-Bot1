@@ -8,6 +8,7 @@ export const loginSchema = z.object({
 
 export const userSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin'),
+  password: z.string().min(6, 'Şifre en az 6 karakter olmalı').optional(),
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
   first_name: z.string().min(2, 'Ad en az 2 karakter olmalı'),
   last_name: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
@@ -15,6 +16,11 @@ export const userSchema = z.object({
   visa_category: z.string().min(1, 'Vize kategorisi seçiniz'),
   visa_subcategory: z.string().min(1, 'Vize alt kategorisi girin'),
   is_active: z.boolean().optional(),
+});
+
+// Schema for creating new users - password is required
+export const createUserSchema = userSchema.extend({
+  password: z.string().min(6, 'Şifre en az 6 karakter olmalı'),
 });
 
 export const settingsSchema = z.object({
@@ -61,4 +67,5 @@ export const settingsSchema = z.object({
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type UserFormData = z.infer<typeof userSchema>;
+export type CreateUserFormData = z.infer<typeof createUserSchema>;
 export type SettingsFormData = z.infer<typeof settingsSchema>;
