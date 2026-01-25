@@ -9,7 +9,7 @@ export const loginSchema = z.object({
 // VFS Account schema - simplified for VFS login credentials
 export const userSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin'),
-  password: z.string().optional(),
+  password: z.string().optional(), // Optional for updates, required for creation (see createUserSchema)
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
   is_active: z.boolean().default(true),
 });

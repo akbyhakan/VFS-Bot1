@@ -313,7 +313,7 @@ export function Users() {
           </div>
 
           <Input 
-            label="Telefon (OTP için)" 
+            label="Telefon Numarası (OTP için)" 
             error={errors.phone?.message} 
             {...register('phone')} 
             placeholder="5551234567"

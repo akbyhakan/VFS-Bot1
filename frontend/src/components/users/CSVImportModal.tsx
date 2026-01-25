@@ -190,7 +190,7 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
             email,password,phone
           </code>
           <p className="text-sm text-dark-400 mt-2">
-            Not: İlk satır başlık satırı olmalı, hesap verileri ikinci satırdan itibaren başlamalıdır.
+            Not: İlk satır başlık satırı olmalı, VFS hesap verileri ikinci satırdan itibaren başlamalıdır.
           </p>
         </div>
 
