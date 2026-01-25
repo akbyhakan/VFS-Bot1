@@ -93,12 +93,12 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
       setImportResult(response.data);
       
       if (response.data.imported > 0) {
-        toast.success(`${response.data.imported} kullanıcı başarıyla eklendi`);
+        toast.success(`${response.data.imported} VFS hesabı başarıyla eklendi`);
         onImportComplete();
       }
       
       if (response.data.failed > 0) {
-        toast.warning(`${response.data.failed} kullanıcı eklenemedi`);
+        toast.warning(`${response.data.failed} hesap eklenemedi`);
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.detail) {
@@ -113,17 +113,17 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
   };
 
   const handleDownloadSample = () => {
-    const headers = 'email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory';
-    const sample1 = 'user1@example.com,VfsPassword123,Ahmet,Yılmaz,5551234567,Istanbul,Schengen,Tourism';
-    const sample2 = 'user2@example.com,SecurePass456,Mehmet,Kaya,5559876543,Ankara,Schengen,Business';
-    const sample3 = 'user3@example.com,MyPassword789,Ayşe,Demir,5554567890,Izmir,Schengen,Family Visit';
+    const headers = 'email,password,phone';
+    const sample1 = 'user1@example.com,VfsPassword123,5551234567';
+    const sample2 = 'user2@example.com,SecurePass456,5559876543';
+    const sample3 = 'user3@example.com,MyPassword789,5554567890';
     const content = `${headers}\n${sample1}\n${sample2}\n${sample3}`;
     
     const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'vfs-users-template.csv';
+    a.download = 'vfs-accounts-template.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -139,7 +139,7 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="CSV ile Toplu Kullanıcı Yükle" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="CSV ile Toplu VFS Hesabı Yükle" size="lg">
       <div className="space-y-4">
         {/* Drag & Drop Area */}
         <div
@@ -187,10 +187,10 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
             <span className="font-medium">CSV Formatı:</span>
           </div>
           <code className="block text-xs text-dark-400 font-mono overflow-x-auto">
-            email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory
+            email,password,phone
           </code>
           <p className="text-sm text-dark-400 mt-2">
-            Not: İlk satır başlık satırı olmalı, kullanıcı verileri ikinci satırdan itibaren başlamalıdır.
+            Not: İlk satır başlık satırı olmalı, VFS hesap verileri ikinci satırdan itibaren başlamalıdır.
           </p>
         </div>
 

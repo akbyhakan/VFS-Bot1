@@ -38,11 +38,8 @@ export function Users() {
     
     const query = searchQuery.toLowerCase();
     return users.filter(user => 
-      user.first_name.toLowerCase().includes(query) ||
-      user.last_name.toLowerCase().includes(query) ||
       user.email.toLowerCase().includes(query) ||
-      user.phone.includes(query) ||
-      user.center_name.toLowerCase().includes(query)
+      user.phone.includes(query)
     );
   }, [users, searchQuery]);
 
@@ -62,11 +59,6 @@ export function Users() {
       email: '',
       password: '',
       phone: '',
-      first_name: '',
-      last_name: '',
-      center_name: '',
-      visa_category: '',
-      visa_subcategory: '',
       is_active: true,
     });
     setIsModalOpen(true);
@@ -95,10 +87,10 @@ export function Users() {
           delete updateData.password;
         }
         await updateUser.mutateAsync({ id: editingUser.id, ...updateData });
-        toast.success('Kullanıcı güncellendi');
+        toast.success('VFS hesabı güncellendi');
       } else {
         await createUser.mutateAsync(data as CreateUserRequest);
-        toast.success('Kullanıcı oluşturuldu');
+        toast.success('VFS hesabı oluşturuldu');
       }
       closeModal();
     } catch (error) {
@@ -108,8 +100,8 @@ export function Users() {
 
   const handleDelete = async (user: User) => {
     const confirmed = await confirm({
-      title: 'Kullanıcıyı Sil',
-      message: `"${user.first_name} ${user.last_name}" kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      title: 'Hesabı Sil',
+      message: `"${user.email}" hesabını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
       confirmText: 'Sil',
       cancelText: 'İptal',
       variant: 'danger',
@@ -119,7 +111,7 @@ export function Users() {
 
     try {
       await deleteUser.mutateAsync(user.id);
-      toast.success('Kullanıcı silindi');
+      toast.success('Hesap silindi');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Silme başarısız');
     }
@@ -128,7 +120,7 @@ export function Users() {
   const handleToggleStatus = async (user: User) => {
     try {
       await toggleStatus.mutateAsync({ id: user.id, is_active: !user.is_active });
-      toast.success(user.is_active ? 'Kullanıcı pasifleştirildi' : 'Kullanıcı aktifleştirildi');
+      toast.success(user.is_active ? 'Hesap pasifleştirildi' : 'Hesap aktifleştirildi');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'İşlem başarısız');
     }
@@ -137,15 +129,10 @@ export function Users() {
   const handleExport = () => {
     if (!filteredUsers.length) return;
     
-    const headers = ['ID', 'Ad', 'Soyad', 'E-posta', 'Telefon', 'Merkez', 'Vize Kategorisi', 'Durum', 'Oluşturulma'];
+    const headers = ['E-posta', 'Telefon', 'Durum', 'Eklenme'];
     const rows = filteredUsers.map(user => [
-      user.id,
-      user.first_name,
-      user.last_name,
       user.email,
       user.phone,
-      user.center_name,
-      user.visa_category,
       user.is_active ? 'Aktif' : 'Pasif',
       new Date(user.created_at).toLocaleDateString('tr-TR')
     ]);
@@ -155,24 +142,24 @@ export function Users() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `kullanicilar-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `vfs-hesaplar-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Kullanıcı listesi indirildi');
+    toast.success('VFS hesap listesi indirildi');
   };
 
   if (isLoading) {
-    return <Loading fullScreen text="Kullanıcılar yükleniyor..." />;
+    return <Loading fullScreen text="VFS hesapları yükleniyor..." />;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Kullanıcı Yönetimi</h1>
-          <p className="text-dark-400">VFS kullanıcılarını görüntüleyin ve yönetin</p>
+          <h1 className="text-3xl font-bold mb-2">VFS Hesap Havuzu</h1>
+          <p className="text-dark-400">VFS login hesaplarını yönetin</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -191,14 +178,14 @@ export function Users() {
             CSV Import
           </Button>
           <Button variant="primary" onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
-            Yeni Kullanıcı
+            Yeni Hesap
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Kullanıcı Listesi</CardTitle>
+          <CardTitle>VFS Hesap Listesi</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Search */}
@@ -209,7 +196,7 @@ export function Users() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="İsim, e-posta, telefon veya merkez ile ara..."
+                placeholder="E-posta veya telefon ile ara..."
                 className="w-full pl-10 pr-10 py-2 bg-dark-800 border border-dark-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               {searchQuery && (
@@ -223,7 +210,7 @@ export function Users() {
             </div>
             {searchQuery && (
               <p className="text-sm text-dark-400 mt-2">
-                {filteredUsers.length} kullanıcı bulundu
+                {filteredUsers.length} hesap bulundu
               </p>
             )}
           </div>
@@ -231,15 +218,8 @@ export function Users() {
           <Table
             data={filteredUsers}
             columns={[
-              {
-                key: 'first_name',
-                header: 'Ad Soyad',
-                render: (user) => `${user.first_name} ${user.last_name}`,
-              },
               { key: 'email', header: 'E-posta' },
               { key: 'phone', header: 'Telefon' },
-              { key: 'center_name', header: 'Merkez' },
-              { key: 'visa_category', header: 'Vize Kategorisi' },
               {
                 key: 'is_active',
                 header: 'Durum',
@@ -256,7 +236,7 @@ export function Users() {
               },
               {
                 key: 'created_at',
-                header: 'Oluşturulma',
+                header: 'Eklenme',
                 render: (user) => formatDate(user.created_at, 'PP'),
               },
               {
@@ -267,7 +247,7 @@ export function Users() {
                     <button
                       onClick={() => handleToggleStatus(user)}
                       className="text-yellow-400 hover:text-yellow-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                      aria-label={user.is_active ? `${user.first_name} ${user.last_name} kullanıcısını pasifleştir` : `${user.first_name} ${user.last_name} kullanıcısını aktifleştir`}
+                      aria-label={user.is_active ? `${user.email} hesabını pasifleştir` : `${user.email} hesabını aktifleştir`}
                       title={user.is_active ? 'Pasifleştir' : 'Aktifleştir'}
                     >
                       <Power className="w-4 h-4" aria-hidden="true" />
@@ -275,7 +255,7 @@ export function Users() {
                     <button
                       onClick={() => openEditModal(user)}
                       className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      aria-label={`${user.first_name} ${user.last_name} kullanıcısını düzenle`}
+                      aria-label={`${user.email} hesabını düzenle`}
                       title="Düzenle"
                     >
                       <Pencil className="w-4 h-4" aria-hidden="true" />
@@ -283,7 +263,7 @@ export function Users() {
                     <button
                       onClick={() => handleDelete(user)}
                       className="text-red-400 hover:text-red-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                      aria-label={`${user.first_name} ${user.last_name} kullanıcısını sil`}
+                      aria-label={`${user.email} hesabını sil`}
                       title="Sil"
                     >
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -293,7 +273,7 @@ export function Users() {
               },
             ]}
             keyExtractor={(user) => user.id}
-            emptyMessage="Henüz kullanıcı bulunmuyor"
+            emptyMessage="Henüz VFS hesabı bulunmuyor"
           />
         </CardContent>
       </Card>
@@ -302,25 +282,25 @@ export function Users() {
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={editingUser ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}
+        title={editingUser ? 'VFS Hesabı Düzenle' : 'Yeni VFS Hesabı'}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Ad" error={errors.first_name?.message} {...register('first_name')} />
-            <Input label="Soyad" error={errors.last_name?.message} {...register('last_name')} />
-          </div>
-
-          <Input label="E-posta" type="email" error={errors.email?.message} {...register('email')} />
+          <Input 
+            label="E-posta" 
+            type="email" 
+            error={errors.email?.message} 
+            {...register('email')} 
+            placeholder="vfs-hesap@example.com"
+          />
           
-          {/* Password field with show/hide toggle */}
           <div className="relative">
             <Input 
               label="VFS Şifresi" 
               type={showPassword ? "text" : "password"}
               error={errors.password?.message} 
               {...register('password')} 
-              placeholder={editingUser ? "Değiştirmek için yeni şifre girin (boş bırakılırsa değişmez)" : "VFS hesap şifresi"}
+              placeholder={editingUser ? "Değiştirmek için yeni şifre girin" : "VFS hesap şifresi"}
             />
             <button
               type="button"
@@ -332,13 +312,12 @@ export function Users() {
             </button>
           </div>
 
-          <Input label="Telefon" error={errors.phone?.message} {...register('phone')} />
-          <Input label="Merkez" error={errors.center_name?.message} {...register('center_name')} />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Vize Kategorisi" error={errors.visa_category?.message} {...register('visa_category')} />
-            <Input label="Alt Kategori" error={errors.visa_subcategory?.message} {...register('visa_subcategory')} />
-          </div>
+          <Input 
+            label="Telefon Numarası (OTP için)" 
+            error={errors.phone?.message} 
+            {...register('phone')} 
+            placeholder="5551234567"
+          />
 
           <div className="flex items-center gap-2">
             <input type="checkbox" id="is_active" {...register('is_active')} className="w-4 h-4" />
@@ -355,7 +334,7 @@ export function Users() {
               className="flex-1"
               isLoading={createUser.isPending || updateUser.isPending}
             >
-              {editingUser ? 'Güncelle' : 'Oluştur'}
+              {editingUser ? 'Güncelle' : 'Kaydet'}
             </Button>
           </div>
         </form>

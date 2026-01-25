@@ -6,19 +6,15 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
+// VFS Account schema - simplified for VFS login credentials
 export const userSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin'),
-  password: z.string().min(6, 'Şifre en az 6 karakter olmalı').optional(),
+  password: z.string().optional(), // Optional for updates, required for creation (see createUserSchema)
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  first_name: z.string().min(2, 'Ad en az 2 karakter olmalı'),
-  last_name: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
-  center_name: z.string().min(1, 'Merkez seçiniz'),
-  visa_category: z.string().min(1, 'Vize kategorisi seçiniz'),
-  visa_subcategory: z.string().min(1, 'Vize alt kategorisi girin'),
-  is_active: z.boolean().optional(),
+  is_active: z.boolean().default(true),
 });
 
-// Schema for creating new users - password is required
+// Schema for creating new VFS accounts - password is required
 export const createUserSchema = userSchema.extend({
   password: z.string().min(6, 'Şifre en az 6 karakter olmalı'),
 });
