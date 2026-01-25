@@ -24,6 +24,7 @@ from web.routes import (
     health_router,
     dashboard_router,
     proxy_router,
+    webhook_router,
 )
 from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
@@ -115,6 +116,7 @@ if static_dir.exists():
 
 # Include routers
 app.include_router(otp_router)  # OTP webhook routes
+app.include_router(webhook_router)  # Per-user webhook routes
 app.include_router(auth_router)  # /api/auth/*
 app.include_router(users_router)  # /api/users/*
 app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*

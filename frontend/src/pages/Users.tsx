@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleUserStatus } from '@/hooks/useApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,13 +9,14 @@ import { Loading } from '@/components/common/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CSVImportModal } from '@/components/users/CSVImportModal';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload, Link2, Copy, Check } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userSchema, createUserSchema, type UserFormData } from '@/utils/validators';
 import { toast } from 'sonner';
 import type { User, CreateUserRequest } from '@/types/user';
 import { cn, formatDate } from '@/utils/helpers';
+import { webhookApi } from '@/services/webhook';
 
 export function Users() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,6 +24,9 @@ export function Users() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [webhooks, setWebhooks] = useState<Record<number, string>>({});
+  const [copiedWebhook, setCopiedWebhook] = useState<number | null>(null);
+  const [creatingWebhook, setCreatingWebhook] = useState<number | null>(null);
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
@@ -31,6 +35,26 @@ export function Users() {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const toggleStatus = useToggleUserStatus();
+
+  // Load webhooks for all users
+  useEffect(() => {
+    if (users) {
+      const loadWebhooks = async () => {
+        for (const user of users) {
+          try {
+            const data = await webhookApi.getWebhook(user.id);
+            if (data.webhook) {
+              setWebhooks(prev => ({ ...prev, [user.id]: data.webhook.webhook_url }));
+            }
+          } catch (error) {
+            // Silently ignore errors for individual webhook fetches
+            console.error(`Failed to load webhook for user ${user.id}:`, error);
+          }
+        }
+      };
+      loadWebhooks();
+    }
+  }, [users]);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -150,6 +174,52 @@ export function Users() {
     toast.success('VFS hesap listesi indirildi');
   };
 
+  const handleCreateWebhook = async (userId: number) => {
+    setCreatingWebhook(userId);
+    try {
+      const data = await webhookApi.createWebhook(userId);
+      setWebhooks(prev => ({ ...prev, [userId]: data.webhook_url }));
+      
+      // Show success toast with full URL
+      const fullUrl = `${window.location.origin}${data.webhook_url}`;
+      toast.success(
+        'Webhook oluşturuldu! URL kopyalandı.',
+        { duration: 5000 }
+      );
+      
+      // Auto-copy to clipboard
+      navigator.clipboard.writeText(fullUrl);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Webhook oluşturulamadı';
+      toast.error(errorMessage);
+    } finally {
+      setCreatingWebhook(null);
+    }
+  };
+
+  const handleCopyWebhook = (userId: number, url: string) => {
+    const fullUrl = `${window.location.origin}${url}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedWebhook(userId);
+    setTimeout(() => setCopiedWebhook(null), 2000);
+    toast.success('Webhook adresi kopyalandı');
+  };
+
+  const handleDeleteWebhook = async (userId: number) => {
+    try {
+      await webhookApi.deleteWebhook(userId);
+      setWebhooks(prev => {
+        const newWebhooks = { ...prev };
+        delete newWebhooks[userId];
+        return newWebhooks;
+      });
+      toast.success('Webhook silindi');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Webhook silinemedi';
+      toast.error(errorMessage);
+    }
+  };
+
   if (isLoading) {
     return <Loading fullScreen text="VFS hesapları yükleniyor..." />;
   }
@@ -238,6 +308,48 @@ export function Users() {
                 key: 'created_at',
                 header: 'Eklenme',
                 render: (user) => formatDate(user.created_at, 'PP'),
+              },
+              {
+                key: 'webhook',
+                header: 'Webhook',
+                render: (user) => {
+                  const webhookUrl = webhooks[user.id];
+                  
+                  if (!webhookUrl) {
+                    return (
+                      <button
+                        onClick={() => handleCreateWebhook(user.id)}
+                        disabled={creatingWebhook === user.id}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Link2 className="w-3 h-3" />
+                        {creatingWebhook === user.id ? 'Oluşturuluyor...' : 'Oluştur'}
+                      </button>
+                    );
+                  }
+                  
+                  return (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-dark-400 font-mono truncate max-w-[100px]" title={webhookUrl}>
+                        {webhookUrl.split('/').pop()?.slice(0, 8)}...
+                      </span>
+                      <button
+                        onClick={() => handleCopyWebhook(user.id, webhookUrl)}
+                        className="p-1 text-dark-400 hover:text-primary-400 transition-colors"
+                        title="Kopyala"
+                      >
+                        {copiedWebhook === user.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWebhook(user.id)}
+                        className="p-1 text-dark-400 hover:text-red-400 transition-colors"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                },
               },
               {
                 key: 'actions',
