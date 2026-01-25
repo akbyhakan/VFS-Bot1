@@ -43,8 +43,8 @@ export function Users() {
         for (const user of users) {
           try {
             const data = await webhookApi.getWebhook(user.id);
-            if (data.webhook) {
-              setWebhooks(prev => ({ ...prev, [user.id]: data.webhook.webhook_url }));
+            if (data.webhook && data.webhook !== null) {
+              setWebhooks(prev => ({ ...prev, [user.id]: data.webhook!.webhook_url }));
             }
           } catch (error) {
             // Silently ignore errors for individual webhook fetches
