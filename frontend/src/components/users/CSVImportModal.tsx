@@ -3,7 +3,9 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Upload, FileText, Download, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/services/api';
+import axios from 'axios';
+import { API_BASE_URL } from '@/utils/constants';
+import { tokenManager } from '@/utils/tokenManager';
 
 interface CSVImportModalProps {
   isOpen: boolean;
@@ -76,22 +78,34 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await api.post<ImportResult>('/api/users/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const token = tokenManager.getToken();
+      const response = await axios.post<ImportResult>(
+        `${API_BASE_URL}/api/users/import`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
 
-      setImportResult(response);
+      setImportResult(response.data);
       
-      if (response.imported > 0) {
-        toast.success(`${response.imported} kullanıcı başarıyla eklendi`);
+      if (response.data.imported > 0) {
+        toast.success(`${response.data.imported} kullanıcı başarıyla eklendi`);
         onImportComplete();
       }
       
-      if (response.failed > 0) {
-        toast.warning(`${response.failed} kullanıcı eklenemedi`);
+      if (response.data.failed > 0) {
+        toast.warning(`${response.data.failed} kullanıcı eklenemedi`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'CSV yüklenirken hata oluştu');
+      if (axios.isAxiosError(error) && error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error(error instanceof Error ? error.message : 'CSV yüklenirken hata oluştu');
+      }
       console.error('CSV import error:', error);
     } finally {
       setIsUploading(false);
@@ -159,9 +173,9 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <Button type="button" variant="secondary" as="span">
+              <span className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-dark-600 bg-dark-800 hover:bg-dark-700 text-dark-200 h-10 px-4 py-2">
                 Dosya Seç
-              </Button>
+              </span>
             </label>
           </div>
         </div>
