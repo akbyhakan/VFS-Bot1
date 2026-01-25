@@ -80,8 +80,9 @@ cloudflare:
   manual_captcha: false
 
 proxy:
-  enabled: false
-  file: "config/proxies.txt"
+  enabled: true
+  provider: "netnut"
+  file: "config/proxy-endpoints.csv"
   rotate_on_error: true
 
 human_behavior:

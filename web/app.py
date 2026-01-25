@@ -23,6 +23,7 @@ from web.routes import (
     bot_router,
     health_router,
     dashboard_router,
+    proxy_router,
 )
 from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
@@ -118,6 +119,7 @@ app.include_router(auth_router)  # /api/auth/*
 app.include_router(users_router)  # /api/users/*
 app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*
 app.include_router(payment_router)  # /api/payment-card/*, /api/payment/*
+app.include_router(proxy_router)  # /api/proxy/*
 app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
 app.include_router(health_router)  # /health, /ready, /metrics
 app.include_router(dashboard_router)  # /errors.html
