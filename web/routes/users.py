@@ -387,7 +387,7 @@ async def import_users_csv(
         reader = csv.DictReader(io.StringIO(text))
         
         # Validate headers
-        expected_headers = {'email', 'password', 'first_name', 'last_name', 'phone', 'centre', 'visa_category'}
+        expected_headers = {'email', 'password', 'first_name', 'last_name', 'phone', 'centre', 'visa_category', 'visa_subcategory'}
         if reader.fieldnames is None:
             raise HTTPException(status_code=400, detail="CSV dosyası boş veya geçersiz")
         

@@ -26,7 +26,7 @@ export function Users() {
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, refetch } = useUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -382,7 +382,7 @@ export function Users() {
         onClose={() => setIsCSVImportModalOpen(false)}
         onImportComplete={() => {
           // Refresh the users list
-          createUser.reset();
+          refetch();
         }}
       />
     </div>
