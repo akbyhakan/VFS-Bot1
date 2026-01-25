@@ -3,6 +3,7 @@
 import aiosqlite
 import logging
 import os
+import secrets
 from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -421,6 +422,28 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status 
                 ON appointment_history(user_id, status)
+            """
+            )
+
+            # User webhooks table - per-user OTP webhook tokens
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_webhooks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL UNIQUE,
+                    webhook_token VARCHAR(64) UNIQUE NOT NULL,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """
+            )
+
+            # Index for faster webhook token lookups
+            await cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_user_webhooks_token 
+                ON user_webhooks(webhook_token)
             """
             )
 
@@ -1718,3 +1741,112 @@ class Database:
             )
             await conn.commit()
             return True
+
+    # =====================
+    # User Webhook Methods
+    # =====================
+
+    @require_connection
+    async def create_user_webhook(self, user_id: int) -> str:
+        """
+        Create a unique webhook token for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Generated webhook token
+
+        Raises:
+            ValueError: If user already has a webhook
+        """
+        # Check if user already has a webhook
+        existing = await self.get_user_webhook(user_id)
+        if existing:
+            raise ValueError("User already has a webhook")
+        
+        # Generate unique token
+        token = secrets.token_urlsafe(32)
+        
+        async with self.get_connection() as conn:
+            await conn.execute(
+                """
+                INSERT INTO user_webhooks (user_id, webhook_token, is_active)
+                VALUES (?, ?, 1)
+                """,
+                (user_id, token)
+            )
+            await conn.commit()
+        
+        logger.info(f"Webhook created for user {user_id}: {token[:8]}...")
+        return token
+
+    @require_connection
+    async def get_user_webhook(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get webhook information for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Webhook data or None if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT * FROM user_webhooks WHERE user_id = ?
+                """,
+                (user_id,)
+            )
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+    @require_connection
+    async def delete_user_webhook(self, user_id: int) -> bool:
+        """
+        Delete a user's webhook.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            True if deleted, False if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                DELETE FROM user_webhooks WHERE user_id = ?
+                """,
+                (user_id,)
+            )
+            await conn.commit()
+            deleted = cursor.rowcount > 0
+        
+        if deleted:
+            logger.info(f"Webhook deleted for user {user_id}")
+        return deleted
+
+    @require_connection
+    async def get_user_by_webhook_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """
+        Get user information by webhook token.
+
+        Args:
+            token: Webhook token
+
+        Returns:
+            User data or None if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT u.* 
+                FROM users u 
+                JOIN user_webhooks w ON u.id = w.user_id 
+                WHERE w.webhook_token = ? AND w.is_active = 1
+                """,
+                (token,)
+            )
+            row = await cursor.fetchone()
+            return dict(row) if row else None
