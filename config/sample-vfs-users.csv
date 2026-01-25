@@ -1,4 +1,4 @@
-email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory
-user1@example.com,VfsPassword123,Ahmet,Yılmaz,5551234567,Istanbul,Schengen,Tourism
-user2@example.com,SecurePass456,Mehmet,Kaya,5559876543,Ankara,Schengen,Business
-user3@example.com,MyPassword789,Ayşe,Demir,5554567890,Izmir,Schengen,Family Visit
+email,password,phone
+user1@example.com,VfsPassword123,5551234567
+user2@example.com,SecurePass456,5559876543
+user3@example.com,MyPassword789,5554567890
