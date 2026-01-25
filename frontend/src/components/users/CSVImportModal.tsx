@@ -1,0 +1,255 @@
+import { useState, useCallback } from 'react';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Upload, FileText, Download, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { api } from '@/services/api';
+
+interface CSVImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onImportComplete: () => void;
+}
+
+interface ImportResult {
+  imported: number;
+  failed: number;
+  errors: string[];
+  message: string;
+}
+
+export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportModalProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.name.endsWith('.csv')) {
+        setSelectedFile(file);
+        setImportResult(null);
+      } else {
+        toast.error('Lütfen sadece CSV dosyası seçin');
+      }
+    }
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.name.endsWith('.csv')) {
+        setSelectedFile(file);
+        setImportResult(null);
+      } else {
+        toast.error('Lütfen sadece CSV dosyası seçin');
+      }
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast.error('Lütfen bir CSV dosyası seçin');
+      return;
+    }
+
+    setIsUploading(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await api.post<ImportResult>('/api/users/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setImportResult(response);
+      
+      if (response.imported > 0) {
+        toast.success(`${response.imported} kullanıcı başarıyla eklendi`);
+        onImportComplete();
+      }
+      
+      if (response.failed > 0) {
+        toast.warning(`${response.failed} kullanıcı eklenemedi`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'CSV yüklenirken hata oluştu');
+      console.error('CSV import error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDownloadSample = () => {
+    const headers = 'email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory';
+    const sample1 = 'user1@example.com,VfsPassword123,Ahmet,Yılmaz,5551234567,Istanbul,Schengen,Tourism';
+    const sample2 = 'user2@example.com,SecurePass456,Mehmet,Kaya,5559876543,Ankara,Schengen,Business';
+    const sample3 = 'user3@example.com,MyPassword789,Ayşe,Demir,5554567890,Izmir,Schengen,Family Visit';
+    const content = `${headers}\n${sample1}\n${sample2}\n${sample3}`;
+    
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vfs-users-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Örnek CSV dosyası indirildi');
+  };
+
+  const handleClose = () => {
+    setSelectedFile(null);
+    setImportResult(null);
+    setIsDragging(false);
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="CSV ile Toplu Kullanıcı Yükle" size="lg">
+      <div className="space-y-4">
+        {/* Drag & Drop Area */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`
+            border-2 border-dashed rounded-lg p-8 text-center transition-colors
+            ${isDragging ? 'border-primary-500 bg-primary-500/10' : 'border-dark-600 hover:border-dark-500'}
+          `}
+        >
+          <div className="flex flex-col items-center gap-4">
+            <Upload className={`w-12 h-12 ${isDragging ? 'text-primary-400' : 'text-dark-400'}`} />
+            
+            {selectedFile ? (
+              <div className="flex items-center gap-2 text-primary-400">
+                <FileText className="w-5 h-5" />
+                <span className="font-medium">{selectedFile.name}</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-dark-200 font-medium">CSV dosyasını sürükleyip bırakın</p>
+                <p className="text-dark-400 text-sm">veya</p>
+              </div>
+            )}
+
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button type="button" variant="secondary" as="span">
+                Dosya Seç
+              </Button>
+            </label>
+          </div>
+        </div>
+
+        {/* CSV Format Info */}
+        <div className="bg-dark-800 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 text-dark-200">
+            <FileText className="w-4 h-4" />
+            <span className="font-medium">CSV Formatı:</span>
+          </div>
+          <code className="block text-xs text-dark-400 font-mono overflow-x-auto">
+            email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory
+          </code>
+          <p className="text-sm text-dark-400 mt-2">
+            Not: İlk satır başlık satırı olmalı, kullanıcı verileri ikinci satırdan itibaren başlamalıdır.
+          </p>
+        </div>
+
+        {/* Download Sample */}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleDownloadSample}
+          leftIcon={<Download className="w-4 h-4" />}
+          className="w-full"
+        >
+          Örnek CSV İndir
+        </Button>
+
+        {/* Import Result */}
+        {importResult && (
+          <div className="bg-dark-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 font-medium">
+              {importResult.imported > 0 && importResult.failed === 0 ? (
+                <CheckCircle2 className="w-5 h-5 text-green-400" />
+              ) : importResult.failed > 0 && importResult.imported === 0 ? (
+                <XCircle className="w-5 h-5 text-red-400" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-yellow-400" />
+              )}
+              <span>{importResult.message}</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <span>Başarılı: {importResult.imported}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-400" />
+                <span>Başarısız: {importResult.failed}</span>
+              </div>
+            </div>
+
+            {importResult.errors.length > 0 && (
+              <div className="space-y-1 text-sm">
+                <p className="text-dark-400 font-medium">Hatalar:</p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {importResult.errors.map((error, index) => (
+                    <p key={index} className="text-red-400 text-xs">
+                      • {error}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4">
+          <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
+            {importResult ? 'Kapat' : 'İptal'}
+          </Button>
+          {!importResult && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleUpload}
+              className="flex-1"
+              isLoading={isUploading}
+              disabled={!selectedFile}
+            >
+              Yükle
+            </Button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}

@@ -1,9 +1,11 @@
 """User management routes for VFS-Bot web application."""
 
+import csv
+import io
 import logging
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 from src.models.database import Database
 from src.core.exceptions import ValidationError
@@ -337,5 +339,130 @@ async def toggle_user_status(
     except Exception as e:
         logger.error(f"Error toggling user status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to toggle user status")
+    finally:
+        await db.close()
+
+
+@router.post("/import")
+async def import_users_csv(
+    file: UploadFile = File(...),
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    Import users from CSV file - requires authentication.
+
+    CSV Format:
+    email,password,first_name,last_name,phone,centre,visa_category,visa_subcategory
+
+    Args:
+        file: CSV file to import
+        token_data: Verified token data
+
+    Returns:
+        Import results with success/failure counts and error messages
+
+    Raises:
+        HTTPException: If file is not CSV or import fails
+    """
+    if not file.filename or not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Sadece CSV dosyası kabul edilir")
+
+    db = Database()
+    try:
+        await db.connect()
+
+        # Read file content
+        content = await file.read()
+        
+        # Handle BOM (Byte Order Mark) for UTF-8
+        try:
+            text = content.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            try:
+                text = content.decode('latin-1')
+            except UnicodeDecodeError:
+                raise HTTPException(status_code=400, detail="Dosya kodlaması desteklenmiyor. UTF-8 veya Latin-1 kullanın.")
+
+        # Parse CSV
+        reader = csv.DictReader(io.StringIO(text))
+        
+        # Validate headers
+        expected_headers = {'email', 'password', 'first_name', 'last_name', 'phone', 'centre', 'visa_category'}
+        if reader.fieldnames is None:
+            raise HTTPException(status_code=400, detail="CSV dosyası boş veya geçersiz")
+        
+        actual_headers = set(reader.fieldnames)
+        missing_headers = expected_headers - actual_headers
+        if missing_headers:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Eksik CSV başlıkları: {', '.join(missing_headers)}"
+            )
+
+        imported = 0
+        failed = 0
+        errors = []
+
+        for row_num, row in enumerate(reader, start=2):  # Start from 2 (1 is header)
+            try:
+                # Validate required fields
+                if not row.get('email') or not row.get('password'):
+                    errors.append(f"Satır {row_num}: E-posta ve şifre gerekli")
+                    failed += 1
+                    continue
+
+                # Create user record
+                user_id = await db.add_user(
+                    email=row['email'].strip(),
+                    password=row['password'].strip(),
+                    centre=row.get('centre', '').strip(),
+                    category=row.get('visa_category', '').strip(),
+                    subcategory=row.get('visa_subcategory', '').strip(),
+                )
+
+                # Add personal details
+                await db.add_personal_details(
+                    user_id=user_id,
+                    details={
+                        'first_name': row.get('first_name', '').strip(),
+                        'last_name': row.get('last_name', '').strip(),
+                        'email': row['email'].strip(),
+                        'mobile_number': row.get('phone', '').strip(),
+                        'passport_number': '',  # Empty for now
+                    },
+                )
+
+                imported += 1
+                logger.info(f"CSV Import: User created {row['email']} by {token_data.get('sub', 'unknown')}")
+
+            except ValidationError as e:
+                failed += 1
+                errors.append(f"Satır {row_num}: {str(e)}")
+            except Exception as e:
+                failed += 1
+                error_msg = str(e)
+                # Make error message more user-friendly
+                if "UNIQUE constraint failed" in error_msg:
+                    errors.append(f"Satır {row_num}: E-posta zaten kayıtlı ({row.get('email', 'N/A')})")
+                else:
+                    errors.append(f"Satır {row_num}: {error_msg}")
+
+        logger.info(
+            f"CSV Import completed by {token_data.get('sub', 'unknown')}: "
+            f"{imported} imported, {failed} failed"
+        )
+
+        return {
+            "imported": imported,
+            "failed": failed,
+            "errors": errors[:10],  # Return first 10 errors only
+            "message": f"{imported} kullanıcı eklendi, {failed} başarısız"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error importing CSV: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="CSV dosyası işlenirken hata oluştu")
     finally:
         await db.close()
