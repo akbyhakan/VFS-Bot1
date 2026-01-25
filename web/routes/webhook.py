@@ -12,6 +12,10 @@ from src.services.otp_webhook import get_otp_service
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
+# OTP field priority order for webhook payloads
+OTP_FIELD_PRIORITY = ["message", "otp", "body", "text"]
+PHONE_FIELD_PRIORITY = ["phone", "from", "phone_number"]
+
 
 @router.post("/users/{user_id}/create")
 async def create_webhook(
@@ -173,9 +177,9 @@ async def receive_otp(token: str, body: dict):
         if not user:
             raise HTTPException(status_code=404, detail="Invalid webhook token")
 
-        # Extract OTP from various possible fields
-        otp_code = body.get("message") or body.get("otp") or body.get("body") or body.get("text")
-        phone_number = body.get("phone") or body.get("from") or body.get("phone_number") or ""
+        # Extract OTP from various possible fields (in priority order)
+        otp_code = next((body.get(field) for field in OTP_FIELD_PRIORITY if body.get(field)), None)
+        phone_number = next((body.get(field) for field in PHONE_FIELD_PRIORITY if body.get(field)), "")
 
         if not otp_code:
             raise HTTPException(status_code=400, detail="No OTP found in request body")
@@ -183,9 +187,11 @@ async def receive_otp(token: str, body: dict):
         # Get OTP service and process the SMS for this user
         otp_service = get_otp_service()
         
-        # Store OTP with user_id as identifier
+        # Store OTP with user_id as identifier for lookup
+        # Format: user_{user_id}_{phone_number} to ensure uniqueness per user
+        phone_identifier = f"user_{user['id']}_{phone_number}"
         await otp_service.process_appointment_sms(
-            phone_number=f"user_{user['id']}_{phone_number}",
+            phone_number=phone_identifier,
             message=str(otp_code)
         )
 

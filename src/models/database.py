@@ -3,6 +3,7 @@
 import aiosqlite
 import logging
 import os
+import secrets
 from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -1759,8 +1760,6 @@ class Database:
         Raises:
             ValueError: If user already has a webhook
         """
-        import secrets
-        
         # Check if user already has a webhook
         existing = await self.get_user_webhook(user_id)
         if existing:
