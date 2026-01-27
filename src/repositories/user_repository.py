@@ -87,12 +87,12 @@ class UserRepository(BaseRepository[User]):
             phone=row.get("phone", ""),
             first_name=row.get("first_name", ""),
             last_name=row.get("last_name", ""),
-            center_name=row["center_name"],
-            visa_category=row["visa_category"],
-            visa_subcategory=row["visa_subcategory"],
-            is_active=bool(row["is_active"]),
-            created_at=row["created_at"],
-            updated_at=row["updated_at"],
+            center_name=row.get("center_name", ""),
+            visa_category=row.get("visa_category", ""),
+            visa_subcategory=row.get("visa_subcategory", ""),
+            is_active=bool(row.get("is_active", True)),
+            created_at=row.get("created_at", ""),
+            updated_at=row.get("updated_at", ""),
         )
     
     async def get_by_id(self, id: int) -> Optional[User]:

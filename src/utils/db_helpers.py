@@ -1,6 +1,7 @@
 """Database batch operations helpers for improved performance."""
 
 import logging
+import re
 from typing import List, Dict, Any, TypeVar, Callable, Awaitable, Optional
 from contextlib import asynccontextmanager
 
@@ -9,6 +10,23 @@ import aiosqlite
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+def validate_sql_identifier(identifier: str) -> bool:
+    """
+    Validate SQL identifier (table or column name) to prevent SQL injection.
+    
+    Args:
+        identifier: Table or column name to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    # Only allow alphanumeric characters and underscores
+    # Must start with a letter or underscore
+    # Max length 64 characters (MySQL/SQLite limit)
+    pattern = r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$'
+    return bool(re.match(pattern, identifier))
 
 
 async def batch_insert(
@@ -23,13 +41,16 @@ async def batch_insert(
     
     Args:
         conn: Database connection
-        table: Table name
-        columns: Column names
+        table: Table name (will be validated)
+        columns: Column names (will be validated)
         rows: List of tuples with values to insert
         batch_size: Number of rows to insert per batch
         
     Returns:
         Total number of rows inserted
+        
+    Raises:
+        ValueError: If table or column names are invalid
         
     Example:
         ```python
@@ -47,6 +68,15 @@ async def batch_insert(
     """
     if not rows:
         return 0
+    
+    # Validate table name
+    if not validate_sql_identifier(table):
+        raise ValueError(f"Invalid table name: {table}")
+    
+    # Validate column names
+    for col in columns:
+        if not validate_sql_identifier(col):
+            raise ValueError(f"Invalid column name: {col}")
     
     placeholders = ", ".join(["?"] * len(columns))
     column_list = ", ".join(columns)
@@ -85,13 +115,16 @@ async def batch_update(
     
     Args:
         conn: Database connection
-        table: Table name
+        table: Table name (will be validated)
         updates: List of dicts with 'id' and fields to update
-        id_column: Name of the ID column (default: "id")
+        id_column: Name of the ID column (default: "id", will be validated)
         batch_size: Number of rows to update per batch
         
     Returns:
         Total number of rows updated
+        
+    Raises:
+        ValueError: If table or column names are invalid
         
     Example:
         ```python
@@ -108,6 +141,12 @@ async def batch_update(
     """
     if not updates:
         return 0
+    
+    # Validate table and id_column names
+    if not validate_sql_identifier(table):
+        raise ValueError(f"Invalid table name: {table}")
+    if not validate_sql_identifier(id_column):
+        raise ValueError(f"Invalid column name: {id_column}")
     
     total_updated = 0
     
@@ -127,6 +166,12 @@ async def batch_update(
                 
                 if not update_dict:
                     continue
+                
+                # Validate column names
+                for col in update_dict.keys():
+                    if not validate_sql_identifier(col):
+                        logger.warning(f"Skipping invalid column name: {col}")
+                        continue
                 
                 # Build SET clause
                 set_clause = ", ".join([f"{k} = ?" for k in update_dict.keys()])
@@ -161,13 +206,16 @@ async def batch_delete(
     
     Args:
         conn: Database connection
-        table: Table name
+        table: Table name (will be validated)
         ids: List of IDs to delete
-        id_column: Name of the ID column (default: "id")
+        id_column: Name of the ID column (default: "id", will be validated)
         batch_size: Number of rows to delete per batch
         
     Returns:
         Total number of rows deleted
+        
+    Raises:
+        ValueError: If table or column names are invalid
         
     Example:
         ```python
@@ -177,6 +225,12 @@ async def batch_delete(
     """
     if not ids:
         return 0
+    
+    # Validate table and id_column names
+    if not validate_sql_identifier(table):
+        raise ValueError(f"Invalid table name: {table}")
+    if not validate_sql_identifier(id_column):
+        raise ValueError(f"Invalid column name: {id_column}")
     
     total_deleted = 0
     

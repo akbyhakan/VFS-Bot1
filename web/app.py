@@ -55,7 +55,19 @@ def validate_cors_origins(origins_str: str) -> List[str]:
     
     # Production-specific validation
     if env not in {"development", "dev", "testing", "test", "local"}:
-        invalid = [o for o in origins if "localhost" in o or o == "*"]
+        # More precise localhost detection
+        invalid = []
+        for o in origins:
+            # Check for wildcard
+            if o == "*":
+                invalid.append(o)
+            # Check for localhost (exact match or with port)
+            elif o.startswith("http://localhost") or o.startswith("https://localhost"):
+                invalid.append(o)
+            # Check for 127.0.0.1
+            elif "127.0.0.1" in o:
+                invalid.append(o)
+        
         if invalid:
             logger.warning(f"Removing insecure CORS origins in production: {invalid}")
             origins = [o for o in origins if o not in invalid]
