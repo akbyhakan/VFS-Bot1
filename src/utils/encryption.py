@@ -61,7 +61,13 @@ class PasswordEncryption:
             # Create cipher with normalized key
             cipher_key = key.encode() if isinstance(key, str) else key
             self.cipher = Fernet(cipher_key)
-            logger.info(f"Password encryption initialized (key hash: {self._key_hash})")
+
+            # Only log key hash in non-production environments
+            env = os.getenv("ENV", "production").lower()
+            if env != "production":
+                logger.debug(f"Password encryption initialized (key hash: {self._key_hash})")
+            else:
+                logger.info("Password encryption initialized successfully")
         except Exception as e:
             raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
 
@@ -69,14 +75,14 @@ class PasswordEncryption:
     def key_hash(self) -> str:
         """Return truncated hash of current key for identification."""
         return self._key_hash
-    
+
     def can_decrypt(self, encrypted_data: str) -> bool:
         """
         Check if current key can decrypt the given data.
-        
+
         Args:
             encrypted_data: Encrypted data to test
-            
+
         Returns:
             True if data can be decrypted with current key
         """
@@ -87,20 +93,20 @@ class PasswordEncryption:
             return False
         except Exception:
             return False
-    
+
     @staticmethod
     def migrate_data(old_key: str, new_key: str, encrypted_data: str) -> str:
         """
         Re-encrypt data with a new key.
-        
+
         Args:
             old_key: Old encryption key (base64 encoded)
             new_key: New encryption key (base64 encoded)
             encrypted_data: Data encrypted with old key
-            
+
         Returns:
             Data encrypted with new key
-            
+
         Raises:
             ValueError: If decryption with old key or encryption with new key fails
         """
@@ -108,10 +114,10 @@ class PasswordEncryption:
             # Create ciphers with both keys
             old_cipher = Fernet(old_key.encode() if isinstance(old_key, str) else old_key)
             new_cipher = Fernet(new_key.encode() if isinstance(new_key, str) else new_key)
-            
+
             # Decrypt with old key
             decrypted = old_cipher.decrypt(encrypted_data.encode())
-            
+
             # Encrypt with new key
             return new_cipher.encrypt(decrypted).decode()
         except Exception as e:
@@ -156,7 +162,11 @@ class PasswordEncryption:
             if ENCRYPTION_KEY_OLD:
                 logger.info("Trying old encryption key for backward compatibility")
                 try:
-                    old_cipher = Fernet(ENCRYPTION_KEY_OLD.encode() if isinstance(ENCRYPTION_KEY_OLD, str) else ENCRYPTION_KEY_OLD)
+                    old_cipher = Fernet(
+                        ENCRYPTION_KEY_OLD.encode()
+                        if isinstance(ENCRYPTION_KEY_OLD, str)
+                        else ENCRYPTION_KEY_OLD
+                    )
                     decrypted = old_cipher.decrypt(encrypted_password.encode())
                     return decrypted.decode()
                 except InvalidToken:
@@ -197,12 +207,13 @@ def get_encryption() -> PasswordEncryption:
         PasswordEncryption instance
     """
     global _encryption_instance
-    
+
     # Always acquire lock to prevent race conditions
     with _encryption_lock:
         current_key = os.getenv("ENCRYPTION_KEY")
-        if _encryption_instance is None or \
-           (current_key and _normalize_key(current_key) != _encryption_instance._key):
+        if _encryption_instance is None or (
+            current_key and _normalize_key(current_key) != _encryption_instance._key
+        ):
             _encryption_instance = PasswordEncryption()
         return _encryption_instance
 

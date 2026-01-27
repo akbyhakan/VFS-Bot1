@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 class CacheEntry:
     """Cache entry with TTL support."""
-    
+
     def __init__(self, value: Any, ttl_seconds: int = 3600):
         """
         Initialize cache entry.
-        
+
         Args:
             value: Value to cache
             ttl_seconds: Time to live in seconds (default: 3600 = 1 hour)
@@ -23,7 +23,7 @@ class CacheEntry:
         self.value = value
         self.created_at = datetime.now()
         self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
-    
+
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
         return datetime.now() >= self.expires_at
@@ -34,7 +34,9 @@ class CentreFetcher:
 
     DEFAULT_CACHE_TTL = 3600  # 1 hour
 
-    def __init__(self, base_url: str, country: str, mission: str, language: str = "tr", cache_ttl: int = None):
+    def __init__(
+        self, base_url: str, country: str, mission: str, language: str = "tr", cache_ttl: int = None
+    ):
         """
         Initialize centre fetcher.
 
@@ -52,15 +54,21 @@ class CentreFetcher:
         self.cache_ttl = cache_ttl or self.DEFAULT_CACHE_TTL
         self._cache: Dict[str, CacheEntry] = {}
         self._cache_lock = asyncio.Lock()
-        logger.info(f"CentreFetcher initialized for %s/%s/%s (cache TTL: %ss)", country, language, mission, self.cache_ttl)
+        logger.info(
+            "CentreFetcher initialized for %s/%s/%s (cache TTL: %ss)",
+            country,
+            language,
+            mission,
+            self.cache_ttl,
+        )
 
     def _get_from_cache(self, key: str) -> Optional[Any]:
         """
         Get value from cache if not expired.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             Cached value or None if expired/missing
         """
@@ -75,7 +83,7 @@ class CentreFetcher:
     def _set_cache(self, key: str, value: Any, ttl: int = None) -> None:
         """
         Set cache value with TTL.
-        
+
         Args:
             key: Cache key
             value: Value to cache
@@ -86,7 +94,7 @@ class CentreFetcher:
     async def clear_cache(self) -> int:
         """
         Clear all cache entries.
-        
+
         Returns:
             Number of entries cleared
         """
@@ -99,7 +107,7 @@ class CentreFetcher:
     async def cleanup_expired(self) -> int:
         """
         Remove expired cache entries.
-        
+
         Returns:
             Number of entries removed
         """
@@ -110,6 +118,18 @@ class CentreFetcher:
             if expired_keys:
                 logger.debug(f"Removed {len(expired_keys)} expired cache entries")
             return len(expired_keys)
+
+    async def start_periodic_cleanup(self, interval_seconds: int = 300) -> asyncio.Task:
+        """Start background task to periodically clean up expired cache entries."""
+
+        async def cleanup_loop():
+            while True:
+                await asyncio.sleep(interval_seconds)
+                removed = await self.cleanup_expired()
+                if removed > 0:
+                    logger.debug(f"Background cleanup removed {removed} expired cache entries")
+
+        return asyncio.create_task(cleanup_loop())
 
     async def get_available_centres(self, page: Page) -> List[str]:
         """
@@ -122,7 +142,7 @@ class CentreFetcher:
             List of centre names
         """
         cache_key = f"centres_{self.mission}"
-        
+
         # Check cache first
         cached = self._get_from_cache(cache_key)
         if cached is not None:
@@ -138,8 +158,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#centres", timeout=10000)
 
             # Extract centre options
-            centres_result = await page.evaluate(
-                """
+            centres_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#centres');
                     if (!select) return [];
@@ -147,11 +166,10 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Centre');
                 }
-            """
-            )
+            """)
 
             centres: List[str] = centres_result if isinstance(centres_result, list) else []
-            
+
             # Cache the result
             self._set_cache(cache_key, centres)
             logger.info(f"Fetched and cached {len(centres)} centres: {centres}")
@@ -172,7 +190,7 @@ class CentreFetcher:
             List of category names
         """
         cache_key = f"categories_{centre}"
-        
+
         # Check cache first
         cached = self._get_from_cache(cache_key)
         if cached is not None:
@@ -188,8 +206,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#categories", timeout=10000)
 
             # Extract category options
-            categories_result = await page.evaluate(
-                """
+            categories_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#categories');
                     if (!select) return [];
@@ -197,14 +214,15 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Category');
                 }
-            """
-            )
+            """)
 
             categories: List[str] = categories_result if isinstance(categories_result, list) else []
-            
+
             # Cache the result
             self._set_cache(cache_key, categories)
-            logger.info(f"Fetched and cached {len(categories)} categories for {centre}: {categories}")
+            logger.info(
+                f"Fetched and cached {len(categories)} categories for {centre}: {categories}"
+            )
             return categories
         except Exception as e:
             logger.error(f"Failed to fetch categories for {centre}: {e}")
@@ -223,7 +241,7 @@ class CentreFetcher:
             List of subcategory names
         """
         cache_key = f"subcategories_{centre}_{category}"
-        
+
         # Check cache first
         cached = self._get_from_cache(cache_key)
         if cached is not None:
@@ -241,8 +259,7 @@ class CentreFetcher:
             await page.wait_for_selector("select#subcategories", timeout=10000)
 
             # Extract subcategory options
-            subcategories_result = await page.evaluate(
-                """
+            subcategories_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#subcategories');
                     if (!select) return [];
@@ -250,13 +267,12 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Subcategory');
                 }
-            """
-            )
+            """)
 
             subcategories: List[str] = (
                 subcategories_result if isinstance(subcategories_result, list) else []
             )
-            
+
             # Cache the result
             self._set_cache(cache_key, subcategories)
             logger.info(f"Fetched and cached {len(subcategories)} subcategories: {subcategories}")
@@ -265,28 +281,27 @@ class CentreFetcher:
             logger.error(f"Failed to fetch subcategories: {e}")
             return []
 
-    def clear_cache(self) -> None:
+    def clear_cache_sync(self) -> None:
         """
-        Clear the cache (synchronous version for backward compatibility).
-        
-        Note: This is provided for backward compatibility. For new code,
-        prefer using clear_cache_async() for proper async operation.
+        Clear the cache synchronously (NOT THREAD-SAFE).
+
+        WARNING: This method does not use the lock and should only be called
+        from single-threaded contexts or when you're certain no other threads
+        are accessing the cache. For safe async operation, use clear_cache().
+
+        Note: This is provided for backward compatibility only.
         """
         self._cache.clear()
-        logger.info("Cache cleared")
-    
+        logger.info("Cache cleared (sync, no lock)")
+
     async def clear_cache_async(self) -> int:
         """
-        Clear all cache entries (async version).
-        
+        Clear all cache entries (async-compatible alias).
+
         Returns:
             Number of entries cleared
         """
-        async with self._cache_lock:
-            count = len(self._cache)
-            self._cache.clear()
-            logger.info(f"Cache cleared ({count} entries)")
-            return count
+        return await self.clear_cache()
 
     async def fetch_all_data(self, page: Page) -> Dict[str, Any]:
         """

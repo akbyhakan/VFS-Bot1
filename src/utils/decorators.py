@@ -11,6 +11,61 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
+def handle_errors(operation_name: str, reraise: bool = True, log_level: str = "error"):
+    """
+    Decorator for consistent error handling across async operations.
+
+    Args:
+        operation_name: Name of the operation for logging
+        reraise: Whether to reraise the exception
+        log_level: Logging level for errors (error, warning, info)
+    """
+
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                # Import here to avoid circular dependency
+                from ..core.exceptions import VFSBotError
+
+                if isinstance(e, VFSBotError):
+                    raise  # Already handled, reraise as-is
+                if isinstance(e, asyncio.CancelledError):
+                    logger.info(f"{operation_name} was cancelled")
+                    raise
+
+                log_func = getattr(logger, log_level, logger.error)
+                log_func(f"{operation_name} failed: {e}", exc_info=True)
+                if reraise:
+                    raise VFSBotError(f"{operation_name} failed: {str(e)}") from e
+                return None
+
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # Import here to avoid circular dependency
+                from ..core.exceptions import VFSBotError
+
+                if isinstance(e, VFSBotError):
+                    raise
+
+                log_func = getattr(logger, log_level, logger.error)
+                log_func(f"{operation_name} failed: {e}", exc_info=True)
+                if reraise:
+                    raise VFSBotError(f"{operation_name} failed: {str(e)}") from e
+                return None
+
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper  # type: ignore
+        return sync_wrapper  # type: ignore
+
+    return decorator
+
+
 def log_errors(
     reraise: bool = True, default_return: Any = None, log_level: int = logging.ERROR
 ) -> Callable[[F], F]:

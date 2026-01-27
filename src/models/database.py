@@ -4,6 +4,7 @@ import aiosqlite
 import logging
 import os
 import secrets
+import time
 from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -147,6 +148,43 @@ class Database:
                 await self.conn.close()
             logger.info("Database connection pool closed")
 
+    async def cleanup_idle_connections(self, idle_timeout_seconds: int = 300) -> int:
+        """Clean up idle connections from the pool."""
+        async with self._pool_lock:
+            now = time.time()
+            cleaned = 0
+            active_pool = []
+
+            while not self._available_connections.empty():
+                try:
+                    conn = self._available_connections.get_nowait()
+                    last_used = getattr(conn, "_last_used", now)
+
+                    if now - last_used > idle_timeout_seconds:
+                        await conn.close()
+                        cleaned += 1
+                    else:
+                        active_pool.append(conn)
+                except asyncio.QueueEmpty:
+                    break
+
+            for conn in active_pool:
+                await self._available_connections.put(conn)
+
+            if cleaned > 0:
+                logger.info(f"Cleaned up {cleaned} idle database connections")
+
+            return cleaned
+
+    async def __aenter__(self) -> "Database":
+        """Async context manager entry."""
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.close()
+
     @asynccontextmanager
     async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[aiosqlite.Connection]:
         """
@@ -169,6 +207,8 @@ class Database:
         try:
             yield conn
         finally:
+            # Track when connection was last used for idle cleanup
+            conn._last_used = time.time()  # type: ignore
             await self._available_connections.put(conn)
 
     @asynccontextmanager
@@ -227,8 +267,7 @@ class Database:
             raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             # Users table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     email TEXT UNIQUE NOT NULL,
@@ -240,12 +279,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Personal details table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS personal_details (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -266,12 +303,10 @@ class Database:
                     postcode TEXT,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """
-            )
+            """)
 
             # Appointments table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS appointments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -285,12 +320,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """
-            )
+            """)
 
             # Logs table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     level TEXT NOT NULL,
@@ -299,12 +332,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """
-            )
+            """)
 
             # Payment card table (single card for all payments)
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS payment_card (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     card_holder_name TEXT NOT NULL,
@@ -314,12 +345,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Appointment requests table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS appointment_requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     country_code TEXT NOT NULL,
@@ -333,12 +362,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
+            """)
 
             # Appointment persons table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS appointment_persons (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     request_id INTEGER NOT NULL,
@@ -357,12 +384,10 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
-            """
-            )
+            """)
 
             # Audit log table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     action TEXT NOT NULL,
@@ -376,29 +401,21 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """
-            )
+            """)
 
             # Audit log indexes
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
-            """
-            )
-            await cursor.execute(
-                """
+            """)
+            await cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
-            """
-            )
-            await cursor.execute(
-                """
+            """)
+            await cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
-            """
-            )
+            """)
 
             # Appointment history table
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS appointment_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -414,20 +431,16 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-            )
+            """)
 
             # Index for faster queries
-            await cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status 
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
                 ON appointment_history(user_id, status)
-            """
-            )
+            """)
 
             # User webhooks table - per-user OTP webhook tokens
-            await cursor.execute(
-                """
+            await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_webhooks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
@@ -436,16 +449,13 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-            )
+            """)
 
             # Index for faster webhook token lookups
-            await cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_user_webhooks_token 
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
                 ON user_webhooks(webhook_token)
-            """
-            )
+            """)
 
             await self.conn.commit()
 
@@ -483,11 +493,9 @@ class Database:
                     "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT"
                 )
                 # Update existing records with a default value
-                await cursor.execute(
-                    """UPDATE appointment_requests
+                await cursor.execute("""UPDATE appointment_requests
                     SET visa_subcategory = ''
-                    WHERE visa_subcategory IS NULL"""
-                )
+                    WHERE visa_subcategory IS NULL""")
 
             # Check appointment_persons table
             await cursor.execute("PRAGMA table_info(appointment_persons)")
@@ -510,11 +518,9 @@ class Database:
                     "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN"
                 )
                 # Update existing records with default value
-                await cursor.execute(
-                    """UPDATE appointment_persons
+                await cursor.execute("""UPDATE appointment_persons
                     SET is_child_with_parent = 0
-                    WHERE is_child_with_parent IS NULL"""
-                )
+                    WHERE is_child_with_parent IS NULL""")
 
             await self.conn.commit()
             logger.info("Schema migration completed")
@@ -795,8 +801,7 @@ class Database:
         """
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
+                await cursor.execute("""
                     SELECT
                         u.id, u.email, u.centre as center_name,
                         u.category as visa_category, u.subcategory as visa_subcategory,
@@ -805,8 +810,7 @@ class Database:
                     FROM users u
                     LEFT JOIN personal_details p ON u.id = p.user_id
                     ORDER BY u.created_at DESC
-                """
-                )
+                """)
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
@@ -939,14 +943,14 @@ class Database:
         # Filter only allowed fields and log rejected fields in a single pass
         valid_fields = {}
         rejected = set()
-        
+
         for field, value in other_fields.items():
             if value is not None:
                 if field in ALLOWED_PERSONAL_DETAILS_FIELDS:
                     valid_fields[field] = value
                 else:
                     rejected.add(field)
-        
+
         # Log rejected fields (potential attack attempt)
         if rejected:
             logger.warning(f"Rejected disallowed fields for user {user_id}: {rejected}")
@@ -1659,11 +1663,11 @@ class Database:
         category: str = None,
         slot_date: str = None,
         slot_time: str = None,
-        error_message: str = None
+        error_message: str = None,
     ) -> int:
         """
         Add appointment history record.
-        
+
         Args:
             user_id: User ID
             centre: VFS centre
@@ -1673,50 +1677,47 @@ class Database:
             slot_date: Appointment date
             slot_time: Appointment time
             error_message: Error message if failed
-        
+
         Returns:
             History record ID
         """
         async with self.get_connection() as conn:
             cursor = await conn.execute(
                 """
-                INSERT INTO appointment_history 
+                INSERT INTO appointment_history
                 (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
+                (user_id, centre, mission, category, slot_date, slot_time, status, error_message),
             )
             await conn.commit()
             return cursor.lastrowid
 
     @require_connection
     async def get_appointment_history(
-        self,
-        user_id: int,
-        limit: int = 50,
-        status: str = None
+        self, user_id: int, limit: int = 50, status: str = None
     ) -> List[Dict[str, Any]]:
         """
         Get appointment history for user.
-        
+
         Args:
             user_id: User ID
             limit: Maximum records to return
             status: Filter by status (optional)
-        
+
         Returns:
             List of history records
         """
         query = "SELECT * FROM appointment_history WHERE user_id = ?"
         params = [user_id]
-        
+
         if status:
             query += " AND status = ?"
             params.append(status)
-        
+
         query += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
-        
+
         async with self.get_connection() as conn:
             cursor = await conn.execute(query, params)
             rows = await cursor.fetchall()
@@ -1724,20 +1725,17 @@ class Database:
 
     @require_connection
     async def update_appointment_status(
-        self,
-        history_id: int,
-        status: str,
-        error_message: str = None
+        self, history_id: int, status: str, error_message: str = None
     ) -> bool:
         """Update appointment history status."""
         async with self.get_connection() as conn:
             await conn.execute(
                 """
-                UPDATE appointment_history 
+                UPDATE appointment_history
                 SET status = ?, error_message = ?, updated_at = ?, attempt_count = attempt_count + 1
                 WHERE id = ?
                 """,
-                (status, error_message, datetime.now(timezone.utc), history_id)
+                (status, error_message, datetime.now(timezone.utc), history_id),
             )
             await conn.commit()
             return True
@@ -1764,20 +1762,20 @@ class Database:
         existing = await self.get_user_webhook(user_id)
         if existing:
             raise ValueError("User already has a webhook")
-        
+
         # Generate unique token
         token = secrets.token_urlsafe(32)
-        
+
         async with self.get_connection() as conn:
             await conn.execute(
                 """
                 INSERT INTO user_webhooks (user_id, webhook_token, is_active)
                 VALUES (?, ?, 1)
                 """,
-                (user_id, token)
+                (user_id, token),
             )
             await conn.commit()
-        
+
         logger.info(f"Webhook created for user {user_id}: {token[:8]}...")
         return token
 
@@ -1797,7 +1795,7 @@ class Database:
                 """
                 SELECT * FROM user_webhooks WHERE user_id = ?
                 """,
-                (user_id,)
+                (user_id,),
             )
             row = await cursor.fetchone()
             return dict(row) if row else None
@@ -1818,11 +1816,11 @@ class Database:
                 """
                 DELETE FROM user_webhooks WHERE user_id = ?
                 """,
-                (user_id,)
+                (user_id,),
             )
             await conn.commit()
             deleted = cursor.rowcount > 0
-        
+
         if deleted:
             logger.info(f"Webhook deleted for user {user_id}")
         return deleted
@@ -1841,12 +1839,12 @@ class Database:
         async with self.get_connection() as conn:
             cursor = await conn.execute(
                 """
-                SELECT u.* 
-                FROM users u 
-                JOIN user_webhooks w ON u.id = w.user_id 
+                SELECT u.*
+                FROM users u
+                JOIN user_webhooks w ON u.id = w.user_id
                 WHERE w.webhook_token = ? AND w.is_active = 1
                 """,
-                (token,)
+                (token,),
             )
             row = await cursor.fetchone()
             return dict(row) if row else None

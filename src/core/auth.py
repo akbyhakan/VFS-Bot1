@@ -19,7 +19,6 @@ MAX_PASSWORD_BYTES = 72
 # bcrypt 5.0.0's strict 72-byte limit. We patch it to truncate test passwords.
 import passlib.handlers.bcrypt as _pbcrypt  # noqa: E402
 
-
 _original_calc_checksum = _pbcrypt._BcryptBackend._calc_checksum
 
 
@@ -171,7 +170,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Create JWT access token.
+    Create JWT access token with key version tracking.
 
     Args:
         data: Data to encode in token
@@ -184,6 +183,7 @@ def create_access_token(
     secret_key = get_secret_key()
     algorithm = get_algorithm()
     expire_hours = get_token_expire_hours()
+    key_version = os.getenv("API_KEY_VERSION", "1")
 
     to_encode = data.copy()
     if expires_delta:
@@ -191,7 +191,8 @@ def create_access_token(
     else:
         expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
 
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "key_version": key_version})
+
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     if isinstance(encoded_jwt, bytes):
         return encoded_jwt.decode()
@@ -201,7 +202,7 @@ def create_access_token(
 def verify_token(token: str) -> Dict[str, Any]:
     """
     Verify and decode JWT token with key rotation support.
-    
+
     First tries to verify with current API_SECRET_KEY.
     If that fails, falls back to API_SECRET_KEY_PREVIOUS for backward compatibility
     during key rotation periods.
@@ -217,7 +218,7 @@ def verify_token(token: str) -> Dict[str, Any]:
     """
     secret_key = get_secret_key()
     algorithm = get_algorithm()
-    
+
     # Try current key first
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
@@ -234,7 +235,7 @@ def verify_token(token: str) -> Dict[str, Any]:
             except JWTError:
                 # Both keys failed, raise original error
                 pass
-        
+
         # Production: Don't expose internal error details for security
         if os.getenv("ENV", "production").lower() == "production":
             detail = "Could not validate credentials"
@@ -257,7 +258,12 @@ def hash_password(password: str) -> str:
 
     Returns:
         Hashed password
+
+    Raises:
+        ValidationError: If password exceeds maximum byte length
     """
+    validate_password_length(password)  # Validate before hashing
+    # Truncate for bcrypt (defensive - validation should prevent this case)
     truncated = _truncate_password(password)
     result = pwd_context.hash(truncated)
     return str(result)
@@ -281,23 +287,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def validate_admin_password_format() -> bool:
     """
     Validate that ADMIN_PASSWORD is in bcrypt hash format in production.
-    
+
     This function should be called at startup to ensure the admin password
     is properly hashed in production environments.
-    
+
     Returns:
         True if validation passes
-        
+
     Raises:
         ValueError: If ADMIN_PASSWORD is not properly formatted in production
     """
     admin_password = os.getenv("ADMIN_PASSWORD")
     env = os.getenv("ENV", "production").lower()
-    
+
     # Skip validation if no password is set (optional var)
     if not admin_password:
         return True
-    
+
     # In production, require bcrypt hash format
     if env == "production":
         bcrypt_prefixes = ("$2b$", "$2a$", "$2y$")
@@ -305,8 +311,8 @@ def validate_admin_password_format() -> bool:
             raise ValueError(
                 "ADMIN_PASSWORD must be bcrypt hashed in production environment. "
                 "Current value appears to be plain text. "
-                "Generate a hash using: python -c \"from passlib.context import CryptContext; "
+                'Generate a hash using: python -c "from passlib.context import CryptContext; '
                 "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
             )
-    
+
     return True

@@ -3,6 +3,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import List
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -32,29 +33,57 @@ from web.routes.dashboard import serve_react_app
 logger = logging.getLogger(__name__)
 
 
+def validate_cors_origins(origins_str: str) -> List[str]:
+    """
+    Validate and parse CORS origins, blocking wildcard in production.
+
+    Args:
+        origins_str: Comma-separated list of allowed origins
+
+    Returns:
+        List of validated origin strings
+
+    Raises:
+        ValueError: If wildcard is used in production environment
+    """
+    env = os.getenv("ENV", "production").lower()
+
+    # Parse origins first
+    origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
+    # Check if any origin is exactly "*" in production
+    if env == "production" and "*" in origins:
+        raise ValueError("Wildcard CORS origin ('*') not allowed in production")
+
+    return origins
+
+
 def get_real_client_ip(request: Request) -> str:
     """
-    Get real client IP considering reverse proxies.
-    
+    Get real client IP with trusted proxy validation.
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Client IP address
     """
-    # Check X-Forwarded-For header (set by reverse proxy)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # First IP in the list is the original client
-        return forwarded.split(",")[0].strip()
-    
-    # Check X-Real-IP header (alternative)
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
-    
-    # Fallback to direct connection
-    return request.client.host if request.client else "unknown"
+    trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
+    trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Only trust forwarded headers from known proxies
+    if trusted_proxies and client_ip in trusted_proxies:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+
+    return client_ip
 
 
 # Create FastAPI app
@@ -72,7 +101,7 @@ app.add_middleware(CorrelationMiddleware)
 allowed_origins_str = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
 )
-allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+allowed_origins = validate_cors_origins(allowed_origins_str)
 
 app.add_middleware(
     CORSMiddleware,
