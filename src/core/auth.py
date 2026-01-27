@@ -171,7 +171,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
-    Create JWT access token.
+    Create JWT access token with key version tracking.
 
     Args:
         data: Data to encode in token
@@ -184,6 +184,7 @@ def create_access_token(
     secret_key = get_secret_key()
     algorithm = get_algorithm()
     expire_hours = get_token_expire_hours()
+    key_version = os.getenv("API_KEY_VERSION", "1")
 
     to_encode = data.copy()
     if expires_delta:
@@ -191,7 +192,12 @@ def create_access_token(
     else:
         expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "key_version": key_version
+    })
+    
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     if isinstance(encoded_jwt, bytes):
         return encoded_jwt.decode()
@@ -257,7 +263,11 @@ def hash_password(password: str) -> str:
 
     Returns:
         Hashed password
+    
+    Raises:
+        ValidationError: If password exceeds maximum byte length
     """
+    validate_password_length(password)  # Add validation first
     truncated = _truncate_password(password)
     result = pwd_context.hash(truncated)
     return str(result)

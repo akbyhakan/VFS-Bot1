@@ -220,3 +220,9 @@ class Limits:
     MAX_LOG_ENTRIES = 500
     MAX_ERRORS_IN_MEMORY = ErrorCapture.MAX_IN_MEMORY
     DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
+
+
+class RateLimitDefaults:
+    """Default values for rate limiting - used by rate_limiter.py."""
+    MAX_REQUESTS: int = 60
+    TIME_WINDOW: int = 60

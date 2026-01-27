@@ -4,6 +4,7 @@ import aiosqlite
 import logging
 import os
 import secrets
+import time
 from typing import Dict, List, Optional, Any, AsyncIterator, Callable, TypeVar, Awaitable
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -146,6 +147,43 @@ class Database:
             if self.conn:
                 await self.conn.close()
             logger.info("Database connection pool closed")
+
+    async def cleanup_idle_connections(self, idle_timeout_seconds: int = 300) -> int:
+        """Clean up idle connections from the pool."""
+        async with self._pool_lock:
+            now = time.time()
+            cleaned = 0
+            active_pool = []
+            
+            while not self._available_connections.empty():
+                try:
+                    conn = self._available_connections.get_nowait()
+                    last_used = getattr(conn, '_last_used', now)
+                    
+                    if now - last_used > idle_timeout_seconds:
+                        await conn.close()
+                        cleaned += 1
+                    else:
+                        active_pool.append(conn)
+                except asyncio.QueueEmpty:
+                    break
+            
+            for conn in active_pool:
+                await self._available_connections.put(conn)
+            
+            if cleaned > 0:
+                logger.info(f"Cleaned up {cleaned} idle database connections")
+            
+            return cleaned
+
+    async def __aenter__(self) -> "Database":
+        """Async context manager entry."""
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.close()
 
     @asynccontextmanager
     async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[aiosqlite.Connection]:

@@ -111,6 +111,17 @@ class CentreFetcher:
                 logger.debug(f"Removed {len(expired_keys)} expired cache entries")
             return len(expired_keys)
 
+    async def start_periodic_cleanup(self, interval_seconds: int = 300) -> asyncio.Task:
+        """Start background task to periodically clean up expired cache entries."""
+        async def cleanup_loop():
+            while True:
+                await asyncio.sleep(interval_seconds)
+                removed = await self.cleanup_expired()
+                if removed > 0:
+                    logger.debug(f"Background cleanup removed {removed} expired cache entries")
+        
+        return asyncio.create_task(cleanup_loop())
+
     async def get_available_centres(self, page: Page) -> List[str]:
         """
         Fetch available VFS centres from the website with caching.
@@ -277,16 +288,12 @@ class CentreFetcher:
     
     async def clear_cache_async(self) -> int:
         """
-        Clear all cache entries (async version).
+        Clear all cache entries (async-compatible alias).
         
         Returns:
             Number of entries cleared
         """
-        async with self._cache_lock:
-            count = len(self._cache)
-            self._cache.clear()
-            logger.info(f"Cache cleared ({count} entries)")
-            return count
+        return await self.clear_cache()
 
     async def fetch_all_data(self, page: Page) -> Dict[str, Any]:
         """

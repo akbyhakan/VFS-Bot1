@@ -165,11 +165,12 @@ class VFSBot:
         Returns:
             Self instance
         """
+        await self._setup_browser()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """
-        Async context manager exit - ensure cleanup.
+        Async context manager exit with cleanup.
 
         Args:
             exc_type: Exception type if any
@@ -179,8 +180,27 @@ class VFSBot:
         Returns:
             False to propagate exceptions
         """
-        await self.stop()
+        await self.cleanup()
         return False
+
+    async def _setup_browser(self) -> None:
+        """Initialize browser and context."""
+        if self.browser is None:
+            playwright = await async_playwright().start()
+            self.browser = await playwright.chromium.launch(
+                headless=self.config.get("headless", True)
+            )
+            self.context = await self.browser.new_context()
+
+    async def cleanup(self) -> None:
+        """Clean up browser resources."""
+        if self.context:
+            await self.context.close()
+            self.context = None
+        if self.browser:
+            await self.browser.close()
+            self.browser = None
+        logger.info("Browser resources cleaned up")
 
     async def start(self) -> None:
         """Start the bot."""
@@ -342,6 +362,30 @@ class VFSBot:
         """
         async with self.user_semaphore:
             await self.process_user(user)
+
+    async def _check_circuit_breaker(self) -> bool:
+        """Check if circuit breaker allows requests - thread-safe."""
+        async with self._error_lock:
+            return not self.circuit_breaker_open
+
+    async def _record_success(self) -> None:
+        """Record successful operation - thread-safe."""
+        async with self._error_lock:
+            self.consecutive_errors = 0
+            if self.circuit_breaker_open:
+                self.circuit_breaker_open = False
+                logger.info("Circuit breaker closed after successful operation")
+
+    async def _record_failure(self) -> None:
+        """Record failed operation and potentially open circuit breaker - thread-safe."""
+        async with self._error_lock:
+            self.consecutive_errors += 1
+            self.total_errors.append(time.time())
+            
+            if self.consecutive_errors >= CircuitBreaker.FAIL_THRESHOLD:
+                self.circuit_breaker_open = True
+                self.circuit_breaker_open_time = time.time()
+                logger.warning(f"Circuit breaker opened after {self.consecutive_errors} consecutive errors")
 
     async def _record_error(self) -> None:
         """Record error for circuit breaker tracking (thread-safe)."""

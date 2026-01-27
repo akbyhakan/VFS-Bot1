@@ -61,7 +61,13 @@ class PasswordEncryption:
             # Create cipher with normalized key
             cipher_key = key.encode() if isinstance(key, str) else key
             self.cipher = Fernet(cipher_key)
-            logger.info(f"Password encryption initialized (key hash: {self._key_hash})")
+            
+            # Only log key hash in non-production environments
+            env = os.getenv("ENV", "production").lower()
+            if env != "production":
+                logger.debug(f"Password encryption initialized (key hash: {self._key_hash})")
+            else:
+                logger.info("Password encryption initialized successfully")
         except Exception as e:
             raise ValueError(f"Invalid ENCRYPTION_KEY: {e}") from e
 
