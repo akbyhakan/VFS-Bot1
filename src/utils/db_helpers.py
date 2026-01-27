@@ -121,14 +121,16 @@ async def batch_update(
                     logger.warning(f"Skipping update without {id_column}: {update_data}")
                     continue
                 
-                row_id = update_data.pop(id_column)
+                # Make a copy to avoid modifying the original
+                update_dict = update_data.copy()
+                row_id = update_dict.pop(id_column)
                 
-                if not update_data:
+                if not update_dict:
                     continue
                 
                 # Build SET clause
-                set_clause = ", ".join([f"{k} = ?" for k in update_data.keys()])
-                values = list(update_data.values()) + [row_id]
+                set_clause = ", ".join([f"{k} = ?" for k in update_dict.keys()])
+                values = list(update_dict.values()) + [row_id]
                 
                 query = f"UPDATE {table} SET {set_clause} WHERE {id_column} = ?"
                 

@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import List
+import ipaddress
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -71,7 +72,7 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
 def get_real_client_ip(request: Request) -> str:
     """
-    Get real client IP with trusted proxy validation.
+    Get real client IP with trusted proxy validation and IP format verification.
     
     Security: Only trust X-Forwarded-For from known proxies and validate
     IPs to prevent rate limit bypass attacks.
@@ -87,6 +88,14 @@ def get_real_client_ip(request: Request) -> str:
     
     client_host = request.client.host if request.client else "unknown"
     
+    def is_valid_ip(ip_str: str) -> bool:
+        """Validate IP address format."""
+        try:
+            ipaddress.ip_address(ip_str)
+            return True
+        except ValueError:
+            return False
+    
     # Only trust forwarded headers from known proxies
     if trusted_proxies and client_host in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
@@ -95,15 +104,18 @@ def get_real_client_ip(request: Request) -> str:
             ips = [ip.strip() for ip in forwarded.split(",")]
             # Return the first IP that is NOT a trusted proxy (rightmost untrusted IP)
             for ip in reversed(ips):
-                if ip not in trusted_proxies:
+                if ip not in trusted_proxies and is_valid_ip(ip):
                     return ip
         
         # Fallback to X-Real-IP if present and not a trusted proxy
         real_ip = request.headers.get("X-Real-IP")
-        if real_ip and real_ip.strip() not in trusted_proxies:
-            return real_ip.strip()
+        if real_ip:
+            real_ip = real_ip.strip()
+            if real_ip not in trusted_proxies and is_valid_ip(real_ip):
+                return real_ip
     
-    return client_host
+    # Return client_host if it's a valid IP, otherwise return "unknown"
+    return client_host if is_valid_ip(client_host) else "unknown"
 
 
 # Create FastAPI app
