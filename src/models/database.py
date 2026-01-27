@@ -207,6 +207,8 @@ class Database:
         try:
             yield conn
         finally:
+            # Track when connection was last used for idle cleanup
+            conn._last_used = time.time()  # type: ignore
             await self._available_connections.put(conn)
 
     @asynccontextmanager

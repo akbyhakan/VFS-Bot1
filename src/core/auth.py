@@ -262,7 +262,8 @@ def hash_password(password: str) -> str:
     Raises:
         ValidationError: If password exceeds maximum byte length
     """
-    validate_password_length(password)  # Add validation first
+    validate_password_length(password)  # Validate before hashing
+    # Truncate for bcrypt (defensive - validation should prevent this case)
     truncated = _truncate_password(password)
     result = pwd_context.hash(truncated)
     return str(result)

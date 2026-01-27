@@ -283,13 +283,16 @@ class CentreFetcher:
 
     def clear_cache_sync(self) -> None:
         """
-        Clear the cache (synchronous version for backward compatibility).
+        Clear the cache synchronously (NOT THREAD-SAFE).
 
-        Note: This is provided for backward compatibility. For new code,
-        prefer using clear_cache() async method for proper async operation.
+        WARNING: This method does not use the lock and should only be called
+        from single-threaded contexts or when you're certain no other threads
+        are accessing the cache. For safe async operation, use clear_cache().
+
+        Note: This is provided for backward compatibility only.
         """
         self._cache.clear()
-        logger.info("Cache cleared")
+        logger.info("Cache cleared (sync, no lock)")
 
     async def clear_cache_async(self) -> int:
         """

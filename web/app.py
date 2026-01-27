@@ -47,9 +47,15 @@ def validate_cors_origins(origins_str: str) -> List[str]:
         ValueError: If wildcard is used in production environment
     """
     env = os.getenv("ENV", "production").lower()
-    if "*" in origins_str and env == "production":
+
+    # Parse origins first
+    origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
+    # Check if any origin is exactly "*" in production
+    if env == "production" and "*" in origins:
         raise ValueError("Wildcard CORS origin ('*') not allowed in production")
-    return [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
+    return origins
 
 
 def get_real_client_ip(request: Request) -> str:
