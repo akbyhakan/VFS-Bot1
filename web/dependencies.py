@@ -238,23 +238,36 @@ class ThreadSafeBotState:
 
 # WebSocket connection manager
 class ConnectionManager:
-    """Thread-safe WebSocket connection manager."""
+    """Thread-safe WebSocket connection manager with connection limits."""
+
+    MAX_CONNECTIONS = int(os.getenv("MAX_WEBSOCKET_CONNECTIONS", "1000"))
 
     def __init__(self):
         """Initialize connection manager."""
         self._connections: Set[WebSocket] = set()
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket) -> bool:
         """
-        Connect a new WebSocket client.
+        Connect a new WebSocket client with connection limit enforcement.
 
         Args:
             websocket: WebSocket connection
+
+        Returns:
+            True if connection was accepted, False if limit reached
         """
         # Note: WebSocket should already be accepted before calling this method
         async with self._lock:
+            if len(self._connections) >= self.MAX_CONNECTIONS:
+                logger.warning(
+                    f"WebSocket connection limit reached ({self.MAX_CONNECTIONS}). "
+                    "Rejecting new connection."
+                )
+                return False
             self._connections.add(websocket)
+            logger.debug(f"WebSocket connected. Active connections: {len(self._connections)}")
+            return True
 
     async def disconnect(self, websocket: WebSocket):
         """
@@ -265,6 +278,7 @@ class ConnectionManager:
         """
         async with self._lock:
             self._connections.discard(websocket)
+            logger.debug(f"WebSocket disconnected. Active connections: {len(self._connections)}")
 
     async def broadcast(self, message: dict):
         """

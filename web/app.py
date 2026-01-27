@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from src.services.otp_webhook_routes import router as otp_router
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.middleware import CorrelationMiddleware
+from src.middleware.error_handler import ErrorHandlerMiddleware
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
     auth_router,
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 def validate_cors_origins(origins_str: str) -> List[str]:
     """
-    Validate and parse CORS origins, blocking wildcard in production.
+    Validate and parse CORS origins, blocking wildcard and localhost in production.
 
     Args:
         origins_str: Comma-separated list of allowed origins
@@ -50,8 +51,18 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
     # Parse origins first
     origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-
-    # Check if any origin is exactly "*" in production
+    
+    # Production-specific validation
+    if env not in {"development", "dev", "testing", "test", "local"}:
+        invalid = [o for o in origins if "localhost" in o or o == "*"]
+        if invalid:
+            logger.warning(f"Removing insecure CORS origins in production: {invalid}")
+            origins = [o for o in origins if o not in invalid]
+            
+            if not origins:
+                logger.error("All CORS origins were insecure and removed. Using empty list.")
+    
+    # Additional check: fail-fast if wildcard in production
     if env == "production" and "*" in origins:
         raise ValueError("Wildcard CORS origin ('*') not allowed in production")
 
@@ -100,10 +111,13 @@ app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
 
 
 # Configure middleware (order matters!)
-# 1. Security headers middleware first
+# 1. Error handling middleware first (catches all errors)
+app.add_middleware(ErrorHandlerMiddleware)
+
+# 2. Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 2. Correlation ID middleware for request tracking
+# 3. Correlation ID middleware for request tracking
 app.add_middleware(CorrelationMiddleware)
 
 # 3. Configure CORS
