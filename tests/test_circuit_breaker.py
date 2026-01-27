@@ -1,13 +1,14 @@
-"""Tests for circuit breaker thread-safety."""
+"""Tests for circuit breaker implementations."""
 
 import asyncio
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from collections import deque
 
 from src.services.bot_service import VFSBot
 from src.models.database import Database
 from src.services.notification import NotificationService
+from src.core.circuit_breaker import CircuitBreaker, CircuitState, CircuitBreakerError
 
 
 @pytest.mark.asyncio
@@ -106,3 +107,165 @@ async def test_circuit_breaker_opens_with_concurrent_errors():
     # Circuit breaker should be open
     assert bot.circuit_breaker_open is True
     assert bot.circuit_breaker_open_time is not None
+
+
+# New tests for generic circuit breaker
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_initial_state():
+    """Test circuit breaker starts in closed state."""
+    cb = CircuitBreaker(failure_threshold=3, timeout_seconds=5)
+    
+    assert cb.state == CircuitState.CLOSED
+    assert cb.failure_count == 0
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_opens_after_threshold():
+    """Test circuit breaker opens after reaching failure threshold."""
+    cb = CircuitBreaker(failure_threshold=3, timeout_seconds=5)
+    
+    async def failing_function():
+        raise Exception("Test failure")
+    
+    # Record failures up to threshold
+    for _ in range(3):
+        with pytest.raises(Exception):
+            await cb.call(failing_function)
+    
+    # Circuit should now be open
+    assert cb.state == CircuitState.OPEN
+    assert cb.failure_count == 3
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_rejects_when_open():
+    """Test circuit breaker rejects calls when open."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+    
+    async def failing_function():
+        raise Exception("Test failure")
+    
+    # Trigger circuit to open
+    for _ in range(2):
+        with pytest.raises(Exception):
+            await cb.call(failing_function)
+    
+    # Should now reject with CircuitBreakerError
+    with pytest.raises(CircuitBreakerError):
+        await cb.call(failing_function)
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_half_open_state():
+    """Test circuit breaker transitions to half-open after timeout."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=0.1)
+    
+    async def failing_function():
+        raise Exception("Test failure")
+    
+    # Open the circuit
+    for _ in range(2):
+        with pytest.raises(Exception):
+            await cb.call(failing_function)
+    
+    assert cb.state == CircuitState.OPEN
+    
+    # Wait for timeout
+    await asyncio.sleep(0.2)
+    
+    # Next call should transition to half-open (but still fail)
+    with pytest.raises(Exception):
+        await cb.call(failing_function)
+    
+    # State should have been half-open during the call
+    assert cb.state == CircuitState.OPEN  # Back to open after failure
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_resets_on_success():
+    """Test circuit breaker resets failure count on success."""
+    cb = CircuitBreaker(failure_threshold=3, timeout_seconds=5)
+    
+    call_count = [0]
+    
+    async def sometimes_failing_function():
+        call_count[0] += 1
+        if call_count[0] < 3:
+            raise Exception("Test failure")
+        return "success"
+    
+    # First two calls fail
+    for _ in range(2):
+        with pytest.raises(Exception):
+            await cb.call(sometimes_failing_function)
+    
+    assert cb.failure_count == 2
+    
+    # Third call succeeds
+    result = await cb.call(sometimes_failing_function)
+    
+    assert result == "success"
+    assert cb.failure_count == 0
+    assert cb.state == CircuitState.CLOSED
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_decorator():
+    """Test circuit breaker decorator."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+    
+    call_count = [0]
+    
+    @cb.protected
+    async def decorated_function():
+        call_count[0] += 1
+        if call_count[0] < 2:
+            raise Exception("Test failure")
+        return "success"
+    
+    # First call fails
+    with pytest.raises(Exception):
+        await decorated_function()
+    
+    # Second call succeeds
+    result = await decorated_function()
+    assert result == "success"
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_stats():
+    """Test circuit breaker statistics."""
+    cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60, name="TestBreaker")
+    
+    stats = cb.get_stats()
+    
+    assert stats["name"] == "TestBreaker"
+    assert stats["state"] == CircuitState.CLOSED.value
+    assert stats["failure_count"] == 0
+    assert stats["failure_threshold"] == 3
+    assert stats["timeout_seconds"] == 60
+
+
+@pytest.mark.asyncio
+async def test_generic_circuit_breaker_manual_reset():
+    """Test manual circuit breaker reset."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+    
+    async def failing_function():
+        raise Exception("Test failure")
+    
+    # Open the circuit
+    for _ in range(2):
+        with pytest.raises(Exception):
+            await cb.call(failing_function)
+    
+    assert cb.state == CircuitState.OPEN
+    
+    # Manually reset
+    await cb.reset()
+    
+    assert cb.state == CircuitState.CLOSED
+    assert cb.failure_count == 0
+
