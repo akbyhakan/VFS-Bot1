@@ -199,3 +199,142 @@ class TestPasswordSecurity:
         # But both should verify
         assert verify_password(password, hash1) is True
         assert verify_password(password, hash2) is True
+
+
+class TestPasswordValidation:
+    """Tests for password length validation."""
+    
+    def test_password_exceeding_72_bytes_raises_error(self):
+        """Test that passwords exceeding 72 bytes raise ValidationError."""
+        from src.core.auth import validate_password_length, MAX_PASSWORD_BYTES
+        from src.core.exceptions import ValidationError
+        
+        # Create a password that exceeds 72 bytes
+        long_password = "a" * (MAX_PASSWORD_BYTES + 1)
+        
+        with pytest.raises(ValidationError) as exc_info:
+            validate_password_length(long_password)
+        
+        assert "exceeds maximum length" in str(exc_info.value).lower()
+    
+    def test_utf8_password_truncation_boundary(self):
+        """Test UTF-8 character boundary handling."""
+        from src.core.auth import validate_password_length, MAX_PASSWORD_BYTES
+        from src.core.exceptions import ValidationError
+        
+        # Create a password with multi-byte UTF-8 characters that exceeds 72 bytes
+        # Each emoji is typically 4 bytes
+        long_password = "😀" * 20  # 80 bytes
+        
+        with pytest.raises(ValidationError):
+            validate_password_length(long_password)
+    
+    def test_password_within_limit_passes(self):
+        """Test that passwords within limit pass validation."""
+        from src.core.auth import validate_password_length
+        
+        # Should not raise
+        validate_password_length("short_password")
+        validate_password_length("a" * 50)
+    
+    def test_hash_password_validates_length(self):
+        """Test that hash_password calls validation."""
+        from src.core.auth import hash_password, MAX_PASSWORD_BYTES
+        from src.core.exceptions import ValidationError
+        
+        # This should raise ValidationError before attempting to hash
+        with pytest.raises(ValidationError):
+            hash_password("a" * (MAX_PASSWORD_BYTES + 1))
+
+
+class TestCORSValidation:
+    """Tests for CORS origin validation."""
+    
+    def test_cors_wildcard_blocked_in_production(self, monkeypatch):
+        """Test that wildcard CORS is blocked in production."""
+        import os
+        from web.app import validate_cors_origins
+        
+        monkeypatch.setenv("ENV", "production")
+        
+        with pytest.raises(ValueError) as exc_info:
+            validate_cors_origins("*")
+        
+        assert "wildcard" in str(exc_info.value).lower()
+        assert "production" in str(exc_info.value).lower()
+    
+    def test_cors_wildcard_allowed_in_development(self, monkeypatch):
+        """Test that wildcard CORS is allowed in development."""
+        import os
+        from web.app import validate_cors_origins
+        
+        monkeypatch.setenv("ENV", "development")
+        
+        # Should not raise
+        origins = validate_cors_origins("*")
+        assert "*" in origins
+    
+    def test_cors_specific_origins_allowed(self, monkeypatch):
+        """Test that specific origins are always allowed."""
+        from web.app import validate_cors_origins
+        
+        monkeypatch.setenv("ENV", "production")
+        
+        origins = validate_cors_origins("https://example.com,https://app.example.com")
+        assert len(origins) == 2
+        assert "https://example.com" in origins
+        assert "https://app.example.com" in origins
+
+
+class TestXForwardedFor:
+    """Tests for X-Forwarded-For IP detection."""
+    
+    def test_untrusted_proxy_uses_direct_ip(self, monkeypatch):
+        """Test that untrusted proxies don't affect IP detection."""
+        from web.app import get_real_client_ip
+        from fastapi import Request
+        from unittest.mock import Mock
+        
+        monkeypatch.setenv("TRUSTED_PROXIES", "")
+        
+        # Mock request with X-Forwarded-For but not from trusted proxy
+        mock_request = Mock(spec=Request)
+        mock_request.client = Mock()
+        mock_request.client.host = "192.168.1.1"
+        mock_request.headers = {"X-Forwarded-For": "10.0.0.1"}
+        
+        # Should use direct IP, not forwarded header
+        ip = get_real_client_ip(mock_request)
+        assert ip == "192.168.1.1"
+    
+    def test_trusted_proxy_uses_forwarded_ip(self, monkeypatch):
+        """Test that trusted proxies allow X-Forwarded-For."""
+        from web.app import get_real_client_ip
+        from fastapi import Request
+        from unittest.mock import Mock
+        
+        monkeypatch.setenv("TRUSTED_PROXIES", "192.168.1.1")
+        
+        # Mock request from trusted proxy with X-Forwarded-For
+        mock_request = Mock(spec=Request)
+        mock_request.client = Mock()
+        mock_request.client.host = "192.168.1.1"  # Trusted proxy
+        mock_request.headers = {"X-Forwarded-For": "10.0.0.1"}
+        
+        # Should use forwarded IP
+        ip = get_real_client_ip(mock_request)
+        assert ip == "10.0.0.1"
+    
+    def test_no_client_returns_unknown(self):
+        """Test that missing client returns unknown."""
+        from web.app import get_real_client_ip
+        from fastapi import Request
+        from unittest.mock import Mock
+        
+        mock_request = Mock(spec=Request)
+        mock_request.client = None
+        mock_request.headers = {}
+        
+        ip = get_real_client_ip(mock_request)
+        assert ip == "unknown"
+

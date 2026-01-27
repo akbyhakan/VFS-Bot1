@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import PlainTextResponse
 
 from web.dependencies import bot_state, metrics
