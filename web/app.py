@@ -36,13 +36,13 @@ logger = logging.getLogger(__name__)
 def validate_cors_origins(origins_str: str) -> List[str]:
     """
     Validate and parse CORS origins, blocking wildcard in production.
-    
+
     Args:
         origins_str: Comma-separated list of allowed origins
-        
+
     Returns:
         List of validated origin strings
-        
+
     Raises:
         ValueError: If wildcard is used in production environment
     """
@@ -55,28 +55,28 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 def get_real_client_ip(request: Request) -> str:
     """
     Get real client IP with trusted proxy validation.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Client IP address
     """
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
     trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
-    
+
     client_ip = request.client.host if request.client else "unknown"
-    
+
     # Only trust forwarded headers from known proxies
     if trusted_proxies and client_ip in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return forwarded.split(",")[0].strip()
-        
+
         real_ip = request.headers.get("X-Real-IP")
         if real_ip:
             return real_ip.strip()
-    
+
     return client_ip
 
 

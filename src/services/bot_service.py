@@ -257,13 +257,11 @@ class VFSBot:
                 pass
             else:
                 # Add basic stealth script for backwards compatibility
-                await self.context.add_init_script(
-                    """
+                await self.context.add_init_script("""
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => undefined
                     });
-                """
-                )
+                """)
 
             try:
                 # Start health checker if configured
@@ -381,11 +379,13 @@ class VFSBot:
         async with self._error_lock:
             self.consecutive_errors += 1
             self.total_errors.append(time.time())
-            
+
             if self.consecutive_errors >= CircuitBreaker.FAIL_THRESHOLD:
                 self.circuit_breaker_open = True
                 self.circuit_breaker_open_time = time.time()
-                logger.warning(f"Circuit breaker opened after {self.consecutive_errors} consecutive errors")
+                logger.warning(
+                    f"Circuit breaker opened after {self.consecutive_errors} consecutive errors"
+                )
 
     async def _record_error(self) -> None:
         """Record error for circuit breaker tracking (thread-safe)."""
@@ -458,8 +458,8 @@ class VFSBot:
             user: User dictionary from database
         """
         from ..utils.masking import mask_email
-        
-        masked_email = mask_email(user['email'])
+
+        masked_email = mask_email(user["email"])
         logger.info(f"Processing user: {masked_email}")
 
         if self.context is None:
