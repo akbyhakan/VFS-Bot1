@@ -236,7 +236,11 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=4000, reason="Authentication error")
         return
 
-    await manager.connect(websocket)
+    # Try to connect with limit enforcement
+    connected = await manager.connect(websocket)
+    if not connected:
+        await websocket.close(code=4003, reason="Connection limit reached")
+        return
 
     # Send initial status
     await websocket.send_json(

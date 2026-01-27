@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import List
+import ipaddress
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -15,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from src.services.otp_webhook_routes import router as otp_router
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.middleware import CorrelationMiddleware
+from src.middleware.error_handler import ErrorHandlerMiddleware
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
     auth_router,
@@ -35,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 def validate_cors_origins(origins_str: str) -> List[str]:
     """
-    Validate and parse CORS origins, blocking wildcard in production.
+    Validate and parse CORS origins, blocking wildcard and localhost in production.
 
     Args:
         origins_str: Comma-separated list of allowed origins
@@ -50,8 +52,30 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
     # Parse origins first
     origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-
-    # Check if any origin is exactly "*" in production
+    
+    # Production-specific validation
+    if env not in {"development", "dev", "testing", "test", "local"}:
+        # More precise localhost detection
+        invalid = []
+        for o in origins:
+            # Check for wildcard
+            if o == "*":
+                invalid.append(o)
+            # Check for localhost (exact match or with port)
+            elif o.startswith("http://localhost") or o.startswith("https://localhost"):
+                invalid.append(o)
+            # Check for 127.0.0.1
+            elif "127.0.0.1" in o:
+                invalid.append(o)
+        
+        if invalid:
+            logger.warning(f"Removing insecure CORS origins in production: {invalid}")
+            origins = [o for o in origins if o not in invalid]
+            
+            if not origins:
+                logger.error("All CORS origins were insecure and removed. Using empty list.")
+    
+    # Additional check: fail-fast if wildcard in production
     if env == "production" and "*" in origins:
         raise ValueError("Wildcard CORS origin ('*') not allowed in production")
 
@@ -60,7 +84,10 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
 def get_real_client_ip(request: Request) -> str:
     """
-    Get real client IP with trusted proxy validation.
+    Get real client IP with trusted proxy validation and IP format verification.
+    
+    Security: Only trust X-Forwarded-For from known proxies and validate
+    IPs to prevent rate limit bypass attacks.
 
     Args:
         request: FastAPI request object
@@ -70,20 +97,37 @@ def get_real_client_ip(request: Request) -> str:
     """
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
     trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
-
-    client_ip = request.client.host if request.client else "unknown"
-
+    
+    client_host = request.client.host if request.client else "unknown"
+    
+    def is_valid_ip(ip_str: str) -> bool:
+        """Validate IP address format."""
+        try:
+            ipaddress.ip_address(ip_str)
+            return True
+        except ValueError:
+            return False
+    
     # Only trust forwarded headers from known proxies
-    if trusted_proxies and client_ip in trusted_proxies:
+    if trusted_proxies and client_host in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
-            return forwarded.split(",")[0].strip()
-
+            # Parse all IPs in X-Forwarded-For chain
+            ips = [ip.strip() for ip in forwarded.split(",")]
+            # Return the first IP that is NOT a trusted proxy (rightmost untrusted IP)
+            for ip in reversed(ips):
+                if ip not in trusted_proxies and is_valid_ip(ip):
+                    return ip
+        
+        # Fallback to X-Real-IP if present and not a trusted proxy
         real_ip = request.headers.get("X-Real-IP")
         if real_ip:
-            return real_ip.strip()
-
-    return client_ip
+            real_ip = real_ip.strip()
+            if real_ip not in trusted_proxies and is_valid_ip(real_ip):
+                return real_ip
+    
+    # Return client_host if it's a valid IP, otherwise return "unknown"
+    return client_host if is_valid_ip(client_host) else "unknown"
 
 
 # Create FastAPI app
@@ -91,10 +135,13 @@ app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
 
 
 # Configure middleware (order matters!)
-# 1. Security headers middleware first
+# 1. Error handling middleware first (catches all errors)
+app.add_middleware(ErrorHandlerMiddleware)
+
+# 2. Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 2. Correlation ID middleware for request tracking
+# 3. Correlation ID middleware for request tracking
 app.add_middleware(CorrelationMiddleware)
 
 # 3. Configure CORS
