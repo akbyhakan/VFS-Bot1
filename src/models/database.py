@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from src.utils.encryption import encrypt_password, decrypt_password
 from src.utils.validators import validate_email, validate_phone
-from src.core.exceptions import ValidationError, DatabaseNotConnectedError
+from src.core.exceptions import ValidationError, DatabaseNotConnectedError, DatabasePoolTimeoutError
 from src.constants import Defaults
 
 logger = logging.getLogger(__name__)
@@ -197,13 +197,15 @@ class Database:
             Database connection from pool
 
         Raises:
-            RuntimeError: If connection cannot be acquired within timeout
+            DatabasePoolTimeoutError: If connection cannot be acquired within timeout
         """
         try:
             conn = await asyncio.wait_for(self._available_connections.get(), timeout=timeout)
         except asyncio.TimeoutError:
-            logger.error(f"Database connection pool exhausted (timeout: {timeout}s)")
-            raise RuntimeError(f"Database connection pool exhausted after {timeout}s")
+            logger.error(
+                f"Database connection pool exhausted (timeout: {timeout}s, pool_size: {self.pool_size})"
+            )
+            raise DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
         try:
             yield conn
         finally:
@@ -224,6 +226,9 @@ class Database:
 
         Yields:
             Database connection from pool
+        
+        Raises:
+            DatabasePoolTimeoutError: If connection cannot be acquired after all retries
         """
         last_error = None
 
@@ -232,7 +237,7 @@ class Database:
                 async with self.get_connection(timeout=timeout) as conn:
                     yield conn
                     return
-            except RuntimeError as e:
+            except DatabasePoolTimeoutError as e:
                 last_error = e
                 if attempt < max_retries - 1:
                     wait_time = (2**attempt) * 0.5  # Exponential backoff
@@ -242,7 +247,7 @@ class Database:
                     )
                     await asyncio.sleep(wait_time)
 
-        raise last_error or RuntimeError("Failed to acquire database connection")
+        raise last_error or DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
 
     async def health_check(self) -> bool:
         """

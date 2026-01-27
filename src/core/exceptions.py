@@ -254,6 +254,18 @@ class DatabaseNotConnectedError(DatabaseError):
         super().__init__("Database connection is not established. Call connect() first.", recoverable=False)
 
 
+class DatabasePoolTimeoutError(DatabaseError):
+    """Raised when database connection pool is exhausted and timeout occurs."""
+    
+    def __init__(self, timeout: float, pool_size: int):
+        super().__init__(
+            f"Database connection pool exhausted after {timeout}s (pool size: {pool_size}). "
+            "Consider increasing DB_POOL_SIZE or optimizing database queries.",
+            recoverable=True,
+            details={"timeout": timeout, "pool_size": pool_size}
+        )
+
+
 class RecordNotFoundError(DatabaseError):
     """Raised when a database record is not found."""
     

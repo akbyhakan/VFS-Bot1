@@ -16,6 +16,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
+# Explicit whitelist for development environments
+ALLOWED_DEV_ENVS = frozenset({"development", "dev", "testing", "test", "local"})
+
+
+def is_development_mode() -> bool:
+    """
+    Check if running in development mode using explicit whitelist.
+    
+    Returns:
+        True if environment is in allowed development environments
+    """
+    return os.getenv("ENV", "production").lower() in ALLOWED_DEV_ENVS
+
 
 @router.post("/generate-key")
 async def create_api_key_endpoint(secret: str) -> Dict[str, str]:
@@ -81,8 +94,8 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
         # Hashed password (bcrypt format)
         password_valid = verify_password(credentials.password, admin_password)
     else:
-        # Plaintext password - only allowed in development
-        if os.getenv("ENV", "production").lower() == "development":
+        # Plaintext password - only allowed in explicitly whitelisted development environments
+        if is_development_mode():
             logger.warning(
                 "⚠️ SECURITY WARNING: Using plaintext password. Only allowed in development!"
             )

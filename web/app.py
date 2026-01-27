@@ -61,6 +61,9 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 def get_real_client_ip(request: Request) -> str:
     """
     Get real client IP with trusted proxy validation.
+    
+    Security: Only trust X-Forwarded-For from known proxies and validate
+    IPs to prevent rate limit bypass attacks.
 
     Args:
         request: FastAPI request object
@@ -70,20 +73,26 @@ def get_real_client_ip(request: Request) -> str:
     """
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
     trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
-
-    client_ip = request.client.host if request.client else "unknown"
-
+    
+    client_host = request.client.host if request.client else "unknown"
+    
     # Only trust forwarded headers from known proxies
-    if trusted_proxies and client_ip in trusted_proxies:
+    if trusted_proxies and client_host in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
-            return forwarded.split(",")[0].strip()
-
+            # Parse all IPs in X-Forwarded-For chain
+            ips = [ip.strip() for ip in forwarded.split(",")]
+            # Return the first IP that is NOT a trusted proxy (rightmost untrusted IP)
+            for ip in reversed(ips):
+                if ip not in trusted_proxies:
+                    return ip
+        
+        # Fallback to X-Real-IP if present and not a trusted proxy
         real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
+        if real_ip and real_ip.strip() not in trusted_proxies:
             return real_ip.strip()
-
-    return client_ip
+    
+    return client_host
 
 
 # Create FastAPI app
