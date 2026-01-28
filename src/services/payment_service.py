@@ -20,6 +20,9 @@ class PaymentMethod(Enum):
 
 class PaymentService:
     """Handle payment processing for VFS appointments."""
+    
+    # Class-level constant: Automated payments are DISABLED for PCI-DSS compliance
+    AUTOMATED_PAYMENTS_DISABLED = True
 
     def __init__(self, config: Dict[str, Any]):
         """
@@ -27,18 +30,23 @@ class PaymentService:
 
         Args:
             config: Payment configuration
+            
+        Raises:
+            ValueError: If automated_card payment method is selected
         """
         self.config = config
-        self.method = PaymentMethod(config.get("method", "manual"))
-        self.timeout = config.get("timeout", 300)  # 5 minutes default
-
-        # Security warning for automated payments
-        if self.method == PaymentMethod.AUTOMATED_CARD:
-            logger.warning("⚠️  AUTOMATED CARD PAYMENT ENABLED - ENSURE PCI-DSS COMPLIANCE!")
-            logger.warning(
-                "Card details must be encrypted with strong encryption (AES-256 minimum)"
+        method_str = config.get("method", "manual")
+        
+        # SECURITY: Block automated payments completely
+        if method_str == "automated_card":
+            raise ValueError(
+                "Automated card payments are DISABLED for PCI-DSS compliance. "
+                "Only 'manual' payment method is allowed. "
+                "See docs/PCI_DSS_COMPLIANCE.md for details."
             )
-            logger.warning("Store encrypted card details in secure vault only")
+        
+        self.method = PaymentMethod(method_str)
+        self.timeout = config.get("timeout", 300)  # 5 minutes default
 
     async def process_payment(
         self,
@@ -54,32 +62,33 @@ class PaymentService:
             page: Playwright page object (on payment page)
             user_id: User ID for logging
             amount: Payment amount (if known)
-            card_details: Encrypted card details for automated payment
-                         WARNING: CVV must NEVER be logged or stored
+            card_details: Card details (rejected - automated payments disabled)
 
         Returns:
             True if payment successful
 
         Raises:
-            ValueError: If automated payment selected but no card details provided
+            ValueError: If card_details are provided (automated payment not allowed)
         """
+        # SECURITY: Reject any automated payment attempts
+        if card_details is not None:
+            raise ValueError(
+                "Automated card payments are DISABLED. "
+                "Card details must not be provided. "
+                "Use manual payment method only."
+            )
+        
         # SECURITY: Ensure card_details are never logged
         # Create safe version for logging (without sensitive data)
         safe_log_data = {
             "user_id": user_id,
             "method": self.method.value,
             "amount": amount if amount else "not_specified",
-            "has_card_details": card_details is not None,
         }
         logger.info(f"Processing payment: {safe_log_data}")
 
         if self.method == PaymentMethod.MANUAL:
             return await self._process_manual_payment(page, user_id, amount)
-        elif self.method == PaymentMethod.AUTOMATED_CARD:
-            if not card_details:
-                raise ValueError("Automated card payment requires encrypted card details")
-            # SECURITY: Never log card_details directly
-            return await self._process_automated_payment(page, user_id, card_details)
         else:
             logger.error(f"Unknown payment method: {self.method}")
             return False
