@@ -184,7 +184,7 @@ class PasswordEncryption:
 # Global instance
 _encryption_instance: Optional[PasswordEncryption] = None
 _encryption_lock = threading.Lock()
-_encryption_lock_async = asyncio.Lock()
+_encryption_lock_async: Optional[asyncio.Lock] = None
 
 
 def reset_encryption() -> None:
@@ -220,6 +220,14 @@ def get_encryption() -> PasswordEncryption:
         return _encryption_instance
 
 
+def _get_async_lock() -> asyncio.Lock:
+    """Get or create async lock - must be called within event loop."""
+    global _encryption_lock_async
+    if _encryption_lock_async is None:
+        _encryption_lock_async = asyncio.Lock()
+    return _encryption_lock_async
+
+
 async def get_encryption_async() -> PasswordEncryption:
     """
     Get global encryption instance (singleton) - async-safe.
@@ -232,8 +240,11 @@ async def get_encryption_async() -> PasswordEncryption:
     """
     global _encryption_instance
 
+    # Get or create async lock within event loop context
+    lock = _get_async_lock()
+    
     # Always acquire async lock to prevent race conditions
-    async with _encryption_lock_async:
+    async with lock:
         current_key = os.getenv("ENCRYPTION_KEY")
         if _encryption_instance is None or (
             current_key and _normalize_key(current_key) != _encryption_instance._key

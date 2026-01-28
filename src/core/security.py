@@ -46,28 +46,21 @@ class APIKeyManager:
     def _load_salt(self) -> None:
         """Load salt from environment (must be called with lock held)."""
         salt_env = os.getenv("API_KEY_SALT")
-        env = os.getenv("ENV", "production").lower()
 
         if not salt_env:
-            # Explicitly allowed development environments
-            allowed_dev_envs = ["development", "dev", "test", "testing", "local"]
-            if env not in allowed_dev_envs:
-                raise ValueError(
-                    f"API_KEY_SALT environment variable MUST be set in '{env}' environment. "
-                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-                )
-
-            # Development: generate random salt for this session
-            logger.warning(
-                "⚠️ SECURITY WARNING: API_KEY_SALT not set. "
-                "Generating random salt for this session. This is only acceptable in development!"
+            # STRICT MODE: Salt is MANDATORY in all environments
+            raise ValueError(
+                "API_KEY_SALT environment variable MUST be set in ALL environments. "
+                "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
-            self._salt = secrets.token_bytes(32)
-            logger.info(f"Generated random salt for development session (length: {len(self._salt)} bytes)")
-        else:
-            if len(salt_env) < 32:
-                raise ValueError(f"API_KEY_SALT must be at least 32 characters (current: {len(salt_env)})")
-            self._salt = salt_env.encode()
+
+        if len(salt_env) < 32:
+            raise ValueError(
+                f"API_KEY_SALT must be at least 32 characters for security (current: {len(salt_env)})"
+            )
+
+        self._salt = salt_env.encode()
+        logger.info("API_KEY_SALT loaded successfully")
 
     def _hash_key(self, api_key: str) -> str:
         """Hash API key using HMAC-SHA256."""
