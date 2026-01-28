@@ -1,0 +1,483 @@
+"""Tests for proxy management functionality."""
+
+import pytest
+import tempfile
+import os
+from pathlib import Path
+
+from src.models.database import Database
+from src.utils.encryption import encrypt_password, decrypt_password
+from src.utils.security.netnut_proxy import NetNutProxyManager, mask_proxy_password
+
+
+@pytest.mark.asyncio
+class TestProxyDatabase:
+    """Test proxy database operations."""
+
+    async def test_add_proxy(self):
+        """Test adding a proxy to database."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            proxy_id = await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="test_password",
+            )
+
+            assert proxy_id > 0
+
+            # Verify proxy was added
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy is not None
+            assert proxy["server"] == "gw.example.com"
+            assert proxy["port"] == 8080
+            assert proxy["username"] == "test_user"
+            assert proxy["password"] == "test_password"  # Should be decrypted
+            assert proxy["is_active"] == 1
+            assert proxy["failure_count"] == 0
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_proxy_password_encryption(self):
+        """Test that proxy passwords are encrypted in database."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            proxy_id = await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="secret_password_123",
+            )
+
+            # Read directly from database to verify encryption
+            async with db.get_connection() as conn:
+                cursor = await conn.execute(
+                    "SELECT password_encrypted FROM proxy_endpoints WHERE id = ?",
+                    (proxy_id,),
+                )
+                row = await cursor.fetchone()
+                encrypted_password = row[0]
+
+            # Encrypted password should not match plain text
+            assert encrypted_password != "secret_password_123"
+
+            # But should decrypt correctly
+            decrypted = decrypt_password(encrypted_password)
+            assert decrypted == "secret_password_123"
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_get_active_proxies(self):
+        """Test retrieving active proxies."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add multiple proxies
+            proxy1_id = await db.add_proxy(
+                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            )
+            proxy2_id = await db.add_proxy(
+                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            )
+
+            # Make one inactive
+            await db.update_proxy(proxy2_id, is_active=False)
+
+            # Get active proxies
+            active = await db.get_active_proxies()
+
+            # Only one should be active
+            assert len(active) == 1
+            assert active[0]["id"] == proxy1_id
+            assert active[0]["server"] == "proxy1.example.com"
+            assert active[0]["password"] == "pass1"  # Should be decrypted
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_update_proxy(self):
+        """Test updating a proxy."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            proxy_id = await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="test_password",
+            )
+
+            # Update proxy
+            updated = await db.update_proxy(
+                proxy_id=proxy_id,
+                server="new.example.com",
+                port=9090,
+                password="new_password",
+            )
+
+            assert updated is True
+
+            # Verify updates
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy["server"] == "new.example.com"
+            assert proxy["port"] == 9090
+            assert proxy["username"] == "test_user"  # Should remain unchanged
+            assert proxy["password"] == "new_password"
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_delete_proxy(self):
+        """Test deleting a proxy."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            proxy_id = await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="test_password",
+            )
+
+            # Delete proxy
+            deleted = await db.delete_proxy(proxy_id)
+            assert deleted is True
+
+            # Verify deletion
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy is None
+
+            # Deleting again should return False
+            deleted_again = await db.delete_proxy(proxy_id)
+            assert deleted_again is False
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_mark_proxy_failed(self):
+        """Test marking a proxy as failed."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            proxy_id = await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="test_password",
+            )
+
+            # Initially failure_count should be 0
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy["failure_count"] == 0
+
+            # Mark as failed
+            await db.mark_proxy_failed(proxy_id)
+
+            # Verify failure count incremented
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy["failure_count"] == 1
+
+            # Mark failed again
+            await db.mark_proxy_failed(proxy_id)
+            proxy = await db.get_proxy_by_id(proxy_id)
+            assert proxy["failure_count"] == 2
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_reset_proxy_failures(self):
+        """Test resetting proxy failure counts."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxies
+            proxy1_id = await db.add_proxy(
+                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            )
+            proxy2_id = await db.add_proxy(
+                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            )
+
+            # Mark both as failed
+            await db.mark_proxy_failed(proxy1_id)
+            await db.mark_proxy_failed(proxy1_id)
+            await db.mark_proxy_failed(proxy2_id)
+
+            # Verify failure counts
+            proxy1 = await db.get_proxy_by_id(proxy1_id)
+            proxy2 = await db.get_proxy_by_id(proxy2_id)
+            assert proxy1["failure_count"] == 2
+            assert proxy2["failure_count"] == 1
+
+            # Reset failures
+            count = await db.reset_proxy_failures()
+            assert count == 2  # Both proxies should be reset
+
+            # Verify all failure counts are 0
+            proxy1 = await db.get_proxy_by_id(proxy1_id)
+            proxy2 = await db.get_proxy_by_id(proxy2_id)
+            assert proxy1["failure_count"] == 0
+            assert proxy2["failure_count"] == 0
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_get_proxy_stats(self):
+        """Test getting proxy statistics."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Initially no proxies
+            stats = await db.get_proxy_stats()
+            assert stats["total"] == 0
+            assert stats["active"] == 0
+            assert stats["inactive"] == 0
+
+            # Add proxies
+            proxy1_id = await db.add_proxy(
+                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            )
+            proxy2_id = await db.add_proxy(
+                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            )
+            await db.add_proxy(
+                server="proxy3.example.com", port=8082, username="user3", password="pass3"
+            )
+
+            # Make one inactive
+            await db.update_proxy(proxy2_id, is_active=False)
+
+            # Get stats
+            stats = await db.get_proxy_stats()
+            assert stats["total"] == 3
+            assert stats["active"] == 2
+            assert stats["inactive"] == 1
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    async def test_unique_constraint(self):
+        """Test that duplicate proxies are rejected."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxy
+            await db.add_proxy(
+                server="gw.example.com",
+                port=8080,
+                username="test_user",
+                password="test_password",
+            )
+
+            # Try to add duplicate - should raise ValueError
+            with pytest.raises(ValueError, match="already exists"):
+                await db.add_proxy(
+                    server="gw.example.com",
+                    port=8080,
+                    username="test_user",
+                    password="different_password",
+                )
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+
+class TestNetNutProxyManager:
+    """Test NetNut proxy manager."""
+
+    @pytest.mark.asyncio
+    async def test_load_from_database(self):
+        """Test loading proxies from database."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        try:
+            db = Database(db_path=db_path)
+            await db.connect()
+
+            # Add proxies
+            await db.add_proxy(
+                server="gw.example.com", port=8080, username="user1", password="pass1"
+            )
+            await db.add_proxy(
+                server="gw2.example.com", port=8081, username="user2", password="pass2"
+            )
+
+            # Load into proxy manager
+            manager = NetNutProxyManager()
+            count = await manager.load_from_database(db)
+
+            assert count == 2
+            assert len(manager.proxies) == 2
+
+            # Verify proxy format
+            proxy = manager.proxies[0]
+            assert "id" in proxy
+            assert "server" in proxy
+            assert "host" in proxy
+            assert "port" in proxy
+            assert "username" in proxy
+            assert "password" in proxy
+            assert "protocol" in proxy
+            assert "endpoint" in proxy
+
+            await db.close()
+
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    def test_mask_proxy_password(self):
+        """Test password masking utility."""
+        # Test valid endpoint
+        endpoint = "gw.netnut.net:5959:ntnt_user:secret_password"
+        masked = mask_proxy_password(endpoint)
+        assert masked == "gw.netnut.net:5959:ntnt_user:***"
+
+        # Test invalid format (should return as-is)
+        invalid = "invalid_format"
+        masked = mask_proxy_password(invalid)
+        assert masked == invalid
+
+        # Test partial format
+        partial = "server:port:username"
+        masked = mask_proxy_password(partial)
+        assert masked == partial
+
+
+class TestProxyEncryption:
+    """Test proxy password encryption."""
+
+    def test_encrypt_decrypt_password(self):
+        """Test password encryption and decryption."""
+        # Ensure ENCRYPTION_KEY is set
+        if not os.getenv("ENCRYPTION_KEY"):
+            from cryptography.fernet import Fernet
+            os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+        original_password = "test_secret_password_123"
+
+        # Encrypt
+        encrypted = encrypt_password(original_password)
+
+        # Encrypted should be different from original
+        assert encrypted != original_password
+
+        # Decrypt
+        decrypted = decrypt_password(encrypted)
+
+        # Decrypted should match original
+        assert decrypted == original_password
+
+    def test_encryption_consistency(self):
+        """Test that same password encrypts differently each time (IV)."""
+        # Ensure ENCRYPTION_KEY is set
+        if not os.getenv("ENCRYPTION_KEY"):
+            from cryptography.fernet import Fernet
+            os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+        password = "test_password"
+
+        # Encrypt twice
+        encrypted1 = encrypt_password(password)
+        encrypted2 = encrypt_password(password)
+
+        # Should be different due to IV
+        assert encrypted1 != encrypted2
+
+        # But both should decrypt to same value
+        assert decrypt_password(encrypted1) == password
+        assert decrypt_password(encrypted2) == password

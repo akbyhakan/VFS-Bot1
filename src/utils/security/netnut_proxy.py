@@ -4,9 +4,28 @@ import csv
 import logging
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 logger = logging.getLogger(__name__)
+
+
+def mask_proxy_password(proxy_endpoint: str) -> str:
+    """
+    Mask password in proxy endpoint for safe logging.
+
+    Args:
+        proxy_endpoint: Proxy endpoint in format server:port:username:password
+
+    Returns:
+        Masked endpoint with password replaced by ***
+    """
+    parts = proxy_endpoint.split(":")
+    if len(parts) == 4:
+        return f"{parts[0]}:{parts[1]}:{parts[2]}:***"
+    return proxy_endpoint
 
 
 class NetNutProxyManager:
@@ -272,3 +291,39 @@ class NetNutProxyManager:
         """Clear the failed proxies list."""
         self.failed_proxies.clear()
         logger.info("Cleared failed proxies list")
+
+    async def load_from_database(self, db: "Database") -> int:
+        """
+        Load proxies from database with decrypted passwords.
+
+        Args:
+            db: Database instance
+
+        Returns:
+            Number of proxies loaded
+        """
+        try:
+            proxies = await db.get_active_proxies()
+            loaded_count = 0
+
+            for proxy in proxies:
+                proxy_dict = {
+                    "id": proxy["id"],
+                    "server": f"http://{proxy['server']}:{proxy['port']}",
+                    "host": proxy["server"],
+                    "port": proxy["port"],
+                    "username": proxy["username"],
+                    "password": proxy["password"],  # Already decrypted by database layer
+                    "protocol": "http",
+                    "endpoint": f"{proxy['server']}:{proxy['port']}:{proxy['username']}",
+                }
+                self.proxies.append(proxy_dict)
+                loaded_count += 1
+
+            logger.info(f"Loaded {loaded_count} proxies from database")
+            return loaded_count
+
+        except Exception as e:
+            logger.error(f"Error loading proxies from database: {e}")
+            return 0
+

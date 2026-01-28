@@ -3,6 +3,7 @@
 import os
 import logging
 import threading
+import asyncio
 import hashlib
 from typing import Optional
 
@@ -183,6 +184,7 @@ class PasswordEncryption:
 # Global instance
 _encryption_instance: Optional[PasswordEncryption] = None
 _encryption_lock = threading.Lock()
+_encryption_lock_async = asyncio.Lock()
 
 
 def reset_encryption() -> None:
@@ -210,6 +212,28 @@ def get_encryption() -> PasswordEncryption:
 
     # Always acquire lock to prevent race conditions
     with _encryption_lock:
+        current_key = os.getenv("ENCRYPTION_KEY")
+        if _encryption_instance is None or (
+            current_key and _normalize_key(current_key) != _encryption_instance._key
+        ):
+            _encryption_instance = PasswordEncryption()
+        return _encryption_instance
+
+
+async def get_encryption_async() -> PasswordEncryption:
+    """
+    Get global encryption instance (singleton) - async-safe.
+
+    Always uses async lock to prevent race conditions during key changes.
+    Recreates instance if encryption key changes.
+
+    Returns:
+        PasswordEncryption instance
+    """
+    global _encryption_instance
+
+    # Always acquire async lock to prevent race conditions
+    async with _encryption_lock_async:
         current_key = os.getenv("ENCRYPTION_KEY")
         if _encryption_instance is None or (
             current_key and _normalize_key(current_key) != _encryption_instance._key
