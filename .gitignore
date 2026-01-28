@@ -93,8 +93,10 @@ notes.txt
 # Pre-commit
 .secrets.baseline
 
-# Proxy files
+# Proxy files - NEVER commit real credentials
+config/proxy-endpoints.csv
 config/proxies.txt
+config/proxy-credentials.json
 
 # Frontend build output
 web/static/dist/

@@ -462,6 +462,29 @@ class Database:
                 ON user_webhooks(webhook_token)
             """)
 
+            # Proxy endpoints table
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS proxy_endpoints (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server TEXT NOT NULL,
+                    port INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    password_encrypted TEXT NOT NULL,
+                    is_active BOOLEAN DEFAULT 1,
+                    last_used TIMESTAMP,
+                    failure_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(server, port, username)
+                )
+            """)
+
+            # Index for active proxies lookup
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
+                ON proxy_endpoints(is_active)
+            """)
+
             await self.conn.commit()
 
             # Migration: Add new columns if they don't exist
@@ -1829,6 +1852,322 @@ class Database:
         if deleted:
             logger.info(f"Webhook deleted for user {user_id}")
         return deleted
+
+    # ================================================================================
+    # Proxy Management Methods
+    # ================================================================================
+
+    @require_connection
+    async def add_proxy(
+        self, server: str, port: int, username: str, password: str
+    ) -> int:
+        """
+        Add a new proxy endpoint with encrypted password.
+
+        Args:
+            server: Proxy server hostname
+            port: Proxy port
+            username: Proxy username
+            password: Proxy password (will be encrypted)
+
+        Returns:
+            Proxy ID
+
+        Raises:
+            ValueError: If proxy already exists
+        """
+        # Encrypt password before storing
+        encrypted_password = encrypt_password(password)
+
+        async with self.get_connection() as conn:
+            try:
+                cursor = await conn.execute(
+                    """
+                    INSERT INTO proxy_endpoints (server, port, username, password_encrypted, updated_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """,
+                    (server, port, username, encrypted_password),
+                )
+                await conn.commit()
+                proxy_id = cursor.lastrowid
+
+                logger.info(f"Proxy added: {server}:{port} (ID: {proxy_id})")
+                return proxy_id
+
+            except Exception as e:
+                if "UNIQUE constraint failed" in str(e):
+                    raise ValueError(
+                        f"Proxy with server={server}, port={port}, username={username} already exists"
+                    )
+                raise
+
+    @require_connection
+    async def get_active_proxies(self) -> List[Dict[str, Any]]:
+        """
+        Get all active proxies with decrypted passwords.
+
+        Returns:
+            List of proxy dictionaries with decrypted passwords
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT id, server, port, username, password_encrypted, is_active,
+                       last_used, failure_count, created_at, updated_at
+                FROM proxy_endpoints
+                WHERE is_active = 1
+                ORDER BY failure_count ASC, last_used ASC NULLS FIRST
+                """
+            )
+            rows = await cursor.fetchall()
+
+            proxies = []
+            for row in rows:
+                proxy = dict(row)
+                # Decrypt password
+                try:
+                    proxy["password"] = decrypt_password(proxy["password_encrypted"])
+                    del proxy["password_encrypted"]  # Remove encrypted version from response
+                    proxies.append(proxy)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to decrypt password for proxy {proxy['id']}: {e}"
+                    )
+                    # Skip proxies with decryption errors
+                    continue
+
+            return proxies
+
+    @require_connection
+    async def get_proxy_by_id(self, proxy_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single proxy by ID with decrypted password.
+
+        Args:
+            proxy_id: Proxy ID
+
+        Returns:
+            Proxy dictionary with decrypted password or None if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT id, server, port, username, password_encrypted, is_active,
+                       last_used, failure_count, created_at, updated_at
+                FROM proxy_endpoints
+                WHERE id = ?
+                """,
+                (proxy_id,),
+            )
+            row = await cursor.fetchone()
+
+            if not row:
+                return None
+
+            proxy = dict(row)
+            # Decrypt password
+            try:
+                proxy["password"] = decrypt_password(proxy["password_encrypted"])
+                del proxy["password_encrypted"]
+                return proxy
+            except Exception as e:
+                logger.error(f"Failed to decrypt password for proxy {proxy_id}: {e}")
+                return None
+
+    @require_connection
+    async def update_proxy(
+        self,
+        proxy_id: int,
+        server: Optional[str] = None,
+        port: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        is_active: Optional[bool] = None,
+    ) -> bool:
+        """
+        Update a proxy endpoint.
+
+        Args:
+            proxy_id: Proxy ID
+            server: New server hostname (optional)
+            port: New port (optional)
+            username: New username (optional)
+            password: New password (optional, will be encrypted)
+            is_active: New active status (optional)
+
+        Returns:
+            True if updated, False if not found
+
+        Raises:
+            ValueError: If update violates uniqueness constraint
+        """
+        # Build dynamic update query
+        updates = []
+        params = []
+
+        if server is not None:
+            updates.append("server = ?")
+            params.append(server)
+
+        if port is not None:
+            updates.append("port = ?")
+            params.append(port)
+
+        if username is not None:
+            updates.append("username = ?")
+            params.append(username)
+
+        if password is not None:
+            updates.append("password_encrypted = ?")
+            params.append(encrypt_password(password))
+
+        if is_active is not None:
+            updates.append("is_active = ?")
+            params.append(1 if is_active else 0)
+
+        if not updates:
+            return False  # Nothing to update
+
+        # Always update the updated_at timestamp
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(proxy_id)
+
+        query = f"UPDATE proxy_endpoints SET {', '.join(updates)} WHERE id = ?"
+
+        async with self.get_connection() as conn:
+            try:
+                cursor = await conn.execute(query, params)
+                await conn.commit()
+                updated = cursor.rowcount > 0
+
+                if updated:
+                    logger.info(f"Proxy {proxy_id} updated")
+                return updated
+
+            except Exception as e:
+                if "UNIQUE constraint failed" in str(e):
+                    raise ValueError("Update violates uniqueness constraint")
+                raise
+
+    @require_connection
+    async def delete_proxy(self, proxy_id: int) -> bool:
+        """
+        Delete a proxy endpoint.
+
+        Args:
+            proxy_id: Proxy ID
+
+        Returns:
+            True if deleted, False if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "DELETE FROM proxy_endpoints WHERE id = ?",
+                (proxy_id,),
+            )
+            await conn.commit()
+            deleted = cursor.rowcount > 0
+
+        if deleted:
+            logger.info(f"Proxy {proxy_id} deleted")
+        return deleted
+
+    @require_connection
+    async def mark_proxy_failed(self, proxy_id: int) -> bool:
+        """
+        Increment failure count for a proxy and update last_used.
+
+        Args:
+            proxy_id: Proxy ID
+
+        Returns:
+            True if updated, False if not found
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                UPDATE proxy_endpoints
+                SET failure_count = failure_count + 1,
+                    last_used = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (proxy_id,),
+            )
+            await conn.commit()
+            updated = cursor.rowcount > 0
+
+        if updated:
+            logger.debug(f"Proxy {proxy_id} marked as failed")
+        return updated
+
+    @require_connection
+    async def reset_proxy_failures(self) -> int:
+        """
+        Reset failure count for all proxies.
+
+        Returns:
+            Number of proxies updated
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                UPDATE proxy_endpoints
+                SET failure_count = 0,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE failure_count > 0
+                """
+            )
+            await conn.commit()
+            count = cursor.rowcount
+
+        logger.info(f"Reset failure count for {count} proxies")
+        return count
+
+    @require_connection
+    async def get_proxy_stats(self) -> Dict[str, int]:
+        """
+        Get proxy statistics.
+
+        Returns:
+            Dictionary with total, active, inactive counts
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+                    SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+                FROM proxy_endpoints
+                """
+            )
+            row = await cursor.fetchone()
+
+            if row:
+                return {
+                    "total": row[0] or 0,
+                    "active": row[1] or 0,
+                    "inactive": row[2] or 0,
+                }
+            return {"total": 0, "active": 0, "inactive": 0}
+
+    @require_connection
+    async def clear_all_proxies(self) -> int:
+        """
+        Delete all proxy endpoints.
+
+        Returns:
+            Number of proxies deleted
+        """
+        async with self.get_connection() as conn:
+            cursor = await conn.execute("DELETE FROM proxy_endpoints")
+            await conn.commit()
+            count = cursor.rowcount
+
+        logger.info(f"Cleared all {count} proxies")
+        return count
+
 
     @require_connection
     async def get_user_by_webhook_token(self, token: str) -> Optional[Dict[str, Any]]:

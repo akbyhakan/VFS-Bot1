@@ -1,3 +1,3 @@
 endpoint
-gw.netnut.net:5959:ntnt_8zq7s8ef-res-tr-sid-657606515:Ab4ME55ouIYefAT
-gw.netnut.net:5959:ntnt_8zq7s8ef-res-tr-sid-702283134:Ab4ME55ouIYefAT
+# Format: server:port:username:password
+# Example: gw.netnut.net:5959:your_username:your_password
