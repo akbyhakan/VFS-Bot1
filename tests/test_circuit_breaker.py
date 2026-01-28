@@ -9,6 +9,11 @@ from src.services.bot_service import VFSBot
 from src.models.database import Database
 from src.services.notification import NotificationService
 from src.core.circuit_breaker import CircuitBreaker, CircuitState, CircuitBreakerError
+from src.services.circuit_breaker import (
+    CircuitBreakerService,
+    CircuitState as ServiceCircuitState,
+    CircuitBreakerStats,
+)
 
 
 @pytest.mark.asyncio
@@ -269,3 +274,99 @@ async def test_generic_circuit_breaker_manual_reset():
     assert cb.state == CircuitState.CLOSED
     assert cb.failure_count == 0
 
+
+
+# Tests for CircuitBreakerService
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_initialization():
+    """Test CircuitBreakerService initializes in CLOSED state."""
+    cb = CircuitBreakerService()
+    
+    assert cb.state == ServiceCircuitState.CLOSED
+    assert cb.consecutive_errors == 0
+    assert await cb.is_available() is True
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_opens_on_consecutive_failures():
+    """Test CircuitBreakerService opens after consecutive failures."""
+    cb = CircuitBreakerService(fail_threshold=3)
+    
+    # Record failures
+    await cb.record_failure()
+    await cb.record_failure()
+    assert await cb.is_available() is True
+    
+    # Third failure should open circuit
+    await cb.record_failure()
+    assert await cb.is_available() is False
+    assert cb.state == ServiceCircuitState.OPEN
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_resets_on_success():
+    """Test CircuitBreakerService resets consecutive errors on success."""
+    cb = CircuitBreakerService(fail_threshold=3)
+    
+    await cb.record_failure()
+    await cb.record_failure()
+    assert cb.consecutive_errors == 2
+    
+    # Success should reset counter
+    await cb.record_success()
+    assert cb.consecutive_errors == 0
+    assert cb.state == ServiceCircuitState.CLOSED
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_half_open_transition():
+    """Test CircuitBreakerService transitions to HALF_OPEN after timeout."""
+    cb = CircuitBreakerService(fail_threshold=2, reset_timeout=1)
+    
+    # Open circuit
+    await cb.record_failure()
+    await cb.record_failure()
+    assert cb.state == ServiceCircuitState.OPEN
+    
+    # Wait for reset timeout
+    await asyncio.sleep(1.1)
+    
+    # Should transition to HALF_OPEN on next check
+    is_available = await cb.is_available()
+    assert is_available is True
+    assert cb.state == ServiceCircuitState.HALF_OPEN
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_get_stats():
+    """Test getting CircuitBreakerService statistics."""
+    cb = CircuitBreakerService(fail_threshold=3)
+    
+    await cb.record_failure()
+    await cb.record_failure()
+    
+    stats = await cb.get_stats()
+    
+    assert isinstance(stats, CircuitBreakerStats)
+    assert stats.state == ServiceCircuitState.CLOSED
+    assert stats.consecutive_errors == 2
+    assert stats.total_errors_in_window == 2
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_service_manual_reset():
+    """Test manual reset of CircuitBreakerService."""
+    cb = CircuitBreakerService(fail_threshold=2)
+    
+    # Open circuit
+    await cb.record_failure()
+    await cb.record_failure()
+    assert cb.state == ServiceCircuitState.OPEN
+    
+    # Manual reset
+    await cb.reset()
+    assert cb.state == ServiceCircuitState.CLOSED
+    assert cb.consecutive_errors == 0
+    assert await cb.is_available() is True

@@ -103,8 +103,13 @@ class CleanupService:
         Args:
             message: Alert message
         """
-        # TODO: Implement actual alert mechanism (email, Telegram, etc.)
-        logger.critical(f"🚨 CRITICAL ALERT: {message}")
+        try:
+            from src.services.alert_service import send_critical_alert
+            await send_critical_alert(message, metadata={"service": "cleanup"})
+        except Exception as e:
+            # Fallback to logging if alert service fails
+            logger.critical(f"🚨 CRITICAL ALERT: {message}")
+            logger.error(f"Alert service failed: {e}")
 
     async def run_periodic_cleanup(
         self, interval_hours: int = 24, max_retries: int = 5

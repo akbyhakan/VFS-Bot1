@@ -1,12 +1,12 @@
 """Payment and payment card routes for VFS-Bot web application."""
 
-import gc
 import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.models.database import Database
+from src.utils.secure_memory import SecureCVV
 from web.dependencies import (
     verify_jwt_token,
     PaymentCardRequest,
@@ -140,8 +140,8 @@ async def initiate_payment(
 
     Security:
     - CVV exists only in memory during this request
+    - Securely cleared using ctypes memory zeroing
     - Never logged or persisted to disk
-    - Cleared immediately after use
 
     Args:
         request: Payment initiation data with CVV
@@ -150,42 +150,39 @@ async def initiate_payment(
     Returns:
         Payment result
     """
-    try:
-        db = Database()
-        await db.connect()
-
+    # Use secure context manager for CVV handling
+    with SecureCVV(request.cvv) as secure_cvv:
         try:
-            # Get appointment
-            appointment = await db.get_appointment_request(request.appointment_id)
-            if not appointment:
-                raise HTTPException(404, "Appointment not found")
+            db = Database()
+            await db.connect()
 
-            # Get saved card (without CVV)
-            card = await db.get_payment_card()
-            if not card:
-                raise HTTPException(404, "No payment card saved")
+            try:
+                # Get appointment
+                appointment = await db.get_appointment_request(request.appointment_id)
+                if not appointment:
+                    raise HTTPException(404, "Appointment not found")
 
-            # Process payment with runtime CVV
-            # TODO: Implement actual payment processing
-            logger.info(f"Payment initiated for appointment {request.appointment_id}")
+                # Get saved card (without CVV)
+                card = await db.get_payment_card()
+                if not card:
+                    raise HTTPException(404, "No payment card saved")
 
-            return {
-                "success": True,
-                "message": "Payment completed",
-                "appointment_id": request.appointment_id,
-            }
+                # Process payment with runtime CVV
+                # Note: secure_cvv is the decrypted CVV string available only in this context
+                # TODO: Implement actual payment processing
+                logger.info(f"Payment initiated for appointment {request.appointment_id}")
 
-        finally:
-            await db.close()
+                return {
+                    "success": True,
+                    "message": "Payment completed",
+                    "appointment_id": request.appointment_id,
+                }
 
-    finally:
-        # CRITICAL: Clear CVV from memory
-        # Note: This is a best-effort approach. Python's string interning
-        # and garbage collection are implementation-dependent.
-        # For production use with highly sensitive data, consider:
-        # 1. Using ctypes to overwrite memory directly
-        # 2. Using libraries like 'pympler' for secure memory handling
-        # 3. Delegating payment processing to PCI-DSS compliant gateway
-        request.cvv = ""
-        del request
-        gc.collect()
+            finally:
+                await db.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Payment processing error: {e}")
+            raise HTTPException(500, "Payment processing failed")
+    # CVV is automatically and securely cleared when exiting the context
