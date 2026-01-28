@@ -338,6 +338,28 @@ session:
   token_refresh_buffer: 5
 ```
 
+### User CSV Upload Format
+
+When uploading users via CSV, use the following format:
+
+| Column | Required | Description |
+|--------|----------|-------------|
+| email | Yes | VFS account email |
+| password | Yes | VFS account password |
+| phone | Yes | Phone number for notifications |
+
+Example CSV structure:
+```csv
+email,password,phone
+your-email@example.com,your-password,5551234567
+```
+
+**Important Security Notes:**
+- Never commit CSV files with real credentials to version control
+- Passwords are automatically encrypted when imported
+- Keep your CSV files in a secure location
+- Delete CSV files after importing users
+
 ## 📊 Web Dashboard
 
 The web dashboard provides:
