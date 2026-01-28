@@ -6,10 +6,11 @@ This document outlines security best practices, configurations, and guidelines f
 
 1. [Content Security Policy (CSP)](#content-security-policy)
 2. [Payment Security](#payment-security)
-3. [Secure Memory Handling](#secure-memory-handling)
-4. [Alert System](#alert-system)
-5. [Circuit Breaker](#circuit-breaker)
-6. [General Security Guidelines](#general-security-guidelines)
+3. [Proxy Security](#proxy-security)
+4. [Secure Memory Handling](#secure-memory-handling)
+5. [Alert System](#alert-system)
+6. [Circuit Breaker](#circuit-breaker)
+7. [General Security Guidelines](#general-security-guidelines)
 
 ---
 
@@ -97,6 +98,115 @@ See [docs/PCI_DSS_COMPLIANCE.md](./PCI_DSS_COMPLIANCE.md) for details on:
 - Alternative payment integration approaches
 
 ### CVV Security
+
+CVV is **NEVER stored** in the database and only exists in memory during transaction processing.
+
+---
+
+## Proxy Security
+
+### Database-Backed Proxy Management
+
+VFS-Bot uses database-backed proxy management with encrypted credentials for enhanced security.
+
+**Key Security Features:**
+
+1. **Encrypted Storage**: Proxy passwords are encrypted using Fernet (AES-128 CBC) before storage
+2. **No Hardcoded Credentials**: All credentials removed from config files
+3. **Password Masking**: Passwords are masked in logs for safe logging
+4. **JWT Authentication**: All proxy management endpoints require JWT authentication
+5. **Input Validation**: Port ranges, server names validated before storage
+
+### Configuration
+
+**IMPORTANT:** Never commit real proxy credentials to version control.
+
+The `config/proxy-endpoints.csv` file should contain only the header and examples:
+
+```csv
+endpoint
+# Format: server:port:username:password
+# Example: gw.netnut.net:5959:your_username:your_password
+```
+
+### Adding Proxies
+
+Use the API endpoints to add proxies securely:
+
+```bash
+# Add a single proxy
+curl -X POST https://your-api.com/api/proxy/add \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "server": "gw.netnut.net",
+    "port": 5959,
+    "username": "your_username",
+    "password": "your_password"
+  }'
+
+# Upload CSV file
+curl -X POST https://your-api.com/api/proxy/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@proxies.csv"
+```
+
+### Encryption Key Management
+
+Proxy passwords are encrypted using the `ENCRYPTION_KEY` environment variable:
+
+```bash
+# Generate a new encryption key
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# Set in environment
+export ENCRYPTION_KEY="your_generated_key_here"
+```
+
+**CRITICAL:** 
+- Store the encryption key securely (e.g., AWS Secrets Manager, HashiCorp Vault)
+- Never commit the encryption key to version control
+- Rotate keys periodically using the key rotation support
+- Back up encrypted data before key rotation
+
+### API Endpoints
+
+All proxy management endpoints require JWT authentication:
+
+- `POST /api/proxy/add` - Add single proxy
+- `GET /api/proxy/list` - List all proxies (passwords excluded)
+- `GET /api/proxy/{id}` - Get specific proxy details
+- `PUT /api/proxy/{id}` - Update proxy
+- `DELETE /api/proxy/{id}` - Delete proxy
+- `DELETE /api/proxy/clear-all` - Delete all proxies
+- `POST /api/proxy/reset-failures` - Reset failure counters
+- `POST /api/proxy/upload` - Upload CSV file (max 10MB)
+
+### Password Masking in Logs
+
+Use the `mask_proxy_password()` utility for safe logging:
+
+```python
+from src.utils.security.netnut_proxy import mask_proxy_password
+
+endpoint = "gw.netnut.net:5959:username:password"
+safe_log = mask_proxy_password(endpoint)
+# Output: gw.netnut.net:5959:username:***
+logger.info(f"Using proxy: {safe_log}")
+```
+
+### Best Practices
+
+1. **Never commit credentials** - Use `.gitignore` to exclude proxy files
+2. **Rotate credentials regularly** - Update proxy passwords periodically
+3. **Monitor failure rates** - Use the failure tracking to identify compromised proxies
+4. **Use unique credentials** - Each proxy should have unique authentication
+5. **Limit access** - Only authorized services should access proxy endpoints
+6. **Audit logs** - Monitor proxy CRUD operations via audit logs
+
+---
+
+### CVV Security (Payment)
 
 CVV codes are handled with special security measures:
 
