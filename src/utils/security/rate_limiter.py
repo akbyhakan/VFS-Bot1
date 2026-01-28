@@ -7,7 +7,7 @@ import logging
 from typing import Optional
 from collections import deque
 
-from ...core.constants import RateLimitDefaults
+from ...constants import RateLimitDefaults
 
 logger = logging.getLogger(__name__)
 
