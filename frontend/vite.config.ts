@@ -23,6 +23,11 @@ function cspNoncePlugin(): Plugin {
         /<link([^>]*rel=["']stylesheet["'])(?![^>]*nonce)/g,
         '<link nonce="{{CSP_NONCE}}"$1'
       )
+      // Add nonce placeholder to link modulepreload tags (for Vite chunks)
+      html = html.replace(
+        /<link([^>]*rel=["']modulepreload["'])(?![^>]*nonce)/g,
+        '<link nonce="{{CSP_NONCE}}"$1'
+      )
       return html
     }
   }
