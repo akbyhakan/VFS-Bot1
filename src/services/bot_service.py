@@ -292,16 +292,20 @@ class VFSBot:
                     logger.info("Shutdown requested, stopping bot loop...")
                     break
 
-                # Check circuit breaker
-                if self.circuit_breaker_open:
-                    wait_time = self._get_circuit_breaker_wait_time()
+                # Check circuit breaker (thread-safe)
+                circuit_open = not await self._check_circuit_breaker()
+                if circuit_open:
+                    wait_time = await self._get_circuit_breaker_wait_time()
+                    # Get error count for logging (thread-safe)
+                    async with self._error_lock:
+                        error_count = self.consecutive_errors
                     logger.warning(
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
-                        f"(consecutive errors: {self.consecutive_errors})"
+                        f"(consecutive errors: {error_count})"
                     )
                     await asyncio.sleep(wait_time)
                     # Try to close circuit breaker
-                    self._reset_circuit_breaker()
+                    await self._reset_circuit_breaker()
                     continue
 
                 # Get active users with decrypted passwords
@@ -329,8 +333,8 @@ class VFSBot:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self._record_error()
                 else:
-                    # Successful batch - reset consecutive errors
-                    self.consecutive_errors = 0
+                    # Successful batch - reset consecutive errors (thread-safe)
+                    await self._record_success()
 
                 # Wait before next check
                 check_interval = self.config["bot"].get(
@@ -344,9 +348,10 @@ class VFSBot:
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self._record_error()
 
-                # If circuit breaker open, wait longer
-                if self.circuit_breaker_open:
-                    wait_time = self._get_circuit_breaker_wait_time()
+                # If circuit breaker open, wait longer (thread-safe)
+                circuit_open = not await self._check_circuit_breaker()
+                if circuit_open:
+                    wait_time = await self._get_circuit_breaker_wait_time()
                     await asyncio.sleep(wait_time)
                 else:
                     await asyncio.sleep(Intervals.ERROR_RECOVERY)
@@ -423,24 +428,26 @@ class VFSBot:
 
                 asyncio.create_task(_record_trip())
 
-    def _reset_circuit_breaker(self) -> None:
-        """Reset circuit breaker state."""
-        self.circuit_breaker_open = False
-        self.circuit_breaker_open_time = None
-        self.consecutive_errors = 0
-        logger.info("Circuit breaker CLOSED - resuming normal operation")
+    async def _reset_circuit_breaker(self) -> None:
+        """Reset circuit breaker state (thread-safe)."""
+        async with self._error_lock:
+            self.circuit_breaker_open = False
+            self.circuit_breaker_open_time = None
+            self.consecutive_errors = 0
+            logger.info("Circuit breaker CLOSED - resuming normal operation")
 
-    def _get_circuit_breaker_wait_time(self) -> float:
+    async def _get_circuit_breaker_wait_time(self) -> float:
         """
-        Calculate wait time for circuit breaker with exponential backoff.
+        Calculate wait time for circuit breaker with exponential backoff (thread-safe).
 
         Returns:
             Wait time in seconds
         """
-        # Exponential backoff: min(60 * 2^(errors-1), 600)
-        errors = min(self.consecutive_errors, 10)  # Cap for calculation
-        backoff = min(CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)), CircuitBreaker.BACKOFF_MAX)
-        return float(backoff)
+        async with self._error_lock:
+            # Exponential backoff: min(60 * 2^(errors-1), 600)
+            errors = min(self.consecutive_errors, 10)  # Cap for calculation
+            backoff = min(CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)), CircuitBreaker.BACKOFF_MAX)
+            return float(backoff)
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
