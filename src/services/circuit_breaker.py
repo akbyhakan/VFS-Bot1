@@ -158,20 +158,21 @@ class CircuitBreakerService:
             self.half_open_attempts = 0
             logger.info("Circuit breaker manually reset to CLOSED")
     
-    def get_wait_time(self) -> float:
+    async def get_wait_time(self) -> float:
         """
-        Calculate wait time with exponential backoff.
+        Calculate wait time with exponential backoff (thread-safe).
         
         Returns:
             Wait time in seconds
         """
-        # Exponential backoff: min(base * 2^(errors-1), max)
-        errors = min(self.consecutive_errors, 10)  # Cap for calculation
-        backoff = min(
-            self.backoff_base * (2 ** (errors - 1)),
-            self.backoff_max
-        )
-        return float(backoff)
+        async with self._lock:
+            # Exponential backoff: min(base * 2^(errors-1), max)
+            errors = min(self.consecutive_errors, 10)  # Cap for calculation
+            backoff = min(
+                self.backoff_base * (2 ** (errors - 1)),
+                self.backoff_max
+            )
+            return float(backoff)
     
     async def get_stats(self) -> CircuitBreakerStats:
         """
