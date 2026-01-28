@@ -199,19 +199,23 @@ class Database:
         Raises:
             DatabasePoolTimeoutError: If connection cannot be acquired within timeout
         """
+        conn = None
         try:
             conn = await asyncio.wait_for(self._available_connections.get(), timeout=timeout)
+            yield conn
         except asyncio.TimeoutError:
             logger.error(
                 f"Database connection pool exhausted (timeout: {timeout}s, pool_size: {self.pool_size})"
             )
             raise DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
-        try:
-            yield conn
         finally:
-            # Track when connection was last used for idle cleanup
-            conn._last_used = time.time()  # type: ignore
-            await self._available_connections.put(conn)
+            if conn is not None:
+                try:
+                    # Track when connection was last used for idle cleanup
+                    conn._last_used = time.time()  # type: ignore
+                    await self._available_connections.put(conn)
+                except Exception as e:
+                    logger.error(f"Failed to return connection to pool: {e}")
 
     @asynccontextmanager
     async def get_connection_with_retry(
