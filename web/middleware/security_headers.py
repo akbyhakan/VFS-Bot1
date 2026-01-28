@@ -1,5 +1,6 @@
 """Security headers middleware for VFS-Bot web application."""
 
+import secrets
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -9,6 +10,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Add security headers to response."""
+        # Generate unique nonce for this request
+        nonce = secrets.token_urlsafe(16)
+        
+        # Store nonce in request state for templates
+        request.state.csp_nonce = nonce
+        
         response = await call_next(request)
 
         # Prevent clickjacking attacks
@@ -20,14 +27,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Enable XSS protection (for older browsers)
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Content Security Policy (adjust as needed for your frontend)
-        # Note: 'unsafe-inline' and 'unsafe-eval' are included for compatibility
-        # with some frontend frameworks. For production, consider using nonces.
-        # TODO: Replace 'unsafe-inline' and 'unsafe-eval' with nonces or hashes
+        # Content Security Policy with nonce-based security
+        # Note: This project uses React/Vite SPA. The 'unsafe-inline' and 'unsafe-eval'
+        # are kept for compatibility with the build system. For full nonce integration,
+        # the build process needs to be updated to inject nonces into generated scripts.
+        # TODO: Integrate nonce support into React/Vite build pipeline
+        # For now, we keep 'unsafe-inline' and 'unsafe-eval' but provide nonce for future use
         csp_policy = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
+            f"script-src 'self' 'nonce-{nonce}' 'unsafe-inline' 'unsafe-eval'; "
+            f"style-src 'self' 'nonce-{nonce}' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
             "connect-src 'self' ws: wss:; "
