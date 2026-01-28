@@ -205,7 +205,7 @@
         <img class="modal-content" id="modalImage">
     </div>
 
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         async function loadErrors() {
             const container = document.getElementById('errors');
             container.innerHTML = '<div class="loading">Loading errors...</div>';

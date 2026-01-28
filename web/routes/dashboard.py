@@ -32,7 +32,7 @@ async def errors_dashboard(request: Request):
 # Catch-all route for React SPA - MUST be registered last in main app!
 async def serve_react_app(request: Request, full_path: str = ""):
     """
-    Serve React SPA for all non-API routes.
+    Serve React SPA for all non-API routes with CSP nonce injection.
 
     This handles client-side routing by serving index.html for all routes
     that don't start with /api, /ws, /health, /metrics, or /static.
@@ -42,7 +42,7 @@ async def serve_react_app(request: Request, full_path: str = ""):
         full_path: Requested path
 
     Returns:
-        HTML response with React app
+        HTML response with React app and CSP nonce injected
     """
     # Skip API routes, WebSocket, health checks, and static files
     if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
@@ -53,7 +53,13 @@ async def serve_react_app(request: Request, full_path: str = ""):
     index_file = dist_dir / "index.html"
 
     if index_file.exists():
-        return FileResponse(index_file)
+        # Read HTML and inject CSP nonce
+        html_content = index_file.read_text(encoding='utf-8')
+        nonce = getattr(request.state, 'csp_nonce', '')
+        if nonce:
+            # Replace nonce placeholder with actual nonce from middleware
+            html_content = html_content.replace('{{CSP_NONCE}}', nonce)
+        return HTMLResponse(content=html_content, media_type="text/html")
     else:
         # Fallback to old template if React build doesn't exist
         return templates.TemplateResponse(
