@@ -27,12 +27,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Enable XSS protection (for older browsers)
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Content Security Policy with nonce-based security
-        # Note: This project uses React/Vite SPA. The 'unsafe-inline' and 'unsafe-eval'
-        # are kept for compatibility with the build system. For full nonce integration,
-        # the build process needs to be updated to inject nonces into generated scripts.
-        # TODO: Integrate nonce support into React/Vite build pipeline
-        # For now, we keep 'unsafe-inline' and 'unsafe-eval' but provide nonce for future use
+        # Content Security Policy with nonce support
+        # IMPORTANT: Currently 'unsafe-inline' and 'unsafe-eval' are still present for 
+        # React/Vite compatibility. The nonce is generated and available in request.state.csp_nonce
+        # for future use, but provides NO security benefit while 'unsafe-inline' is present.
+        # According to CSP spec, 'unsafe-inline' is ignored when nonces are present in CSP2+ browsers,
+        # but 'unsafe-eval' still allows arbitrary code execution.
+        # 
+        # TODO: Remove 'unsafe-inline' and 'unsafe-eval' once the React/Vite build pipeline
+        # is updated to inject nonces into generated scripts and styles.
+        # Until then, this provides infrastructure for future security improvements.
         csp_policy = (
             "default-src 'self'; "
             f"script-src 'self' 'nonce-{nonce}' 'unsafe-inline' 'unsafe-eval'; "
