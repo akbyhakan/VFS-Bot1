@@ -57,8 +57,9 @@ async def serve_react_app(request: Request, full_path: str = ""):
         html_content = index_file.read_text(encoding='utf-8')
         nonce = getattr(request.state, 'csp_nonce', '')
         if nonce:
+            # Replace nonce placeholder with actual nonce from middleware
             html_content = html_content.replace('{{CSP_NONCE}}', nonce)
-        return HTMLResponse(content=html_content)
+        return HTMLResponse(content=html_content, media_type="text/html")
     else:
         # Fallback to old template if React build doesn't exist
         return templates.TemplateResponse(
