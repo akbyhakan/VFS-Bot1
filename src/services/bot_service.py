@@ -296,9 +296,12 @@ class VFSBot:
                 circuit_open = not await self._check_circuit_breaker()
                 if circuit_open:
                     wait_time = await self._get_circuit_breaker_wait_time()
+                    # Get error count for logging (thread-safe)
+                    async with self._error_lock:
+                        error_count = self.consecutive_errors
                     logger.warning(
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
-                        f"(consecutive errors: {self.consecutive_errors})"
+                        f"(consecutive errors: {error_count})"
                     )
                     await asyncio.sleep(wait_time)
                     # Try to close circuit breaker
@@ -330,8 +333,8 @@ class VFSBot:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self._record_error()
                 else:
-                    # Successful batch - reset consecutive errors
-                    self.consecutive_errors = 0
+                    # Successful batch - reset consecutive errors (thread-safe)
+                    await self._record_success()
 
                 # Wait before next check
                 check_interval = self.config["bot"].get(

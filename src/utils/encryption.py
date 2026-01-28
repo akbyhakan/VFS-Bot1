@@ -185,6 +185,7 @@ class PasswordEncryption:
 _encryption_instance: Optional[PasswordEncryption] = None
 _encryption_lock = threading.Lock()
 _encryption_lock_async: Optional[asyncio.Lock] = None
+_async_lock_creation_lock = threading.Lock()  # Protects async lock creation
 
 
 def reset_encryption() -> None:
@@ -221,10 +222,15 @@ def get_encryption() -> PasswordEncryption:
 
 
 def _get_async_lock() -> asyncio.Lock:
-    """Get or create async lock - must be called within event loop."""
+    """
+    Get or create async lock - must be called within event loop.
+    Thread-safe creation using threading.Lock.
+    """
     global _encryption_lock_async
-    if _encryption_lock_async is None:
-        _encryption_lock_async = asyncio.Lock()
+    # Use threading lock to prevent race condition during async lock creation
+    with _async_lock_creation_lock:
+        if _encryption_lock_async is None:
+            _encryption_lock_async = asyncio.Lock()
     return _encryption_lock_async
 
 
