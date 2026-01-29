@@ -7,6 +7,7 @@ to have a unique webhook URL for SMS OTP delivery via SMS Forwarder app.
 import logging
 import re
 import secrets
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -133,12 +134,12 @@ class WebhookTokenManager:
     TOKEN_PREFIX = "tk_"
     TOKEN_LENGTH = 24  # Random hex characters after prefix
     
-    # OTP extraction patterns
+    # OTP extraction patterns (in priority order - most specific first)
     OTP_PATTERNS = [
-        r'(?:OTP|code|verification|passcode)[:\s]*(\d{4,8})',
-        r'(?:is|:)\s*(\d{4,8})',
-        r'\b(\d{6})\b',  # Generic 6-digit code
-        r'\b(\d{4})\b',  # Generic 4-digit code
+        r'(?:OTP|code|verification|passcode)[:\s]+(\d{4,8})',  # "OTP: 123456"
+        r'(?:OTP|code|verification|passcode)\s+is[:\s]+(\d{4,8})',  # "OTP is: 123456"
+        r'\b(\d{6})\b(?!\d)',  # Generic 6-digit (with word boundary, not followed by more digits)
+        r'\b(\d{4})\b(?!\d)',  # Generic 4-digit (with word boundary, not followed by more digits)
     ]
     
     def __init__(self, base_url: str = "https://api.vizecep.com"):
@@ -152,6 +153,7 @@ class WebhookTokenManager:
         self._tokens: Dict[str, WebhookToken] = {}
         self._account_tokens: Dict[str, str] = {}  # account_id -> token
         self._phone_tokens: Dict[str, str] = {}  # phone_number -> token
+        self._lock = threading.RLock()  # Re-entrant lock for thread safety
         logger.info(f"WebhookTokenManager initialized with base URL: {self.base_url}")
     
     def generate_token(self, account_id: str) -> str:
@@ -177,7 +179,7 @@ class WebhookTokenManager:
         metadata: Optional[Dict] = None
     ) -> WebhookToken:
         """
-        Register a webhook token.
+        Register a webhook token (thread-safe).
         
         Args:
             token: Webhook token
@@ -192,26 +194,27 @@ class WebhookTokenManager:
         Raises:
             ValueError: If token already exists
         """
-        if token in self._tokens:
-            raise ValueError(f"Token already exists: {token}")
-        
-        webhook_url = f"{self.base_url}/webhook/sms/{token}"
-        
-        webhook_token = WebhookToken(
-            token=token,
-            account_id=account_id,
-            phone_number=phone_number,
-            session_id=session_id,
-            webhook_url=webhook_url,
-            metadata=metadata or {}
-        )
-        
-        self._tokens[token] = webhook_token
-        self._account_tokens[account_id] = token
-        self._phone_tokens[phone_number] = token
-        
-        logger.info(f"Registered webhook token for account {account_id}, phone {phone_number}")
-        return webhook_token
+        with self._lock:
+            if token in self._tokens:
+                raise ValueError(f"Token already exists: {token}")
+            
+            webhook_url = f"{self.base_url}/webhook/sms/{token}"
+            
+            webhook_token = WebhookToken(
+                token=token,
+                account_id=account_id,
+                phone_number=phone_number,
+                session_id=session_id,
+                webhook_url=webhook_url,
+                metadata=metadata or {}
+            )
+            
+            self._tokens[token] = webhook_token
+            self._account_tokens[account_id] = token
+            self._phone_tokens[phone_number] = token
+            
+            logger.info(f"Registered webhook token for account {account_id}, phone {phone_number}")
+            return webhook_token
     
     def get_webhook_url(self, token: str) -> str:
         """
@@ -255,7 +258,7 @@ class WebhookTokenManager:
     
     def link_session(self, token: str, session_id: str):
         """
-        Link a token to an active bot session.
+        Link a token to an active bot session (thread-safe).
         
         Args:
             token: Webhook token
@@ -264,12 +267,13 @@ class WebhookTokenManager:
         Raises:
             ValueError: If token is invalid
         """
-        webhook_token = self.validate_token(token)
-        if not webhook_token:
-            raise ValueError(f"Invalid token: {token}")
-        
-        webhook_token.session_id = session_id
-        logger.info(f"Linked token {token[:10]}... to session {session_id}")
+        with self._lock:
+            webhook_token = self.validate_token(token)
+            if not webhook_token:
+                raise ValueError(f"Invalid token: {token}")
+            
+            webhook_token.session_id = session_id
+            logger.info(f"Linked token {token[:10]}... to session {session_id}")
     
     def unlink_session(self, token: str):
         """

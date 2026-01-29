@@ -22,7 +22,7 @@ router = APIRouter(prefix="/webhook/sms", tags=["SMS Webhook"])
 limiter = Limiter(key_func=get_remote_address)
 
 # Global webhook token manager (will be initialized by OTPManager)
-_webhook_manager: WebhookTokenManager = None
+_webhook_manager: Optional[WebhookTokenManager] = None
 
 
 def set_webhook_manager(manager: WebhookTokenManager):
@@ -230,7 +230,7 @@ async def test_webhook(token: str, request: Request):
                 "status": "test_success",
                 "message": "Webhook is correctly configured",
                 "account_id": webhook_token.account_id,
-                "parsed_message": sms_payload.message[:100],  # Truncate for safety
+                "parsed_message": sms_payload.message[:30] + "..." if len(sms_payload.message) > 30 else sms_payload.message,  # Truncate for safety
                 "parsed_phone": sms_payload.phone_number,
                 "note": "This is a test - OTP was NOT processed"
             }

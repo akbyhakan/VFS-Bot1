@@ -6,6 +6,7 @@ Each account automatically gets a unique webhook URL for SMS OTP delivery.
 
 import logging
 import secrets
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -49,12 +50,19 @@ class VFSAccount:
     last_login_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert account to dictionary."""
-        return {
+    def to_dict(self, include_password: bool = False) -> Dict[str, Any]:
+        """
+        Convert account to dictionary.
+        
+        Args:
+            include_password: If True, includes encrypted password (default: False)
+        
+        Returns:
+            Dictionary representation of account
+        """
+        data = {
             'account_id': self.account_id,
             'vfs_email': self.vfs_email,
-            'vfs_password': self.vfs_password,
             'phone_number': self.phone_number,
             'target_email': self.target_email,
             'webhook_token': self.webhook_token,
@@ -66,6 +74,11 @@ class VFSAccount:
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'metadata': self.metadata
         }
+        
+        if include_password:
+            data['vfs_password'] = self.vfs_password
+        
+        return data
 
 
 class VFSAccountManager:
@@ -91,6 +104,7 @@ class VFSAccountManager:
         self._email_index: Dict[str, str] = {}  # vfs_email -> account_id
         self._phone_index: Dict[str, str] = {}  # phone_number -> account_id
         self._token_index: Dict[str, str] = {}  # webhook_token -> account_id
+        self._lock = threading.RLock()  # Re-entrant lock for thread safety
         
         logger.info("VFSAccountManager initialized")
     
@@ -109,7 +123,7 @@ class VFSAccountManager:
         metadata: Optional[Dict] = None
     ) -> VFSAccount:
         """
-        Register a new VFS account.
+        Register a new VFS account (thread-safe).
         
         Automatically generates:
         - Unique account_id
@@ -131,59 +145,60 @@ class VFSAccountManager:
         Raises:
             ValueError: If account with same email or phone already exists
         """
-        # Check for duplicates
-        if vfs_email in self._email_index:
-            raise ValueError(f"Account with email {vfs_email} already exists")
-        
-        if phone_number in self._phone_index:
-            raise ValueError(f"Account with phone {phone_number} already exists")
-        
-        # Generate account ID
-        account_id = self._generate_account_id()
-        
-        # Generate webhook token
-        webhook_token = self.webhook_manager.generate_token(account_id)
-        
-        # Encrypt password
-        encrypted_password = encrypt_password(vfs_password)
-        
-        # Register webhook token
-        self.webhook_manager.register_token(
-            token=webhook_token,
-            account_id=account_id,
-            phone_number=phone_number,
-            metadata=metadata
-        )
-        
-        # Get webhook URL
-        webhook_url = self.webhook_manager.get_webhook_url(webhook_token)
-        
-        # Create account
-        account = VFSAccount(
-            account_id=account_id,
-            vfs_email=vfs_email,
-            vfs_password=encrypted_password,
-            phone_number=phone_number,
-            target_email=target_email,
-            webhook_token=webhook_token,
-            webhook_url=webhook_url,
-            country=country,
-            visa_type=visa_type,
-            metadata=metadata or {}
-        )
-        
-        # Store account and update indexes
-        self._accounts[account_id] = account
-        self._email_index[vfs_email] = account_id
-        self._phone_index[phone_number] = account_id
-        self._token_index[webhook_token] = account_id
-        
-        logger.info(
-            f"Registered VFS account {account_id} for {vfs_email}, "
-            f"webhook: {webhook_url}"
-        )
-        
-        return account
+        with self._lock:
+            # Check for duplicates
+            if vfs_email in self._email_index:
+                raise ValueError(f"Account with email {vfs_email} already exists")
+            
+            if phone_number in self._phone_index:
+                raise ValueError(f"Account with phone {phone_number} already exists")
+            
+            # Generate account ID
+            account_id = self._generate_account_id()
+            
+            # Generate webhook token
+            webhook_token = self.webhook_manager.generate_token(account_id)
+            
+            # Encrypt password
+            encrypted_password = encrypt_password(vfs_password)
+            
+            # Register webhook token
+            self.webhook_manager.register_token(
+                token=webhook_token,
+                account_id=account_id,
+                phone_number=phone_number,
+                metadata=metadata
+            )
+            
+            # Get webhook URL
+            webhook_url = self.webhook_manager.get_webhook_url(webhook_token)
+            
+            # Create account
+            account = VFSAccount(
+                account_id=account_id,
+                vfs_email=vfs_email,
+                vfs_password=encrypted_password,
+                phone_number=phone_number,
+                target_email=target_email,
+                webhook_token=webhook_token,
+                webhook_url=webhook_url,
+                country=country,
+                visa_type=visa_type,
+                metadata=metadata or {}
+            )
+            
+            # Store account and update indexes
+            self._accounts[account_id] = account
+            self._email_index[vfs_email] = account_id
+            self._phone_index[phone_number] = account_id
+            self._token_index[webhook_token] = account_id
+            
+            logger.info(
+                f"Registered VFS account {account_id} for {vfs_email}, "
+                f"webhook: {webhook_url}"
+            )
+            
+            return account
     
     def get_account(self, account_id: str) -> Optional[VFSAccount]:
         """
