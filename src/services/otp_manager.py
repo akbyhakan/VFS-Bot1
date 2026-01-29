@@ -42,10 +42,20 @@ class SessionState(Enum):
 
 @dataclass
 class OTPEntry:
-    """Represents a received OTP."""
+    """
+    Represents a received OTP code.
+    
+    Attributes:
+        code: The extracted OTP code (e.g., "123456")
+        source: Source of the OTP (EMAIL, SMS, or MANUAL)
+        target_identifier: Email address or phone number that received the OTP
+        received_at: Timestamp when OTP was received
+        raw_data: Raw message content (truncated for storage)
+        used: Whether the OTP has been consumed
+    """
     code: str
     source: OTPSource
-    target_identifier: str  # email or phone number
+    target_identifier: str
     received_at: datetime
     raw_data: str = ""
     used: bool = False
@@ -53,7 +63,20 @@ class OTPEntry:
 
 @dataclass
 class BotSession:
-    """Represents a bot session waiting for OTP."""
+    """
+    Represents a bot session waiting for OTP.
+    
+    Attributes:
+        session_id: Unique session identifier (UUID)
+        target_email: Optional email address for email OTP delivery
+        phone_number: Optional phone number for SMS OTP delivery
+        country: Optional country code for the session
+        metadata: Additional metadata for the session
+        state: Current session state (ACTIVE, WAITING_OTP, OTP_RECEIVED, EXPIRED)
+        created_at: Session creation timestamp
+        otp_event: Threading event for OTP notification (auto-initialized)
+        otp_code: Received OTP code (None until received)
+    """
     session_id: str
     target_email: Optional[str] = None
     phone_number: Optional[str] = None
@@ -72,7 +95,15 @@ class BotSession:
 
 @dataclass
 class IMAPConfig:
-    """IMAP server configuration."""
+    """
+    IMAP server configuration.
+    
+    Attributes:
+        host: IMAP server hostname (default: outlook.office365.com)
+        port: IMAP server port (default: 993 for SSL)
+        use_ssl: Whether to use SSL/TLS connection (default: True)
+        folder: IMAP folder to monitor (default: INBOX)
+    """
     host: str = "outlook.office365.com"
     port: int = 993
     use_ssl: bool = True
@@ -539,8 +570,8 @@ class IMAPListener:
                     try:
                         mail.close()
                         mail.logout()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Error closing IMAP connection: {e}")
 
             # Wait before reconnecting
             if self._running:
@@ -622,7 +653,9 @@ class SMSWebhookHandler:
         """
         otp_code = self._pattern_matcher.extract_otp(message)
         if not otp_code:
-            logger.warning(f"No OTP found in SMS from {phone_number[:4]}***")
+            # Mask phone number better - show only last 3 digits
+            masked = f"***{phone_number[-3:]}" if len(phone_number) > 3 else "***"
+            logger.warning(f"No OTP found in SMS from {masked}")
             return None
 
         # Find session by phone number
@@ -632,7 +665,9 @@ class SMSWebhookHandler:
             logger.info(f"SMS OTP delivered to session {session.session_id}")
             return otp_code
 
-        logger.warning(f"No session found for phone {phone_number[:4]}***")
+        # Mask phone number better - show only last 3 digits
+        masked = f"***{phone_number[-3:]}" if len(phone_number) > 3 else "***"
+        logger.warning(f"No session found for phone {masked}")
         return None
 
 
@@ -906,9 +941,7 @@ def get_otp_manager(
     """
     global _otp_manager
 
-    if _otp_manager is not None:
-        return _otp_manager
-
+    # Thread-safe singleton initialization
     with _manager_lock:
         if _otp_manager is None:
             if not email or not app_password:
