@@ -475,13 +475,24 @@ pytest tests/test_bot.py -v
 
 ```
 VFS-Bot1/
-├── src/                      # Core bot modules
-│   ├── bot.py               # Main bot logic with Playwright
-│   ├── captcha_solver.py    # Captcha solving
-│   ├── notification.py      # Telegram & Email notifications
-│   ├── database.py          # SQLite operations
-│   ├── centre_fetcher.py    # Auto-fetch centres
-│   └── config_loader.py     # YAML config loader
+├── src/
+│   ├── core/                 # Core modules
+│   │   ├── config_loader.py  # YAML config loader
+│   │   ├── config_validator.py
+│   │   ├── env_validator.py  # Environment validation
+│   │   ├── logger.py         # Structured logging (Loguru)
+│   │   ├── monitoring.py     # Sentry integration
+│   │   └── exceptions.py
+│   ├── models/               # Data models
+│   │   └── database.py       # SQLite operations
+│   ├── services/             # Business logic
+│   │   ├── bot_service.py    # Main bot logic
+│   │   ├── captcha_solver.py # Captcha solving
+│   │   ├── centre_fetcher.py # Auto-fetch centres
+│   │   └── notification.py   # Telegram & Email
+│   ├── utils/                # Utilities
+│   ├── middleware/           # Middleware components
+│   └── repositories/         # Data repositories
 ├── web/                      # Web dashboard
 │   ├── app.py               # FastAPI application
 │   ├── static/              # CSS, JavaScript

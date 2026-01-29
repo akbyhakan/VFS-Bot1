@@ -45,15 +45,6 @@ omit = [
     "*/test_*.py",
     "*/__pycache__/*",
     "*/venv/*",
-    "src/bot.py",
-    "src/captcha_solver.py",
-    "src/centre_fetcher.py",
-    "src/config_loader.py",
-    "src/config_validator.py",
-    "src/database.py",
-    "src/env_validator.py",
-    "src/logger.py",
-    "src/notification.py",
 ]
 
 [tool.coverage.report]
