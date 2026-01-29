@@ -97,6 +97,9 @@ class CircuitBreaker:
     """Circuit breaker configuration."""
     
     FAIL_THRESHOLD: Final[int] = 5
+    FAILURE_THRESHOLD: Final[int] = 5  # Alias for compatibility
+    TIMEOUT_SECONDS: Final[float] = 60.0
+    HALF_OPEN_SUCCESS_THRESHOLD: Final[int] = 3
     MAX_ERRORS_PER_HOUR: Final[int] = 20
     ERROR_WINDOW_SECONDS: Final[int] = 3600
     RESET_TIMEOUT_SECONDS: Final[int] = 60
@@ -221,6 +224,7 @@ class Defaults:
     
     API_TIMEOUT = Timeouts.HTTP_REQUEST_SECONDS
     DB_POOL_SIZE = Database.POOL_SIZE
+    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
     RATE_LIMIT_REQUESTS = RateLimits.MAX_REQUESTS
     RATE_LIMIT_WINDOW = RateLimits.TIME_WINDOW_SECONDS
     TOKEN_REFRESH_BUFFER_MINUTES = 5
