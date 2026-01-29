@@ -384,3 +384,64 @@ class OTPInvalidError(OTPError):
     
     def __init__(self, message: str = "OTP verification failed"):
         super().__init__(message, recoverable=True)
+
+
+# Session Security Errors
+class SessionBindingError(SessionError):
+    """Session binding validation failed."""
+    
+    def __init__(self, message: str = "Session binding validation failed", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, recoverable=False, details=details)
+
+
+# Shutdown Errors
+class ShutdownTimeoutError(VFSBotError):
+    """Graceful shutdown timed out."""
+    
+    def __init__(self, message: str = "Graceful shutdown timed out", timeout: Optional[int] = None):
+        """
+        Initialize shutdown timeout error.
+        
+        Args:
+            message: Error message
+            timeout: Timeout value in seconds
+        """
+        self.timeout = timeout
+        details = {"timeout": timeout} if timeout else {}
+        super().__init__(message, recoverable=False, details=details)
+
+
+# Batch Operation Errors
+class BatchOperationError(DatabaseError):
+    """Batch database operation failed."""
+    
+    def __init__(
+        self, 
+        message: str = "Batch operation failed",
+        operation: Optional[str] = None,
+        failed_count: Optional[int] = None,
+        total_count: Optional[int] = None
+    ):
+        """
+        Initialize batch operation error.
+        
+        Args:
+            message: Error message
+            operation: Name of the batch operation
+            failed_count: Number of items that failed
+            total_count: Total number of items in batch
+        """
+        self.operation = operation
+        self.failed_count = failed_count
+        self.total_count = total_count
+        
+        details = {}
+        if operation:
+            details["operation"] = operation
+        if failed_count is not None:
+            details["failed_count"] = failed_count
+        if total_count is not None:
+            details["total_count"] = total_count
+            details["success_count"] = total_count - failed_count if failed_count else total_count
+        
+        super().__init__(message, recoverable=False, details=details)
