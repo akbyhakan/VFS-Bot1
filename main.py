@@ -24,7 +24,11 @@ from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
 from src.core.monitoring import init_sentry
-from src.core.exceptions import ConfigurationError
+from src.core.exceptions import ConfigurationError, ShutdownTimeoutError
+
+
+# Graceful shutdown timeout in seconds (configurable via env)
+SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
 
 
 # Global shutdown event for coordinating graceful shutdown - thread-safe singleton
@@ -142,6 +146,70 @@ async def graceful_shutdown(
             logger.warning(f"Graceful shutdown timed out after {timeout}s, some tasks may not have completed")
 
     logger.info("Graceful shutdown complete")
+
+
+async def force_cleanup_critical_resources(db: Optional[Database] = None) -> None:
+    """
+    Force cleanup of critical resources during shutdown timeout.
+    
+    This is a last-resort cleanup when graceful shutdown times out.
+    Only cleans up the most critical resources to prevent data loss.
+    
+    Args:
+        db: Database instance to close
+    """
+    logger = logging.getLogger(__name__)
+    logger.warning("Forcing cleanup of critical resources...")
+    
+    try:
+        # Close database connection to prevent corruption
+        if db is not None:
+            await db.close()
+            logger.info("Database connection closed")
+    except Exception as e:
+        logger.error(f"Error during forced database cleanup: {e}")
+    
+    logger.info("Critical resource cleanup complete")
+
+
+async def graceful_shutdown_with_timeout(
+    loop: asyncio.AbstractEventLoop,
+    db: Optional[Database] = None,
+    notifier: Optional[NotificationService] = None,
+    signal_name: Optional[str] = None
+) -> None:
+    """
+    Graceful shutdown with timeout protection.
+    
+    If graceful shutdown doesn't complete within SHUTDOWN_TIMEOUT seconds,
+    forces cleanup of critical resources and exits.
+    
+    Args:
+        loop: Event loop
+        db: Database instance
+        notifier: Notification service instance
+        signal_name: Name of signal that triggered shutdown (optional)
+    
+    Raises:
+        ShutdownTimeoutError: If graceful shutdown times out (raised but caught)
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        await asyncio.wait_for(
+            graceful_shutdown(loop, signal_name, timeout=SHUTDOWN_TIMEOUT),
+            timeout=SHUTDOWN_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s, forcing cleanup of critical resources"
+        )
+        await force_cleanup_critical_resources(db)
+        # Raise error to signal abnormal shutdown
+        raise ShutdownTimeoutError(
+            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s",
+            timeout=SHUTDOWN_TIMEOUT
+        )
 
 
 async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:

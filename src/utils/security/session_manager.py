@@ -6,8 +6,10 @@ import os
 import stat
 import tempfile
 import time
+import hashlib
 from pathlib import Path
 from typing import Callable, Dict, Optional
+from dataclasses import dataclass, asdict
 
 try:
     import jwt as jwt_module
@@ -19,23 +21,41 @@ from src.utils.encryption import encrypt_password, decrypt_password
 logger = logging.getLogger(__name__)
 
 
-class SessionManager:
-    """Manage JWT session tokens with auto-refresh."""
+@dataclass
+class SessionMetadata:
+    """Session metadata for binding validation."""
+    
+    ip_address: Optional[str] = None
+    user_agent_hash: Optional[str] = None  # First 16 chars of SHA256
+    created_at: Optional[int] = None  # Unix timestamp
+    last_validated: Optional[int] = None  # Unix timestamp
 
-    def __init__(self, session_file: str = "data/session.json", token_refresh_buffer: int = 5):
+
+class SessionManager:
+    """Manage JWT session tokens with auto-refresh and optional session binding."""
+
+    def __init__(
+        self,
+        session_file: str = "data/session.json",
+        token_refresh_buffer: int = 5,
+        enable_session_binding: bool = False
+    ):
         """
         Initialize session manager.
 
         Args:
             session_file: Path to session file
             token_refresh_buffer: Minutes before expiry to refresh token
+            enable_session_binding: Enable IP and User-Agent binding for security
         """
         self.session_file = Path(session_file)
         self.token_refresh_buffer = token_refresh_buffer * 60  # Convert to seconds
+        self.enable_session_binding = enable_session_binding
 
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
         self.token_expiry: Optional[int] = None
+        self.metadata: Optional[SessionMetadata] = None
 
         if jwt_module is None:
             logger.warning("pyjwt not installed, JWT decoding will be disabled")
@@ -72,6 +92,13 @@ class SessionManager:
             self.access_token = data.get("access_token")
             self.refresh_token = data.get("refresh_token")
             self.token_expiry = data.get("token_expiry")
+            
+            # Load session metadata if present
+            metadata_dict = data.get("metadata")
+            if metadata_dict:
+                self.metadata = SessionMetadata(**metadata_dict)
+            else:
+                self.metadata = None
 
             logger.info("Session loaded from file")
             return True
@@ -95,6 +122,7 @@ class SessionManager:
                 "access_token": self.access_token,
                 "refresh_token": self.refresh_token,
                 "token_expiry": self.token_expiry,
+                "metadata": asdict(self.metadata) if self.metadata else None,
             }
             
             # Encrypt sensitive data before writing
@@ -244,6 +272,93 @@ class SessionManager:
             logger.error(f"Error deleting session file: {e}")
 
         logger.info("Session cleared")
+
+    def _hash_user_agent(self, user_agent: str) -> str:
+        """
+        Create a hash fingerprint of User-Agent string.
+        
+        Args:
+            user_agent: User-Agent string
+            
+        Returns:
+            First 16 characters of SHA256 hash
+        """
+        return hashlib.sha256(user_agent.encode()).hexdigest()[:16]
+
+    def set_session_binding(self, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> None:
+        """
+        Set session binding metadata for security.
+        
+        Args:
+            ip_address: Client IP address
+            user_agent: User-Agent string
+        """
+        if not self.enable_session_binding:
+            return
+        
+        current_time = int(time.time())
+        
+        if self.metadata is None:
+            self.metadata = SessionMetadata(
+                ip_address=ip_address,
+                user_agent_hash=self._hash_user_agent(user_agent) if user_agent else None,
+                created_at=current_time,
+                last_validated=current_time
+            )
+        else:
+            # Update existing metadata
+            if ip_address:
+                self.metadata.ip_address = ip_address
+            if user_agent:
+                self.metadata.user_agent_hash = self._hash_user_agent(user_agent)
+            self.metadata.last_validated = current_time
+        
+        # Save updated session
+        self.save_session()
+        logger.debug("Session binding metadata updated")
+
+    def validate_session_binding(self, ip_address: Optional[str] = None, user_agent: Optional[str] = None) -> bool:
+        """
+        Validate session binding against current request metadata.
+        
+        Args:
+            ip_address: Current client IP address
+            user_agent: Current User-Agent string
+            
+        Returns:
+            True if session binding is valid or disabled, False otherwise
+        """
+        # Skip validation if binding is disabled
+        if not self.enable_session_binding:
+            return True
+        
+        # Skip validation if no metadata exists yet
+        if self.metadata is None:
+            logger.debug("No session metadata to validate")
+            return True
+        
+        # Validate IP address if both are present
+        if self.metadata.ip_address and ip_address:
+            if self.metadata.ip_address != ip_address:
+                logger.warning(
+                    f"Session binding validation failed: IP mismatch "
+                    f"(expected: {self.metadata.ip_address}, got: {ip_address})"
+                )
+                return False
+        
+        # Validate User-Agent hash if both are present
+        if self.metadata.user_agent_hash and user_agent:
+            current_ua_hash = self._hash_user_agent(user_agent)
+            if self.metadata.user_agent_hash != current_ua_hash:
+                logger.warning("Session binding validation failed: User-Agent mismatch")
+                return False
+        
+        # Update last validated timestamp
+        self.metadata.last_validated = int(time.time())
+        self.save_session()
+        
+        logger.debug("Session binding validation passed")
+        return True
 
     def has_valid_session(self) -> bool:
         """

@@ -35,6 +35,26 @@ from web.routes.dashboard import serve_react_app
 logger = logging.getLogger(__name__)
 
 
+# Valid environment names (whitelist for security)
+VALID_ENVIRONMENTS = frozenset({
+    "production", "staging", "development", "dev", "testing", "test", "local"
+})
+
+
+def get_validated_environment() -> str:
+    """
+    Get and validate environment name with whitelist check.
+    
+    Returns:
+        Validated environment name (defaults to 'production' for unknown values)
+    """
+    env = os.getenv("ENV", "production").lower()
+    if env not in VALID_ENVIRONMENTS:
+        logger.warning(f"Unknown environment '{env}', defaulting to 'production' for security")
+        return "production"
+    return env
+
+
 def validate_cors_origins(origins_str: str) -> List[str]:
     """
     Validate and parse CORS origins, blocking wildcard and localhost in production.
@@ -48,7 +68,7 @@ def validate_cors_origins(origins_str: str) -> List[str]:
     Raises:
         ValueError: If wildcard is used in production environment
     """
-    env = os.getenv("ENV", "production").lower()
+    env = get_validated_environment()
 
     # Parse origins first
     origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]

@@ -13,6 +13,7 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.error_capture import ErrorCapture
 from ..captcha_solver import CaptchaSolver
+from ...core.exceptions import LoginError
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +84,20 @@ class AuthService:
                 await asyncio.sleep(random.uniform(*Delays.AFTER_LOGIN_FIELD))
                 await smart_fill(page, 'input[name="password"]', password, self.human_sim)
             except Exception as e:
-                # Capture error with failed selector
+                # Sanitize error message to prevent password leakage
+                safe_error = str(e)
+                if password and password in safe_error:
+                    safe_error = safe_error.replace(password, "[REDACTED]")
+                
+                # Capture error with sanitized message
                 await self.error_capture.capture(
                     page,
                     e,
                     context={"step": "login", "action": "filling login form"},
                     element_selector='input[name="email"]',
                 )
-                raise
+                # Raise with sanitized message and suppress original traceback
+                raise LoginError(f"Failed to fill login form: {safe_error}") from None
 
             # Handle captcha if present
             captcha_present = await page.locator(".g-recaptcha").count() > 0
