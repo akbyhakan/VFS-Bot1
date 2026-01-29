@@ -54,7 +54,7 @@ class CircuitBreakerService:
             if self.circuit_breaker_open:
                 self.circuit_breaker_open = False
                 self.circuit_breaker_open_time = None
-                logger.info("✅ Circuit breaker closed after successful operation")
+                logger.info("Circuit breaker closed after successful operation")
 
     async def record_failure(self) -> None:
         """
@@ -82,7 +82,7 @@ class CircuitBreakerService:
                 self.circuit_breaker_open = True
                 self.circuit_breaker_open_time = current_time
                 logger.error(
-                    f"🚨 CIRCUIT BREAKER OPENED - "
+                    f"CIRCUIT BREAKER OPENED - "
                     f"consecutive: {self.consecutive_errors}, "
                     f"total in hour: {recent_errors}"
                 )
@@ -102,7 +102,7 @@ class CircuitBreakerService:
             self.circuit_breaker_open = False
             self.circuit_breaker_open_time = None
             self.consecutive_errors = 0
-            logger.info("🔄 Circuit breaker CLOSED - resuming normal operation")
+            logger.info("Circuit breaker CLOSED - resuming normal operation")
 
     async def get_wait_time(self) -> float:
         """
