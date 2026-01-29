@@ -273,16 +273,21 @@ async def check_database_health() -> bool:
     Returns:
         True if database is healthy, False otherwise
     """
+    import time
+    
     try:
         from src.models.database import Database
 
         db = Database()
         await db.connect()
         try:
+            start_time = time.time()
             async with db.get_connection(timeout=5.0) as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute("SELECT 1")
                     result = await cursor.fetchone()
+                    latency_ms = (time.time() - start_time) * 1000
+                    logger.debug(f"Database health check latency: {latency_ms:.2f}ms")
                     return result is not None
         finally:
             await db.close()
@@ -292,23 +297,30 @@ async def check_database_health() -> bool:
 
 
 async def check_database() -> Dict[str, Any]:
-    """Check database connectivity."""
+    """Check database connectivity with latency measurement."""
+    import time
+    
     try:
         from src.models.database import Database
         db = Database()
         await db.connect()
         try:
+            start_time = time.time()
             async with db.get_connection(timeout=5.0) as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute("SELECT 1")
                     result = await cursor.fetchone()
+                    latency_ms = (time.time() - start_time) * 1000
                     is_healthy = result is not None
         finally:
             await db.close()
-        return {"status": "healthy" if is_healthy else "unhealthy", "latency_ms": 0}
+        return {
+            "status": "healthy" if is_healthy else "unhealthy",
+            "latency_ms": round(latency_ms, 2)
+        }
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
-        return {"status": "unhealthy", "error": str(e)}
+        return {"status": "unhealthy", "error": str(e), "latency_ms": 0}
 
 
 async def check_encryption() -> Dict[str, Any]:
@@ -325,6 +337,46 @@ async def check_encryption() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Encryption health check failed: {e}")
         return {"status": "unhealthy", "error": str(e)}
+
+
+async def check_notification_health() -> Dict[str, Any]:
+    """
+    Check notification service health.
+    
+    Returns:
+        Dictionary with notification service status
+    """
+    try:
+        from src.services.notification import NotificationService
+        
+        # Check if notification service can be initialized
+        # We don't actually send a notification, just check the service is available
+        notifier = NotificationService()
+        
+        # Basic health check - service is available
+        return {
+            "status": "healthy",
+            "telegram_configured": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
+            "email_configured": bool(os.getenv("SMTP_SERVER")),
+        }
+    except Exception as e:
+        logger.error(f"Notification health check failed: {e}")
+        return {"status": "unhealthy", "error": str(e)}
+
+
+def get_uptime() -> float:
+    """
+    Get service uptime in seconds.
+    
+    Returns:
+        Uptime in seconds
+    """
+    from web.dependencies import metrics
+    
+    if "start_time" in metrics:
+        uptime = (datetime.now(timezone.utc) - metrics["start_time"]).total_seconds()
+        return uptime
+    return 0.0
 
 
 def get_circuit_breaker_status(snapshot: Any) -> Dict[str, Any]:

@@ -200,10 +200,12 @@ class CentreFetcher:
         try:
             # Select the centre
             await page.select_option("select#centres", label=centre)
-            await asyncio.sleep(2)  # Wait for categories to load
-
-            # Wait for category dropdown
-            await page.wait_for_selector("select#categories", timeout=10000)
+            
+            # Use dynamic waiting instead of fixed sleep
+            await asyncio.gather(
+                page.wait_for_load_state("networkidle"),
+                page.wait_for_selector("select#categories option:not([value=''])")
+            )
 
             # Extract category options
             categories_result = await page.evaluate("""
@@ -251,12 +253,17 @@ class CentreFetcher:
         try:
             # Select the centre and category
             await page.select_option("select#centres", label=centre)
-            await asyncio.sleep(2)
+            await asyncio.gather(
+                page.wait_for_load_state("networkidle"),
+                page.wait_for_selector("select#categories option:not([value=''])")
+            )
             await page.select_option("select#categories", label=category)
-            await asyncio.sleep(2)  # Wait for subcategories to load
-
-            # Wait for subcategory dropdown
-            await page.wait_for_selector("select#subcategories", timeout=10000)
+            
+            # Use dynamic waiting instead of fixed sleep
+            await asyncio.gather(
+                page.wait_for_load_state("networkidle"),
+                page.wait_for_selector("select#subcategories option:not([value=''])")
+            )
 
             # Extract subcategory options
             subcategories_result = await page.evaluate("""

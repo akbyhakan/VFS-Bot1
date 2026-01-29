@@ -2,14 +2,103 @@
 
 import os
 import logging
+import uuid
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast, NamedTuple
 from functools import lru_cache
+from collections import OrderedDict
 
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
+
+
+class TokenBlacklist:
+    """
+    Thread-safe token blacklist for JWT revocation.
+    
+    Uses OrderedDict for efficient memory management with automatic cleanup
+    of expired tokens.
+    """
+
+    def __init__(self, max_size: int = 10000):
+        """
+        Initialize token blacklist.
+
+        Args:
+            max_size: Maximum number of tokens to keep in memory
+        """
+        self._blacklist: OrderedDict[str, datetime] = OrderedDict()
+        self._lock = threading.Lock()
+        self._max_size = max_size
+
+    def add(self, jti: str, exp: datetime) -> None:
+        """
+        Add a token to the blacklist.
+
+        Args:
+            jti: JWT ID (jti claim)
+            exp: Token expiration time
+        """
+        with self._lock:
+            # Remove expired tokens first
+            self._cleanup_expired()
+            
+            # Add new token
+            self._blacklist[jti] = exp
+            
+            # Enforce max size by removing oldest entries
+            while len(self._blacklist) > self._max_size:
+                self._blacklist.popitem(last=False)
+
+    def is_blacklisted(self, jti: str) -> bool:
+        """
+        Check if a token is blacklisted.
+
+        Args:
+            jti: JWT ID to check
+
+        Returns:
+            True if token is blacklisted
+        """
+        with self._lock:
+            # Cleanup expired tokens
+            self._cleanup_expired()
+            return jti in self._blacklist
+
+    def _cleanup_expired(self) -> None:
+        """Remove expired tokens from blacklist (must be called with lock held)."""
+        now = datetime.now(timezone.utc)
+        expired_keys = [jti for jti, exp in self._blacklist.items() if exp < now]
+        for jti in expired_keys:
+            del self._blacklist[jti]
+
+    def size(self) -> int:
+        """Get current blacklist size."""
+        with self._lock:
+            return len(self._blacklist)
+
+
+# Global token blacklist instance
+_token_blacklist: Optional[TokenBlacklist] = None
+_blacklist_lock = threading.Lock()
+
+
+def get_token_blacklist() -> TokenBlacklist:
+    """
+    Get global token blacklist instance (singleton).
+
+    Returns:
+        TokenBlacklist instance
+    """
+    global _token_blacklist
+    with _blacklist_lock:
+        if _token_blacklist is None:
+            _token_blacklist = TokenBlacklist()
+        return _token_blacklist
+
 
 # Bcrypt has a maximum password length of 72 bytes
 MAX_PASSWORD_BYTES = 72
@@ -186,12 +275,25 @@ def create_access_token(
     key_version = os.getenv("API_KEY_VERSION", "1")
 
     to_encode = data.copy()
+    
+    # Generate unique token ID for blacklist support
+    jti = str(uuid.uuid4())
+    
+    # Set timestamps
+    iat = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = iat + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(hours=expire_hours)
+        expire = iat + timedelta(hours=expire_hours)
 
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "key_version": key_version})
+    # Add standard and custom claims
+    to_encode.update({
+        "exp": expire,
+        "iat": iat,
+        "jti": jti,
+        "type": "access",
+        "key_version": key_version
+    })
 
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     if isinstance(encoded_jwt, bytes):
@@ -222,6 +324,16 @@ def verify_token(token: str) -> Dict[str, Any]:
     # Try current key first
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        
+        # Check if token is blacklisted
+        jti = payload.get("jti")
+        if jti and get_token_blacklist().is_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
         return cast(dict[str, Any], payload)
     except JWTError as primary_error:
         # Try previous key for rotation support
@@ -230,6 +342,16 @@ def verify_token(token: str) -> Dict[str, Any]:
             try:
                 logger.debug("Attempting token verification with previous key")
                 payload = jwt.decode(token, previous_key, algorithms=[algorithm])
+                
+                # Check blacklist for old key tokens too
+                jti = payload.get("jti")
+                if jti and get_token_blacklist().is_blacklisted(jti):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Token has been revoked",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                
                 logger.info("Token verified with previous key - consider refreshing token")
                 return cast(dict[str, Any], payload)
             except JWTError:
@@ -316,3 +438,51 @@ def validate_admin_password_format() -> bool:
             )
 
     return True
+
+
+def revoke_token(token: str) -> bool:
+    """
+    Revoke a JWT token by adding it to the blacklist.
+
+    Args:
+        token: JWT token to revoke
+
+    Returns:
+        True if token was successfully revoked
+
+    Raises:
+        HTTPException: If token is invalid or already expired
+    """
+    try:
+        # Decode without verifying to get claims (we just need jti and exp)
+        secret_key = get_secret_key()
+        algorithm = get_algorithm()
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm], options={"verify_exp": False})
+        
+        jti = payload.get("jti")
+        if not jti:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token does not contain jti claim",
+            )
+        
+        exp = payload.get("exp")
+        if not exp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token does not contain exp claim",
+            )
+        
+        # Convert exp to datetime
+        exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
+        
+        # Add to blacklist
+        get_token_blacklist().add(jti, exp_dt)
+        logger.info(f"Token {jti[:8]}... revoked successfully")
+        return True
+        
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid token: {str(e)}",
+        )

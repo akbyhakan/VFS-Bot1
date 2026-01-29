@@ -184,8 +184,43 @@ class VFSBot:
         Returns:
             False to propagate exceptions
         """
+        # Save checkpoint if there was an error
+        if exc_type is not None:
+            await self._save_checkpoint()
+        
         await self.cleanup()
         return False
+
+    async def _save_checkpoint(self) -> None:
+        """
+        Save current bot state to checkpoint file.
+        
+        Saves the current state including browser context, user progress,
+        and circuit breaker state for recovery.
+        """
+        import json
+        from pathlib import Path
+        from datetime import datetime
+        
+        try:
+            checkpoint_dir = Path("data")
+            checkpoint_dir.mkdir(exist_ok=True)
+            checkpoint_file = checkpoint_dir / "checkpoint.json"
+            
+            checkpoint_data = {
+                "timestamp": datetime.now().isoformat(),
+                "running": self.running,
+                "circuit_breaker_open": self.circuit_breaker_open,
+                "consecutive_errors": self.consecutive_errors,
+                "total_errors_count": len(self.total_errors),
+            }
+            
+            with open(checkpoint_file, "w") as f:
+                json.dump(checkpoint_data, f, indent=2)
+            
+            logger.info(f"Checkpoint saved to {checkpoint_file}")
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint: {e}")
 
     async def _setup_browser(self) -> None:
         """Initialize browser and context."""

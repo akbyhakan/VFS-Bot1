@@ -63,6 +63,17 @@ class PasswordEncryption:
             cipher_key = key.encode() if isinstance(key, str) else key
             self.cipher = Fernet(cipher_key)
 
+            # Initialize old cipher for key rotation support
+            self._old_cipher: Optional[Fernet] = None
+            old_key = ENCRYPTION_KEY_OLD
+            if old_key:
+                try:
+                    old_cipher_key = old_key.encode() if isinstance(old_key, str) else old_key
+                    self._old_cipher = Fernet(old_cipher_key)
+                    logger.info("Old encryption key loaded for key rotation support")
+                except Exception as e:
+                    logger.warning(f"Failed to load old encryption key: {e}")
+
             # Only log key hash in non-production environments
             env = os.getenv("ENV", "production").lower()
             if env != "production":
@@ -94,6 +105,57 @@ class PasswordEncryption:
             return False
         except Exception:
             return False
+
+    def needs_migration(self, encrypted_data: str) -> bool:
+        """
+        Check if encrypted data needs to be migrated from old key to new key.
+
+        Args:
+            encrypted_data: Encrypted data to check
+
+        Returns:
+            True if data is encrypted with old key and needs migration
+        """
+        # First check if current key can decrypt it
+        if self.can_decrypt(encrypted_data):
+            return False
+        
+        # Check if old cipher exists and can decrypt it
+        if self._old_cipher:
+            try:
+                self._old_cipher.decrypt(encrypted_data.encode())
+                return True
+            except InvalidToken:
+                return False
+            except Exception:
+                return False
+        
+        return False
+
+    def migrate_to_new_key(self, encrypted_data: str) -> str:
+        """
+        Migrate encrypted data from old key to new key.
+
+        Args:
+            encrypted_data: Data encrypted with old key
+
+        Returns:
+            Data re-encrypted with new key
+
+        Raises:
+            ValueError: If old cipher not available or migration fails
+        """
+        if not self._old_cipher:
+            raise ValueError("Old encryption key not available for migration")
+        
+        try:
+            # Decrypt with old key
+            decrypted = self._old_cipher.decrypt(encrypted_data.encode())
+            # Re-encrypt with new key
+            return self.cipher.encrypt(decrypted).decode()
+        except Exception as e:
+            logger.error(f"Failed to migrate encryption data: {e}")
+            raise ValueError(f"Encryption migration failed: {e}") from e
 
     @staticmethod
     def migrate_data(old_key: str, new_key: str, encrypted_data: str) -> str:
@@ -160,15 +222,10 @@ class PasswordEncryption:
             return decrypted.decode()
         except InvalidToken:
             # Try old key if available (key rotation support)
-            if ENCRYPTION_KEY_OLD:
+            if self._old_cipher:
                 logger.info("Trying old encryption key for backward compatibility")
                 try:
-                    old_cipher = Fernet(
-                        ENCRYPTION_KEY_OLD.encode()
-                        if isinstance(ENCRYPTION_KEY_OLD, str)
-                        else ENCRYPTION_KEY_OLD
-                    )
-                    decrypted = old_cipher.decrypt(encrypted_password.encode())
+                    decrypted = self._old_cipher.decrypt(encrypted_password.encode())
                     return decrypted.decode()
                 except InvalidToken:
                     logger.error("Failed to decrypt with both current and old encryption keys")
