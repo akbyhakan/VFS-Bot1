@@ -102,6 +102,67 @@ class TokenBlacklist:
         self._running = False
 
 
+class PersistentTokenBlacklist(TokenBlacklist):
+    """
+    Database-backed token blacklist for production environments.
+    Falls back to memory if database unavailable.
+    """
+    
+    def __init__(self, db: Optional[Any] = None, max_size: int = 10000):
+        """
+        Initialize persistent blacklist.
+        
+        Args:
+            db: Database instance (optional)
+            max_size: Maximum size of in-memory cache
+        """
+        super().__init__(max_size)
+        self._db = db
+        self._use_db = db is not None
+        
+    async def add_async(self, jti: str, exp: datetime) -> None:
+        """Add token to blacklist with database persistence."""
+        # Always add to memory cache
+        self.add(jti, exp)
+        
+        # Persist to database if available
+        if self._use_db and self._db:
+            try:
+                await self._db.add_blacklisted_token(jti, exp)
+            except Exception as e:
+                logger.warning(f"Failed to persist blacklisted token: {e}")
+    
+    async def is_blacklisted_async(self, jti: str) -> bool:
+        """Check if token is blacklisted (checks both memory and database)."""
+        # Check memory first (fast path)
+        if self.is_blacklisted(jti):
+            return True
+        
+        # Check database if available
+        if self._use_db and self._db:
+            try:
+                return await self._db.is_token_blacklisted(jti)
+            except Exception as e:
+                logger.warning(f"Failed to check blacklist in database: {e}")
+        
+        return False
+    
+    async def load_from_database(self) -> int:
+        """Load active blacklisted tokens from database on startup."""
+        if not self._use_db or not self._db:
+            return 0
+        
+        try:
+            tokens = await self._db.get_active_blacklisted_tokens()
+            for jti, exp in tokens:
+                self.add(jti, exp)
+            logger.info(f"Loaded {len(tokens)} blacklisted tokens from database")
+            return len(tokens)
+        except Exception as e:
+            logger.error(f"Failed to load blacklist from database: {e}")
+            return 0
+
+
 # Global token blacklist instance
 _token_blacklist: Optional[TokenBlacklist] = None
 _blacklist_lock = threading.Lock()

@@ -287,8 +287,21 @@ def _get_async_lock() -> asyncio.Lock:
     """
     Get or create async lock - must be called within event loop.
     Thread-safe creation using threading.Lock.
+    
+    Raises:
+        RuntimeError: If called outside of an event loop
     """
     global _encryption_lock_async
+    
+    # Verify we're in an event loop
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        raise RuntimeError(
+            "Async encryption lock must be accessed within an event loop. "
+            "Use get_encryption() for synchronous contexts."
+        )
+    
     # Use threading lock to prevent race condition during async lock creation
     with _async_lock_creation_lock:
         if _encryption_lock_async is None:

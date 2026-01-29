@@ -527,6 +527,21 @@ class Database:
                 ON proxy_endpoints(is_active)
             """)
 
+            # Token blacklist table
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS token_blacklist (
+                    jti VARCHAR(64) PRIMARY KEY,
+                    exp TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Index for cleanup
+            await cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
+                ON token_blacklist(exp)
+            """)
+
             await self.conn.commit()
 
             # Migration: Add new columns if they don't exist
@@ -1349,6 +1364,92 @@ class Database:
                 )
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
+
+    @require_connection
+    async def add_blacklisted_token(self, jti: str, exp: datetime) -> None:
+        """
+        Add a token to the blacklist.
+        
+        Args:
+            jti: JWT ID (jti claim)
+            exp: Token expiration time
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO token_blacklist (jti, exp)
+                    VALUES (?, ?)
+                    """,
+                    (jti, exp.isoformat()),
+                )
+                await conn.commit()
+    
+    @require_connection
+    async def is_token_blacklisted(self, jti: str) -> bool:
+        """
+        Check if a token is blacklisted.
+        
+        Args:
+            jti: JWT ID to check
+            
+        Returns:
+            True if token is blacklisted and not expired
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                now = datetime.now(timezone.utc).isoformat()
+                await cursor.execute(
+                    """
+                    SELECT 1 FROM token_blacklist
+                    WHERE jti = ? AND exp > ?
+                    """,
+                    (jti, now),
+                )
+                result = await cursor.fetchone()
+                return result is not None
+    
+    @require_connection
+    async def get_active_blacklisted_tokens(self) -> List[tuple[str, datetime]]:
+        """
+        Get all active (non-expired) blacklisted tokens.
+        
+        Returns:
+            List of (jti, exp) tuples
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                now = datetime.now(timezone.utc).isoformat()
+                await cursor.execute(
+                    """
+                    SELECT jti, exp FROM token_blacklist
+                    WHERE exp > ?
+                    """,
+                    (now,),
+                )
+                rows = await cursor.fetchall()
+                return [(row[0], datetime.fromisoformat(row[1])) for row in rows]
+    
+    @require_connection
+    async def cleanup_expired_tokens(self) -> int:
+        """
+        Remove expired tokens from blacklist.
+        
+        Returns:
+            Number of tokens removed
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                now = datetime.now(timezone.utc).isoformat()
+                await cursor.execute(
+                    """
+                    DELETE FROM token_blacklist
+                    WHERE exp <= ?
+                    """,
+                    (now,),
+                )
+                await conn.commit()
+                return cursor.rowcount
 
     @require_connection
     async def save_payment_card(self, card_data: Dict[str, str]) -> int:
