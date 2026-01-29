@@ -11,6 +11,33 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# SQLite reserved words - prevent SQL injection via identifier names
+SQLITE_RESERVED_WORDS = frozenset([
+    "ABORT", "ACTION", "ADD", "ALTER", "AND", "AS", "ASC",
+    "BEGIN", "BETWEEN", "BY",
+    "CASCADE", "CASE", "CHECK", "COLLATE", "COLUMN", "COMMIT", "CONSTRAINT", "CREATE", "CROSS", "CURRENT",
+    "DATABASE", "DEFAULT", "DELETE", "DESC", "DISTINCT", "DROP",
+    "EACH", "ELSE", "END", "ESCAPE", "EXCEPT", "EXISTS", "EXPLAIN",
+    "FAIL", "FILTER", "FOR", "FOREIGN", "FROM", "FULL",
+    "GLOB", "GROUP",
+    "HAVING",
+    "IF", "IGNORE", "IMMEDIATE", "IN", "INDEX", "INNER", "INSERT", "INSTEAD", "INTERSECT", "INTO", "IS", "ISNULL",
+    "JOIN",
+    "KEY",
+    "LEFT", "LIKE", "LIMIT",
+    "MATCH",
+    "NATURAL", "NO", "NOT", "NOTNULL", "NULL",
+    "OF", "OFFSET", "ON", "OR", "ORDER", "OUTER",
+    "PLAN", "PRAGMA", "PRIMARY",
+    "QUERY",
+    "RAISE", "RECURSIVE", "REFERENCES", "REGEXP", "REINDEX", "RELEASE", "RENAME", "REPLACE", "RESTRICT", "RIGHT", "ROLLBACK", "ROW",
+    "SAVEPOINT", "SELECT", "SET",
+    "TABLE", "TEMP", "TEMPORARY", "THEN", "TO", "TRANSACTION", "TRIGGER",
+    "UNION", "UNIQUE", "UPDATE", "USING",
+    "VACUUM", "VALUES", "VIEW", "VIRTUAL",
+    "WHEN", "WHERE", "WITH", "WITHOUT",
+])
+
 
 def validate_sql_identifier(identifier: str) -> bool:
     """
@@ -26,7 +53,14 @@ def validate_sql_identifier(identifier: str) -> bool:
     # Must start with a letter or underscore
     # Max length 64 characters (MySQL/SQLite limit)
     pattern = r'^[a-zA-Z_][a-zA-Z0-9_]{0,63}$'
-    return bool(re.match(pattern, identifier))
+    if not re.match(pattern, identifier):
+        return False
+    
+    # Check if it's a reserved word
+    if identifier.upper() in SQLITE_RESERVED_WORDS:
+        return False
+    
+    return True
 
 
 async def batch_insert(
