@@ -13,7 +13,12 @@ from datetime import datetime, timezone
 
 from src.utils.encryption import encrypt_password, decrypt_password
 from src.utils.validators import validate_email, validate_phone
-from src.core.exceptions import ValidationError, DatabaseNotConnectedError, DatabasePoolTimeoutError
+from src.core.exceptions import (
+    ValidationError,
+    DatabaseNotConnectedError,
+    DatabasePoolTimeoutError,
+    BatchOperationError
+)
 from src.constants import Defaults
 
 logger = logging.getLogger(__name__)
@@ -1073,6 +1078,173 @@ class Database:
 
                 logger.info(f"User {user_id} deleted")
                 return True
+
+    @require_connection
+    async def add_users_batch(self, users: List[Dict[str, Any]]) -> List[int]:
+        """
+        Add multiple users in a single transaction for improved performance.
+        
+        Args:
+            users: List of user dictionaries with keys: email, password, centre, category, subcategory
+            
+        Returns:
+            List of user IDs for successfully added users
+            
+        Raises:
+            ValidationError: If any email format is invalid
+            BatchOperationError: If batch operation fails
+        """
+        if not users:
+            return []
+        
+        # Validate all emails first (fail fast)
+        for user in users:
+            email = user.get("email")
+            if not email or not validate_email(email):
+                raise ValidationError(f"Invalid email format: {email}", field="email")
+        
+        user_ids: List[int] = []
+        failed_count = 0
+        
+        async with self.get_connection() as conn:
+            try:
+                async with conn.cursor() as cursor:
+                    # Use executemany for efficiency
+                    user_data = []
+                    for user in users:
+                        # Encrypt password before storing
+                        encrypted_password = encrypt_password(user["password"])
+                        user_data.append((
+                            user["email"],
+                            encrypted_password,
+                            user["centre"],
+                            user["category"],
+                            user["subcategory"]
+                        ))
+                    
+                    # Insert all users in a single transaction
+                    await cursor.executemany(
+                        """
+                        INSERT INTO users (email, password, centre, category, subcategory)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        user_data
+                    )
+                    
+                    await conn.commit()
+                    
+                    # Get all inserted IDs
+                    # Note: SQLite doesn't support RETURNING, so we query by email
+                    for user in users:
+                        await cursor.execute(
+                            "SELECT id FROM users WHERE email = ? ORDER BY id DESC LIMIT 1",
+                            (user["email"],)
+                        )
+                        row = await cursor.fetchone()
+                        if row:
+                            user_ids.append(row[0])
+                    
+                    logger.info(f"Batch added {len(user_ids)} users")
+                    return user_ids
+                    
+            except Exception as e:
+                failed_count = len(users) - len(user_ids)
+                logger.error(f"Batch user insert failed: {e}")
+                raise BatchOperationError(
+                    f"Failed to add users in batch: {e}",
+                    operation="add_users_batch",
+                    failed_count=failed_count,
+                    total_count=len(users)
+                ) from e
+
+    @require_connection
+    async def update_users_batch(self, updates: List[Dict[str, Any]]) -> int:
+        """
+        Update multiple users in a single transaction for improved performance.
+        
+        Each update dict should contain 'id' and the fields to update.
+        
+        Args:
+            updates: List of update dictionaries with 'id' and optional fields:
+                    email, password, centre, category, subcategory, active
+            
+        Returns:
+            Number of users successfully updated
+            
+        Raises:
+            ValidationError: If any email format is invalid
+            BatchOperationError: If batch operation fails
+        """
+        if not updates:
+            return 0
+        
+        # Validate all emails first (fail fast)
+        for update in updates:
+            email = update.get("email")
+            if email and not validate_email(email):
+                raise ValidationError(f"Invalid email format: {email}", field="email")
+        
+        updated_count = 0
+        
+        async with self.get_connection() as conn:
+            try:
+                async with conn.cursor() as cursor:
+                    # Process each update individually but within a single transaction
+                    for update in updates:
+                        user_id = update.get("id")
+                        if not user_id:
+                            logger.warning("Skipping update without user_id")
+                            continue
+                        
+                        # Build dynamic update query
+                        fields = []
+                        params = []
+                        
+                        if "email" in update:
+                            fields.append("email = ?")
+                            params.append(update["email"])
+                        if "password" in update:
+                            # Encrypt password before storage
+                            encrypted_password = encrypt_password(update["password"])
+                            fields.append("password = ?")
+                            params.append(encrypted_password)
+                        if "centre" in update:
+                            fields.append("centre = ?")
+                            params.append(update["centre"])
+                        if "category" in update:
+                            fields.append("category = ?")
+                            params.append(update["category"])
+                        if "subcategory" in update:
+                            fields.append("subcategory = ?")
+                            params.append(update["subcategory"])
+                        if "active" in update:
+                            fields.append("active = ?")
+                            params.append(1 if update["active"] else 0)
+                        
+                        if not fields:
+                            continue
+                        
+                        fields.append("updated_at = CURRENT_TIMESTAMP")
+                        params.append(user_id)
+                        
+                        query = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
+                        await cursor.execute(query, params)
+                        
+                        if cursor.rowcount > 0:
+                            updated_count += 1
+                    
+                    await conn.commit()
+                    logger.info(f"Batch updated {updated_count} users")
+                    return updated_count
+                    
+            except Exception as e:
+                logger.error(f"Batch user update failed: {e}")
+                raise BatchOperationError(
+                    f"Failed to update users in batch: {e}",
+                    operation="update_users_batch",
+                    failed_count=len(updates) - updated_count,
+                    total_count=len(updates)
+                ) from e
 
     @require_connection
     async def add_appointment(
