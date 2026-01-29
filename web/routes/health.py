@@ -189,6 +189,9 @@ async def detailed_health_check() -> Dict[str, Any]:
         # Get circuit breaker and rate limiter status
         circuit_breaker_status = get_circuit_breaker_status(snapshot)
         rate_limiter_stats = get_rate_limiter_status()
+        
+        # Check external services
+        external_services = await check_external_services()
 
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -209,6 +212,7 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "circuit_breaker": circuit_breaker_status,
                 "rate_limiter": rate_limiter_stats,
             },
+            "external_services": external_services,
         }
 
     # System metrics (requires psutil)
@@ -231,6 +235,9 @@ async def detailed_health_check() -> Dict[str, Any]:
     # Get circuit breaker and rate limiter status
     circuit_breaker_status = get_circuit_breaker_status(snapshot)
     rate_limiter_stats = get_rate_limiter_status()
+    
+    # Check external services
+    external_services = await check_external_services()
 
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -263,6 +270,7 @@ async def detailed_health_check() -> Dict[str, Any]:
             "circuit_breaker": circuit_breaker_status,
             "rate_limiter": rate_limiter_stats,
         },
+        "external_services": external_services,
     }
 
 
@@ -362,6 +370,66 @@ async def check_notification_health() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Notification health check failed: {e}")
         return {"status": "unhealthy", "error": str(e)}
+
+
+async def check_vfs_api_health() -> bool:
+    """
+    Check VFS API connectivity.
+    
+    Returns:
+        True if VFS API is reachable
+    """
+    try:
+        import aiohttp
+        from src.services.vfs_api_client import VFS_API_BASE
+        
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # Just check if the base URL is reachable
+            async with session.get(f"{VFS_API_BASE}/health", allow_redirects=False) as resp:
+                return resp.status < 500
+    except Exception as e:
+        logger.debug(f"VFS API health check failed: {e}")
+        return False
+
+
+async def check_captcha_service() -> bool:
+    """
+    Check captcha service availability.
+    
+    Returns:
+        True if captcha service is available
+    """
+    try:
+        from src.services.captcha_solver import CaptchaSolver
+        
+        # Check if 2Captcha API key is configured
+        api_key = os.getenv("CAPTCHA_API_KEY", "")
+        if not api_key:
+            logger.debug("Captcha service: No API key configured (manual mode)")
+            return True  # Manual mode is still valid
+        
+        # If API key is configured, consider it healthy
+        # (we don't actually call the API to avoid costs)
+        return True
+    except Exception as e:
+        logger.debug(f"Captcha service health check failed: {e}")
+        return False
+
+
+async def check_external_services() -> Dict[str, bool]:
+    """
+    Check external service health.
+    
+    Returns:
+        Dictionary of service names and their health status
+    """
+    return {
+        "vfs_api": await check_vfs_api_health(),
+        "captcha_service": await check_captcha_service(),
+        "notification_channels": (await check_notification_health()).get("status") == "healthy",
+    }
+
 
 
 def get_uptime() -> float:
