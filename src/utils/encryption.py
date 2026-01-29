@@ -265,14 +265,19 @@ def get_encryption() -> PasswordEncryption:
 
     Returns:
         PasswordEncryption instance
+    
+    Thread Safety:
+        ALL instance access happens inside the lock scope to prevent race
+        conditions during key rotation. Uses local variable to avoid TOCTOU issues.
     """
     global _encryption_instance
 
     # Always acquire lock to prevent race conditions
     with _encryption_lock:
         current_key = os.getenv("ENCRYPTION_KEY")
-        if _encryption_instance is None or (
-            current_key and _normalize_key(current_key) != _encryption_instance._key
+        instance = _encryption_instance  # Local reference to prevent race condition
+        if instance is None or (
+            current_key and _normalize_key(current_key) != instance._key
         ):
             _encryption_instance = PasswordEncryption()
         return _encryption_instance
