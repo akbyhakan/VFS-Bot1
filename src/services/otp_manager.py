@@ -893,6 +893,197 @@ class OTPManager:
         logger.info(f"Manual OTP input for session {session_id}")
         return self._session_registry.notify_otp(session_id, otp_code)
 
+    def register_account(
+        self,
+        vfs_email: str,
+        vfs_password: str,
+        phone_number: str,
+        target_email: str,
+        country: Optional[str] = None,
+        visa_type: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Register a VFS account with automatic webhook URL generation.
+
+        This method creates a VFS account and automatically generates a unique
+        webhook token and URL for SMS OTP delivery via SMS Forwarder app.
+
+        Args:
+            vfs_email: VFS login email
+            vfs_password: VFS password
+            phone_number: Phone number for SMS OTP
+            target_email: Catch-all email for email OTP
+            country: Optional country code
+            visa_type: Optional visa type
+            metadata: Optional metadata
+
+        Returns:
+            VFSAccount with webhook_url field
+
+        Example:
+            account = manager.register_account(
+                vfs_email="user@email.com",
+                vfs_password="password",
+                phone_number="+905551234567",
+                target_email="bot1@vizecep.com"
+            )
+            print(account.webhook_url)
+            # → https://api.vizecep.com/webhook/sms/tk_a1b2c3d4e5f6
+        """
+        from src.models.vfs_account import VFSAccountManager
+
+        # Initialize account manager if not already done
+        if not hasattr(self, '_account_manager'):
+            from src.services.webhook_token_manager import WebhookTokenManager
+            import os
+            
+            base_url = os.getenv('WEBHOOK_BASE_URL', 'https://api.vizecep.com')
+            webhook_manager = WebhookTokenManager(base_url=base_url)
+            self._account_manager = VFSAccountManager(webhook_token_manager=webhook_manager)
+            
+            # Set webhook manager for routes
+            from web.routes.sms_webhook import set_webhook_manager
+            set_webhook_manager(webhook_manager)
+
+        # Register account
+        account = self._account_manager.register_account(
+            vfs_email=vfs_email,
+            vfs_password=vfs_password,
+            phone_number=phone_number,
+            target_email=target_email,
+            country=country,
+            visa_type=visa_type,
+            metadata=metadata
+        )
+
+        logger.info(f"Registered VFS account {account.account_id} with webhook URL: {account.webhook_url}")
+        return account
+
+    def get_webhook_url(self, account_id: str) -> str:
+        """
+        Get webhook URL for an account.
+
+        Args:
+            account_id: Account ID
+
+        Returns:
+            Webhook URL
+
+        Raises:
+            ValueError: If account not found
+        """
+        if not hasattr(self, '_account_manager'):
+            raise ValueError("No accounts registered. Call register_account first.")
+
+        account = self._account_manager.get_account(account_id)
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+
+        return account.webhook_url
+
+    def process_webhook_sms(self, token: str, payload: Dict) -> Optional[str]:
+        """
+        Process SMS from webhook and extract OTP.
+
+        This method is called by the webhook endpoint to process incoming
+        SMS messages and route OTP to the correct session.
+
+        Args:
+            token: Webhook token
+            payload: SMS payload from forwarder
+
+        Returns:
+            Extracted OTP code or None
+
+        Raises:
+            ValueError: If token is invalid or payload parsing fails
+        """
+        if not hasattr(self, '_account_manager'):
+            raise ValueError("Webhook system not initialized. Call register_account first.")
+
+        webhook_manager = self._account_manager.webhook_manager
+        
+        # Process SMS and extract OTP
+        otp = webhook_manager.process_sms(token, payload)
+        
+        if otp:
+            # Get webhook token to find account
+            webhook_token = webhook_manager.validate_token(token)
+            if webhook_token and webhook_token.session_id:
+                # Notify the session
+                self._session_registry.notify_otp(webhook_token.session_id, otp)
+                logger.info(f"OTP from webhook delivered to session {webhook_token.session_id}")
+        
+        return otp
+
+    def start_session(
+        self,
+        account_id: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Start a bot session for a VFS account.
+
+        This method creates a session and links it to the account's webhook token
+        so that incoming SMS OTP messages are automatically routed to this session.
+
+        Args:
+            account_id: VFS account ID
+            metadata: Optional metadata
+
+        Returns:
+            Session ID
+
+        Raises:
+            ValueError: If account not found
+        """
+        if not hasattr(self, '_account_manager'):
+            raise ValueError("No accounts registered. Call register_account first.")
+
+        account = self._account_manager.get_account(account_id)
+        if not account:
+            raise ValueError(f"Account not found: {account_id}")
+
+        # Register session with target email and phone
+        session_id = self.register_session(
+            target_email=account.target_email,
+            phone_number=account.phone_number,
+            country=account.country,
+            metadata=metadata or {}
+        )
+
+        # Link webhook token to session
+        webhook_manager = self._account_manager.webhook_manager
+        webhook_manager.link_session(account.webhook_token, session_id)
+
+        logger.info(
+            f"Started session {session_id} for account {account_id}, "
+            f"linked to webhook {account.webhook_token[:10]}..."
+        )
+
+        return session_id
+
+    def end_session(self, session_id: str):
+        """
+        End a bot session and unlink from webhook.
+
+        Args:
+            session_id: Session ID
+        """
+        session = self._session_registry.get_session(session_id)
+        if session and hasattr(self, '_account_manager'):
+            # Find webhook token linked to this session
+            webhook_manager = self._account_manager.webhook_manager
+            for webhook_token in webhook_manager.list_tokens():
+                if webhook_token.session_id == session_id:
+                    webhook_manager.unlink_session(webhook_token.token)
+                    logger.info(f"Unlinked session {session_id} from webhook")
+                    break
+
+        # Unregister session
+        self.unregister_session(session_id)
+
     def health_check(self) -> Dict[str, Any]:
         """
         Get OTP Manager health status.
