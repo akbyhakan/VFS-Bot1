@@ -4,7 +4,6 @@ import pytest
 from src.utils.validators import (
     validate_email,
     validate_phone,
-    mask_sensitive_data,
     validate_centre,
     validate_category,
     sanitize_input,
@@ -12,6 +11,7 @@ from src.utils.validators import (
     sanitize_phone,
     sanitize_name,
 )
+from src.utils.helpers import mask_sensitive_data
 
 
 class TestEmailValidation:
