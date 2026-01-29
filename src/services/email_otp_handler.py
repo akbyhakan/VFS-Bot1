@@ -6,6 +6,10 @@ that receive OTP codes via a catch-all email configuration.
 
 import imaplib
 import email
+import email.utils
+from email import message_from_bytes
+from email.message import Message
+from email.header import decode_header
 import re
 import logging
 import threading
@@ -13,9 +17,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Pattern
 from dataclasses import dataclass
-from email.header import decode_header
 from html.parser import HTMLParser
-import io
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +221,7 @@ class EmailOTPHandler:
 
         return ' '.join(decoded_parts)
 
-    def _extract_target_email(self, msg: email.message.Message) -> Optional[str]:
+    def _extract_target_email(self, msg: Message) -> Optional[str]:
         """
         Extract target email address from message headers.
 
@@ -260,7 +262,7 @@ class EmailOTPHandler:
         extractor.feed(html)
         return extractor.get_text()
 
-    def _get_email_body(self, msg: email.message.Message) -> str:
+    def _get_email_body(self, msg: Message) -> str:
         """
         Extract email body (plain text or HTML).
 
@@ -332,7 +334,7 @@ class EmailOTPHandler:
                 try:
                     _, msg_data = mail.fetch(num, '(RFC822)')
                     email_body = msg_data[0][1]
-                    msg = email.message_from_bytes(email_body)
+                    msg = message_from_bytes(email_body)
 
                     # Extract target email from headers
                     msg_target = self._extract_target_email(msg)
