@@ -17,6 +17,8 @@ from typing import Optional
 from src.core.config_loader import load_config
 from src.models.database import Database
 from src.services.notification import NotificationService
+# VFSBot now uses modular structure (bot_service provides backward compatibility)
+# New code should use: from src.services.bot import VFSBot
 from src.services.bot_service import VFSBot
 from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
