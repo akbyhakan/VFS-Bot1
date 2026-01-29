@@ -59,15 +59,19 @@ class VFSBot:
         db: Database,
         notifier: NotificationService,
         shutdown_event: Optional[asyncio.Event] = None,
+        captcha_solver: Optional[CaptchaSolver] = None,
+        centre_fetcher: Optional[CentreFetcher] = None,
     ):
         """
-        Initialize VFS bot.
+        Initialize VFS bot with dependency injection.
 
         Args:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
             shutdown_event: Optional event to signal graceful shutdown
+            captcha_solver: Optional CaptchaSolver instance (created if not provided)
+            centre_fetcher: Optional CentreFetcher instance (created if not provided)
         """
         self.config = config
         self.db = db
@@ -99,13 +103,13 @@ class VFSBot:
 
         self.otp_service = get_otp_service()
 
-        # Initialize components
-        self.captcha_solver = CaptchaSolver(
+        # Initialize components with dependency injection
+        self.captcha_solver = captcha_solver or CaptchaSolver(
             api_key=config["captcha"].get("api_key", ""),
             manual_timeout=config["captcha"].get("manual_timeout", 120),
         )
 
-        self.centre_fetcher = CentreFetcher(
+        self.centre_fetcher = centre_fetcher or CentreFetcher(
             base_url=config["vfs"]["base_url"],
             country=config["vfs"]["country"],
             mission=config["vfs"]["mission"],

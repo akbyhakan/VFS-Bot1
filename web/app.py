@@ -130,8 +130,95 @@ def get_real_client_ip(request: Request) -> str:
     return client_host if is_valid_ip(client_host) else "unknown"
 
 
-# Create FastAPI app
-app = FastAPI(title="VFS-Bot Dashboard", version="2.0.0")
+# Create FastAPI app with enhanced OpenAPI documentation
+app = FastAPI(
+    title="VFS-Bot Dashboard API",
+    version="2.0.0",
+    description="""
+## VFS Global Appointment Booking Bot API
+
+**VFS-Bot** is an automated appointment booking system for VFS Global visa application centers.
+
+### Features
+
+* 🔐 **Secure Authentication** - JWT-based authentication with token refresh
+* 👥 **Multi-User Support** - Manage multiple user accounts and appointments
+* 🤖 **Automated Booking** - Smart bot with anti-detection features
+* 💳 **Payment Integration** - Secure payment card management (PCI-DSS compliant)
+* 📧 **Notifications** - Email and webhook notifications for appointments
+* 🔌 **Webhook Support** - Real-time updates via webhooks
+* 🌐 **Proxy Support** - Rotating proxy management
+* 📊 **Monitoring** - Health checks and metrics endpoints
+
+### Authentication
+
+All protected endpoints require a Bearer token in the Authorization header:
+
+```
+Authorization: Bearer <your-token>
+```
+
+Obtain a token via the `/api/auth/login` endpoint.
+
+### Rate Limiting
+
+API endpoints are rate-limited to prevent abuse:
+- Login: 5 requests per minute
+- General API: 100 requests per minute
+- WebSocket: 10 messages per second
+
+### Security
+
+- All sensitive data is encrypted at rest
+- HTTPS required in production
+- CORS protection enabled
+- SQL injection prevention
+- XSS protection headers
+- CSRF token validation
+    """,
+    contact={
+        "name": "VFS-Bot Support",
+        "url": "https://github.com/akbyhakan/VFS-Bot1",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    openapi_tags=[
+        {
+            "name": "auth",
+            "description": "Authentication and authorization operations",
+        },
+        {
+            "name": "users",
+            "description": "User management operations",
+        },
+        {
+            "name": "appointments",
+            "description": "Appointment request and booking operations",
+        },
+        {
+            "name": "payment",
+            "description": "Payment card and transaction management",
+        },
+        {
+            "name": "bot",
+            "description": "Bot control and status operations",
+        },
+        {
+            "name": "proxy",
+            "description": "Proxy server management",
+        },
+        {
+            "name": "webhooks",
+            "description": "Webhook configuration and OTP delivery",
+        },
+        {
+            "name": "health",
+            "description": "Service health and monitoring",
+        },
+    ],
+)
 
 
 # Configure middleware (order matters!)

@@ -1,12 +1,15 @@
 """Custom exception classes for VFS Bot."""
 
 from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
 
 
 class VFSBotError(Exception):
     """Base exception for VFS Bot."""
 
-    def __init__(self, message: str, recoverable: bool = True, details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, message: str, recoverable: bool = True, details: Optional[Dict[str, Any]] = None
+    ):
         """
         Initialize VFS Bot error.
 
@@ -18,15 +21,17 @@ class VFSBotError(Exception):
         self.message = message
         self.recoverable = recoverable
         self.details = details or {}
+        self.timestamp = datetime.now(timezone.utc).isoformat()
         super().__init__(self.message)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary."""
         return {
             "error": self.__class__.__name__,
             "message": self.message,
             "recoverable": self.recoverable,
-            "details": self.details
+            "details": self.details,
+            "timestamp": self.timestamp,
         }
 
 
@@ -40,8 +45,18 @@ class LoginError(VFSBotError):
 class CaptchaError(VFSBotError):
     """Captcha verification failed."""
 
-    def __init__(self, message: str = "Captcha verification failed", recoverable: bool = True):
-        super().__init__(message, recoverable)
+    def __init__(
+        self, message: str = "Captcha verification failed", recoverable: bool = True, details: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(message, recoverable, details)
+
+
+class CaptchaTimeoutError(CaptchaError):
+    """Captcha solving timed out."""
+
+    def __init__(self, message: str = "Captcha solving timed out", timeout: Optional[int] = None):
+        details = {"timeout": timeout} if timeout else {}
+        super().__init__(message, recoverable=True, details=details)
 
 
 class SlotCheckError(VFSBotError):
@@ -54,8 +69,26 @@ class SlotCheckError(VFSBotError):
 class BookingError(VFSBotError):
     """Appointment booking failed."""
 
-    def __init__(self, message: str = "Booking failed", recoverable: bool = False):
-        super().__init__(message, recoverable)
+    def __init__(
+        self, message: str = "Booking failed", recoverable: bool = False, details: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(message, recoverable, details)
+
+
+class SessionError(VFSBotError):
+    """Session-related error."""
+
+    def __init__(
+        self, message: str = "Session error occurred", recoverable: bool = True, details: Optional[Dict[str, Any]] = None
+    ):
+        super().__init__(message, recoverable, details)
+
+
+class SessionExpiredError(SessionError):
+    """Session has expired."""
+
+    def __init__(self, message: str = "Session has expired"):
+        super().__init__(message, recoverable=True)
 
 
 class NetworkError(VFSBotError):
@@ -87,18 +120,40 @@ class SelectorNotFoundError(VFSBotError):
 class RateLimitError(VFSBotError):
     """Rate limit exceeded."""
 
-    def __init__(self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None):
+    def __init__(
+        self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None, retry_after: Optional[int] = None
+    ):
         """
         Initialize rate limit error.
 
         Args:
             message: Error message
-            wait_time: Recommended wait time in seconds
+            wait_time: Recommended wait time in seconds (deprecated, use retry_after)
+            retry_after: Recommended wait time in seconds before retry
         """
-        self.wait_time = wait_time
-        if wait_time:
-            message += f". Please wait {wait_time} seconds."
-        super().__init__(message, recoverable=True)
+        # Support both wait_time (old) and retry_after (new)
+        self.retry_after = retry_after or wait_time
+        self.wait_time = self.retry_after  # Keep for backward compatibility
+        
+        if self.retry_after:
+            message += f". Please wait {self.retry_after} seconds."
+        super().__init__(message, recoverable=True, details={"retry_after": self.retry_after})
+
+
+class CircuitBreakerOpenError(VFSBotError):
+    """Circuit breaker is open."""
+
+    def __init__(self, message: str = "Circuit breaker is open", reset_time: Optional[datetime] = None):
+        """
+        Initialize circuit breaker error.
+
+        Args:
+            message: Error message
+            reset_time: Time when circuit breaker will reset
+        """
+        self.reset_time = reset_time
+        details = {"reset_time": reset_time.isoformat() if reset_time else None}
+        super().__init__(message, recoverable=True, details=details)
 
 
 # Configuration Errors

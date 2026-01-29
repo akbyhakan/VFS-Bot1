@@ -7,6 +7,9 @@ from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
+# Maximum manual timeout limit (5 minutes)
+MAX_MANUAL_TIMEOUT = 300
+
 
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
@@ -20,7 +23,14 @@ class CaptchaSolver:
             manual_timeout: Timeout for fallback manual solving in seconds
         """
         self.api_key = api_key
-        self.manual_timeout = manual_timeout
+        
+        # Enforce maximum timeout limit
+        if manual_timeout > MAX_MANUAL_TIMEOUT:
+            logger.warning(
+                f"manual_timeout {manual_timeout}s exceeds maximum {MAX_MANUAL_TIMEOUT}s, "
+                f"capping to {MAX_MANUAL_TIMEOUT}s"
+            )
+        self.manual_timeout = min(manual_timeout, MAX_MANUAL_TIMEOUT)
 
         if api_key:
             logger.info("CaptchaSolver initialized with 2Captcha")

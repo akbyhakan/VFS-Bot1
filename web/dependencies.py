@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import threading
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -283,14 +284,53 @@ class ThreadSafeBotState:
 
 # WebSocket connection manager
 class ConnectionManager:
-    """Thread-safe WebSocket connection manager with connection limits."""
+    """Thread-safe WebSocket connection manager with connection limits and rate limiting."""
 
     MAX_CONNECTIONS = int(os.getenv("MAX_WEBSOCKET_CONNECTIONS", "1000"))
+    MESSAGES_PER_SECOND = 10  # Token bucket rate
+    BURST_SIZE = 20  # Maximum burst capacity
 
     def __init__(self):
         """Initialize connection manager."""
         self._connections: Set[WebSocket] = set()
         self._lock = asyncio.Lock()
+        # Rate limiting: token bucket for each connection
+        self._rate_limits: Dict[WebSocket, Dict[str, float]] = {}
+
+    def _check_rate_limit(self, websocket: WebSocket) -> bool:
+        """
+        Check if message is within rate limit using token bucket algorithm.
+
+        Args:
+            websocket: WebSocket connection to check
+
+        Returns:
+            True if message is allowed, False if rate limited
+        """
+        now = time.monotonic()
+        
+        # Initialize bucket if not exists
+        if websocket not in self._rate_limits:
+            self._rate_limits[websocket] = {
+                "tokens": self.BURST_SIZE,
+                "last_update": now,
+            }
+        
+        bucket = self._rate_limits[websocket]
+        elapsed = now - bucket["last_update"]
+        
+        # Add tokens based on elapsed time
+        bucket["tokens"] = min(
+            self.BURST_SIZE, bucket["tokens"] + elapsed * self.MESSAGES_PER_SECOND
+        )
+        bucket["last_update"] = now
+        
+        # Check if we have at least 1 token
+        if bucket["tokens"] >= 1:
+            bucket["tokens"] -= 1
+            return True
+        
+        return False
 
     async def connect(self, websocket: WebSocket) -> bool:
         """
@@ -311,6 +351,11 @@ class ConnectionManager:
                 )
                 return False
             self._connections.add(websocket)
+            # Initialize rate limit bucket
+            self._rate_limits[websocket] = {
+                "tokens": self.BURST_SIZE,
+                "last_update": time.monotonic(),
+            }
             logger.debug(f"WebSocket connected. Active connections: {len(self._connections)}")
             return True
 
@@ -323,7 +368,31 @@ class ConnectionManager:
         """
         async with self._lock:
             self._connections.discard(websocket)
+            # Clean up rate limit data
+            self._rate_limits.pop(websocket, None)
             logger.debug(f"WebSocket disconnected. Active connections: {len(self._connections)}")
+
+    async def send_message(self, websocket: WebSocket, message: dict) -> bool:
+        """
+        Send message to a WebSocket client with rate limiting.
+
+        Args:
+            websocket: WebSocket connection
+            message: Message dictionary to send
+
+        Returns:
+            True if message was sent, False if rate limited
+        """
+        if not self._check_rate_limit(websocket):
+            logger.warning("WebSocket message rate limit exceeded")
+            return False
+        
+        try:
+            await websocket.send_json(message)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send WebSocket message: {e}")
+            return False
 
     async def broadcast(self, message: dict):
         """
@@ -338,6 +407,7 @@ class ConnectionManager:
         disconnected = []
         for connection in connections:
             try:
+                # Note: Broadcast doesn't check rate limit to ensure important updates reach all clients
                 await connection.send_json(message)
             except (WebSocketDisconnect, RuntimeError, ConnectionError) as e:
                 logger.debug(f"WebSocket connection closed during broadcast: {e}")
@@ -350,24 +420,62 @@ class ConnectionManager:
             async with self._lock:
                 for conn in disconnected:
                     self._connections.discard(conn)
+                    self._rate_limits.pop(conn, None)
+
+
+# Thread-safe metrics class
+class ThreadSafeMetrics:
+    """Thread-safe metrics storage."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._data = {
+            "requests_total": 0,
+            "requests_success": 0,
+            "requests_failed": 0,
+            "slots_checked": 0,
+            "slots_found": 0,
+            "appointments_booked": 0,
+            "captchas_solved": 0,
+            "errors": {},
+            "start_time": datetime.now(timezone.utc),
+        }
+
+    def increment(self, key: str, value: int = 1) -> None:
+        """Increment a metric value thread-safely."""
+        with self._lock:
+            if key in self._data and isinstance(self._data[key], (int, float)):
+                self._data[key] += value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a metric value thread-safely."""
+        with self._lock:
+            return self._data.get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        """Set a metric value thread-safely."""
+        with self._lock:
+            self._data[key] = value
+
+    def add_error(self, error_type: str) -> None:
+        """Add an error to metrics thread-safely."""
+        with self._lock:
+            if "errors" not in self._data:
+                self._data["errors"] = {}
+            if error_type not in self._data["errors"]:
+                self._data["errors"][error_type] = 0
+            self._data["errors"][error_type] += 1
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return a copy of metrics data thread-safely."""
+        with self._lock:
+            return self._data.copy()
 
 
 # Global state instances
 bot_state = ThreadSafeBotState()
 manager = ConnectionManager()
-
-# Metrics storage
-metrics = {
-    "requests_total": 0,
-    "requests_success": 0,
-    "requests_failed": 0,
-    "slots_checked": 0,
-    "slots_found": 0,
-    "appointments_booked": 0,
-    "captchas_solved": 0,
-    "errors": {},
-    "start_time": datetime.now(timezone.utc),
-}
+metrics = ThreadSafeMetrics()
 
 
 # Dependency functions

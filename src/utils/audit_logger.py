@@ -3,9 +3,11 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, Callable
 from dataclasses import dataclass, asdict
 from enum import Enum
+from functools import wraps
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,12 @@ class AuditAction(Enum):
     BOT_STOPPED = "bot_stopped"
     API_KEY_GENERATED = "api_key_generated"
     WEBHOOK_RECEIVED = "webhook_received"
+    PASSWORD_CHANGED = "password_changed"
+    DATA_EXPORTED = "data_exported"
+    DATA_DELETED = "data_deleted"
+    PERMISSION_CHANGED = "permission_changed"
+    PROXY_ADDED = "proxy_added"
+    PROXY_DELETED = "proxy_deleted"
 
 
 @dataclass
@@ -43,9 +51,16 @@ class AuditEntry:
     details: Dict[str, Any]
     timestamp: str
     success: bool = True
+    resource_type: Optional[str] = None
+    resource_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
         return asdict(self)
+    
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
 
 
 class AuditLogger:
@@ -55,6 +70,7 @@ class AuditLogger:
     Features:
     - Automatic sensitive data masking
     - Database persistence
+    - JSONL file output for long-term storage
     - Structured logging
     """
 
@@ -70,10 +86,22 @@ class AuditLogger:
         "session",
     }
 
-    def __init__(self, db=None):
+    def __init__(self, db=None, log_file: Optional[str] = None):
+        """
+        Initialize audit logger.
+
+        Args:
+            db: Database instance for persistence
+            log_file: Optional JSONL file path for audit logs
+        """
         self.db = db
+        self.log_file = Path(log_file) if log_file else None
         self._buffer = []
         self._buffer_size = 100
+        
+        # Create log file directory if needed
+        if self.log_file:
+            self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
     async def log(
         self,
@@ -84,6 +112,8 @@ class AuditLogger:
         user_agent: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
         success: bool = True,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
     ) -> None:
         """
         Log an audit event.
@@ -96,6 +126,8 @@ class AuditLogger:
             user_agent: User agent string
             details: Additional details about the action
             success: Whether the action was successful
+            resource_type: Type of resource affected (e.g., "user", "appointment")
+            resource_id: ID of the resource affected
         """
         sanitized_details = self._sanitize(details or {})
 
@@ -108,6 +140,8 @@ class AuditLogger:
             details=sanitized_details,
             timestamp=datetime.now(timezone.utc).isoformat(),
             success=success,
+            resource_type=resource_type,
+            resource_id=resource_id,
         )
 
         # Log to standard logger
@@ -117,6 +151,10 @@ class AuditLogger:
             f"AUDIT: {action.value} | user={username or user_id} | "
             f"ip={ip_address} | success={success}",
         )
+
+        # Write to JSONL file if configured
+        if self.log_file:
+            await self._write_to_file(entry)
 
         # Persist to database if available
         if self.db:
@@ -148,6 +186,14 @@ class AuditLogger:
                 sanitized[key] = value
 
         return sanitized
+
+    async def _write_to_file(self, entry: AuditEntry) -> None:
+        """Write audit entry to JSONL file."""
+        try:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(entry.to_json() + "\n")
+        except Exception as e:
+            logger.error(f"Failed to write audit entry to file: {e}")
 
     async def _persist(self, entry: AuditEntry) -> None:
         """Persist audit entry to database."""
@@ -212,15 +258,84 @@ class AuditLogger:
             return []
 
 
+def audit(action: AuditAction, resource_type: Optional[str] = None):
+    """
+    Decorator for automatic audit logging of function calls.
+
+    Args:
+        action: Audit action type
+        resource_type: Optional resource type being acted upon
+
+    Usage:
+        @audit(AuditAction.USER_CREATED, resource_type="user")
+        async def create_user(user_data: dict):
+            ...
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            # Extract context from kwargs
+            user_id = kwargs.get("user_id")
+            username = kwargs.get("username")
+            ip_address = kwargs.get("ip_address")
+            
+            audit_logger = get_audit_logger()
+            success = True
+            resource_id = None
+            
+            try:
+                result = await func(*args, **kwargs)
+                
+                # Try to extract resource_id from result if it's a dict
+                if isinstance(result, dict) and "id" in result:
+                    resource_id = str(result["id"])
+                
+                return result
+            except Exception as e:
+                success = False
+                raise
+            finally:
+                # Log the action
+                await audit_logger.log(
+                    action=action,
+                    user_id=user_id,
+                    username=username,
+                    ip_address=ip_address,
+                    success=success,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    details={"function": func.__name__},
+                )
+        
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            # For synchronous functions, we can't easily do async audit logging
+            # So we just call the function normally
+            logger.warning(f"Audit decorator used on sync function {func.__name__}")
+            return func(*args, **kwargs)
+        
+        # Return appropriate wrapper based on function type
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
+    
+    return decorator
+
+
 # Global audit logger instance
 _audit_logger: Optional[AuditLogger] = None
 
 
-def get_audit_logger(db: Any = None) -> AuditLogger:
+def get_audit_logger(db: Any = None, log_file: Optional[str] = None) -> AuditLogger:
     """Get the global audit logger instance."""
     global _audit_logger
     if _audit_logger is None:
-        _audit_logger = AuditLogger(db)
+        _audit_logger = AuditLogger(db, log_file)
     elif db and _audit_logger.db is None:
         _audit_logger.db = db
+    elif log_file and _audit_logger.log_file is None:
+        _audit_logger.log_file = Path(log_file)
+        _audit_logger.log_file.parent.mkdir(parents=True, exist_ok=True)
     return _audit_logger
