@@ -107,22 +107,29 @@ class CaptchaSolver:
         """
         logger.info(f"Waiting {self.manual_timeout}s for manual captcha solving...")
 
-        for _ in range(self.manual_timeout):
-            token_result = await page.evaluate(
+        # Check every 2 seconds to reduce browser load
+        check_interval = 2
+        total_checks = self.manual_timeout // check_interval
+
+        for _ in range(total_checks):
+            try:
+                token_result = await page.evaluate(
+                    """
+                    () => {
+                        const response = document.querySelector('[name="g-recaptcha-response"]');
+                        return response ? response.value : null;
+                    }
                 """
-                () => {
-                    const response = document.querySelector('[name="g-recaptcha-response"]');
-                    return response ? response.value : null;
-                }
-            """
-            )
+                )
 
-            token: Optional[str] = token_result if isinstance(token_result, str) else None
-            if token:
-                logger.info("Manual captcha solved")
-                return token
+                token: Optional[str] = token_result if isinstance(token_result, str) else None
+                if token:
+                    logger.info("Manual captcha solved")
+                    return token
+            except Exception as e:
+                logger.warning(f"Captcha check error: {e}")
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(check_interval)
 
         logger.warning("Manual captcha solving timeout")
         return None

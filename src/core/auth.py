@@ -4,6 +4,7 @@ import os
 import logging
 import uuid
 import threading
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast, NamedTuple
 from functools import lru_cache
@@ -33,6 +34,8 @@ class TokenBlacklist:
         self._blacklist: OrderedDict[str, datetime] = OrderedDict()
         self._lock = threading.Lock()
         self._max_size = max_size
+        self._cleanup_task: Optional[asyncio.Task] = None
+        self._running = False
 
     def add(self, jti: str, exp: datetime) -> None:
         """
@@ -79,6 +82,24 @@ class TokenBlacklist:
         """Get current blacklist size."""
         with self._lock:
             return len(self._blacklist)
+
+    async def start_cleanup_task(self, interval: int = 300) -> None:
+        """
+        Start background cleanup task.
+        
+        Args:
+            interval: Cleanup interval in seconds (default: 5 minutes)
+        """
+        self._running = True
+        while self._running:
+            await asyncio.sleep(interval)
+            with self._lock:
+                self._cleanup_expired()
+                logger.debug(f"Token blacklist cleanup: {len(self._blacklist)} tokens remaining")
+
+    def stop_cleanup_task(self) -> None:
+        """Stop background cleanup task."""
+        self._running = False
 
 
 # Global token blacklist instance
