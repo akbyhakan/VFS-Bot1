@@ -1,13 +1,15 @@
 """Webhook management routes for per-user OTP webhooks."""
 
 import logging
+import os
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.models.database import Database
 from web.dependencies import verify_jwt_token
 from src.services.otp_webhook import get_otp_service
+from src.utils.webhook_utils import verify_webhook_signature
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
@@ -154,20 +156,44 @@ async def delete_webhook(
 
 
 @router.post("/otp/{token}")
-async def receive_otp(token: str, body: dict):
+async def receive_otp(token: str, request: Request, body: dict):
     """
     Receive OTP via user-specific webhook.
 
     Args:
         token: Unique webhook token
+        request: FastAPI request object
         body: Request body containing OTP data
 
     Returns:
         Success message with user_id
 
     Raises:
-        HTTPException: If token is invalid
+        HTTPException: If token is invalid or signature verification fails
     """
+    # Get webhook secret from environment
+    webhook_secret = os.getenv("WEBHOOK_SECRET", "")
+    
+    # Verify webhook signature if secret is configured
+    if webhook_secret:
+        signature = request.headers.get("X-Webhook-Signature")
+        if not signature:
+            logger.warning(f"Webhook request without signature for token {token[:8]}...")
+            raise HTTPException(
+                status_code=401,
+                detail="Missing webhook signature"
+            )
+        
+        # Get raw body for signature verification
+        raw_body = await request.body()
+        if not verify_webhook_signature(raw_body, signature, webhook_secret):
+            logger.error(f"Invalid webhook signature for token {token[:8]}...")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid webhook signature"
+            )
+        logger.debug(f"Webhook signature verified for token {token[:8]}...")
+    
     db = Database()
     try:
         await db.connect()

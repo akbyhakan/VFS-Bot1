@@ -128,6 +128,25 @@ class BotMetrics:
         async with self._lock:
             self.captchas_solved += 1
 
+    async def batch_update(self, updates: Dict[str, int]) -> None:
+        """
+        Batch update multiple metrics atomically.
+
+        Args:
+            updates: Dictionary of metric names to increment values
+        
+        Example:
+            await metrics.batch_update({
+                "total_checks": 1,
+                "slots_found": 1,
+                "total_errors": 0
+            })
+        """
+        async with self._lock:
+            for key, value in updates.items():
+                if hasattr(self, key) and isinstance(getattr(self, key), int):
+                    setattr(self, key, getattr(self, key) + value)
+
     async def set_active_users(self, count: int) -> None:
         """
         Set number of active users.

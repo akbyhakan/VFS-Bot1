@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from functools import lru_cache
 
 import yaml
 from playwright.async_api import Locator, Page
@@ -67,10 +68,25 @@ class SelectorManager:
 
     def get(self, path: str, default: Optional[str] = None) -> Optional[str]:
         """
-        Get selector by dot-notation path.
+        Get selector by dot-notation path with caching.
 
         Args:
             path: Dot-separated path (e.g., "login.email_input")
+            default: Default value if not found
+
+        Returns:
+            Selector string or default
+        """
+        # Use cached version for better performance
+        return self._get_cached(path, default)
+
+    @lru_cache(maxsize=256)
+    def _get_cached(self, path: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        Cached version of selector lookup.
+
+        Args:
+            path: Dot-separated path
             default: Default value if not found
 
         Returns:
@@ -350,9 +366,11 @@ class SelectorManager:
         return path.replace("_", " ").title()
 
     def reload(self) -> None:
-        """Reload selectors from file."""
+        """Reload selectors from file and clear cache."""
         logger.info("Reloading selectors...")
         self._load_selectors()
+        # Clear LRU cache when reloading selectors
+        self._get_cached.cache_clear()
 
     def _get_default_selectors(self) -> Dict[str, Any]:
         """Get default selectors as fallback."""

@@ -75,58 +75,91 @@ class Database:
         Args:
             db_path: Path to SQLite database file
             pool_size: Maximum number of concurrent connections (defaults to
-                DB_POOL_SIZE env var or Defaults.DB_POOL_SIZE)
+                DB_POOL_SIZE env var or calculated optimal size)
         """
         self.db_path = db_path
         self.conn: Optional[aiosqlite.Connection] = None
-        # Get pool size from parameter, env var, or default
+        # Get pool size from parameter, env var, or calculate optimal size
         if pool_size is None:
-            pool_size = int(os.getenv("DB_POOL_SIZE", str(Defaults.DB_POOL_SIZE)))
+            env_pool_size = os.getenv("DB_POOL_SIZE")
+            if env_pool_size:
+                pool_size = int(env_pool_size)
+            else:
+                pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size
         self._pool: List[aiosqlite.Connection] = []
         self._pool_lock = asyncio.Lock()
         self._available_connections: asyncio.Queue = asyncio.Queue(maxsize=pool_size)
 
+    def _calculate_optimal_pool_size(self) -> int:
+        """
+        Calculate optimal pool size based on system resources.
+
+        Returns:
+            Optimal pool size (min: 5, max: 20)
+        """
+        cpu_count = os.cpu_count() or 4
+        # Use 2x CPU count as a reasonable default
+        optimal_size = cpu_count * 2
+        # Clamp between 5 and 20
+        return min(max(optimal_size, 5), 20)
+
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
-            # Create main connection for schema management
-            self.conn = await aiosqlite.connect(self.db_path)
-            self.conn.row_factory = aiosqlite.Row
+            try:
+                # Create main connection for schema management
+                self.conn = await aiosqlite.connect(self.db_path)
+                self.conn.row_factory = aiosqlite.Row
 
-            # Enable WAL mode for better concurrency (database-wide setting)
-            await self.conn.execute("PRAGMA journal_mode=WAL")
-            # Add busy timeout for concurrent access
-            await self.conn.execute("PRAGMA busy_timeout=30000")
-            # Enable foreign keys
-            await self.conn.execute("PRAGMA foreign_keys=ON")
-            await self.conn.commit()
+                # Enable WAL mode for better concurrency (database-wide setting)
+                await self.conn.execute("PRAGMA journal_mode=WAL")
+                # Add busy timeout for concurrent access
+                await self.conn.execute("PRAGMA busy_timeout=30000")
+                # Enable foreign keys
+                await self.conn.execute("PRAGMA foreign_keys=ON")
+                await self.conn.commit()
 
-            await self._create_tables()
+                await self._create_tables()
 
-            # Initialize connection pool
-            # Note: WAL mode is a database-wide setting that persists across connections
-            for _ in range(self.pool_size):
-                conn = await aiosqlite.connect(self.db_path)
-                conn.row_factory = aiosqlite.Row
+                # Initialize connection pool
+                # Note: WAL mode is a database-wide setting that persists across connections
+                for _ in range(self.pool_size):
+                    conn = await aiosqlite.connect(self.db_path)
+                    conn.row_factory = aiosqlite.Row
 
-                # Verify WAL mode is enabled for this connection
-                cursor = await conn.execute("PRAGMA journal_mode")
-                mode = await cursor.fetchone()
-                if mode and mode[0].lower() != "wal":
-                    logger.warning(f"Connection not in WAL mode, enabling: {mode}")
-                    await conn.execute("PRAGMA journal_mode=WAL")
+                    # Verify WAL mode is enabled for this connection
+                    cursor = await conn.execute("PRAGMA journal_mode")
+                    mode = await cursor.fetchone()
+                    if mode and mode[0].lower() != "wal":
+                        logger.warning(f"Connection not in WAL mode, enabling: {mode}")
+                        await conn.execute("PRAGMA journal_mode=WAL")
 
-                # Add busy timeout for this connection
-                await conn.execute("PRAGMA busy_timeout=30000")
+                    # Add busy timeout for this connection
+                    await conn.execute("PRAGMA busy_timeout=30000")
 
-                self._pool.append(conn)
-                await self._available_connections.put(conn)
+                    self._pool.append(conn)
+                    await self._available_connections.put(conn)
 
-            logger.info(
-                f"Database connected with pool size {self.pool_size} "
-                f"(WAL mode enabled): {self.db_path}"
-            )
+                logger.info(
+                    f"Database connected with pool size {self.pool_size} "
+                    f"(WAL mode enabled): {self.db_path}"
+                )
+            except Exception:
+                # Clean up partial connections on error
+                if self.conn:
+                    await self.conn.close()
+                    self.conn = None
+                for conn in self._pool:
+                    await conn.close()
+                self._pool.clear()
+                # Clear the queue
+                while not self._available_connections.empty():
+                    try:
+                        self._available_connections.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+                raise
 
     async def close(self) -> None:
         """Close database connection pool."""
