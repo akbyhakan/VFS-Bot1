@@ -117,7 +117,7 @@ class EmailOTPPatternMatcher:
             match = pattern.search(text)
             if match:
                 otp = match.group(1)
-                logger.debug(f"OTP extracted: {otp[:2]}****")
+                logger.debug("OTP code successfully extracted from message")
                 return otp
 
         logger.warning(f"No OTP found in message: {text[:100]}...")
@@ -317,6 +317,7 @@ class EmailOTPHandler:
         Returns:
             OTP code if found, None otherwise
         """
+        mail = None
         try:
             mail = self._connect_imap()
 
@@ -326,8 +327,6 @@ class EmailOTPHandler:
 
             if not message_numbers[0]:
                 logger.debug("No new emails found")
-                mail.close()
-                mail.logout()
                 return None
 
             for num in message_numbers[0].split():
@@ -353,7 +352,7 @@ class EmailOTPHandler:
                         date_str = msg.get("Date", "")
                         try:
                             received_at = email.utils.parsedate_to_datetime(date_str)
-                        except:
+                        except (ValueError, TypeError):
                             received_at = datetime.now(timezone.utc)
 
                         # Cache the OTP
@@ -367,22 +366,27 @@ class EmailOTPHandler:
                             )
                             self._otp_cache[target_email] = entry
 
-                        logger.info(f"OTP found for {target_email}: {otp[:2]}****")
-                        mail.close()
-                        mail.logout()
+                        logger.info(f"OTP found for target email: {target_email}")
                         return otp
 
                 except Exception as e:
                     logger.warning(f"Error processing email: {e}")
                     continue
 
-            mail.close()
-            mail.logout()
             return None
 
         except Exception as e:
             logger.error(f"Error fetching emails: {e}")
             return None
+
+        finally:
+            # Always cleanup IMAP connection
+            if mail:
+                try:
+                    mail.close()
+                    mail.logout()
+                except Exception as e:
+                    logger.debug(f"Error closing IMAP connection: {e}")
 
     def wait_for_otp(
         self,
@@ -510,7 +514,7 @@ def get_email_otp_handler(
     """
     global _email_otp_handler
 
-    # First check without lock (fast path)
+    # Fast path when handler already exists
     if _email_otp_handler is not None:
         return _email_otp_handler
 
@@ -519,7 +523,7 @@ def get_email_otp_handler(
         # Double-check after acquiring lock
         if _email_otp_handler is None:
             if not email or not app_password:
-                raise ValueError("Email and app_password required for first initialization")
+                raise ValueError("Email and app_password required on first call")
 
             _email_otp_handler = EmailOTPHandler(email, app_password, **kwargs)
             logger.info("Global EmailOTPHandler initialized")

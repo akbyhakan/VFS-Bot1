@@ -4,7 +4,7 @@ This guide explains how to configure Microsoft 365 App Password for the Email OT
 
 ## Overview
 
-The Email OTP Handler uses IMAP to monitor a catch-all email mailbox for OTP codes sent to various bot email addresses. Since all emails are routed to a single mailbox (`akby.hakan@vizecep.com`), the system analyzes email headers to determine the intended recipient.
+The Email OTP Handler uses IMAP to monitor a catch-all email mailbox for OTP codes sent to various bot email addresses. Since all emails are routed to a single mailbox (e.g., `admin@yourdomain.com`), the system analyzes email headers to determine the intended recipient.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ The Email OTP Handler uses IMAP to monitor a catch-all email mailbox for OTP cod
 
 1. Go to **Microsoft 365 Admin Center** → **Exchange admin center**
 2. Navigate to **Mail flow** → **Accepted domains**
-3. Select your domain (`vizecep.com`)
+3. Select your domain (e.g., `yourdomain.com`)
 4. Change domain type to **Internal relay**
 5. Save changes
 
@@ -28,12 +28,12 @@ The Email OTP Handler uses IMAP to monitor a catch-all email mailbox for OTP cod
 2. Click **Add a rule** → **Create a new rule**
 3. Configure the rule:
    - **Name**: "Catch-all to Main Mailbox"
-   - **Apply this rule if**: The recipient domain is `vizecep.com`
-   - **AND**: The recipient address includes any of these words: `bot`, `vize-`
-   - **Do the following**: Redirect the message to `akby.hakan@vizecep.com`
+   - **Apply this rule if**: The recipient domain is `yourdomain.com`
+   - **AND**: The recipient address includes any of these words: `bot`, `vize-` (customize as needed)
+   - **Do the following**: Redirect the message to `admin@yourdomain.com` (your catch-all mailbox)
 4. Save the rule
 
-> **Note**: This configuration routes all emails sent to undefined addresses (like `bot1@vizecep.com`, `vize-ist@vizecep.com`) to the main catch-all mailbox.
+> **Note**: This configuration routes all emails sent to undefined addresses (like `bot1@yourdomain.com`, `bot2@yourdomain.com`) to the main catch-all mailbox.
 
 ## Step 2: Generate App Password
 
@@ -63,7 +63,7 @@ Microsoft 365 requires App Passwords for applications using basic authentication
 
 1. Go to **Exchange admin center**
 2. Navigate to **Recipients** → **Mailboxes**
-3. Select the mailbox (`akby.hakan@vizecep.com`)
+3. Select your catch-all mailbox (e.g., `admin@yourdomain.com`)
 4. Click **Manage email apps settings**
 5. Ensure **IMAP** is checked/enabled
 6. Save changes
@@ -74,7 +74,7 @@ Add the following variables to your `.env` file:
 
 ```bash
 # Microsoft 365 Email OTP Configuration
-M365_EMAIL=akby.hakan@vizecep.com
+M365_EMAIL=admin@yourdomain.com
 M365_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx  # Replace with your actual app password
 ```
 
@@ -87,8 +87,8 @@ from src.services.email_otp_handler import EmailOTPHandler
 
 # Initialize handler
 handler = EmailOTPHandler(
-    email="akby.hakan@vizecep.com",
-    app_password="xxxx-xxxx-xxxx-xxxx"
+    email="admin@yourdomain.com",
+    app_password="your-app-password-here"
 )
 
 # Test will connect to IMAP server
@@ -100,14 +100,14 @@ handler.close()
 
 1. Send a test email to one of your bot addresses:
    ```
-   To: bot99@vizecep.com
+   To: bot1@yourdomain.com
    Subject: Test OTP
    Body: Your verification code is: 123456
    ```
 
 2. Wait for OTP using the handler:
    ```python
-   otp = handler.wait_for_otp("bot99@vizecep.com", timeout=120)
+   otp = handler.wait_for_otp("bot1@yourdomain.com", timeout=120)
    if otp:
        print(f"✓ OTP received: {otp}")
    else:
@@ -128,7 +128,7 @@ handler = EmailOTPHandler(
 )
 
 # Wait for OTP for specific bot
-otp = handler.wait_for_otp("bot55@vizecep.com", timeout=120)
+otp = handler.wait_for_otp("bot1@yourdomain.com", timeout=120)
 if otp:
     # Use OTP for authentication
     print(f"Received OTP: {otp}")
@@ -148,12 +148,12 @@ handler = get_email_otp_handler(
 )
 
 def bot_session(bot_id):
-    bot_email = f"bot{bot_id}@vizecep.com"
+    bot_email = f"bot{bot_id}@yourdomain.com"
     print(f"Bot {bot_id} waiting for OTP...")
     
     otp = handler.wait_for_otp(bot_email, timeout=120)
     if otp:
-        print(f"Bot {bot_id} received OTP: {otp[:2]}****")
+        print(f"Bot {bot_id} received OTP")
     else:
         print(f"Bot {bot_id} OTP timeout")
 
