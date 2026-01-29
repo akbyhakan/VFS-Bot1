@@ -5,7 +5,7 @@ import logging
 import re
 import threading
 from datetime import datetime, timezone
-from typing import Optional, Dict, List, Pattern, Callable
+from typing import Optional, Dict, List, Pattern, Callable, Any
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
@@ -446,6 +446,30 @@ class OTPWebhookService:
                 logger.error(f"Fallback OTP input failed: {e}")
         
         return None
+
+    def health_check(self) -> Dict[str, Any]:
+        """
+        Return OTP service health status.
+        
+        Note: Queue size readings are not locked as they are atomic operations
+        and provide a snapshot of the current state.
+        
+        Returns:
+            Dictionary with service health metrics
+        """
+        appointment_queue_size = len(self._appointment_otp_queue)
+        payment_queue_size = len(self._payment_otp_queue)
+        waiting_consumers = len(self._waiting_events)
+        max_entries = self._appointment_otp_queue.maxlen
+        
+        return {
+            "status": "healthy",
+            "appointment_queue_size": appointment_queue_size,
+            "payment_queue_size": payment_queue_size,
+            "timeout_seconds": self._otp_timeout,
+            "waiting_consumers": waiting_consumers,
+            "max_entries": max_entries,
+        }
 
     async def start_cleanup_scheduler(self, interval_seconds: int = 60) -> None:
         """

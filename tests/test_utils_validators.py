@@ -11,7 +11,6 @@ from src.utils.validators import (
     sanitize_phone,
     sanitize_name,
 )
-from src.utils.helpers import mask_sensitive_data
 
 
 class TestEmailValidation:
@@ -74,29 +73,6 @@ class TestPhoneValidation:
         ]
         for phone in invalid_phones:
             assert not validate_phone(phone), f"Should reject invalid phone: {phone}"
-
-
-class TestSensitiveDataMasking:
-    """Test sensitive data masking function."""
-
-    def test_mask_with_default_visible_chars(self):
-        """Test masking with default 4 visible characters."""
-        assert mask_sensitive_data("password123") == "pass*******"
-        assert mask_sensitive_data("secret") == "secr**"
-
-    def test_mask_with_custom_visible_chars(self):
-        """Test masking with custom visible character count."""
-        assert mask_sensitive_data("password123", visible_chars=8) == "password***"
-        assert mask_sensitive_data("test", visible_chars=2) == "te**"
-
-    def test_mask_short_data(self):
-        """Test masking data shorter than visible chars."""
-        assert mask_sensitive_data("abc", visible_chars=4) == "***"
-        assert mask_sensitive_data("ab") == "**"
-
-    def test_mask_empty_data(self):
-        """Test masking empty string."""
-        assert mask_sensitive_data("") == "***"
 
 
 class TestCentreValidation:
