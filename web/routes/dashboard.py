@@ -61,7 +61,7 @@ async def serve_react_app(request: Request, full_path: str = ""):
             html_content = html_content.replace('{{CSP_NONCE}}', nonce)
         return HTMLResponse(content=html_content, media_type="text/html")
     else:
-        # Fallback to old template if React build doesn't exist
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
+        raise HTTPException(
+            status_code=503,
+            detail="Frontend not built. Run 'cd frontend && npm run build'"
         )
