@@ -32,6 +32,26 @@ export function useStopBot() {
   });
 }
 
+export function useRestartBot() {
+  const queryClient = useQueryClient();
+  return useMutation<{ status: string; message: string }, Error>({
+    mutationFn: () => api.post('/api/bot/restart'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] });
+    },
+  });
+}
+
+export function useCheckNow() {
+  const queryClient = useQueryClient();
+  return useMutation<{ status: string; message: string }, Error>({
+    mutationFn: () => api.post('/api/bot/check-now'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] });
+    },
+  });
+}
+
 export function useMetrics() {
   return useQuery<Metrics>({
     queryKey: ['metrics'],

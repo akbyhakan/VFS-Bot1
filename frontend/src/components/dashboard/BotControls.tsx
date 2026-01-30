@@ -1,14 +1,16 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, RotateCcw, Search } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
-import { useStartBot, useStopBot } from '@/hooks/useApi';
+import { useStartBot, useStopBot, useRestartBot, useCheckNow } from '@/hooks/useApi';
 import { toast } from 'sonner';
 
 export function BotControls() {
   const running = useBotStore((state) => state.running);
   const startBot = useStartBot();
   const stopBot = useStopBot();
+  const restartBot = useRestartBot();
+  const checkNow = useCheckNow();
 
   const handleStart = async () => {
     try {
@@ -25,6 +27,24 @@ export function BotControls() {
       toast.success('Bot durduruldu');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Bot durdurulamadı');
+    }
+  };
+
+  const handleRestart = async () => {
+    try {
+      await restartBot.mutateAsync();
+      toast.success('Bot yeniden başlatıldı');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Bot yeniden başlatılamadı');
+    }
+  };
+
+  const handleManualCheck = async () => {
+    try {
+      await checkNow.mutateAsync();
+      toast.success('Manuel kontrol başlatıldı');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Manuel kontrol başlatılamadı');
     }
   };
 
@@ -54,6 +74,26 @@ export function BotControls() {
             className="flex-1"
           >
             Durdur
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleRestart}
+            disabled={!running || restartBot.isPending}
+            isLoading={restartBot.isPending}
+            leftIcon={<RotateCcw className="w-4 h-4" />}
+            className="flex-1"
+          >
+            Yeniden Başlat
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleManualCheck}
+            disabled={!running || checkNow.isPending}
+            isLoading={checkNow.isPending}
+            leftIcon={<Search className="w-4 h-4" />}
+            className="flex-1"
+          >
+            Şimdi Kontrol Et
           </Button>
         </div>
       </CardContent>
