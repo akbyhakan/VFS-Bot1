@@ -9,6 +9,7 @@ from .health import router as health_router
 from .dashboard import router as dashboard_router
 from .proxy import router as proxy_router
 from .webhook import router as webhook_router
+from .sms_webhook import router as sms_webhook_router
 
 __all__ = [
     "auth_router",
@@ -20,4 +21,5 @@ __all__ = [
     "dashboard_router",
     "proxy_router",
     "webhook_router",
+    "sms_webhook_router",
 ]

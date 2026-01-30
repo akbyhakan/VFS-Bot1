@@ -28,6 +28,7 @@ from web.routes import (
     dashboard_router,
     proxy_router,
     webhook_router,
+    sms_webhook_router,
 )
 from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
@@ -234,6 +235,10 @@ API endpoints are rate-limited to prevent abuse:
             "description": "Webhook configuration and OTP delivery",
         },
         {
+            "name": "SMS Webhook",
+            "description": "Dynamic SMS webhook endpoints for VFS accounts",
+        },
+        {
             "name": "health",
             "description": "Service health and monitoring",
         },
@@ -300,6 +305,7 @@ if static_dir.exists():
 # Include routers
 app.include_router(otp_router)  # OTP webhook routes
 app.include_router(webhook_router)  # Per-user webhook routes
+app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
 app.include_router(auth_router)  # /api/auth/*
 app.include_router(users_router)  # /api/users/*
 app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*
