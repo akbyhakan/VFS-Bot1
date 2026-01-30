@@ -173,7 +173,6 @@ class TestCSPNonceInHTML:
             def mock_serve_react_app(request, full_path=""):
                 from fastapi import HTTPException
                 from fastapi.responses import HTMLResponse
-                from fastapi.templating import Jinja2Templates
                 from pathlib import Path
                 
                 if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
@@ -187,10 +186,10 @@ class TestCSPNonceInHTML:
                         html_content = html_content.replace('{{CSP_NONCE}}', nonce)
                     return HTMLResponse(content=html_content)
                 else:
-                    templates_dir = Path(__file__).parent.parent / "web" / "templates"
-                    templates = Jinja2Templates(directory=str(templates_dir))
-                    return templates.TemplateResponse(
-                        "index.html", {"request": request, "title": "VFS-Bot Dashboard"}
+                    # Updated: No fallback template, return 503 error
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Frontend not built. Run 'cd frontend && npm run build'"
                     )
             
             # Test with the mock function

@@ -297,10 +297,6 @@ if dist_dir.exists():
     # Serve React app static assets
     app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
-if static_dir.exists():
-    # Mount other static files (for backward compatibility)
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
 
 # Include routers
 app.include_router(otp_router)  # OTP webhook routes

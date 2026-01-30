@@ -89,6 +89,82 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     return {"status": "success", "message": "Bot stopped"}
 
 
+@router.post("/bot/restart")
+@limiter.limit("5/minute")
+async def restart_bot(
+    request: Request, api_key: dict = Depends(verify_api_key)
+) -> Dict[str, str]:
+    """
+    Restart the bot - requires authentication.
+
+    Args:
+        request: FastAPI request object (required for rate limiter)
+        api_key: Verified API key metadata
+
+    Returns:
+        Response dictionary
+    """
+    # Stop the bot first
+    bot_state["running"] = False
+    bot_state["status"] = "restarting"
+
+    await broadcast_message(
+        {
+            "type": "status",
+            "data": {"running": False, "status": "restarting", "message": "Bot restarting..."},
+        }
+    )
+
+    # Small delay before starting again
+    await asyncio.sleep(1)
+
+    # Start the bot again
+    bot_state["running"] = True
+    bot_state["status"] = "running"
+
+    await broadcast_message(
+        {
+            "type": "status",
+            "data": {"running": True, "status": "running", "message": "Bot restarted successfully"},
+        }
+    )
+
+    logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
+    return {"status": "success", "message": "Bot restarted"}
+
+
+@router.post("/bot/check-now")
+@limiter.limit("10/minute")
+async def check_now(
+    request: Request, api_key: dict = Depends(verify_api_key)
+) -> Dict[str, str]:
+    """
+    Trigger a manual slot check - requires authentication.
+
+    Args:
+        request: FastAPI request object (required for rate limiter)
+        api_key: Verified API key metadata
+
+    Returns:
+        Response dictionary
+    """
+    if not bot_state["running"]:
+        return {"status": "error", "message": "Bot is not running"}
+
+    # Update last check timestamp
+    bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
+
+    await broadcast_message(
+        {
+            "type": "status",
+            "data": {"message": "Manual check triggered", "last_check": bot_state["last_check"]},
+        }
+    )
+
+    logger.info(f"Manual check triggered via dashboard by {api_key.get('name', 'unknown')}")
+    return {"status": "success", "message": "Manual check triggered"}
+
+
 @router.get("/logs")
 async def get_logs(
     limit: int = 100, token_data: Dict[str, Any] = Depends(verify_jwt_token)

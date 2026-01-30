@@ -1,6 +1,7 @@
 """Unified constants and configuration values for VFS-Bot."""
 
 import os
+import warnings
 from typing import Final
 
 
@@ -220,7 +221,15 @@ class LogEmoji:
 # BACKWARD COMPATIBILITY (Deprecated - will be removed in v3.0)
 # =============================================================================
 class Defaults:
-    """DEPRECATED: Use specific classes instead."""
+    """DEPRECATED: Use specific classes instead. Will be removed in v3.0."""
+    
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        warnings.warn(
+            "Defaults class is deprecated. Use specific classes (Timeouts, Database, RateLimits) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
     
     API_TIMEOUT = Timeouts.HTTP_REQUEST_SECONDS
     DB_POOL_SIZE = Database.POOL_SIZE
