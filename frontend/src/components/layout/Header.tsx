@@ -1,9 +1,11 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBotStore } from '@/store/botStore';
+import { useThemeStore } from '@/store/themeStore';
 import { Button } from '@/components/ui/Button';
-import { LogOut, Menu, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-react';
 import { cn, getStatusColor } from '@/utils/helpers';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -12,11 +14,18 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const { logout } = useAuth();
   const { status, isConnected } = useBotStore();
+  const { theme, toggleTheme } = useThemeStore();
+  const { i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleMenuClick = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
     onMenuClick?.();
+  };
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'tr' ? 'en' : 'tr';
+    i18n.changeLanguage(newLang);
   };
 
   return (
@@ -66,6 +75,38 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Notification Icon */}
+        <button
+          className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors relative"
+          aria-label="Bildirimler"
+          title="Bildirimler"
+        >
+          <Bell className="w-5 h-5" />
+          {/* Notification badge - can be conditionally shown */}
+          {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
+        </button>
+
+        {/* Language Selector */}
+        <button
+          onClick={toggleLanguage}
+          className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors flex items-center gap-1"
+          aria-label="Dil değiştir"
+          title="Dil değiştir"
+        >
+          <Globe className="w-5 h-5" />
+          <span className="text-sm font-medium uppercase">{i18n.language}</span>
+        </button>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors"
+          aria-label={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
+          title={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
+        >
+          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
         <Button variant="ghost" size="sm" onClick={logout} leftIcon={<LogOut className="w-4 h-4" />}>
           Çıkış
         </Button>

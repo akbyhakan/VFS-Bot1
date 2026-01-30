@@ -8,6 +8,7 @@ import type { WebhookUrls } from '@/types/payment';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { validateCardForm, formatCardNumber } from '@/utils/validators/creditCard';
+import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
 export function Settings() {
@@ -36,7 +37,9 @@ export function Settings() {
 
   useEffect(() => {
     // Load webhook URLs
-    webhookApi.getWebhookUrls().then(setWebhookUrls).catch(console.error);
+    webhookApi.getWebhookUrls().then(setWebhookUrls).catch((error: unknown) => {
+      logger.error('Failed to load webhook URLs:', error);
+    });
     
     // Load proxy stats
     loadProxyStats();
@@ -46,8 +49,8 @@ export function Settings() {
     try {
       const stats = await proxyApi.getProxyStats();
       setProxyStats(stats);
-    } catch (error) {
-      console.error('Failed to load proxy stats:', error);
+    } catch (error: unknown) {
+      logger.error('Failed to load proxy stats:', error);
     }
   };
 
@@ -68,8 +71,11 @@ export function Settings() {
       
       // Reload stats
       await loadProxyStats();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Proxy yüklenemedi');
+    } catch (error: unknown) {
+      const message = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail 
+        : 'Proxy yüklenemedi';
+      toast.error(message || 'Proxy yüklenemedi');
     } finally {
       setProxyUploading(false);
     }
@@ -111,7 +117,8 @@ export function Settings() {
       setProxyFileName(null);
       toast.success('Proxy listesi temizlendi');
       await loadProxyStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      logger.error('Failed to clear proxies:', error);
       toast.error('Proxy listesi temizlenemedi');
     }
   };
