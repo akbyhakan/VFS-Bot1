@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '@/utils/constants';
 import { tokenManager } from '@/utils/tokenManager';
 import type { ApiError } from '@/types/api';
@@ -6,8 +6,18 @@ import type { ApiError } from '@/types/api';
 // Default timeout: 30 seconds
 const DEFAULT_TIMEOUT = 30000;
 
+// Extended config type for retry tracking
+interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
 class ApiClient {
   private client: AxiosInstance;
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value?: unknown) => void;
+    reject: (reason?: unknown) => void;
+  }> = [];
 
   constructor() {
     this.client = axios.create({
@@ -30,21 +40,68 @@ class ApiClient {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling with token refresh
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError<ApiError>) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid - clear auth and redirect to login
-          // Only redirect if not already on login page to prevent infinite loop
-          if (!window.location.pathname.includes('/login')) {
+      async (error: AxiosError<ApiError>) => {
+        const originalRequest = error.config as ExtendedAxiosRequestConfig;
+
+        if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+          if (this.isRefreshing) {
+            // If already refreshing, queue this request
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            })
+              .then(() => {
+                originalRequest.headers.Authorization = `Bearer ${tokenManager.getToken()}`;
+                return this.client(originalRequest);
+              })
+              .catch((err) => Promise.reject(err));
+          }
+
+          originalRequest._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            // Attempt to refresh the token
+            const newToken = await this.refreshToken();
+            tokenManager.setToken(newToken);
+
+            // Process queued requests with new token
+            this.failedQueue.forEach((prom) => prom.resolve());
+            this.failedQueue = [];
+
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return this.client(originalRequest);
+          } catch (refreshError) {
+            // Refresh failed, clear queue and logout
+            this.failedQueue.forEach((prom) => prom.reject(refreshError));
+            this.failedQueue = [];
+
             tokenManager.clearToken();
-            window.location.href = '/login';
+            // Only redirect if not already on login page to prevent infinite loop
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
           }
         }
+
         return Promise.reject(this.handleError(error));
       }
     );
+  }
+
+  private async refreshToken(): Promise<string> {
+    try {
+      const response = await this.client.post<{ access_token: string }>('/api/auth/refresh');
+      return response.data.access_token;
+    } catch (error) {
+      throw new Error('Token refresh failed');
+    }
   }
 
   private handleError(error: AxiosError<ApiError>): Error {

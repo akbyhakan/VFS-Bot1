@@ -1,35 +1,38 @@
 /**
  * Type-safe environment variable utility
- * Provides validated access to environment variables
+ * Provides validated access to environment variables using Zod
  */
 
-/**
- * Get environment variable with validation
- * @param key - Environment variable key
- * @param defaultValue - Optional default value
- * @throws Error if required variable is missing and no default provided
- */
-function getEnv(key: string, defaultValue?: string): string {
-  const value = import.meta.env[key];
-  
-  if (value === undefined || value === '') {
-    if (defaultValue !== undefined) {
-      return defaultValue;
+import { z } from 'zod';
+
+const envSchema = z.object({
+  VITE_API_BASE_URL: z.string().url().optional().or(z.literal('')),
+  VITE_WS_BASE_URL: z.string().optional(),
+  VITE_SENTRY_DSN: z.string().optional(),
+  MODE: z.enum(['development', 'production', 'test']),
+});
+
+type EnvType = z.infer<typeof envSchema>;
+
+// Parse and validate environment variables
+const parseEnv = (): EnvType => {
+  try {
+    return envSchema.parse({
+      VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+      VITE_WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL,
+      VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
+      MODE: import.meta.env.MODE,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Environment validation failed:', error.errors);
+      throw new Error(`Invalid environment configuration: ${error.errors.map(e => e.message).join(', ')}`);
     }
-    throw new Error(`Missing required environment variable: ${key}`);
+    throw error;
   }
-  
-  return String(value);
-}
+};
 
-/**
- * Get optional environment variable
- * @param key - Environment variable key
- * @param defaultValue - Default value if not set
- */
-function getOptionalEnv(key: string, defaultValue = ''): string {
-  return getEnv(key, defaultValue);
-}
+const validatedEnv = parseEnv();
 
 /**
  * Check if running in development mode
@@ -47,19 +50,13 @@ export const isProd = (): boolean => import.meta.env.PROD;
 export const getMode = (): string => import.meta.env.MODE;
 
 /**
- * Required environment variables for production
- */
-const REQUIRED_ENV_VARS = ['VITE_API_BASE_URL', 'VITE_WS_BASE_URL'] as const;
-
-/**
  * Type-safe environment configuration
- * Note: API_BASE_URL and WS_BASE_URL use empty string defaults for development flexibility,
- * but are validated as required in production via validateEnv()
  */
 export const env = {
-  API_BASE_URL: getOptionalEnv('VITE_API_BASE_URL', ''),
-  WS_BASE_URL: getOptionalEnv('VITE_WS_BASE_URL', ''),
-  MODE: getMode(),
+  API_BASE_URL: validatedEnv.VITE_API_BASE_URL || '',
+  WS_BASE_URL: validatedEnv.VITE_WS_BASE_URL || '',
+  SENTRY_DSN: validatedEnv.VITE_SENTRY_DSN,
+  MODE: validatedEnv.MODE,
   IS_DEV: isDev(),
   IS_PROD: isProd(),
 } as const;
@@ -70,7 +67,8 @@ export const env = {
  * @throws Error in production if required variables are missing
  */
 export function validateEnv(): void {
-  const missing = REQUIRED_ENV_VARS.filter((key) => {
+  const requiredVars = ['VITE_API_BASE_URL', 'VITE_WS_BASE_URL'] as const;
+  const missing = requiredVars.filter((key) => {
     const value = import.meta.env[key];
     return value === undefined || value === '';
   });

@@ -12,6 +12,8 @@ export class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly HEARTBEAT_INTERVAL = 30000; // 30 seconds
   private messageHandlers: Set<MessageHandler> = new Set();
   private errorHandlers: Set<ErrorHandler> = new Set();
   private closeHandlers: Set<CloseHandler> = new Set();
@@ -34,6 +36,9 @@ export class WebSocketService {
       if (token && this.ws) {
         this.ws.send(JSON.stringify({ token }));
       }
+
+      // Start heartbeat
+      this.startHeartbeat();
 
       this.openHandlers.forEach((handler) => handler());
     };
@@ -69,6 +74,8 @@ export class WebSocketService {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+
+    this.stopHeartbeat();
 
     if (this.ws) {
       this.ws.close();
@@ -128,6 +135,22 @@ export class WebSocketService {
 
   isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.send({ type: 'ping', timestamp: Date.now() });
+      }
+    }, this.HEARTBEAT_INTERVAL);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 }
 

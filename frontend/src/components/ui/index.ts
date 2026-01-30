@@ -4,4 +4,4 @@ export { Input } from './Input';
 export { Modal } from './Modal';
 export { Table } from './Table';
 export { ConfirmDialog } from './ConfirmDialog';
-export { Skeleton, TableSkeleton, CardSkeleton, StatsSkeleton } from './Skeleton';
+export { Skeleton, TableSkeleton, DashboardSkeleton } from './Skeleton';

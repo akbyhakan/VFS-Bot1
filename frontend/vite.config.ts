@@ -1,6 +1,8 @@
 import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { VitePWA } from 'vite-plugin-pwa'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // Custom plugin to add CSP nonce placeholder for production builds
 function cspNoncePlugin(): Plugin {
@@ -34,8 +36,54 @@ function cspNoncePlugin(): Plugin {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react(), cspNoncePlugin()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    cspNoncePlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\./i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 }
+            }
+          }
+        ]
+      },
+      manifest: {
+        name: 'VFS-Bot Dashboard',
+        short_name: 'VFS-Bot',
+        description: 'Otomatik Randevu Takip Sistemi',
+        theme_color: '#6366f1',
+        background_color: '#0f172a',
+        display: 'standalone',
+        icons: [
+          {
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      }
+    }),
+    // Bundle analyzer for analyze mode
+    mode === 'analyze' && visualizer({
+      filename: './dist/stats.html',
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+    }),
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -69,4 +117,4 @@ export default defineConfig({
       },
     },
   },
-})
+}));
