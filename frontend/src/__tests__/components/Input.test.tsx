@@ -65,8 +65,8 @@ describe('Input', () => {
   });
 
   it('forwards ref correctly', () => {
-    const ref = { current: null };
-    render(<Input ref={ref as any} />);
+    const ref = { current: null } as React.MutableRefObject<HTMLInputElement | null>;
+    render(<Input ref={ref} />);
     expect(ref.current).toBeInstanceOf(HTMLInputElement);
   });
 
