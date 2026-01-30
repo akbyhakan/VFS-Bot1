@@ -1,0 +1,28 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "loginSuccess": "Login successful",
+    "loginError": "Login failed"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "View bot performance and statistics",
+    "slotsFound": "Slots Found",
+    "appointmentsBooked": "Appointments Booked",
+    "activeUsers": "Active Users",
+    "lastCheck": "Last Check"
+  }
+}

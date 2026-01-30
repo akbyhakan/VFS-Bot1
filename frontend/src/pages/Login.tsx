@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/hooks/useAuth';
+import { useRateLimit } from '@/hooks/useRateLimit';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -15,6 +16,13 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, error, clearError } = useAuth();
+  
+  // Rate limiting: 5 attempts, 30 second lockout
+  const rateLimit = useRateLimit({
+    maxAttempts: 5,
+    windowMs: 30000,
+    lockoutMs: 30000,
+  });
 
   const from = (location.state as { from?: Location })?.from?.pathname || ROUTES.DASHBOARD;
 
@@ -45,13 +53,20 @@ export function Login() {
   }, [error, clearError]);
 
   const onSubmit = async (data: LoginFormData) => {
+    if (rateLimit.isLocked) {
+      toast.error(`Çok fazla başarısız deneme. Lütfen ${rateLimit.remainingTime} saniye bekleyin.`);
+      return;
+    }
+
     try {
       await login(
         { username: data.username, password: data.password },
         data.rememberMe || false
       );
       toast.success('Giriş başarılı');
+      rateLimit.resetAttempts();
     } catch (error) {
+      rateLimit.recordAttempt();
       // Error already handled by auth store and displayed via toast
     }
   };
@@ -103,9 +118,18 @@ export function Login() {
             variant="primary"
             className="w-full"
             isLoading={isSubmitting}
+            disabled={!!rateLimit.isLocked}
           >
-            Giriş Yap
+            {rateLimit.isLocked 
+              ? `Bekleyin (${rateLimit.remainingTime}s)` 
+              : 'Giriş Yap'}
           </Button>
+
+          {rateLimit.isLocked && (
+            <div className="text-center text-sm text-warning-400" role="alert">
+              Çok fazla başarısız deneme. Lütfen bekleyin.
+            </div>
+          )}
         </form>
 
         <div className="mt-6 text-center text-xs text-dark-500">

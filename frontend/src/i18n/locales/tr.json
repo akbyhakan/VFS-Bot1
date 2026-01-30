@@ -1,0 +1,28 @@
+{
+  "common": {
+    "loading": "Yükleniyor...",
+    "error": "Bir hata oluştu",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur"
+  },
+  "auth": {
+    "login": "Giriş Yap",
+    "logout": "Çıkış",
+    "username": "Kullanıcı Adı",
+    "password": "Şifre",
+    "rememberMe": "Beni hatırla",
+    "loginSuccess": "Giriş başarılı",
+    "loginError": "Giriş başarısız"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Bot performansını ve istatistikleri görüntüleyin",
+    "slotsFound": "Bulunan Slotlar",
+    "appointmentsBooked": "Alınan Randevular",
+    "activeUsers": "Aktif Kullanıcılar",
+    "lastCheck": "Son Kontrol"
+  }
+}
