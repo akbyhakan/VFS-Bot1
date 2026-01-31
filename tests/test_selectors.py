@@ -197,7 +197,8 @@ def test_get_selector_manager_singleton():
 
 @pytest.mark.asyncio
 async def test_wait_for_selector_uses_visible_state(temp_selectors_file):
-    """Test that wait_for_selector passes the correct timeout parameter to page.wait_for_selector."""
+    """Test that wait_for_selector passes the correct timeout parameter to
+    page.wait_for_selector."""
     manager = SelectorManager(str(temp_selectors_file))
 
     mock_page = AsyncMock()
