@@ -12,26 +12,26 @@ def main():
     print("⚠️  GÜVENLIK UYARISI: Bu script .env dosyası oluşturacak.")
     print("    Dosyayı git'e commit etmemeye dikkat edin!")
     print("    .env dosyası hassas bilgiler içerir ve .gitignore'da olmalıdır.\n")
-    
+
     # Generate encryption key first
     encryption_key = Fernet.generate_key().decode()
-    
+
     # Generate other security keys
     # token_urlsafe(48) generates 48 bytes = 64 base64 characters
     api_secret = secrets.token_urlsafe(48)  # 64 character output
     api_key_salt = secrets.token_urlsafe(32)  # 43 character output
     vfs_encryption_key = secrets.token_urlsafe(32)  # 43 character output
-    
+
     # Get user input
     vfs_email = input("VFS Email: ")
     vfs_password = input("VFS Password: ")
     admin_username = input("Admin Username [admin]: ") or "admin"
     admin_password = input("Admin Password: ")
-    
+
     # Hash admin password for secure storage
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     admin_hash = pwd_context.hash(admin_password)
-    
+
     # Write .env file
     # Note: VFS_PASSWORD is stored in plain text because the application needs it
     # for VFS API authentication. The .env file itself should be protected with
@@ -87,12 +87,12 @@ DB_POOL_SIZE=10
 # ===========================================
 LOG_LEVEL=INFO
 """
-    
+
     with open(".env", "w") as f:
         f.write(env_content)
-    
+
     # Set secure file permissions (Unix/Linux only)
-    if os.name != 'nt':  # Not Windows
+    if os.name != "nt":  # Not Windows
         try:
             os.chmod(".env", 0o600)
             print("\n✅ .env dosyası güvenli izinlerle (600) oluşturuldu")
@@ -100,7 +100,7 @@ LOG_LEVEL=INFO
             print(f"\n⚠️ Dosya izinleri ayarlanamadı: {e}")
     else:
         print("\n⚠️ Windows sisteminde dosya izinleri manuel olarak ayarlanmalıdır")
-    
+
     print("✅ .env dosyası oluşturuldu")
     print("\n📝 Sonraki adımlar:")
     print("   1. .env dosyasının .gitignore'da olduğunu doğrulayın")

@@ -119,7 +119,7 @@ class PasswordEncryption:
         # First check if current key can decrypt it
         if self.can_decrypt(encrypted_data):
             return False
-        
+
         # Check if old cipher exists and can decrypt it
         if self._old_cipher:
             try:
@@ -129,7 +129,7 @@ class PasswordEncryption:
                 return False
             except Exception:
                 return False
-        
+
         return False
 
     def migrate_to_new_key(self, encrypted_data: str) -> str:
@@ -147,7 +147,7 @@ class PasswordEncryption:
         """
         if not self._old_cipher:
             raise ValueError("Old encryption key not available for migration")
-        
+
         try:
             # Decrypt with old key
             decrypted = self._old_cipher.decrypt(encrypted_data.encode())
@@ -265,7 +265,7 @@ def get_encryption() -> PasswordEncryption:
 
     Returns:
         PasswordEncryption instance
-    
+
     Thread Safety:
         ALL instance access happens inside the lock scope to prevent race
         conditions during key rotation. Uses local variable to avoid TOCTOU issues.
@@ -276,9 +276,7 @@ def get_encryption() -> PasswordEncryption:
     with _encryption_lock:
         current_key = os.getenv("ENCRYPTION_KEY")
         instance = _encryption_instance  # Local reference to prevent race condition
-        if instance is None or (
-            current_key and _normalize_key(current_key) != instance._key
-        ):
+        if instance is None or (current_key and _normalize_key(current_key) != instance._key):
             _encryption_instance = PasswordEncryption()
         return _encryption_instance
 
@@ -287,12 +285,12 @@ def _get_async_lock() -> asyncio.Lock:
     """
     Get or create async lock - must be called within event loop.
     Thread-safe creation using threading.Lock.
-    
+
     Raises:
         RuntimeError: If called outside of an event loop
     """
     global _encryption_lock_async
-    
+
     # Verify we're in an event loop
     try:
         asyncio.get_running_loop()
@@ -301,7 +299,7 @@ def _get_async_lock() -> asyncio.Lock:
             "Async encryption lock must be accessed within an event loop. "
             "Use get_encryption() for synchronous contexts."
         )
-    
+
     # Use threading lock to prevent race condition during async lock creation
     with _async_lock_creation_lock:
         if _encryption_lock_async is None:
@@ -323,7 +321,7 @@ async def get_encryption_async() -> PasswordEncryption:
 
     # Get or create async lock within event loop context
     lock = _get_async_lock()
-    
+
     # Always acquire async lock to prevent race conditions
     async with lock:
         current_key = os.getenv("ENCRYPTION_KEY")

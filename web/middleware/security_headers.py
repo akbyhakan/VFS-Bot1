@@ -20,7 +20,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         nonce = secrets.token_urlsafe(16)
         request.state.csp_nonce = nonce
-        
+
         response = await call_next(request)
 
         response.headers["X-Frame-Options"] = "DENY"

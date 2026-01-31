@@ -14,7 +14,7 @@ T = TypeVar("T")
 
 class CircuitState(Enum):
     """Circuit breaker states."""
-    
+
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Failures exceeded threshold, rejecting requests
     HALF_OPEN = "half_open"  # Testing if service recovered
@@ -22,7 +22,7 @@ class CircuitState(Enum):
 
 class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
-    
+
     def __init__(self, message: str = "Circuit breaker is open"):
         self.message = message
         super().__init__(self.message)
@@ -31,14 +31,14 @@ class CircuitBreakerError(Exception):
 class CircuitBreaker:
     """
     Generic circuit breaker with async support.
-    
+
     Prevents cascading failures by stopping calls to failing services.
-    
+
     States:
     - CLOSED: Normal operation, requests pass through
     - OPEN: Too many failures, requests are rejected immediately
     - HALF_OPEN: Testing if service recovered, limited requests allowed
-    
+
     Example:
         ```python
         circuit_breaker = CircuitBreaker(
@@ -46,7 +46,7 @@ class CircuitBreaker:
             timeout_seconds=60,
             expected_exception=HTTPException
         )
-        
+
         @circuit_breaker.protected
         async def call_external_api():
             # Your code here
@@ -64,7 +64,7 @@ class CircuitBreaker:
     ):
         """
         Initialize circuit breaker.
-        
+
         Args:
             failure_threshold: Number of failures before opening circuit
             timeout_seconds: Time to wait before attempting recovery (half-open)
@@ -77,7 +77,7 @@ class CircuitBreaker:
         self.expected_exception = expected_exception
         self.name = name or "CircuitBreaker"
         self._half_open_threshold = half_open_threshold
-        
+
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._half_open_successes = 0
@@ -97,7 +97,7 @@ class CircuitBreaker:
     async def _update_state(self) -> None:
         """
         Update circuit breaker state based on current conditions.
-        
+
         Must be called with lock held.
         """
         if self._state == CircuitState.OPEN:
@@ -128,14 +128,12 @@ class CircuitBreaker:
         async with self._lock:
             self._failure_count += 1
             self._last_failure_time = datetime.now()
-            
+
             if self._state == CircuitState.HALF_OPEN:
                 # Any failure in half-open state reopens the circuit
                 self._state = CircuitState.OPEN
                 self._half_open_successes = 0
-                logger.warning(
-                    f"{self.name}: Circuit reopened after failure during recovery test"
-                )
+                logger.warning(f"{self.name}: Circuit reopened after failure during recovery test")
             elif self._failure_count >= self.failure_threshold:
                 if self._state != CircuitState.OPEN:
                     self._state = CircuitState.OPEN
@@ -147,10 +145,10 @@ class CircuitBreaker:
         """Check if enough time has passed to attempt recovery."""
         if self._state != CircuitState.OPEN:
             return False
-        
+
         if self._last_failure_time is None:
             return False
-        
+
         time_since_failure = datetime.now() - self._last_failure_time
         return time_since_failure >= timedelta(seconds=self.timeout_seconds)
 
@@ -168,15 +166,15 @@ class CircuitBreaker:
     async def call(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T:
         """
         Call a function through the circuit breaker.
-        
+
         Args:
             func: Async function to call
             *args: Positional arguments for func
             **kwargs: Keyword arguments for func
-            
+
         Returns:
             Result from func
-            
+
         Raises:
             CircuitBreakerError: If circuit is open
             Exception: Original exception from func if not expected_exception
@@ -187,7 +185,7 @@ class CircuitBreaker:
                 f"{self.name}: Circuit breaker is open. "
                 f"Service will be retried after {self.timeout_seconds}s"
             )
-        
+
         # Attempt the call
         try:
             result = await func(*args, **kwargs)
@@ -204,13 +202,13 @@ class CircuitBreaker:
     def protected(self, func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         """
         Decorator to protect an async function with circuit breaker.
-        
+
         Args:
             func: Async function to protect
-            
+
         Returns:
             Wrapped function
-            
+
         Example:
             ```python
             @circuit_breaker.protected
@@ -218,10 +216,11 @@ class CircuitBreaker:
                 pass
             ```
         """
+
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             return await self.call(func, *args, **kwargs)
-        
+
         return wrapper
 
     async def reset(self) -> None:
@@ -235,7 +234,7 @@ class CircuitBreaker:
     def get_stats(self) -> dict:
         """
         Get current circuit breaker statistics.
-        
+
         Returns:
             Dictionary with state, failure_count, and last_failure_time
         """
@@ -244,6 +243,8 @@ class CircuitBreaker:
             "state": self._state.value,
             "failure_count": self._failure_count,
             "failure_threshold": self.failure_threshold,
-            "last_failure_time": self._last_failure_time.isoformat() if self._last_failure_time else None,
+            "last_failure_time": self._last_failure_time.isoformat()
+            if self._last_failure_time
+            else None,
             "timeout_seconds": self.timeout_seconds,
         }

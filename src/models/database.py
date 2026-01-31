@@ -17,7 +17,7 @@ from src.core.exceptions import (
     ValidationError,
     DatabaseNotConnectedError,
     DatabasePoolTimeoutError,
-    BatchOperationError
+    BatchOperationError,
 )
 from src.constants import Defaults
 
@@ -268,7 +268,7 @@ class Database:
 
         Yields:
             Database connection from pool
-        
+
         Raises:
             DatabasePoolTimeoutError: If connection cannot be acquired after all retries
         """
@@ -314,7 +314,8 @@ class Database:
             raise RuntimeError("Database connection is not established.")
         async with self.conn.cursor() as cursor:
             # Users table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     email TEXT UNIQUE NOT NULL,
@@ -326,10 +327,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Personal details table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS personal_details (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -350,10 +353,12 @@ class Database:
                     postcode TEXT,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # Appointments table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS appointments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -367,10 +372,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # Logs table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     level TEXT NOT NULL,
@@ -379,10 +386,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """)
+            """
+            )
 
             # Payment card table (single card for all payments)
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS payment_card (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     card_holder_name TEXT NOT NULL,
@@ -392,10 +401,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Appointment requests table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS appointment_requests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     country_code TEXT NOT NULL,
@@ -409,10 +420,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Appointment persons table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS appointment_persons (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     request_id INTEGER NOT NULL,
@@ -431,10 +444,12 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # Audit log table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     action TEXT NOT NULL,
@@ -448,21 +463,29 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """)
+            """
+            )
 
             # Audit log indexes
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
-            """)
-            await cursor.execute("""
+            """
+            )
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
-            """)
-            await cursor.execute("""
+            """
+            )
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
-            """)
+            """
+            )
 
             # Appointment history table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS appointment_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -478,16 +501,20 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # Index for faster queries
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
                 ON appointment_history(user_id, status)
-            """)
+            """
+            )
 
             # User webhooks table - per-user OTP webhook tokens
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS user_webhooks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL UNIQUE,
@@ -496,16 +523,20 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # Index for faster webhook token lookups
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
                 ON user_webhooks(webhook_token)
-            """)
+            """
+            )
 
             # Proxy endpoints table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS proxy_endpoints (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     server TEXT NOT NULL,
@@ -519,28 +550,35 @@ class Database:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(server, port, username)
                 )
-            """)
+            """
+            )
 
             # Index for active proxies lookup
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
                 ON proxy_endpoints(is_active)
-            """)
+            """
+            )
 
             # Token blacklist table
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS token_blacklist (
                     jti VARCHAR(64) PRIMARY KEY,
                     exp TIMESTAMP NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Index for cleanup
-            await cursor.execute("""
+            await cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
                 ON token_blacklist(exp)
-            """)
+            """
+            )
 
             await self.conn.commit()
 
@@ -578,9 +616,11 @@ class Database:
                     "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT"
                 )
                 # Update existing records with a default value
-                await cursor.execute("""UPDATE appointment_requests
+                await cursor.execute(
+                    """UPDATE appointment_requests
                     SET visa_subcategory = ''
-                    WHERE visa_subcategory IS NULL""")
+                    WHERE visa_subcategory IS NULL"""
+                )
 
             # Check appointment_persons table
             await cursor.execute("PRAGMA table_info(appointment_persons)")
@@ -603,9 +643,11 @@ class Database:
                     "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN"
                 )
                 # Update existing records with default value
-                await cursor.execute("""UPDATE appointment_persons
+                await cursor.execute(
+                    """UPDATE appointment_persons
                     SET is_child_with_parent = 0
-                    WHERE is_child_with_parent IS NULL""")
+                    WHERE is_child_with_parent IS NULL"""
+                )
 
             await self.conn.commit()
             logger.info("Schema migration completed")
@@ -886,7 +928,8 @@ class Database:
         """
         async with self.get_connection() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute("""
+                await cursor.execute(
+                    """
                     SELECT
                         u.id, u.email, u.centre as center_name,
                         u.category as visa_category, u.subcategory as visa_subcategory,
@@ -895,7 +938,8 @@ class Database:
                     FROM users u
                     LEFT JOIN personal_details p ON u.id = p.user_id
                     ORDER BY u.created_at DESC
-                """)
+                """
+                )
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
@@ -1098,29 +1142,29 @@ class Database:
     async def add_users_batch(self, users: List[Dict[str, Any]]) -> List[int]:
         """
         Add multiple users in a single transaction for improved performance.
-        
+
         Args:
             users: List of user dictionaries with keys: email, password, centre, category, subcategory
-            
+
         Returns:
             List of user IDs for successfully added users
-            
+
         Raises:
             ValidationError: If any email format is invalid
             BatchOperationError: If batch operation fails
         """
         if not users:
             return []
-        
+
         # Validate all emails first (fail fast)
         for user in users:
             email = user.get("email")
             if not email or not validate_email(email):
                 raise ValidationError(f"Invalid email format: {email}", field="email")
-        
+
         user_ids: List[int] = []
         failed_count = 0
-        
+
         async with self.get_connection() as conn:
             try:
                 async with conn.cursor() as cursor:
@@ -1129,39 +1173,41 @@ class Database:
                     for user in users:
                         # Encrypt password before storing
                         encrypted_password = encrypt_password(user["password"])
-                        user_data.append((
-                            user["email"],
-                            encrypted_password,
-                            user["centre"],
-                            user["category"],
-                            user["subcategory"]
-                        ))
-                    
+                        user_data.append(
+                            (
+                                user["email"],
+                                encrypted_password,
+                                user["centre"],
+                                user["category"],
+                                user["subcategory"],
+                            )
+                        )
+
                     # Insert all users in a single transaction
                     await cursor.executemany(
                         """
                         INSERT INTO users (email, password, centre, category, subcategory)
                         VALUES (?, ?, ?, ?, ?)
                         """,
-                        user_data
+                        user_data,
                     )
-                    
+
                     await conn.commit()
-                    
+
                     # Get all inserted IDs
                     # Note: SQLite doesn't support RETURNING, so we query by email
                     for user in users:
                         await cursor.execute(
                             "SELECT id FROM users WHERE email = ? ORDER BY id DESC LIMIT 1",
-                            (user["email"],)
+                            (user["email"],),
                         )
                         row = await cursor.fetchone()
                         if row:
                             user_ids.append(row[0])
-                    
+
                     logger.info(f"Batch added {len(user_ids)} users")
                     return user_ids
-                    
+
             except Exception as e:
                 failed_count = len(users) - len(user_ids)
                 logger.error(f"Batch user insert failed: {e}")
@@ -1169,38 +1215,38 @@ class Database:
                     f"Failed to add users in batch: {e}",
                     operation="add_users_batch",
                     failed_count=failed_count,
-                    total_count=len(users)
+                    total_count=len(users),
                 ) from e
 
     @require_connection
     async def update_users_batch(self, updates: List[Dict[str, Any]]) -> int:
         """
         Update multiple users in a single transaction for improved performance.
-        
+
         Each update dict should contain 'id' and the fields to update.
-        
+
         Args:
             updates: List of update dictionaries with 'id' and optional fields:
                     email, password, centre, category, subcategory, active
-            
+
         Returns:
             Number of users successfully updated
-            
+
         Raises:
             ValidationError: If any email format is invalid
             BatchOperationError: If batch operation fails
         """
         if not updates:
             return 0
-        
+
         # Validate all emails first (fail fast)
         for update in updates:
             email = update.get("email")
             if email and not validate_email(email):
                 raise ValidationError(f"Invalid email format: {email}", field="email")
-        
+
         updated_count = 0
-        
+
         async with self.get_connection() as conn:
             try:
                 async with conn.cursor() as cursor:
@@ -1210,11 +1256,11 @@ class Database:
                         if not user_id:
                             logger.warning("Skipping update without user_id")
                             continue
-                        
+
                         # Build dynamic update query
                         fields = []
                         params = []
-                        
+
                         if "email" in update:
                             fields.append("email = ?")
                             params.append(update["email"])
@@ -1235,30 +1281,30 @@ class Database:
                         if "active" in update:
                             fields.append("active = ?")
                             params.append(1 if update["active"] else 0)
-                        
+
                         if not fields:
                             continue
-                        
+
                         fields.append("updated_at = CURRENT_TIMESTAMP")
                         params.append(user_id)
-                        
+
                         query = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
                         await cursor.execute(query, params)
-                        
+
                         if cursor.rowcount > 0:
                             updated_count += 1
-                    
+
                     await conn.commit()
                     logger.info(f"Batch updated {updated_count} users")
                     return updated_count
-                    
+
             except Exception as e:
                 logger.error(f"Batch user update failed: {e}")
                 raise BatchOperationError(
                     f"Failed to update users in batch: {e}",
                     operation="update_users_batch",
                     failed_count=len(updates) - updated_count,
-                    total_count=len(updates)
+                    total_count=len(updates),
                 ) from e
 
     @require_connection
@@ -1369,7 +1415,7 @@ class Database:
     async def add_blacklisted_token(self, jti: str, exp: datetime) -> None:
         """
         Add a token to the blacklist.
-        
+
         Args:
             jti: JWT ID (jti claim)
             exp: Token expiration time
@@ -1384,15 +1430,15 @@ class Database:
                     (jti, exp.isoformat()),
                 )
                 await conn.commit()
-    
+
     @require_connection
     async def is_token_blacklisted(self, jti: str) -> bool:
         """
         Check if a token is blacklisted.
-        
+
         Args:
             jti: JWT ID to check
-            
+
         Returns:
             True if token is blacklisted and not expired
         """
@@ -1408,12 +1454,12 @@ class Database:
                 )
                 result = await cursor.fetchone()
                 return result is not None
-    
+
     @require_connection
     async def get_active_blacklisted_tokens(self) -> List[tuple[str, datetime]]:
         """
         Get all active (non-expired) blacklisted tokens.
-        
+
         Returns:
             List of (jti, exp) tuples
         """
@@ -1429,12 +1475,12 @@ class Database:
                 )
                 rows = await cursor.fetchall()
                 return [(row[0], datetime.fromisoformat(row[1])) for row in rows]
-    
+
     @require_connection
     async def cleanup_expired_tokens(self) -> int:
         """
         Remove expired tokens from blacklist.
-        
+
         Returns:
             Number of tokens removed
         """
@@ -2168,9 +2214,7 @@ class Database:
     # ================================================================================
 
     @require_connection
-    async def add_proxy(
-        self, server: str, port: int, username: str, password: str
-    ) -> int:
+    async def add_proxy(self, server: str, port: int, username: str, password: str) -> int:
         """
         Add a new proxy endpoint with encrypted password.
 
@@ -2240,9 +2284,7 @@ class Database:
                     del proxy["password_encrypted"]  # Remove encrypted version from response
                     proxies.append(proxy)
                 except Exception as e:
-                    logger.error(
-                        f"Failed to decrypt password for proxy {proxy['id']}: {e}"
-                    )
+                    logger.error(f"Failed to decrypt password for proxy {proxy['id']}: {e}")
                     # Skip proxies with decryption errors
                     continue
 
@@ -2477,7 +2519,6 @@ class Database:
 
         logger.info(f"Cleared all {count} proxies")
         return count
-
 
     @require_connection
     async def get_user_by_webhook_token(self, token: str) -> Optional[Dict[str, Any]]:

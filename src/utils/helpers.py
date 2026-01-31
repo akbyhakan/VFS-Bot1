@@ -140,19 +140,19 @@ async def wait_for_element_with_retry(
 ) -> bool:
     """
     Wait for element with exponential backoff retry.
-    
+
     Args:
         page: Playwright page
         selector: CSS selector
         max_retries: Maximum retry attempts
         initial_timeout: Initial timeout in ms
         backoff_factor: Multiplier for each retry
-    
+
     Returns:
         True if element found, False otherwise
     """
     timeout = initial_timeout
-    
+
     for attempt in range(max_retries):
         try:
             await page.wait_for_selector(selector, timeout=timeout, state="visible")
@@ -163,11 +163,13 @@ async def wait_for_element_with_retry(
                 timeout = int(timeout * backoff_factor)
             else:
                 logger.warning(f"Selector '{selector}' not found after {max_retries} attempts")
-    
+
     return False
 
 
-async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optional[float] = None) -> None:
+async def random_delay(
+    min_seconds: Optional[float] = None, max_seconds: Optional[float] = None
+) -> None:
     """
     Add a random delay to simulate human behavior.
 
@@ -184,7 +186,9 @@ async def random_delay(min_seconds: Optional[float] = None, max_seconds: Optiona
 async def safe_navigate(
     page: Page,
     url: str,
-    wait_until: Optional[Literal["commit", "domcontentloaded", "load", "networkidle"]] = "networkidle",
+    wait_until: Optional[
+        Literal["commit", "domcontentloaded", "load", "networkidle"]
+    ] = "networkidle",
     timeout: Optional[int] = None,
 ) -> bool:
     """

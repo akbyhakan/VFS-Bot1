@@ -23,7 +23,7 @@ class CaptchaSolver:
             manual_timeout: Timeout for fallback manual solving in seconds
         """
         self.api_key = api_key
-        
+
         # Enforce maximum timeout limit
         if manual_timeout > MAX_MANUAL_TIMEOUT:
             logger.warning(
@@ -74,7 +74,7 @@ class CaptchaSolver:
         """
         try:
             from twocaptcha import TwoCaptcha
-            
+
             solver = TwoCaptcha(self.api_key)
 
             # Run in thread pool to avoid blocking
@@ -87,10 +87,10 @@ class CaptchaSolver:
             if result and isinstance(result, dict) and "code" in result:
                 logger.info("2Captcha solved successfully")
                 return result["code"]
-            
+
             logger.warning(f"2Captcha returned unexpected result: {result}")
             return None
-            
+
         except Exception as e:
             logger.error(f"2Captcha error: {e}")
             return None

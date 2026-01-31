@@ -88,9 +88,7 @@ async def add_proxy(
     try:
         # Validate port range
         if not (1 <= proxy.port <= 65535):
-            raise HTTPException(
-                status_code=400, detail="Port must be between 1 and 65535"
-            )
+            raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
 
         # Add to database
         proxy_id = await db.add_proxy(
@@ -239,9 +237,7 @@ async def update_proxy(
     try:
         # Validate port if provided
         if proxy.port is not None and not (1 <= proxy.port <= 65535):
-            raise HTTPException(
-                status_code=400, detail="Port must be between 1 and 65535"
-            )
+            raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
 
         # Update proxy
         updated = await db.update_proxy(
@@ -382,6 +378,7 @@ async def reset_proxy_failures(
 # Legacy CSV Upload Endpoint (Updated for DB Integration)
 # ================================================================================
 
+
 @router.post("/upload")
 async def upload_proxy_csv(
     file: UploadFile = File(...),
@@ -412,7 +409,7 @@ async def upload_proxy_csv(
 
         # Read file content
         content = await file.read()
-        
+
         # Validate file size (max 10MB)
         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
         if len(content) > MAX_FILE_SIZE:
@@ -420,19 +417,19 @@ async def upload_proxy_csv(
                 status_code=400,
                 detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB",
             )
-        
+
         csv_content = content.decode("utf-8")
 
         # Parse CSV and add to database
         lines = csv_content.strip().split("\n")
-        
+
         # Check if first line is header
         if lines and lines[0].strip().lower() == "endpoint":
             lines = lines[1:]  # Skip header
-        
+
         count = 0
         errors = []
-        
+
         for line_num, line in enumerate(lines, start=2):  # Start at 2 since we skipped header
             endpoint = line.strip()
             if not endpoint or endpoint.startswith("#"):
@@ -441,7 +438,9 @@ async def upload_proxy_csv(
             # Parse endpoint: server:port:username:password
             parts = endpoint.split(":")
             if len(parts) != 4:
-                errors.append(f"Line {line_num}: Invalid format (expected server:port:username:password)")
+                errors.append(
+                    f"Line {line_num}: Invalid format (expected server:port:username:password)"
+                )
                 continue
 
             server, port_str, username, password = parts
@@ -600,4 +599,3 @@ async def get_combined_stats(
     except Exception as e:
         logger.error(f"Failed to get combined stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
-

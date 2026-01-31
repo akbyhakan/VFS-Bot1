@@ -54,11 +54,11 @@ class SafeException:
             Safe string representation with sensitive data masked
         """
         msg = str(exception)
-        
+
         # Apply all patterns
         for pattern in cls._get_patterns():
             msg = pattern.sub(r"\1[REDACTED]", msg)
-        
+
         return msg
 
     @classmethod
@@ -78,10 +78,10 @@ class SafeException:
         sanitized = {}
         for key, value in data.items():
             key_lower = key.lower()
-            
+
             # Check if key contains sensitive pattern
             is_sensitive = any(pattern in key_lower for pattern in cls.SENSITIVE_PATTERNS)
-            
+
             if is_sensitive:
                 if isinstance(value, str) and len(value) > 4:
                     # Keep first 2 and last 2 characters
@@ -98,7 +98,7 @@ class SafeException:
                 ]
             else:
                 sanitized[key] = value
-        
+
         return sanitized
 
     @classmethod
@@ -118,11 +118,11 @@ class SafeException:
         safe_message = message
         for pattern in cls._get_patterns():
             safe_message = pattern.sub(r"\1[REDACTED]", safe_message)
-        
+
         # Sanitize exception if provided
         if exc_info and isinstance(exc_info, Exception):
             exc_info = cls.safe_str(exc_info)
-        
+
         logger_instance.log(level, safe_message, exc_info=exc_info)
 
 
@@ -143,12 +143,10 @@ def mask_sensitive_url(url: str) -> str:
         url,
         flags=re.IGNORECASE,
     )
-    
+
     # Mask bearer tokens in path
-    masked = re.sub(
-        r"(bearer[:/])[a-zA-Z0-9._-]+", r"\1[REDACTED]", masked, flags=re.IGNORECASE
-    )
-    
+    masked = re.sub(r"(bearer[:/])[a-zA-Z0-9._-]+", r"\1[REDACTED]", masked, flags=re.IGNORECASE)
+
     return masked
 
 
@@ -164,15 +162,15 @@ def mask_email(email: str) -> str:
     """
     if "@" not in email:
         return email
-    
+
     local, domain = email.split("@", 1)
-    
+
     # Mask local part
     if len(local) <= 2:
         masked_local = local[0] + "*"
     else:
         masked_local = local[:2] + "***"
-    
+
     # Mask domain
     if "." in domain:
         domain_parts = domain.split(".")
@@ -185,7 +183,7 @@ def mask_email(email: str) -> str:
         masked_domain = ".".join(masked_domain_parts)
     else:
         masked_domain = domain[:2] + "***" if len(domain) > 2 else domain
-    
+
     return f"{masked_local}@{masked_domain}"
 
 
@@ -201,10 +199,10 @@ def mask_phone(phone: str) -> str:
     """
     # Remove non-digit characters
     digits = re.sub(r"\D", "", phone)
-    
+
     if len(digits) <= 4:
         return "***" + digits
-    
+
     return "***" + digits[-4:]
 
 
@@ -220,8 +218,8 @@ def mask_credit_card(card_number: str) -> str:
     """
     # Remove spaces and dashes
     digits = re.sub(r"[\s-]", "", card_number)
-    
+
     if len(digits) <= 4:
         return "****" + digits
-    
+
     return "****" + digits[-4:]

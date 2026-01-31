@@ -22,61 +22,103 @@ VFS_SELECTORS = {
     "gender_dropdown": ["#mat-select-value-3", 'mat-select[formcontrolname="gender"]'],
     "gender_female": '//mat-option[contains(., "Female")]',
     "gender_male": '//mat-option[contains(., "Male")]',
-    "birth_date": ["#dateOfBirth", 'input[formcontrolname="dateOfBirth"]', 'input[name="dateOfBirth"]'],
+    "birth_date": [
+        "#dateOfBirth",
+        'input[formcontrolname="dateOfBirth"]',
+        'input[name="dateOfBirth"]',
+    ],
     "nationality_dropdown": ["#mat-select-value-4", 'mat-select[formcontrolname="nationality"]'],
     "nationality_turkey": (
         '(//mat-option[contains(., "Turkey")])[1] | ' '(//mat-option[contains(., "Türkiye")])[1]'
     ),
-    "passport_number": ["#mat-input-5", 'input[formcontrolname="passportNumber"]', 'input[name="passportNumber"]'],
-    "passport_expiry": ["#passportExpirtyDate", 'input[formcontrolname="passportExpiry"]', 'input[name="passportExpiry"]'],
+    "passport_number": [
+        "#mat-input-5",
+        'input[formcontrolname="passportNumber"]',
+        'input[name="passportNumber"]',
+    ],
+    "passport_expiry": [
+        "#passportExpirtyDate",
+        'input[formcontrolname="passportExpiry"]',
+        'input[name="passportExpiry"]',
+    ],
     "phone_code": ["#mat-input-6", 'input[formcontrolname="phoneCode"]', 'input[name="phoneCode"]'],
-    "phone_number": ["#mat-input-7", 'input[formcontrolname="phoneNumber"]', 'input[name="phoneNumber"]'],
-    "email": ["#mat-input-8", 'input[formcontrolname="email"]', 'input[name="email"]', 'input[type="email"]'],
+    "phone_number": [
+        "#mat-input-7",
+        'input[formcontrolname="phoneNumber"]',
+        'input[name="phoneNumber"]',
+    ],
+    "email": [
+        "#mat-input-8",
+        'input[formcontrolname="email"]',
+        'input[name="email"]',
+        'input[type="email"]',
+    ],
     "child_checkbox": ["#mat-mdc-checkbox-0-input", 'input[formcontrolname="childWithParent"]'],
     # Butonlar
     "save_button": ['//button[contains(., "Kaydet")]', 'button[type="submit"]'],
-    "add_another_button": ['//button[contains(., "Başka Başvuru ekle")]', '//button[contains(., "Add Another")]'],
-    "continue_button": ['//button[contains(., "Devam et")]', '//button[contains(., "Continue")]', 'button.continue-btn'],
+    "add_another_button": [
+        '//button[contains(., "Başka Başvuru ekle")]',
+        '//button[contains(., "Add Another")]',
+    ],
+    "continue_button": [
+        '//button[contains(., "Devam et")]',
+        '//button[contains(., "Continue")]',
+        "button.continue-btn",
+    ],
     "back_button": ['//button[contains(., "Geri Dön")]', '//button[contains(., "Back")]'],
     "online_pay_button": ["#trigger", 'button[id*="pay"]', '//button[contains(., "Online")]'],
     # Takvim
     "available_date_cell": [".fc-daygrid-day.available", ".available-date"],
-    "time_slot_button": ['//button[contains(., "Seç")]', '//button[contains(., "Select")]', '.time-slot-btn'],
-    "load_more_times": ['//button[contains(., "Daha Fazla Yükle")]', '//button[contains(., "Load More")]'],
-    "next_month_button": ['//button[contains(@aria-label, "next")]', '.next-month', 'button.fc-next-button'],
+    "time_slot_button": [
+        '//button[contains(., "Seç")]',
+        '//button[contains(., "Select")]',
+        ".time-slot-btn",
+    ],
+    "load_more_times": [
+        '//button[contains(., "Daha Fazla Yükle")]',
+        '//button[contains(., "Load More")]',
+    ],
+    "next_month_button": [
+        '//button[contains(@aria-label, "next")]',
+        ".next-month",
+        "button.fc-next-button",
+    ],
     # Checkboxlar (Gözden Geçir ve Öde)
-    "terms_checkbox": ['input[type="checkbox"]', '.terms-checkbox'],
+    "terms_checkbox": ['input[type="checkbox"]', ".terms-checkbox"],
     # Ödeme Sayfası (Banka)
     "card_number": ['input[name="pan"]', 'input[name="cardNumber"]', 'input[placeholder*="Card"]'],
-    "expiry_month": ['select[name="Ecom_Payment_Card_ExpDate_Month"]', 'select[name="expiryMonth"]'],
+    "expiry_month": [
+        'select[name="Ecom_Payment_Card_ExpDate_Month"]',
+        'select[name="expiryMonth"]',
+    ],
     "expiry_year": ['select[name="Ecom_Payment_Card_ExpDate_Year"]', 'select[name="expiryYear"]'],
     "cvv": ['input[name="cv2"]', 'input[name="cvv"]', 'input[placeholder*="CVV"]'],
-    "payment_submit": ["#btnSbmt", 'button[type="submit"]', '.payment-submit'],
+    "payment_submit": ["#btnSbmt", 'button[type="submit"]', ".payment-submit"],
     # 3D Secure OTP
     "otp_input": ["#sifre3dinput", 'input[name="otp"]', 'input[placeholder*="OTP"]'],
     "otp_submit": ["#DevamEt", 'button[type="submit"]', '//button[contains(., "Submit")]'],
     # Overlay/Spinner
     "overlay": [".ngx-overlay", ".loading-overlay", ".spinner-overlay"],
     # Captcha Modal
-    "captcha_modal": ['//*[contains(text(), "Captcha")]', '.captcha-modal'],
-    "captcha_submit": ['//button[contains(., "Submit")]', 'button.captcha-submit'],
+    "captcha_modal": ['//*[contains(text(), "Captcha")]', ".captcha-modal"],
+    "captcha_submit": ['//button[contains(., "Submit")]', "button.captcha-submit"],
 }
 
 
 def get_selector_with_fallback(selector_name: str) -> List[str]:
     """
     Get selector(s) for a given name, ensuring it's always a list for fallback support.
-    
+
     Args:
         selector_name: Name of the selector in VFS_SELECTORS
-        
+
     Returns:
         List of selector strings to try in order
     """
     selector = VFS_SELECTORS.get(selector_name)
     if selector is None:
         raise ValueError(f"Unknown selector name: {selector_name}")
-    
+
     # Ensure we always return a list
     if isinstance(selector, list):
         return selector
@@ -84,31 +126,32 @@ def get_selector_with_fallback(selector_name: str) -> List[str]:
         return [selector]
 
 
-async def try_selectors(page: Page, selectors: List[str], action: str = "click", 
-                        text: str = None, timeout: int = 5000) -> bool:
+async def try_selectors(
+    page: Page, selectors: List[str], action: str = "click", text: str = None, timeout: int = 5000
+) -> bool:
     """
     Try multiple selectors in order until one works.
-    
+
     Args:
         page: Playwright page
         selectors: List of CSS/XPath selectors to try
         action: 'click', 'fill', 'wait', 'count'
         text: Text to fill (for 'fill' action)
         timeout: Timeout per selector in ms
-    
+
     Returns:
         True if action succeeded, False otherwise
-    
+
     Raises:
         SelectorNotFoundError: If no selector works
     """
     from ..core.exceptions import SelectorNotFoundError
-    
+
     last_error = None
     for selector in selectors:
         try:
             element = page.locator(selector)
-            
+
             if action == "click":
                 await element.click(timeout=timeout)
                 return True
@@ -124,15 +167,14 @@ async def try_selectors(page: Page, selectors: List[str], action: str = "click",
             elif action == "wait_hidden":
                 await element.wait_for(state="hidden", timeout=timeout)
                 return True
-                
+
         except Exception as e:
             last_error = e
             continue
-    
+
     # No selector worked
     raise SelectorNotFoundError(
-        selector_name=str(selectors[0]) if selectors else "unknown",
-        tried_selectors=selectors
+        selector_name=str(selectors[0]) if selectors else "unknown", tried_selectors=selectors
     )
 
 
@@ -140,10 +182,10 @@ def resolve_selector(selector_key: str) -> List[str]:
     """
     Resolve a selector key to a list of selectors.
     Always returns a list for consistent handling.
-    
+
     Args:
         selector_key: Key in VFS_SELECTORS or direct selector string
-    
+
     Returns:
         List of selector strings
     """
@@ -151,7 +193,6 @@ def resolve_selector(selector_key: str) -> List[str]:
         value = VFS_SELECTORS[selector_key]
         return value if isinstance(value, list) else [value]
     return [selector_key]
-
 
 
 class AppointmentBookingService:
@@ -208,15 +249,15 @@ class AppointmentBookingService:
             page: Playwright page
             selector_key: Selector key in VFS_SELECTORS or direct selector
             text: Text to type
-        
+
         Raises:
             SelectorNotFoundError: If no selector works
         """
         from ..core.exceptions import SelectorNotFoundError
-        
+
         selectors = resolve_selector(selector_key)
         last_error = None
-        
+
         for selector in selectors:
             try:
                 await page.click(selector)
@@ -226,15 +267,15 @@ class AppointmentBookingService:
                     await page.type(selector, char, delay=random.randint(50, 150))
                     if random.random() < 0.1:  # 10% chance of small pause
                         await asyncio.sleep(random.uniform(0.1, 0.3))
-                
+
                 logger.debug(f"Successfully typed into: {selector}")
                 return  # Success
-                
+
             except Exception as e:
                 last_error = e
                 logger.debug(f"Selector '{selector}' failed: {e}, trying next...")
                 continue
-        
+
         # No selector worked
         raise SelectorNotFoundError(selector_key, selectors)
 
@@ -263,7 +304,7 @@ class AppointmentBookingService:
             Dict with match status and details
         """
         from ..core.exceptions import SelectorNotFoundError
-        
+
         required_capacity = reservation["person_count"]
         preferred_dates = [self.normalize_date(d) for d in reservation["preferred_dates"]]
 
@@ -276,19 +317,18 @@ class AppointmentBookingService:
         if not match:
             # Check if page structure might have changed
             expected_keywords = ["Başvuru", "applicant", "appointment", "randevu"]
-            has_expected_content = any(kw.lower() in page_content.lower() for kw in expected_keywords)
-            
+            has_expected_content = any(
+                kw.lower() in page_content.lower() for kw in expected_keywords
+            )
+
             if not has_expected_content:
                 # Page structure likely changed - this is a critical error
                 logger.error(
                     "CRITICAL: Page structure may have changed - "
                     "expected keywords not found. Manual review required."
                 )
-                raise SelectorNotFoundError(
-                    "double_match_pattern",
-                    tried_selectors=[pattern]
-                )
-            
+                raise SelectorNotFoundError("double_match_pattern", tried_selectors=[pattern])
+
             # Keywords found but pattern didn't match - might be no availability
             logger.warning("Appointment info pattern not found, but page seems valid")
             return {
@@ -352,7 +392,7 @@ class AppointmentBookingService:
             vfs_wait = self.config.get("vfs", {}).get("form_wait_seconds", 21)
         else:
             vfs_wait = self.config.get("vfs", {}).get("subsequent_form_wait_seconds", 5)
-        
+
         logger.info(f"Waiting {vfs_wait} seconds (VFS requirement)...")
         await asyncio.sleep(vfs_wait)
 
@@ -379,7 +419,7 @@ class AppointmentBookingService:
         gender_dropdown_selectors = resolve_selector("gender_dropdown")
         await try_selectors(page, gender_dropdown_selectors, action="click")
         await asyncio.sleep(0.5)
-        
+
         gender_option = "gender_female" if person["gender"].lower() == "female" else "gender_male"
         gender_selectors = resolve_selector(gender_option)
         await try_selectors(page, gender_selectors, action="click")
@@ -391,7 +431,7 @@ class AppointmentBookingService:
         nationality_selectors = resolve_selector("nationality_dropdown")
         await try_selectors(page, nationality_selectors, action="click")
         await asyncio.sleep(0.5)
-        
+
         turkey_selectors = resolve_selector("nationality_turkey")
         await try_selectors(page, turkey_selectors, action="click")
 
@@ -742,25 +782,26 @@ class AppointmentBookingService:
     ) -> bool:
         """
         Wait for payment confirmation with early exit polling.
-        
+
         Args:
             page: Playwright page
             max_wait: Maximum wait time in seconds
             check_interval: How often to check in seconds
-        
+
         Returns:
             True if payment confirmed, False otherwise
         """
         import time
+
         start_time = time.time()
-        
+
         while time.time() - start_time < max_wait:
             # Check 1: Redirected to VFS
             current_url = page.url
             if "vfsglobal.com" in current_url:
                 logger.info("✅ Redirected to VFS - Payment successful")
                 return True
-            
+
             # Check 2: Success indicators on page
             success_indicators = [
                 ".payment-success",
@@ -768,7 +809,7 @@ class AppointmentBookingService:
                 "text=/payment.*successful/i",
                 "text=/ödeme.*başarılı/i",
             ]
-            
+
             for indicator in success_indicators:
                 try:
                     count = await page.locator(indicator).count()
@@ -777,7 +818,7 @@ class AppointmentBookingService:
                         return True
                 except Exception:
                     continue
-            
+
             # Check 3: Error indicators
             error_indicators = [
                 ".payment-error",
@@ -785,7 +826,7 @@ class AppointmentBookingService:
                 "text=/payment.*failed/i",
                 "text=/ödeme.*başarısız/i",
             ]
-            
+
             for indicator in error_indicators:
                 try:
                     count = await page.locator(indicator).count()
@@ -794,9 +835,9 @@ class AppointmentBookingService:
                         return False
                 except Exception:
                     continue
-            
+
             await asyncio.sleep(check_interval)
-        
+
         logger.warning(f"Payment confirmation timeout after {max_wait}s")
         return False
 
@@ -866,15 +907,15 @@ class AppointmentBookingService:
     async def verify_booking_confirmation(self, page: Page) -> Dict[str, Any]:
         """
         Verify booking was successful by checking confirmation elements.
-        
+
         This provides more reliable validation than simple URL checking by looking for:
         - Reference numbers (e.g., ABC123456)
         - Confirmation success messages
         - Booking confirmed indicators
-        
+
         Args:
             page: Playwright page instance
-            
+
         Returns:
             Dictionary with:
                 - success: bool - Whether confirmation was verified
@@ -886,14 +927,14 @@ class AppointmentBookingService:
             # Common patterns: ABC123456, XX-123456, etc.
             reference_element = None
             reference = None
-            
+
             # Try different selector strategies
             reference_selectors = [
                 ".reference-number",
                 "[data-testid='reference']",
                 "text=/[A-Z]{2,3}\\d{6,}/",
             ]
-            
+
             for selector in reference_selectors:
                 try:
                     reference_element = await page.wait_for_selector(selector, timeout=5000)
@@ -904,13 +945,12 @@ class AppointmentBookingService:
                             break
                 except Exception:
                     continue  # Try next selector
-            
+
             if not reference_element:
                 # Final attempt with longer timeout on first selector
                 try:
                     reference_element = await page.wait_for_selector(
-                        ".reference-number",
-                        timeout=15000
+                        ".reference-number", timeout=15000
                     )
                     if reference_element:
                         reference = await reference_element.text_content()
@@ -918,51 +958,39 @@ class AppointmentBookingService:
                             reference = reference.strip()
                 except Exception:
                     pass  # Reference not found, continue checking other indicators
-            
+
             # Check for success indicators in order of specificity
             success_indicators = [
                 ".confirmation-success",
-                ".booking-confirmed", 
+                ".booking-confirmed",
                 "text=/appointment.*confirmed/i",
                 "text=/randevu.*onaylandı/i",
                 "text=/booking.*successful/i",
                 "text=/successfully.*booked/i",
             ]
-            
+
             for indicator in success_indicators:
                 try:
                     count = await page.locator(indicator).count()
                     if count > 0:
                         logger.info(f"✅ Booking confirmation verified via indicator: {indicator}")
-                        return {
-                            "success": True, 
-                            "reference": reference,
-                            "error": None
-                        }
+                        return {"success": True, "reference": reference, "error": None}
                 except Exception:
                     continue
-            
+
             # If we found a reference but no explicit success message, consider it successful
             if reference:
                 logger.info(f"✅ Booking reference found: {reference}")
-                return {
-                    "success": True,
-                    "reference": reference,
-                    "error": None
-                }
-            
+                return {"success": True, "reference": reference, "error": None}
+
             # No confirmation found
             logger.warning("⚠️ No booking confirmation elements found")
             return {
-                "success": False, 
-                "reference": None, 
-                "error": "Confirmation elements not found on page"
+                "success": False,
+                "reference": None,
+                "error": "Confirmation elements not found on page",
             }
-            
+
         except Exception as e:
             logger.error(f"Error verifying booking confirmation: {e}")
-            return {
-                "success": False, 
-                "reference": None, 
-                "error": str(e)
-            }
+            return {"success": False, "reference": None, "error": str(e)}

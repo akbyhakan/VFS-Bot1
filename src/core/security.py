@@ -99,54 +99,54 @@ class APIKeyManager:
                 metadata["created"] = datetime.now().isoformat()
             self._keys[key_hash] = metadata
             return key_hash
-    
+
     def rotate_key(self, old_api_key: str, new_api_key: str) -> Optional[str]:
         """
         Rotate an API key - remove old key and add new one with same metadata.
-        
+
         Args:
             old_api_key: Current API key to be replaced
             new_api_key: New API key to add
-            
+
         Returns:
             New key hash if successful, None if old key not found
         """
         with self._lock:
             old_key_hash = self._hash_key(old_api_key)
             metadata = self._keys.get(old_key_hash)
-            
+
             if metadata is None:
                 logger.warning("Cannot rotate: old API key not found")
                 return None
-            
+
             # Remove old key
             del self._keys[old_key_hash]
-            
+
             # Add new key with same metadata but updated timestamp
             new_metadata = metadata.copy()
             new_metadata["rotated_at"] = datetime.now().isoformat()
             new_key_hash = self._hash_key(new_api_key)
             self._keys[new_key_hash] = new_metadata
-            
+
             logger.info(f"API key rotated for '{metadata.get('name', 'unknown')}'")
             return new_key_hash
-    
+
     def cleanup_expired_keys(self, max_age_days: int = 90) -> int:
         """
         Remove API keys older than specified age.
-        
+
         Args:
             max_age_days: Maximum age of keys in days
-            
+
         Returns:
             Number of keys removed
         """
         from datetime import datetime, timedelta
-        
+
         with self._lock:
             current_time = datetime.now()
             cutoff_time = current_time - timedelta(days=max_age_days)
-            
+
             expired_keys = []
             for key_hash, metadata in self._keys.items():
                 created_str = metadata.get("created")
@@ -157,12 +157,12 @@ class APIKeyManager:
                             expired_keys.append(key_hash)
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid created timestamp for key: {created_str}")
-            
+
             # Remove expired keys
             for key_hash in expired_keys:
                 metadata = self._keys.pop(key_hash, {})
                 logger.info(f"Removed expired API key: {metadata.get('name', 'unknown')}")
-            
+
             return len(expired_keys)
 
     def load_keys(self) -> None:

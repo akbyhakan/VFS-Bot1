@@ -25,7 +25,7 @@ class TestBookingFlow:
                 password="testpassword",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
 
             # Add personal details
@@ -37,8 +37,8 @@ class TestBookingFlow:
                     "passport_number": "AB1234567",
                     "email": "e2e_test@example.com",
                     "mobile_code": "90",
-                    "mobile_number": "5551234567"
-                }
+                    "mobile_number": "5551234567",
+                },
             )
 
             # Verify user was created
@@ -61,7 +61,7 @@ class TestBookingFlow:
                 subcategory="Tourism",
                 date="2024-12-31",
                 time="10:00",
-                reference="REF123456"
+                reference="REF123456",
             )
 
             # Verify appointment
@@ -76,7 +76,7 @@ class TestBookingFlow:
     async def test_booking_flow_with_captcha(self):
         """Test booking flow when captcha is required."""
         # Mock captcha solver
-        with patch('src.services.bot_service.solve_captcha') as mock_solve:
+        with patch("src.services.bot_service.solve_captcha") as mock_solve:
             mock_solve.return_value = "captcha_solution"
 
             # Simulate captcha detection and solving
@@ -103,7 +103,7 @@ class TestBookingFlow:
                 password="testpassword",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
 
             # Simulate slot check with no available slots
@@ -196,7 +196,7 @@ class TestBookingFlow:
                     password="testpass",
                     centre="Istanbul",
                     category="Schengen",
-                    subcategory="Tourism"
+                    subcategory="Tourism",
                 )
                 user_ids.append(user_id)
 
@@ -209,7 +209,7 @@ class TestBookingFlow:
                     subcategory="Tourism",
                     date="2024-12-31",
                     time="10:00",
-                    reference=f"REF{user_id}"
+                    reference=f"REF{user_id}",
                 )
 
             tasks = [book_appointment(uid) for uid in user_ids]

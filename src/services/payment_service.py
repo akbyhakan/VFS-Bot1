@@ -20,7 +20,7 @@ class PaymentMethod(Enum):
 
 class PaymentService:
     """Handle payment processing for VFS appointments."""
-    
+
     # Class-level constant: Automated payments are DISABLED for PCI-DSS compliance
     AUTOMATED_PAYMENTS_DISABLED = True
 
@@ -30,13 +30,13 @@ class PaymentService:
 
         Args:
             config: Payment configuration
-            
+
         Raises:
             ValueError: If automated_card payment method is selected
         """
         self.config = config
         method_str = config.get("method", "manual")
-        
+
         # SECURITY: Block automated payments completely
         if method_str == "automated_card":
             raise ValueError(
@@ -44,7 +44,7 @@ class PaymentService:
                 "Only 'manual' payment method is allowed. "
                 "See docs/PCI_DSS_COMPLIANCE.md for details."
             )
-        
+
         self.method = PaymentMethod(method_str)
         self.timeout = config.get("timeout", 300)  # 5 minutes default
 
@@ -77,7 +77,7 @@ class PaymentService:
                 "Card details must not be provided. "
                 "Use manual payment method only."
             )
-        
+
         # SECURITY: Ensure card_details are never logged
         # Create safe version for logging (without sensitive data)
         safe_log_data = {

@@ -169,25 +169,22 @@ class TestEmailOTPHandler:
     @pytest.fixture
     def mock_imap(self):
         """Create mock IMAP connection."""
-        with patch('imaplib.IMAP4_SSL') as mock:
+        with patch("imaplib.IMAP4_SSL") as mock:
             imap_instance = MagicMock()
             mock.return_value = imap_instance
 
             # Mock successful login and select
-            imap_instance.login.return_value = ('OK', [b'Logged in'])
-            imap_instance.select.return_value = ('OK', [b'1'])
-            imap_instance.search.return_value = ('OK', [b''])
-            imap_instance.close.return_value = ('OK', [b''])
-            imap_instance.logout.return_value = ('OK', [b'Logging out'])
+            imap_instance.login.return_value = ("OK", [b"Logged in"])
+            imap_instance.select.return_value = ("OK", [b"1"])
+            imap_instance.search.return_value = ("OK", [b""])
+            imap_instance.close.return_value = ("OK", [b""])
+            imap_instance.logout.return_value = ("OK", [b"Logging out"])
 
             yield imap_instance
 
     def test_initialization(self):
         """Test handler initialization."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
         assert handler._email == "test@vizecep.com"
         assert handler._app_password == "test-password"
         assert handler._otp_timeout == 120
@@ -201,7 +198,7 @@ class TestEmailOTPHandler:
             app_password="test-password",
             imap_config=config,
             otp_timeout_seconds=60,
-            poll_interval_seconds=3
+            poll_interval_seconds=3,
         )
         assert handler._imap_config.host == "custom.host"
         assert handler._otp_timeout == 60
@@ -209,25 +206,19 @@ class TestEmailOTPHandler:
 
     def test_decode_header_simple(self):
         """Test simple header decoding."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
         decoded = handler._decode_header_value("test@example.com")
         assert decoded == "test@example.com"
 
     def test_extract_target_email_from_to_header(self):
         """Test target email extraction from To header."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         msg = MagicMock()
         msg.get.side_effect = lambda h: {
             "To": "bot55@vizecep.com",
             "Delivered-To": None,
-            "X-Original-To": None
+            "X-Original-To": None,
         }.get(h)
 
         target = handler._extract_target_email(msg)
@@ -235,16 +226,13 @@ class TestEmailOTPHandler:
 
     def test_extract_target_email_from_delivered_to(self):
         """Test target email extraction from Delivered-To header."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         msg = MagicMock()
         msg.get.side_effect = lambda h: {
             "To": None,
             "Delivered-To": "vize-ist@vizecep.com",
-            "X-Original-To": None
+            "X-Original-To": None,
         }.get(h)
 
         target = handler._extract_target_email(msg)
@@ -252,16 +240,13 @@ class TestEmailOTPHandler:
 
     def test_extract_target_email_with_name(self):
         """Test target email extraction from formatted header."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         msg = MagicMock()
         msg.get.side_effect = lambda h: {
             "To": "Bot User <bot77@vizecep.com>",
             "Delivered-To": None,
-            "X-Original-To": None
+            "X-Original-To": None,
         }.get(h)
 
         target = handler._extract_target_email(msg)
@@ -269,10 +254,7 @@ class TestEmailOTPHandler:
 
     def test_cache_operations(self):
         """Test OTP caching."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         # Add to cache
         entry = EmailOTPEntry(
@@ -280,7 +262,7 @@ class TestEmailOTPHandler:
             target_email="bot1@vizecep.com",
             raw_subject="OTP Code",
             raw_body="Your code is 123456",
-            received_at=datetime.now(timezone.utc)
+            received_at=datetime.now(timezone.utc),
         )
         handler._otp_cache["bot1@vizecep.com"] = entry
 
@@ -296,9 +278,7 @@ class TestEmailOTPHandler:
     def test_cache_expiry(self):
         """Test that expired OTPs are not returned from cache."""
         handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password",
-            max_email_age_seconds=2
+            email="test@vizecep.com", app_password="test-password", max_email_age_seconds=2
         )
 
         # Add expired entry
@@ -307,7 +287,7 @@ class TestEmailOTPHandler:
             target_email="bot1@vizecep.com",
             raw_subject="OTP Code",
             raw_body="Your code is 123456",
-            received_at=datetime.now(timezone.utc) - timedelta(seconds=5)
+            received_at=datetime.now(timezone.utc) - timedelta(seconds=5),
         )
         handler._otp_cache["bot1@vizecep.com"] = entry
 
@@ -317,10 +297,7 @@ class TestEmailOTPHandler:
 
     def test_cache_used_flag(self):
         """Test that used OTPs are not returned from cache."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         # Add used entry
         entry = EmailOTPEntry(
@@ -329,7 +306,7 @@ class TestEmailOTPHandler:
             raw_subject="OTP Code",
             raw_body="Your code is 123456",
             received_at=datetime.now(timezone.utc),
-            used=True
+            used=True,
         )
         handler._otp_cache["bot1@vizecep.com"] = entry
 
@@ -339,10 +316,7 @@ class TestEmailOTPHandler:
 
     def test_clear_all_cache(self):
         """Test clearing all cache."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         # Add multiple entries
         for i in range(3):
@@ -351,7 +325,7 @@ class TestEmailOTPHandler:
                 target_email=f"bot{i}@vizecep.com",
                 raw_subject="OTP Code",
                 raw_body=f"Your code is 12345{i}",
-                received_at=datetime.now(timezone.utc)
+                received_at=datetime.now(timezone.utc),
             )
             handler._otp_cache[f"bot{i}@vizecep.com"] = entry
 
@@ -361,10 +335,7 @@ class TestEmailOTPHandler:
 
     def test_thread_safety(self):
         """Test thread-safe operations."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         results = []
 
@@ -375,7 +346,7 @@ class TestEmailOTPHandler:
                     target_email=f"bot{email_suffix}@vizecep.com",
                     raw_subject="OTP Code",
                     raw_body=f"Code {email_suffix}{i:04d}",
-                    received_at=datetime.now(timezone.utc)
+                    received_at=datetime.now(timezone.utc),
                 )
                 handler._otp_cache[f"bot{email_suffix}_{i}@vizecep.com"] = entry
                 time.sleep(0.001)
@@ -397,23 +368,18 @@ class TestEmailOTPHandler:
     def test_wait_for_otp_no_emails(self, mock_imap):
         """Test wait_for_otp when no emails are found."""
         handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password",
-            poll_interval_seconds=1
+            email="test@vizecep.com", app_password="test-password", poll_interval_seconds=1
         )
 
         # Mock no emails
-        mock_imap.search.return_value = ('OK', [b''])
+        mock_imap.search.return_value = ("OK", [b""])
 
         otp = handler.wait_for_otp("bot1@vizecep.com", timeout=2)
         assert otp is None
 
     def test_close(self):
         """Test handler cleanup."""
-        handler = EmailOTPHandler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
         # Add some cache
         entry = EmailOTPEntry(
@@ -421,7 +387,7 @@ class TestEmailOTPHandler:
             target_email="bot1@vizecep.com",
             raw_subject="OTP Code",
             raw_body="Your code is 123456",
-            received_at=datetime.now(timezone.utc)
+            received_at=datetime.now(timezone.utc),
         )
         handler._otp_cache["bot1@vizecep.com"] = entry
 
@@ -437,8 +403,10 @@ class TestEmailOTPHandlerSingleton:
         """Test getting handler for first time requires credentials."""
         with pytest.raises(ValueError, match="Email and app_password required"):
             from src.services.email_otp_handler import get_email_otp_handler
+
             # Reset global
             import src.services.email_otp_handler as module
+
             module._email_otp_handler = None
             get_email_otp_handler()
 
@@ -451,10 +419,7 @@ class TestEmailOTPHandlerSingleton:
         module._email_otp_handler = None
 
         # First call with credentials
-        handler1 = get_email_otp_handler(
-            email="test@vizecep.com",
-            app_password="test-password"
-        )
+        handler1 = get_email_otp_handler(email="test@vizecep.com", app_password="test-password")
 
         # Second call without credentials
         handler2 = get_email_otp_handler()

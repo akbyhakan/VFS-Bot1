@@ -25,7 +25,7 @@ class TestConcurrentLoad:
             return {
                 "check_id": check_id,
                 "timestamp": time.time(),
-                "slots_found": check_id % 3 == 0  # Every 3rd check finds a slot
+                "slots_found": check_id % 3 == 0,  # Every 3rd check finds a slot
             }
 
         # Start all checks concurrently
@@ -58,10 +58,7 @@ class TestConcurrentLoad:
         async def make_request(req_id: int) -> dict:
             """Make a rate-limited request."""
             await limiter.acquire()
-            completed.append({
-                "id": req_id,
-                "timestamp": time.time()
-            })
+            completed.append({"id": req_id, "timestamp": time.time()})
             return {"id": req_id}
 
         # Make 25 requests (10 req/s limit means ~3 seconds total)
@@ -96,7 +93,7 @@ class TestConcurrentLoad:
                     password=f"password{user_id}",
                     centre="Istanbul",
                     category="Schengen",
-                    subcategory="Tourism"
+                    subcategory="Tourism",
                 )
 
             # Perform concurrent writes
@@ -131,7 +128,7 @@ class TestConcurrentLoad:
                     password=f"password{i}",
                     centre="Istanbul",
                     category="Schengen",
-                    subcategory="Tourism"
+                    subcategory="Tourism",
                 )
 
             # Perform many concurrent reads
@@ -173,7 +170,7 @@ class TestConcurrentLoad:
                     password=f"password{i}",
                     centre="Istanbul",
                     category="Schengen",
-                    subcategory="Tourism"
+                    subcategory="Tourism",
                 )
 
             write_count = 25
@@ -186,7 +183,7 @@ class TestConcurrentLoad:
                     password=f"password{user_id}",
                     centre="Istanbul",
                     category="Schengen",
-                    subcategory="Tourism"
+                    subcategory="Tourism",
                 )
 
             async def read_users() -> list:
@@ -200,6 +197,7 @@ class TestConcurrentLoad:
 
             # Shuffle tasks to mix reads and writes
             import random
+
             random.shuffle(tasks)
 
             start_time = time.time()
@@ -248,12 +246,16 @@ class TestConcurrentLoad:
             successes = [r for r in results if r is True]
             failures = [r for r in results if isinstance(r, Exception)]
 
-            assert len(successes) == operation_count, f"Expected {operation_count}, got {len(successes)}"
+            assert (
+                len(successes) == operation_count
+            ), f"Expected {operation_count}, got {len(successes)}"
             assert len(failures) == 0, f"No failures expected, got {failures}"
 
             execution_time = end_time - start_time
             ops_per_second = operation_count / execution_time
-            print(f"Pool stress: {operation_count} ops in {execution_time:.2f}s ({ops_per_second:.1f} ops/s)")
+            print(
+                f"Pool stress: {operation_count} ops in {execution_time:.2f}s ({ops_per_second:.1f} ops/s)"
+            )
 
         finally:
             await db.close()
@@ -279,7 +281,7 @@ class TestConcurrentLoad:
                         password="password",
                         centre="Istanbul",
                         category="Schengen",
-                        subcategory="Tourism"
+                        subcategory="Tourism",
                     )
                     await asyncio.sleep(1.0 / operations_per_second)
 

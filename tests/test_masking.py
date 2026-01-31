@@ -64,7 +64,7 @@ class TestMaskPhone:
     def test_mask_international_phone(self):
         """Test masking international phone."""
         assert mask_phone("+441234567890") == "+***7890"
-        
+
     def test_mask_single_digit_country_code(self):
         """Test masking phone with single-digit country code (e.g., US +1)."""
         assert mask_phone("+15551234567") == "+***4567"
@@ -78,7 +78,7 @@ class TestMaskPassword:
         assert mask_password("password123") == "********"
         assert mask_password("") == "********"
         assert mask_password("very_long_password_12345") == "********"
-    
+
     def test_mask_password_never_reveals_characters(self):
         """Password masking should never reveal any characters."""
         test_passwords = [
@@ -89,7 +89,7 @@ class TestMaskPassword:
             "verylongpassword123!@#",
             "p@$$w0rd",
         ]
-        
+
         for password in test_passwords:
             masked = mask_password(password)
             # Masked password should not contain any original characters

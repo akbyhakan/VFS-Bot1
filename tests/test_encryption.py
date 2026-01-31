@@ -268,42 +268,42 @@ def test_encryption_with_bytes_key():
 @pytest.mark.asyncio
 class TestAsyncEncryption:
     """Tests for async encryption functions."""
-    
+
     async def test_async_encryption_in_event_loop(self, encryption_key, monkeypatch):
         """Test async encryption works within event loop."""
         monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
         reset_encryption()
-        
+
         instance = await get_encryption_async()
         assert instance is not None
-        
+
         # Test encryption/decryption
         password = "test_async_password"
         encrypted = instance.encrypt_password(password)
         decrypted = instance.decrypt_password(encrypted)
         assert decrypted == password
-    
+
     async def test_concurrent_encryption_access(self, encryption_key, monkeypatch):
         """Test concurrent access to encryption singleton."""
         monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
         reset_encryption()
-        
+
         async def encrypt_task(value: str):
             instance = await get_encryption_async()
             return instance.encrypt_password(value)
-        
+
         # Run multiple concurrent encryptions
         tasks = [encrypt_task(f"password_{i}") for i in range(10)]
         results = await asyncio.gather(*tasks)
-        
+
         # All should succeed
         assert len(results) == 10
         assert all(r is not None for r in results)
-    
+
     async def test_async_lock_requires_event_loop(self):
         """Test that async lock creation requires an event loop."""
         from src.utils.encryption import _get_async_lock
-        
+
         # We're already in an event loop (pytest-asyncio), so this should work
         lock = _get_async_lock()
         assert lock is not None
@@ -312,11 +312,14 @@ class TestAsyncEncryption:
 def test_async_lock_outside_event_loop():
     """Test that async lock raises error outside event loop."""
     from src.utils.encryption import _get_async_lock, _encryption_lock_async
-    
+
     # Reset the async lock to ensure clean state
     import src.utils.encryption as enc_mod
+
     enc_mod._encryption_lock_async = None
-    
+
     # This should raise RuntimeError when called outside event loop
-    with pytest.raises(RuntimeError, match="Async encryption lock must be accessed within an event loop"):
+    with pytest.raises(
+        RuntimeError, match="Async encryption lock must be accessed within an event loop"
+    ):
         _get_async_lock()

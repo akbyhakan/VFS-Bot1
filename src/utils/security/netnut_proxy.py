@@ -59,7 +59,7 @@ class NetNutProxyManager:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                
+
                 for row in reader:
                     endpoint = row.get("endpoint", "").strip()
                     if not endpoint or endpoint.startswith("#"):
@@ -90,11 +90,11 @@ class NetNutProxyManager:
         loaded_count = 0
         try:
             lines = csv_content.strip().split("\n")
-            
+
             # Check if first line is header
             if lines and lines[0].strip().lower() == "endpoint":
                 lines = lines[1:]  # Skip header
-            
+
             for line in lines:
                 endpoint = line.strip()
                 if not endpoint or endpoint.startswith("#"):
@@ -127,7 +127,7 @@ class NetNutProxyManager:
         """
         try:
             parts = endpoint.split(":")
-            
+
             if len(parts) != 4:
                 logger.error(f"Invalid NetNut endpoint format: {endpoint}")
                 return None
@@ -167,9 +167,7 @@ class NetNutProxyManager:
             return None
 
         # Get available proxies (not failed)
-        available = [
-            p for p in self.proxies if p["endpoint"] not in self.failed_proxies
-        ]
+        available = [p for p in self.proxies if p["endpoint"] not in self.failed_proxies]
 
         if not available:
             logger.warning("No available proxies (all failed), resetting failed list")
@@ -326,4 +324,3 @@ class NetNutProxyManager:
         except Exception as e:
             logger.error(f"Error loading proxies from database: {e}")
             return 0
-

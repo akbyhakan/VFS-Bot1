@@ -54,10 +54,10 @@ def test_mask_expiry_date():
     """Test credit card expiry date masking."""
     # 4-digit year
     assert mask_expiry_date("12", "2025") == "**/****"
-    
+
     # 2-digit year
     assert mask_expiry_date("06", "25") == "**/**"
-    
+
     # Edge cases
     assert mask_expiry_date("01", "2030") == "**/****"
 
@@ -80,9 +80,9 @@ def test_mask_sensitive_dict():
         "phone": "+905551234567",
         "name": "John Doe",  # Should not be masked
     }
-    
+
     masked = mask_sensitive_dict(data)
-    
+
     assert masked["email"] == "u***@e***.com"
     assert masked["password"] == "********"
     assert masked["card_number"] == "********"
@@ -104,9 +104,9 @@ def test_mask_sensitive_dict_nested():
             "cvv": "123",
         },
     }
-    
+
     masked = mask_sensitive_dict(data)
-    
+
     assert masked["user"]["email"] == "u***@e***.com"
     assert masked["user"]["password"] == "********"
     assert masked["payment"]["card_number"] == "********"
@@ -121,9 +121,9 @@ def test_mask_sensitive_dict_with_lists():
             {"email": "user2@example.com", "password": "pass2"},
         ]
     }
-    
+
     masked = mask_sensitive_dict(data)
-    
+
     assert masked["users"][0]["email"] == "u***@e***.com"
     assert masked["users"][0]["password"] == "********"
     assert masked["users"][1]["email"] == "u***@e***.com"
@@ -137,9 +137,9 @@ def test_mask_sensitive_dict_custom_keys():
         "token": "bearer-token-xyz",
         "normal_field": "visible",
     }
-    
+
     masked = mask_sensitive_dict(data, sensitive_keys={"api_key", "token"})
-    
+
     assert masked["api_key"] == "********"
     assert masked["token"] == "********"
     assert masked["normal_field"] == "visible"

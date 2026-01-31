@@ -62,7 +62,9 @@ class EnvValidator:
                         validation_errors.append(f"{var}: Invalid email format")
                 elif var == "VFS_PASSWORD":
                     if len(value) < 8:
-                        validation_errors.append(f"{var}: Password too short (minimum 8 characters)")
+                        validation_errors.append(
+                            f"{var}: Password too short (minimum 8 characters)"
+                        )
                 elif var == "ENCRYPTION_KEY":
                     if not cls._validate_encryption_key(value):
                         validation_errors.append(
@@ -78,30 +80,30 @@ class EnvValidator:
                 # Validate optional var formats
                 if var == "CAPTCHA_API_KEY" and len(value) < 16:
                     validation_errors.append(f"{var}: API key too short (minimum 16 characters)")
-                
+
                 # VFS_ENCRYPTION_KEY validation
                 elif var == "VFS_ENCRYPTION_KEY" and len(value) < 32:
                     validation_errors.append(
                         f"{var}: Encryption key too short (minimum 32 bytes for AES-256)"
                     )
-                
+
                 # API_SECRET_KEY validation
                 elif var == "API_SECRET_KEY":
                     if len(value) < 32:
                         validation_errors.append(
                             f"{var}: JWT secret too short (minimum 32 characters for security)"
                         )
-                
+
                 # ADMIN_PASSWORD validation (production only)
                 elif var == "ADMIN_PASSWORD" and env == "production":
                     # In production, admin password should be bcrypt hashed
                     if not value.startswith(BCRYPT_PREFIXES):
                         validation_errors.append(
                             f"{var}: Must be bcrypt hashed in production. "
-                            "Use: python -c \"from passlib.context import CryptContext; "
+                            'Use: python -c "from passlib.context import CryptContext; '
                             "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
                         )
-                
+
                 # SMS_WEBHOOK_SECRET validation
                 elif var == "SMS_WEBHOOK_SECRET":
                     if len(value) < 32:

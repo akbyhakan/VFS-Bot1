@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CanvasNoiseConfig:
     """Configuration for canvas noise injection."""
-    
+
     # RGB shift ranges - small values to avoid visual artifacts
     RGB_SHIFT_MIN: int = -5
     RGB_SHIFT_MAX: int = 5
-    
+
     # Alpha shift range - smaller to maintain transparency accuracy
     ALPHA_SHIFT_MIN: int = -2
     ALPHA_SHIFT_MAX: int = 2
@@ -24,7 +24,7 @@ class CanvasNoiseConfig:
 
 class FingerprintBypass:
     """Bypass browser fingerprinting techniques."""
-    
+
     # Default configuration
     DEFAULT_CONFIG = CanvasNoiseConfig()
 
@@ -45,19 +45,16 @@ class FingerprintBypass:
             logger.error(f"Error applying fingerprint bypass: {e}")
 
     @staticmethod
-    async def _inject_canvas_noise(
-        page: Page, 
-        config: CanvasNoiseConfig = None
-    ) -> None:
+    async def _inject_canvas_noise(page: Page, config: CanvasNoiseConfig = None) -> None:
         """
         Inject noise into Canvas to randomize fingerprint.
-        
+
         Args:
             page: Playwright page object
             config: Optional noise configuration (uses DEFAULT_CONFIG if None)
         """
         config = config or FingerprintBypass.DEFAULT_CONFIG
-        
+
         # Generate random noise shift values using configuration
         r_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
         g_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)

@@ -14,14 +14,14 @@ async def temp_db():
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_file.close()
     db_path = temp_file.name
-    
+
     db = Database(db_path)
     await db.connect()
-    
+
     yield db
-    
+
     await db.close()
-    
+
     # Clean up
     try:
         os.unlink(db_path)
@@ -45,9 +45,9 @@ async def test_get_personal_details_batch_single(temp_db):
         password="testpass123",
         centre="Istanbul",
         category="Tourist",
-        subcategory="Single Entry"
+        subcategory="Single Entry",
     )
-    
+
     # Add personal details
     details = {
         "first_name": "John",
@@ -56,10 +56,10 @@ async def test_get_personal_details_batch_single(temp_db):
         "email": "test@example.com",
     }
     await temp_db.add_personal_details(user_id, details)
-    
+
     # Batch query
     result = await temp_db.get_personal_details_batch([user_id])
-    
+
     assert len(result) == 1
     assert user_id in result
     assert result[user_id]["first_name"] == "John"
@@ -75,50 +75,59 @@ async def test_get_personal_details_batch_multiple(temp_db):
         password="pass1",
         centre="Istanbul",
         category="Tourist",
-        subcategory="Single Entry"
+        subcategory="Single Entry",
     )
-    
+
     user2_id = await temp_db.add_user(
         email="user2@example.com",
         password="pass2",
         centre="Ankara",
         category="Business",
-        subcategory="Multiple Entry"
+        subcategory="Multiple Entry",
     )
-    
+
     user3_id = await temp_db.add_user(
         email="user3@example.com",
         password="pass3",
         centre="Izmir",
         category="Student",
-        subcategory="Single Entry"
+        subcategory="Single Entry",
     )
-    
+
     # Add personal details
-    await temp_db.add_personal_details(user1_id, {
-        "first_name": "Alice",
-        "last_name": "Smith",
-        "passport_number": "P111",
-        "email": "user1@example.com",
-    })
-    
-    await temp_db.add_personal_details(user2_id, {
-        "first_name": "Bob",
-        "last_name": "Jones",
-        "passport_number": "P222",
-        "email": "user2@example.com",
-    })
-    
-    await temp_db.add_personal_details(user3_id, {
-        "first_name": "Charlie",
-        "last_name": "Brown",
-        "passport_number": "P333",
-        "email": "user3@example.com",
-    })
-    
+    await temp_db.add_personal_details(
+        user1_id,
+        {
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "passport_number": "P111",
+            "email": "user1@example.com",
+        },
+    )
+
+    await temp_db.add_personal_details(
+        user2_id,
+        {
+            "first_name": "Bob",
+            "last_name": "Jones",
+            "passport_number": "P222",
+            "email": "user2@example.com",
+        },
+    )
+
+    await temp_db.add_personal_details(
+        user3_id,
+        {
+            "first_name": "Charlie",
+            "last_name": "Brown",
+            "passport_number": "P333",
+            "email": "user3@example.com",
+        },
+    )
+
     # Batch query all three
     result = await temp_db.get_personal_details_batch([user1_id, user2_id, user3_id])
-    
+
     assert len(result) == 3
     assert result[user1_id]["first_name"] == "Alice"
     assert result[user2_id]["first_name"] == "Bob"
@@ -134,19 +143,22 @@ async def test_get_personal_details_batch_missing_users(temp_db):
         password="testpass",
         centre="Istanbul",
         category="Tourist",
-        subcategory="Single Entry"
+        subcategory="Single Entry",
     )
-    
-    await temp_db.add_personal_details(user_id, {
-        "first_name": "John",
-        "last_name": "Doe",
-        "passport_number": "P123",
-        "email": "test@example.com",
-    })
-    
+
+    await temp_db.add_personal_details(
+        user_id,
+        {
+            "first_name": "John",
+            "last_name": "Doe",
+            "passport_number": "P123",
+            "email": "test@example.com",
+        },
+    )
+
     # Query with mix of existing and non-existing IDs
     result = await temp_db.get_personal_details_batch([user_id, 9999, 8888])
-    
+
     # Should only return the existing user
     assert len(result) == 1
     assert user_id in result
@@ -160,18 +172,18 @@ async def test_get_personal_details_batch_invalid_ids():
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_file.close()
     db_path = temp_file.name
-    
+
     db = Database(db_path)
     await db.connect()
-    
+
     try:
         # Test with invalid IDs (negative, zero)
         with pytest.raises(ValueError, match="Invalid user_id"):
             await db.get_personal_details_batch([0])
-        
+
         with pytest.raises(ValueError, match="Invalid user_id"):
             await db.get_personal_details_batch([-1])
-        
+
         with pytest.raises(ValueError, match="Invalid user_id"):
             await db.get_personal_details_batch([1, -5, 3])
     finally:

@@ -22,18 +22,18 @@ logger = logging.getLogger(__name__)
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     """
     Global error handling middleware with consistent JSON responses.
-    
+
     Catches all unhandled exceptions and returns structured JSON error responses.
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Process request and handle any exceptions.
-        
+
         Args:
             request: FastAPI request
             call_next: Next middleware/handler in chain
-            
+
         Returns:
             Response object
         """
@@ -64,13 +64,13 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         logger.error(
             f"VFSBot error: {error.__class__.__name__}: {error.message} "
             f"(recoverable={error.recoverable})",
-            extra={"path": request.url.path}
+            extra={"path": request.url.path},
         )
-        
+
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         if not error.recoverable:
             status_code = status.HTTP_400_BAD_REQUEST
-        
+
         return JSONResponse(
             status_code=status_code,
             content={
@@ -81,15 +81,13 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             },
         )
 
-    def _handle_validation_error(
-        self, error: ValidationError, request: Request
-    ) -> JSONResponse:
+    def _handle_validation_error(self, error: ValidationError, request: Request) -> JSONResponse:
         """Handle validation errors."""
         logger.warning(
             f"Validation error: {error.message}",
-            extra={"path": request.url.path, "field": error.field}
+            extra={"path": request.url.path, "field": error.field},
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -99,15 +97,10 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             },
         )
 
-    def _handle_auth_error(
-        self, error: AuthenticationError, request: Request
-    ) -> JSONResponse:
+    def _handle_auth_error(self, error: AuthenticationError, request: Request) -> JSONResponse:
         """Handle authentication errors."""
-        logger.warning(
-            f"Authentication error: {error.message}",
-            extra={"path": request.url.path}
-        )
-        
+        logger.warning(f"Authentication error: {error.message}", extra={"path": request.url.path})
+
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={
@@ -117,15 +110,13 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    def _handle_database_error(
-        self, error: DatabaseError, request: Request
-    ) -> JSONResponse:
+    def _handle_database_error(self, error: DatabaseError, request: Request) -> JSONResponse:
         """Handle database errors."""
         logger.error(
             f"Database error: {error.message}",
-            extra={"path": request.url.path, "details": error.details}
+            extra={"path": request.url.path, "details": error.details},
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -135,19 +126,16 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             },
         )
 
-    def _handle_rate_limit_error(
-        self, error: RateLimitError, request: Request
-    ) -> JSONResponse:
+    def _handle_rate_limit_error(self, error: RateLimitError, request: Request) -> JSONResponse:
         """Handle rate limit errors."""
         logger.warning(
-            f"Rate limit exceeded for {request.client.host}",
-            extra={"path": request.url.path}
+            f"Rate limit exceeded for {request.client.host}", extra={"path": request.url.path}
         )
-        
+
         headers = {}
         if error.wait_time:
             headers["Retry-After"] = str(error.wait_time)
-        
+
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={
@@ -158,19 +146,14 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             headers=headers,
         )
 
-    def _handle_unexpected_error(
-        self, error: Exception, request: Request
-    ) -> JSONResponse:
+    def _handle_unexpected_error(self, error: Exception, request: Request) -> JSONResponse:
         """Handle unexpected errors."""
         # Log full traceback for debugging
         logger.error(
             f"Unexpected error: {str(error)}",
-            extra={
-                "path": request.url.path,
-                "traceback": traceback.format_exc()
-            }
+            extra={"path": request.url.path, "traceback": traceback.format_exc()},
         )
-        
+
         # Return generic error message (don't leak internal details)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

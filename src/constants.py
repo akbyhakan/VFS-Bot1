@@ -10,7 +10,7 @@ from typing import Final
 # =============================================================================
 class Timeouts:
     """Timeout values - MILLISECONDS for Playwright, SECONDS noted separately."""
-    
+
     # Playwright timeouts (milliseconds)
     PAGE_LOAD: Final[int] = 30_000
     NAVIGATION: Final[int] = 30_000
@@ -18,7 +18,7 @@ class Timeouts:
     NETWORK_IDLE: Final[int] = 30_000
     CAPTCHA_MANUAL: Final[int] = 120_000
     CLOUDFLARE_CHALLENGE: Final[int] = 30_000
-    
+
     # API/Service timeouts (seconds)
     HTTP_REQUEST_SECONDS: Final[int] = 30
     OTP_WAIT_SECONDS: Final[int] = 300  # FIXED: Was 120 in BookingTimeouts
@@ -30,7 +30,7 @@ class Timeouts:
 
 class Intervals:
     """Interval values in SECONDS."""
-    
+
     CHECK_SLOTS_MIN: Final[int] = 10
     CHECK_SLOTS_DEFAULT: Final[int] = 30
     CHECK_SLOTS_MAX: Final[int] = 3600
@@ -45,7 +45,7 @@ class Intervals:
 
 class Retries:
     """Retry configuration."""
-    
+
     MAX_PROCESS_USER: Final[int] = 3
     MAX_LOGIN: Final[int] = 3
     MAX_BOOKING: Final[int] = 2
@@ -53,7 +53,7 @@ class Retries:
     BACKOFF_MULTIPLIER: Final[int] = 1
     BACKOFF_MIN_SECONDS: Final[int] = 4
     BACKOFF_MAX_SECONDS: Final[int] = 10
-    
+
     # Aliases for backward compatibility
     MAX_PROCESS_USER_ATTEMPTS: Final[int] = MAX_PROCESS_USER
     EXPONENTIAL_MULTIPLIER: Final[int] = BACKOFF_MULTIPLIER
@@ -63,7 +63,7 @@ class Retries:
 
 class RateLimits:
     """Rate limiting configuration."""
-    
+
     MAX_REQUESTS: Final[int] = 60
     TIME_WINDOW_SECONDS: Final[int] = 60
     CONCURRENT_USERS: Final[int] = 5
@@ -74,7 +74,7 @@ class RateLimits:
 
 class Security:
     """Security configuration."""
-    
+
     MIN_SECRET_KEY_LENGTH: Final[int] = 64
     MIN_API_KEY_SALT_LENGTH: Final[int] = 32
     MIN_ENCRYPTION_KEY_LENGTH: Final[int] = 32
@@ -88,7 +88,7 @@ class Security:
 
 class CaptchaConfig:
     """Captcha configuration."""
-    
+
     MANUAL_TIMEOUT: Final[int] = 120
     TWOCAPTCHA_TIMEOUT: Final[int] = 180
     TURNSTILE_TIMEOUT: Final[int] = 120
@@ -96,7 +96,7 @@ class CaptchaConfig:
 
 class CircuitBreaker:
     """Circuit breaker configuration."""
-    
+
     FAIL_THRESHOLD: Final[int] = 5
     FAILURE_THRESHOLD: Final[int] = 5  # Alias for compatibility
     TIMEOUT_SECONDS: Final[float] = 60.0
@@ -107,7 +107,7 @@ class CircuitBreaker:
     HALF_OPEN_MAX_CALLS: Final[int] = 3
     BACKOFF_BASE_SECONDS: Final[int] = 60
     BACKOFF_MAX_SECONDS: Final[int] = 600
-    
+
     # Aliases for backward compatibility
     MAX_CONSECUTIVE_ERRORS: Final[int] = FAIL_THRESHOLD
     MAX_TOTAL_ERRORS_PER_HOUR: Final[int] = MAX_ERRORS_PER_HOUR
@@ -118,7 +118,7 @@ class CircuitBreaker:
 
 class OTP:
     """OTP service configuration."""
-    
+
     MAX_ENTRIES: Final[int] = 100
     TIMEOUT_SECONDS: Final[int] = 300
     CLEANUP_INTERVAL_SECONDS: Final[int] = 60
@@ -126,7 +126,7 @@ class OTP:
 
 class ErrorCapture:
     """Error capture configuration."""
-    
+
     MAX_IN_MEMORY: Final[int] = 100
     CLEANUP_DAYS: Final[int] = 7
     CLEANUP_INTERVAL_SECONDS: Final[int] = 3600
@@ -135,18 +135,20 @@ class ErrorCapture:
 
 class Database:
     """Database configuration."""
-    
+
     DEFAULT_PATH: Final[str] = os.getenv("DATABASE_PATH", "vfs_bot.db")
     TEST_PATH: Final[str] = "test.db"
     # Pool size should be at least CONCURRENT_USERS * 3 for nested queries
-    POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", str(max(15, RateLimits.CONCURRENT_USERS * 3))))
+    POOL_SIZE: Final[int] = int(
+        os.getenv("DB_POOL_SIZE", str(max(15, RateLimits.CONCURRENT_USERS * 3)))
+    )
     CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
     QUERY_TIMEOUT: Final[float] = 30.0
 
 
 class Pools:
     """Connection pool sizes."""
-    
+
     DATABASE: Final[int] = Database.POOL_SIZE
     HTTP_LIMIT: Final[int] = 50
     HTTP_LIMIT_PER_HOST: Final[int] = 20
@@ -156,7 +158,7 @@ class Pools:
 
 class Delays:
     """UI interaction delays in SECONDS."""
-    
+
     DROPDOWN_WAIT: Final[float] = 2.0
     BUTTON_CLICK_WAIT: Final[float] = 0.5
     FORM_SUBMIT_WAIT: Final[float] = 3.0
@@ -171,18 +173,20 @@ class Delays:
 
 class BookingTimeouts:
     """Booking operation timeouts."""
-    
+
     TIME_SLOTS_LOAD: Final[float] = 2.0
     DROPDOWN_ANIMATION: Final[float] = 0.5
     ELEMENT_WAIT_MS: Final[int] = 10000
     PAGE_LOAD_MS: Final[int] = 30000
     PAYMENT_CONFIRMATION: Final[int] = 60
-    OTP_WAIT: Final[int] = 300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
+    OTP_WAIT: Final[
+        int
+    ] = 300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
 
 
 class BookingDelays:
     """Human-like behavior delays."""
-    
+
     TYPING_MIN_MS: Final[int] = 50
     TYPING_MAX_MS: Final[int] = 150
     PAUSE_CHANCE: Final[float] = 0.1
@@ -194,7 +198,7 @@ class BookingDelays:
 
 class LogEmoji:
     """Emoji constants for consistent logging."""
-    
+
     SUCCESS: Final[str] = "✅"
     ERROR: Final[str] = "❌"
     WARNING: Final[str] = "⚠️"
@@ -222,15 +226,15 @@ class LogEmoji:
 # =============================================================================
 class Defaults:
     """DEPRECATED: Use specific classes instead. Will be removed in v3.0."""
-    
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         warnings.warn(
             "Defaults class is deprecated. Use specific classes (Timeouts, Database, RateLimits) instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
-    
+
     API_TIMEOUT = Timeouts.HTTP_REQUEST_SECONDS
     DB_POOL_SIZE = Database.POOL_SIZE
     DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
@@ -242,7 +246,7 @@ class Defaults:
 
 class Limits:
     """DEPRECATED: Use specific classes instead."""
-    
+
     MAX_LOG_ENTRIES = 500
     MAX_ERRORS_IN_MEMORY = ErrorCapture.MAX_IN_MEMORY
     DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
@@ -250,5 +254,6 @@ class Limits:
 
 class RateLimitDefaults:
     """Default values for rate limiting - used by rate_limiter.py."""
+
     MAX_REQUESTS: int = 60
     TIME_WINDOW: int = 60

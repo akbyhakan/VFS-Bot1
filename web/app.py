@@ -37,15 +37,15 @@ logger = logging.getLogger(__name__)
 
 
 # Valid environment names (whitelist for security)
-VALID_ENVIRONMENTS = frozenset({
-    "production", "staging", "development", "dev", "testing", "test", "local"
-})
+VALID_ENVIRONMENTS = frozenset(
+    {"production", "staging", "development", "dev", "testing", "test", "local"}
+)
 
 
 def get_validated_environment() -> str:
     """
     Get and validate environment name with whitelist check.
-    
+
     Returns:
         Validated environment name (defaults to 'production' for unknown values)
     """
@@ -73,7 +73,7 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
     # Parse origins first
     origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-    
+
     # Production-specific validation
     if env not in {"development", "dev", "testing", "test", "local"}:
         # More precise localhost detection
@@ -88,14 +88,14 @@ def validate_cors_origins(origins_str: str) -> List[str]:
             # Check for 127.0.0.1
             elif "127.0.0.1" in o:
                 invalid.append(o)
-        
+
         if invalid:
             logger.warning(f"Removing insecure CORS origins in production: {invalid}")
             origins = [o for o in origins if o not in invalid]
-            
+
             if not origins:
                 logger.error("All CORS origins were insecure and removed. Using empty list.")
-    
+
     # Additional check: fail-fast if wildcard in production
     if env == "production" and "*" in origins:
         raise ValueError("Wildcard CORS origin ('*') not allowed in production")
@@ -106,7 +106,7 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 def get_real_client_ip(request: Request) -> str:
     """
     Get real client IP with trusted proxy validation and IP format verification.
-    
+
     Security: Only trust X-Forwarded-For from known proxies and validate
     IPs to prevent rate limit bypass attacks.
 
@@ -118,9 +118,9 @@ def get_real_client_ip(request: Request) -> str:
     """
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
     trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
-    
+
     client_host = request.client.host if request.client else "unknown"
-    
+
     def is_valid_ip(ip_str: str) -> bool:
         """Validate IP address format."""
         try:
@@ -128,7 +128,7 @@ def get_real_client_ip(request: Request) -> str:
             return True
         except ValueError:
             return False
-    
+
     # Only trust forwarded headers from known proxies
     if trusted_proxies and client_host in trusted_proxies:
         forwarded = request.headers.get("X-Forwarded-For")
@@ -139,14 +139,14 @@ def get_real_client_ip(request: Request) -> str:
             for ip in reversed(ips):
                 if ip not in trusted_proxies and is_valid_ip(ip):
                     return ip
-        
+
         # Fallback to X-Real-IP if present and not a trusted proxy
         real_ip = request.headers.get("X-Real-IP")
         if real_ip:
             real_ip = real_ip.strip()
             if real_ip not in trusted_proxies and is_valid_ip(real_ip):
                 return real_ip
-    
+
     # Return client_host if it's a valid IP, otherwise return "unknown"
     return client_host if is_valid_ip(client_host) else "unknown"
 

@@ -26,6 +26,7 @@ class OTPEntry:
 
 class OTPType(Enum):
     """OTP type enumeration."""
+
     APPOINTMENT = "appointment"
     PAYMENT = "payment"
 
@@ -112,7 +113,7 @@ class OTPWebhookService:
         # Keep backward compatibility aliases
         self._appointment_otp_queue = self._queues[OTPType.APPOINTMENT]
         self._payment_otp_queue = self._queues[OTPType.PAYMENT]
-        
+
         self._otp_timeout = otp_timeout_seconds
         self._pattern_matcher = OTPPatternMatcher(custom_patterns)
         self._waiting_events: Dict[str, asyncio.Event] = {}
@@ -137,19 +138,16 @@ class OTPWebhookService:
         return await self.process_appointment_sms(phone_number, message)
 
     async def _process_sms_generic(
-        self,
-        otp_type: OTPType,
-        phone_number: str,
-        message: str
+        self, otp_type: OTPType, phone_number: str, message: str
     ) -> Optional[str]:
         """
         Generic SMS processing - DRY implementation.
-        
+
         Args:
             otp_type: Type of OTP (APPOINTMENT or PAYMENT)
             phone_number: Sender phone number
             message: SMS message text
-            
+
         Returns:
             Extracted OTP code or None
         """
@@ -177,7 +175,9 @@ class OTPWebhookService:
                 if key.startswith(event_prefix):
                     event.set()
 
-        logger.info(f"{otp_type.value.capitalize()} OTP received from {phone_number[:4]}***: {otp_code[:2]}****")
+        logger.info(
+            f"{otp_type.value.capitalize()} OTP received from {phone_number[:4]}***: {otp_code[:2]}****"
+        )
         return otp_code
 
     async def process_appointment_sms(self, phone_number: str, message: str) -> Optional[str]:
@@ -227,62 +227,64 @@ class OTPWebhookService:
         queue: deque,
         queue_type: str,
         phone_number: Optional[str] = None,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
     ) -> Optional[str]:
         """
         Generic OTP wait method.
-        
+
         Args:
             queue: OTP queue to check
             queue_type: 'appointment' or 'payment'
             phone_number: Optional phone number filter
             timeout: Maximum wait time in seconds
-        
+
         Returns:
             OTP code or None if timeout
         """
         timeout = timeout or self._otp_timeout
         wait_key = f"{queue_type}_{phone_number or 'any'}"
-        
+
         # Create event and add to waiting events inside lock to prevent race condition
         async with self._lock:
             event = asyncio.Event()
             self._waiting_events[wait_key] = event
-        
+
         # Safety limit: maximum iteration count
         max_iterations = (timeout // 5) + 10  # 5-second loops + safety margin
         iteration = 0
-        
+
         try:
             start_time = datetime.now(timezone.utc)
-            
+
             while iteration < max_iterations:
                 iteration += 1
-                
+
                 # Check existing OTPs
                 otp = await self._get_latest_otp_from_queue(queue, phone_number)
                 if otp:
                     return otp
-                
+
                 # Calculate remaining time
                 elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
                 remaining = timeout - elapsed
-                
+
                 if remaining <= 0:
                     logger.warning(f"{queue_type.capitalize()} OTP wait timeout after {timeout}s")
                     return None
-                
+
                 # Wait for new OTP or timeout
                 try:
                     await asyncio.wait_for(event.wait(), timeout=min(remaining, 5.0))
                     event.clear()
                 except asyncio.TimeoutError:
                     continue
-            
+
             # Max iterations reached
-            logger.error(f"{queue_type.capitalize()} OTP wait exceeded max iterations ({max_iterations})")
+            logger.error(
+                f"{queue_type.capitalize()} OTP wait exceeded max iterations ({max_iterations})"
+            )
             return None
-        
+
         finally:
             self._waiting_events.pop(wait_key, None)
 
@@ -384,49 +386,50 @@ class OTPWebhookService:
             for otp_type in OTPType:
                 queue = self._queues[otp_type]
                 initial_count = len(queue)
-                
+
                 # Find expired entries
                 # Use list() to create a copy for safe iteration
                 expired_entries = [
-                    entry for entry in list(queue)
+                    entry
+                    for entry in list(queue)
                     if (now - entry.received_at).total_seconds() > self._otp_timeout
                 ]
-                
+
                 # Remove expired entries in-place
                 for entry in expired_entries:
                     try:
                         queue.remove(entry)
                     except ValueError:
                         pass  # Entry already removed
-                
+
                 removed = initial_count - len(queue)
                 total_removed += removed
-                
+
                 if removed > 0:
                     logger.debug(f"Cleaned up {removed} expired {otp_type.value} OTPs")
 
             if total_removed > 0:
                 logger.info(f"Total expired OTPs cleaned: {total_removed}")
-            
+
             return total_removed
 
     async def wait_for_otp_with_fallback(
         self,
         phone_number: Optional[str] = None,
         timeout: Optional[int] = None,
-        fallback_callback: Optional[Callable] = None
+        fallback_callback: Optional[Callable] = None,
     ) -> Optional[str]:
         """
         Wait for OTP with graceful degradation.
-        
+
         If OTP service fails or times out, calls fallback_callback
         for manual OTP input.
-        
+
         Args:
             phone_number: Optional phone number filter
             timeout: Maximum wait time in seconds
             fallback_callback: Async function to call for manual input
-        
+
         Returns:
             OTP code or None
         """
@@ -436,7 +439,7 @@ class OTPWebhookService:
                 return otp
         except Exception as e:
             logger.warning(f"OTP service error: {e}, switching to fallback")
-        
+
         # Fallback to manual input if provided
         if fallback_callback:
             logger.info("Requesting manual OTP input")
@@ -444,16 +447,16 @@ class OTPWebhookService:
                 return await fallback_callback()
             except Exception as e:
                 logger.error(f"Fallback OTP input failed: {e}")
-        
+
         return None
 
     def health_check(self) -> Dict[str, Any]:
         """
         Return OTP service health status.
-        
+
         Note: Queue size readings are not locked as they are atomic operations
         and provide a snapshot of the current state.
-        
+
         Returns:
             Dictionary with service health metrics
         """
@@ -461,7 +464,7 @@ class OTPWebhookService:
         payment_queue_size = len(self._payment_otp_queue)
         waiting_consumers = len(self._waiting_events)
         max_entries = self._appointment_otp_queue.maxlen
-        
+
         return {
             "status": "healthy",
             "appointment_queue_size": appointment_queue_size,
@@ -474,7 +477,7 @@ class OTPWebhookService:
     async def start_cleanup_scheduler(self, interval_seconds: int = 60) -> None:
         """
         Start background task for periodic OTP cleanup.
-        
+
         Args:
             interval_seconds: Cleanup interval in seconds (default: 60)
         """
@@ -483,7 +486,7 @@ class OTPWebhookService:
 
     async def stop_cleanup_scheduler(self) -> None:
         """Stop the cleanup scheduler."""
-        if hasattr(self, '_cleanup_task') and self._cleanup_task:
+        if hasattr(self, "_cleanup_task") and self._cleanup_task:
             self._cleanup_task.cancel()
             try:
                 await self._cleanup_task
@@ -494,7 +497,7 @@ class OTPWebhookService:
     async def _cleanup_loop(self, interval: int) -> None:
         """
         Background loop for periodic cleanup.
-        
+
         Args:
             interval: Cleanup interval in seconds
         """
