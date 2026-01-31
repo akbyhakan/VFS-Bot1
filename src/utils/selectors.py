@@ -310,7 +310,7 @@ class SelectorManager:
 
         for selector in selectors:
             try:
-                await page.wait_for_selector(selector, timeout=timeout, state="visible")
+                await page.wait_for_selector(selector, timeout=timeout)
                 logger.debug(f"Found element with selector: {selector}")
 
                 # Record success in learning system with original index
@@ -342,9 +342,7 @@ class SelectorManager:
 
             if suggested_selector:
                 try:
-                    await page.wait_for_selector(
-                        suggested_selector, timeout=timeout, state="visible"
-                    )
+                    await page.wait_for_selector(suggested_selector, timeout=timeout)
                     logger.info(f"✅ AI repair succeeded for: {path}")
 
                     # Reload selectors to pick up AI changes
