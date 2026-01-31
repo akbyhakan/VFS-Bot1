@@ -98,7 +98,7 @@ class TestVerifyWebhookSignature:
         # Replace timestamp in signature
         signature_parts = signature.split(",")
         signature_parts[0] = f"t={old_timestamp}"
-        old_signature = ",".join(signature_parts)
+        _ = ",".join(signature_parts)
 
         # Should pass with higher tolerance
         result = verify_webhook_signature(

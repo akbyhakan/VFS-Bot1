@@ -123,7 +123,7 @@ class TestSetupLogging:
     def test_setup_logging_removes_existing_handlers(self):
         """Test that setup_logging removes existing handlers."""
         root_logger = logging.getLogger()
-        initial_handler_count = len(root_logger.handlers)
+        _ = len(root_logger.handlers)
 
         setup_logging(level="INFO")
         # Should have exactly one handler after setup
