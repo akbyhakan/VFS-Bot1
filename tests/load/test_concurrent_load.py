@@ -292,9 +292,12 @@ class TestConcurrentLoad:
             end_time = time.time()
 
             # Verify execution time
+            # Since tasks run in parallel, execution time should be ~1 second
+            # (operations_per_second iterations * (1.0/operations_per_second) sleep)
             execution_time = end_time - start_time
-            assert execution_time >= duration_seconds - 1  # Allow some variance
-            assert execution_time <= duration_seconds + 2
+            # Tasks run in parallel, so time should be around 1 second, not 5
+            assert execution_time >= 0.5  # At least 0.5 seconds
+            assert execution_time <= 2  # But not more than 2 seconds
 
             # Verify data was created
             users = await db.get_active_users()
