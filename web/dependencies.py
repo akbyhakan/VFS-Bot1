@@ -481,6 +481,11 @@ class ThreadSafeMetrics:
         with self._lock:
             return self._data[key]
 
+    def __contains__(self, key: str) -> bool:
+        """Allow 'in' operator for checking key existence."""
+        with self._lock:
+            return key in self._data
+
 
 # Global state instances
 bot_state = ThreadSafeBotState()
