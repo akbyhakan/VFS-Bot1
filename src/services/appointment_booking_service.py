@@ -195,6 +195,21 @@ def resolve_selector(selector_key: str) -> List[str]:
     return [selector_key]
 
 
+def get_selector(selector_key: str) -> str:
+    """
+    Get a single selector string from VFS_SELECTORS.
+    Returns the first selector if multiple are available.
+
+    Args:
+        selector_key: Key in VFS_SELECTORS
+
+    Returns:
+        First selector string
+    """
+    selectors = resolve_selector(selector_key)
+    return selectors[0]
+
+
 class AppointmentBookingService:
     """
     VFS Randevu Alma Servisi - PART 2
@@ -480,7 +495,7 @@ class AppointmentBookingService:
             await self.wait_for_overlay(page)
 
             # Click Save
-            await page.click(VFS_SELECTORS["save_button"])
+            await page.click(get_selector("save_button"))
             logger.info(f"Applicant {current}/{total} saved")
 
             # Wait for overlay
@@ -489,12 +504,12 @@ class AppointmentBookingService:
             # More persons to add?
             if current < total:
                 # Click "Add Another Applicant"
-                await page.click(VFS_SELECTORS["add_another_button"])
+                await page.click(get_selector("add_another_button"))
                 await self.wait_for_overlay(page)
                 logger.info("Opening form for next applicant...")
             else:
                 # Last person - Click Continue
-                await page.click(VFS_SELECTORS["continue_button"])
+                await page.click(get_selector("continue_button"))
                 await self.wait_for_overlay(page)
                 logger.info("All applicants saved, continuing...")
 
@@ -549,7 +564,7 @@ class AppointmentBookingService:
 
         # Click Continue
         await self.wait_for_overlay(page)
-        await page.click(VFS_SELECTORS["continue_button"])
+        await page.click(get_selector("continue_button"))
         await self.wait_for_overlay(page)
 
         logger.info("✅ Appointment slot selected")
@@ -570,10 +585,10 @@ class AppointmentBookingService:
         """
         try:
             # Wait for time slots
-            await page.wait_for_selector(VFS_SELECTORS["time_slot_button"], timeout=10000)
+            await page.wait_for_selector(get_selector("time_slot_button"), timeout=10000)
 
             # Get all time rows
-            time_buttons = await page.locator(VFS_SELECTORS["time_slot_button"]).all()
+            time_buttons = await page.locator(get_selector("time_slot_button")).all()
 
             if not time_buttons:
                 return False
@@ -599,7 +614,7 @@ class AppointmentBookingService:
             True if handled or not present
         """
         try:
-            captcha_modal = await page.locator(VFS_SELECTORS["captcha_modal"]).count()
+            captcha_modal = await page.locator(get_selector("captcha_modal")).count()
 
             if captcha_modal == 0:
                 return True
@@ -634,7 +649,7 @@ class AppointmentBookingService:
                         )
 
                         # Click submit
-                        await page.click(VFS_SELECTORS["captcha_submit"])
+                        await page.click(get_selector("captcha_submit"))
                         await self.wait_for_overlay(page)
                         logger.info("Captcha solved")
                         return True
@@ -655,7 +670,7 @@ class AppointmentBookingService:
         logger.info("Services page - skipping...")
 
         await self.wait_for_overlay(page)
-        await page.click(VFS_SELECTORS["continue_button"])
+        await page.click(get_selector("continue_button"))
         await self.wait_for_overlay(page)
 
         logger.info("Services page skipped")
@@ -672,7 +687,7 @@ class AppointmentBookingService:
         await self.wait_for_overlay(page)
 
         # Check both checkboxes
-        checkboxes = await page.locator(VFS_SELECTORS["terms_checkbox"]).all()
+        checkboxes = await page.locator(get_selector("terms_checkbox")).all()
 
         for i, checkbox in enumerate(checkboxes):
             if not await checkbox.is_checked():
@@ -680,13 +695,13 @@ class AppointmentBookingService:
                 logger.info(f"Checkbox {i + 1} checked")
 
         # Click Online Pay
-        await page.click(VFS_SELECTORS["online_pay_button"])
+        await page.click(get_selector("online_pay_button"))
         logger.info("Clicked 'Online Öde'")
 
         await self.wait_for_overlay(page)
 
         # Payment disclaimer page - click Continue
-        await page.click(VFS_SELECTORS["continue_button"])
+        await page.click(get_selector("continue_button"))
 
         # Random wait 3-7 seconds
         wait_time = random.uniform(3, 7)
@@ -712,11 +727,11 @@ class AppointmentBookingService:
         logger.info("Card number entered")
 
         # Expiry month
-        await page.select_option(VFS_SELECTORS["expiry_month"], card_info["expiry_month"])
+        await page.select_option(get_selector("expiry_month"), card_info["expiry_month"])
         logger.info("Expiry month selected: **")
 
         # Expiry year
-        await page.select_option(VFS_SELECTORS["expiry_year"], card_info["expiry_year"])
+        await page.select_option(get_selector("expiry_year"), card_info["expiry_year"])
         logger.info("Expiry year selected: ****")
 
         # CVV
@@ -727,7 +742,7 @@ class AppointmentBookingService:
         await asyncio.sleep(random.uniform(1, 3))
 
         # Submit
-        await page.click(VFS_SELECTORS["payment_submit"])
+        await page.click(get_selector("payment_submit"))
         logger.info("Payment form submitted")
 
     async def handle_3d_secure(self, page: Page, phone_number: str) -> bool:
@@ -864,7 +879,7 @@ class AppointmentBookingService:
                 return False
 
             # Click Continue to proceed
-            await page.click(VFS_SELECTORS["continue_button"])
+            await page.click(get_selector("continue_button"))
             await self.wait_for_overlay(page)
 
             # Step 2: Fill all applicant forms
