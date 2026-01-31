@@ -56,7 +56,8 @@ class APIKeyManager:
 
         if len(salt_env) < 32:
             raise ValueError(
-                f"API_KEY_SALT must be at least 32 characters for security (current: {len(salt_env)})"
+                f"API_KEY_SALT must be at least 32 characters for security "
+                f"(current: {len(salt_env)})"
             )
 
         self._salt = salt_env.encode()

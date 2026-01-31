@@ -105,7 +105,8 @@ class CircuitBreaker:
             elif self._failure_count >= self.fail_threshold:
                 self._state = CircuitState.OPEN
                 logger.warning(
-                    f"Circuit {self.name}: CLOSED -> OPEN (threshold reached: {self._failure_count})"
+                    f"Circuit {self.name}: CLOSED -> OPEN "
+                    f"(threshold reached: {self._failure_count})"
                 )
 
     async def execute(self, func: Callable, *args, **kwargs) -> Any:

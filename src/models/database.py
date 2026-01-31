@@ -242,7 +242,8 @@ class Database:
             yield conn
         except asyncio.TimeoutError:
             logger.error(
-                f"Database connection pool exhausted (timeout: {timeout}s, pool_size: {self.pool_size})"
+                f"Database connection pool exhausted "
+                f"(timeout: {timeout}s, pool_size: {self.pool_size})"
             )
             raise DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
         finally:
@@ -1143,7 +1144,8 @@ class Database:
         Add multiple users in a single transaction for improved performance.
 
         Args:
-            users: List of user dictionaries with keys: email, password, centre, category, subcategory
+            users: List of user dictionaries with keys:
+                email, password, centre, category, subcategory
 
         Returns:
             List of user IDs for successfully added users
@@ -2236,7 +2238,8 @@ class Database:
             try:
                 cursor = await conn.execute(
                     """
-                    INSERT INTO proxy_endpoints (server, port, username, password_encrypted, updated_at)
+                    INSERT INTO proxy_endpoints
+                    (server, port, username, password_encrypted, updated_at)
                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                     """,
                     (server, port, username, encrypted_password),

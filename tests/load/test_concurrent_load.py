@@ -254,7 +254,8 @@ class TestConcurrentLoad:
             execution_time = end_time - start_time
             ops_per_second = operation_count / execution_time
             print(
-                f"Pool stress: {operation_count} ops in {execution_time:.2f}s ({ops_per_second:.1f} ops/s)"
+                f"Pool stress: {operation_count} ops in {execution_time:.2f}s "
+                f"({ops_per_second:.1f} ops/s)"
             )
 
         finally:

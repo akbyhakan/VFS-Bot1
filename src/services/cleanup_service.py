@@ -90,7 +90,8 @@ class CleanupService:
 
             if deleted_count > 0:
                 logger.info(
-                    f"✅ Deleted {deleted_count} old screenshots (older than {self.screenshot_cleanup_days} days)"
+                    f"✅ Deleted {deleted_count} old screenshots "
+                    f"(older than {self.screenshot_cleanup_days} days)"
                 )
 
             return deleted_count

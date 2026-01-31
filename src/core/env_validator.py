@@ -68,7 +68,8 @@ class EnvValidator:
                 elif var == "ENCRYPTION_KEY":
                     if not cls._validate_encryption_key(value):
                         validation_errors.append(
-                            f"{var}: Invalid encryption key (must be 44-char base64-encoded Fernet key)"
+                            f"{var}: Invalid encryption key "
+                            "(must be 44-char base64-encoded Fernet key)"
                         )
 
         # Check optional vars with enhanced validation
