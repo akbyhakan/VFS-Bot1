@@ -150,7 +150,7 @@ async def test_bot_start_sets_running_flag(bot_config, mock_db, mock_notifier):
     # Mock browser manager's start method
     bot.browser_manager.start = AsyncMock()
     bot.browser_manager.browser = AsyncMock()
-    
+
     # Mock get_active_users_with_decrypted_passwords to return empty list to stop the loop
     mock_db.get_active_users_with_decrypted_passwords = AsyncMock(return_value=[])
 
