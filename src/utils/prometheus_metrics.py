@@ -300,7 +300,8 @@ def get_metrics() -> bytes:
     Returns:
         Metrics in Prometheus exposition format
     """
-    return generate_latest(REGISTRY)
+    result: bytes = generate_latest(REGISTRY)
+    return result
 
 
 # Initialize metrics helper

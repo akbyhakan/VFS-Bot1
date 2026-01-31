@@ -213,17 +213,17 @@ class AuditLogger:
                          details, timestamp, success)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                        (
-                            entry.action,
-                            entry.user_id,
-                            entry.username,
-                            entry.ip_address,
-                            entry.user_agent,
-                            json.dumps(entry.details),
-                            entry.timestamp,
-                            entry.success,
-                        ),
-                    )
+                            (
+                                entry.action,
+                                entry.user_id,
+                                entry.username,
+                                entry.ip_address,
+                                entry.user_agent,
+                                json.dumps(entry.details),
+                                entry.timestamp,
+                                entry.success,
+                            ),
+                        )
                     await conn.commit()
         except Exception as e:
             logger.error(f"Failed to persist audit entry: {e}")

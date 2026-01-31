@@ -352,7 +352,8 @@ class VFSApiClient:
         async with self._session.get(f"{VFS_API_BASE}/master/center") as response:
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
-            return data
+            result: List[CentreInfo] = data
+            return result
 
     async def get_visa_categories(self, centre_id: str) -> List[VisaCategoryInfo]:
         """
@@ -370,7 +371,8 @@ class VFSApiClient:
             f"{VFS_API_BASE}/master/visacategory", params={"centerId": centre_id}
         ) as response:
             data = await response.json()
-            return data
+            result: List[VisaCategoryInfo] = data
+            return result
 
     async def get_visa_subcategories(
         self, centre_id: str, category_id: str
@@ -392,7 +394,8 @@ class VFSApiClient:
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
             data = await response.json()
-            return data
+            result: List[VisaSubcategoryInfo] = data
+            return result
 
     async def check_slot_availability(
         self, centre_id: str, category_id: str, subcategory_id: str
@@ -468,7 +471,8 @@ class VFSApiClient:
             else:
                 logger.error(f"Booking failed: {data}")
 
-            return data
+            result: BookingResponse = data
+            return result
 
     async def _ensure_authenticated(self) -> None:
         """
