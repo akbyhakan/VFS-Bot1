@@ -151,7 +151,7 @@ async def initiate_payment(
         Payment result
     """
     # Use secure context manager for CVV handling
-    with SecureCVV(request.cvv) as secure_cvv:
+    with SecureCVV(request.cvv) as _secure_cvv:
         try:
             db = Database()
             await db.connect()

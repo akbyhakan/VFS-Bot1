@@ -88,10 +88,10 @@ class TestEmailOTPPatternMatcher:
         matcher = EmailOTPPatternMatcher()
         text = """
         Dear User,
-        
+
         Your VFS Global verification code is:
         123456
-        
+
         This code will expire in 5 minutes.
         """
         assert matcher.extract_otp(text) == "123456"
@@ -337,7 +337,7 @@ class TestEmailOTPHandler:
         """Test thread-safe operations."""
         handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
-        results = []
+        _results = []
 
         def add_to_cache(email_suffix):
             for i in range(10):

@@ -230,7 +230,8 @@ class Defaults:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         warnings.warn(
-            "Defaults class is deprecated. Use specific classes (Timeouts, Database, RateLimits) instead.",
+            "Defaults class is deprecated. Use specific classes "
+            "(Timeouts, Database, RateLimits) instead.",
             DeprecationWarning,
             stacklevel=2,
         )

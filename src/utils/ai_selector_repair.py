@@ -63,6 +63,10 @@ class AISelectorRepair:
             logger.debug("AI repair not enabled")
             return None
 
+        if not self.model:
+            logger.warning("AI model not initialized")
+            return None
+
         try:
             # Extract current page HTML (first 50KB to avoid token limits)
             html_content = await page.content()

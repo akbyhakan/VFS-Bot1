@@ -31,7 +31,7 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
 
         # Add to logging context
         logger.info(
-            f"Request started",
+            "Request started",
             extra={
                 "request_id": request_id,
                 "method": request.method,
@@ -46,7 +46,7 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
 
         logger.info(
-            f"Request completed",
+            "Request completed",
             extra={
                 "request_id": request_id,
                 "status_code": response.status_code,

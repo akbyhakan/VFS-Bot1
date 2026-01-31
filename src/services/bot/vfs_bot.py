@@ -10,7 +10,7 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from .browser_manager import BrowserManager
 from .auth_service import AuthService
-from .slot_checker import SlotChecker, SlotInfo
+from .slot_checker import SlotChecker
 from .circuit_breaker_service import CircuitBreakerService
 from .error_handler import ErrorHandler
 from ..captcha_solver import CaptchaSolver
@@ -166,7 +166,9 @@ class VFSBot:
         await self.browser_manager.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self, exc_type, exc_val, exc_tb
+    ) -> bool:
         """
         Async context manager exit with cleanup.
 

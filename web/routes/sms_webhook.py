@@ -5,7 +5,7 @@ via SMS Forwarder app. Each VFS account has a unique webhook URL.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter

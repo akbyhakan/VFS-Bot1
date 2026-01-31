@@ -9,7 +9,7 @@ async def test_complete_payment_flow(database):
     db = database
 
     # 1. Save card WITHOUT CVV
-    card_id = await db.save_payment_card(
+    _card_id = await db.save_payment_card(
         {
             "card_holder_name": "Test User",
             "card_number": "4111111111111111",
@@ -26,7 +26,7 @@ async def test_complete_payment_flow(database):
     assert "cvv_encrypted" not in card
 
     # 4. Simulate payment with runtime CVV
-    runtime_cvv = "123"
+    _runtime_cvv = "123"
     # (payment processing would happen here)
 
     # 5. Verify CVV still not in database after payment
@@ -40,7 +40,7 @@ async def test_cvv_memory_cleanup():
     import gc
 
     cvv = "123"
-    cvv_id = id(cvv)
+    _cvv_id = id(cvv)
 
     # Use CVV (simulated)
     processed_cvv = cvv

@@ -212,7 +212,8 @@ async def graceful_shutdown_with_timeout(
         )
     except asyncio.TimeoutError:
         logger.error(
-            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s, forcing cleanup of critical resources"
+            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s, "
+            "forcing cleanup of critical resources"
         )
         await force_cleanup_critical_resources(db)
         # Raise error to signal abnormal shutdown

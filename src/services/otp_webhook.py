@@ -176,7 +176,8 @@ class OTPWebhookService:
                     event.set()
 
         logger.info(
-            f"{otp_type.value.capitalize()} OTP received from {phone_number[:4]}***: {otp_code[:2]}****"
+            f"{otp_type.value.capitalize()} OTP received from "
+            f"{phone_number[:4]}***: {otp_code[:2]}****"
         )
         return otp_code
 

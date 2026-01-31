@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
-from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+from datetime import datetime
 
 if TYPE_CHECKING:
     from src.models.database import Database
@@ -91,7 +90,8 @@ class CleanupService:
 
             if deleted_count > 0:
                 logger.info(
-                    f"✅ Deleted {deleted_count} old screenshots (older than {self.screenshot_cleanup_days} days)"
+                    f"✅ Deleted {deleted_count} old screenshots "
+                    f"(older than {self.screenshot_cleanup_days} days)"
                 )
 
             return deleted_count

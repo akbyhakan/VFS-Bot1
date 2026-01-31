@@ -38,7 +38,7 @@ def temp_dist_dir():
         (dist_dir / "index.html").write_text(index_html)
 
         # Temporarily replace the dist directory path
-        original_path = Path(__file__).parent.parent / "web" / "static" / "dist"
+        _original_path = Path(__file__).parent.parent / "web" / "static" / "dist"
         yield dist_dir
 
 
@@ -175,7 +175,7 @@ class TestCSPNonceInHTML:
             # Mock the dist directory path
             import web.routes.dashboard as dashboard_module
 
-            original_path = dashboard_module.Path(__file__).parent.parent / "static" / "dist"
+            _original_path = dashboard_module.Path(__file__).parent.parent / "static" / "dist"
 
             # Temporarily patch the path
             def mock_serve_react_app(request, full_path=""):
@@ -211,7 +211,7 @@ class TestCSPNonceInHTML:
             nonces = re.findall(nonce_pattern, csp)
 
             if len(nonces) > 0:
-                nonce = nonces[0]
+                _nonce = nonces[0]
                 html = response.text
 
                 # In development mode or with actual build, placeholders should be replaced

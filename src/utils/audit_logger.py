@@ -1,5 +1,6 @@
 """Audit logging for security-sensitive operations."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -292,7 +293,7 @@ def audit(action: AuditAction, resource_type: Optional[str] = None):
                     resource_id = str(result["id"])
 
                 return result
-            except Exception as e:
+            except Exception as _e:
                 success = False
                 raise
             finally:

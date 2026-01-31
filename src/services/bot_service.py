@@ -7,7 +7,7 @@ from bot_service. New code should use the modular components from src.services.b
 Example:
     # Old way (still works)
     from src.services.bot_service import VFSBot
-    
+
     # New way (recommended)
     from src.services.bot import VFSBot
 """

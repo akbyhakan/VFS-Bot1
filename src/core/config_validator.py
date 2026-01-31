@@ -183,7 +183,6 @@ class ConfigValidator:
             List of validation error messages (empty if all pass)
         """
         import os
-        import re
 
         errors = []
         env = os.getenv("ENV", "production").lower()
@@ -205,7 +204,8 @@ class ConfigValidator:
             MIN_API_KEY_LENGTH = 64
             if len(api_secret) < MIN_API_KEY_LENGTH:
                 errors.append(
-                    f"API_SECRET_KEY must be at least {MIN_API_KEY_LENGTH} characters for security. Current length: {len(api_secret)}"
+                    f"API_SECRET_KEY must be at least {MIN_API_KEY_LENGTH} "
+                    f"characters for security. Current length: {len(api_secret)}"
                 )
 
         # 3. ENCRYPTION_KEY validation
@@ -240,7 +240,8 @@ class ConfigValidator:
             MIN_CAPTCHA_KEY_LENGTH = 16
             if len(captcha_key) < MIN_CAPTCHA_KEY_LENGTH:
                 errors.append(
-                    f"CAPTCHA_API_KEY should be at least {MIN_CAPTCHA_KEY_LENGTH} characters. Current length: {len(captcha_key)}"
+                    f"CAPTCHA_API_KEY should be at least {MIN_CAPTCHA_KEY_LENGTH} "
+                    f"characters. Current length: {len(captcha_key)}"
                 )
 
         return errors

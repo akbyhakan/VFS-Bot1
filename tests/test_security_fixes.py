@@ -1,4 +1,5 @@
-"""Tests for security improvements: SQL injection protection, API key hashing, thread safety, and JWT validation."""
+"""Tests for security improvements: SQL injection protection, API key hashing,
+thread safety, and JWT validation."""
 
 import pytest
 import asyncio
@@ -402,8 +403,6 @@ def test_thread_safe_bot_state_logs_deque():
 @pytest.mark.security
 def test_jwt_secret_key_minimum_length_64(monkeypatch):
     """Test that JWT secret key must be at least 64 characters."""
-    from src.core.auth import _get_jwt_settings
-
     # Clear cache
     _get_jwt_settings.cache_clear()
 
@@ -420,8 +419,6 @@ def test_jwt_secret_key_minimum_length_64(monkeypatch):
 @pytest.mark.security
 def test_jwt_secret_key_accepts_64_chars(monkeypatch):
     """Test that JWT secret key accepts exactly 64 characters."""
-    from src.core.auth import _get_jwt_settings
-
     # Clear cache
     _get_jwt_settings.cache_clear()
 
@@ -436,8 +433,6 @@ def test_jwt_secret_key_accepts_64_chars(monkeypatch):
 @pytest.mark.security
 def test_jwt_secret_key_accepts_longer_than_64(monkeypatch):
     """Test that JWT secret key accepts more than 64 characters."""
-    from src.core.auth import _get_jwt_settings
-
     # Clear cache
     _get_jwt_settings.cache_clear()
 
@@ -452,8 +447,6 @@ def test_jwt_secret_key_accepts_longer_than_64(monkeypatch):
 @pytest.mark.security
 def test_jwt_secret_key_not_set(monkeypatch):
     """Test that missing JWT secret key raises error."""
-    from src.core.auth import _get_jwt_settings
-
     # Clear cache
     _get_jwt_settings.cache_clear()
 

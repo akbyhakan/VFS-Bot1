@@ -21,6 +21,8 @@ class APIKeyManager:
 
     _instance: Optional["APIKeyManager"] = None
     _lock = RLock()
+    _keys: Dict[str, Dict[str, Any]]
+    _salt: Optional[bytes]
 
     def __new__(cls) -> "APIKeyManager":
         """Create or return singleton instance."""
@@ -28,8 +30,8 @@ class APIKeyManager:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
                 # Initialize in __new__ to ensure it happens once
-                cls._instance._keys: Dict[str, Dict[str, Any]] = {}
-                cls._instance._salt: Optional[bytes] = None
+                cls._instance._keys = {}
+                cls._instance._salt = None
             return cls._instance
 
     def __init__(self) -> None:
@@ -56,7 +58,8 @@ class APIKeyManager:
 
         if len(salt_env) < 32:
             raise ValueError(
-                f"API_KEY_SALT must be at least 32 characters for security (current: {len(salt_env)})"
+                f"API_KEY_SALT must be at least 32 characters for security "
+                f"(current: {len(salt_env)})"
             )
 
         self._salt = salt_env.encode()

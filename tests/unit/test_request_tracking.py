@@ -62,4 +62,4 @@ def test_request_tracking_with_error(app_with_tracking):
     client = TestClient(app_with_tracking)
 
     with pytest.raises(ValueError):
-        response = client.get("/error")
+        _response = client.get("/error")

@@ -175,7 +175,7 @@ class TestVFSAccountManager:
         """Test getting account by email."""
         mock_encrypt.return_value = "encrypted_password"
 
-        account = account_manager.register_account(
+        _account = account_manager.register_account(
             vfs_email="user@example.com",
             vfs_password="password",
             phone_number="+905551234567",
@@ -209,7 +209,7 @@ class TestVFSAccountManager:
         """Test getting account by phone number."""
         mock_encrypt.return_value = "encrypted_password"
 
-        account = account_manager.register_account(
+        _account = account_manager.register_account(
             vfs_email="user@example.com",
             vfs_password="password",
             phone_number="+905551234567",
@@ -337,7 +337,7 @@ class TestVFSAccountManager:
             target_email="bot1@example.com",
         )
 
-        account2 = account_manager.register_account(
+        _account2 = account_manager.register_account(
             vfs_email="user2@example.com",
             vfs_password="password",
             phone_number="+905551234562",
