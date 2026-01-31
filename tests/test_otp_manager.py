@@ -361,7 +361,7 @@ class TestOTPManagerIntegration:
         with patch("src.services.otp_manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
-            _session_id = manager.register_session(phone_number="+905551234567")
+            manager.register_session(phone_number="+905551234567")
             otp = manager.process_sms_webhook("+905551234567", "Your code is 123456")
 
             assert otp == "123456"

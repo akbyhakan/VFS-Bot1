@@ -61,8 +61,14 @@ def test_load_session_success(temp_session_file):
         "token_expiry": int(time.time()) + 3600,
     }
 
+    # Save encrypted session data
+    from src.utils.encryption import encrypt_password
+    
+    json_data = json.dumps(session_data)
+    encrypted_data = encrypt_password(json_data)
+    
     with open(temp_session_file, "w") as f:
-        json.dump(session_data, f)
+        f.write(encrypted_data)
 
     manager = SessionManager(session_file=temp_session_file)
 
@@ -91,9 +97,15 @@ def test_save_session_success(temp_session_file):
     result = manager.save_session()
     assert result is True
 
-    # Verify file contents
+    # Verify file contents - now encrypted
+    from src.utils.encryption import decrypt_password
+    
     with open(temp_session_file, "r") as f:
-        data = json.load(f)
+        encrypted_content = f.read()
+    
+    # Decrypt and parse
+    decrypted_data = decrypt_password(encrypted_content)
+    data = json.loads(decrypted_data)
 
     assert data["access_token"] == "test_access"
     assert data["refresh_token"] == "test_refresh"

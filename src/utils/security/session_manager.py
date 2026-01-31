@@ -76,18 +76,25 @@ class SessionManager:
                 return False
 
             with open(self.session_file, "r") as f:
-                encrypted_data = f.read()
+                file_data = f.read()
 
-            # Decrypt the session data - ONLY accept encrypted sessions
+            # Try to decrypt the session data first (new format)
             try:
-                decrypted_data = decrypt_password(encrypted_data)
+                decrypted_data = decrypt_password(file_data)
                 data = json.loads(decrypted_data)
-            except (ValueError, KeyError, json.JSONDecodeError) as e:
-                logger.error(f"Session file corrupted or not encrypted: {e}")
-                # Security: Delete insecure/corrupted session file
-                logger.info("Removing corrupted or unencrypted session file for security")
-                self.session_file.unlink(missing_ok=True)
-                return False
+                logger.info("Session loaded from encrypted file")
+            except (ValueError, KeyError) as e:
+                # Backward compatibility: Try to load as plain JSON (old format)
+                logger.warning(f"Failed to decrypt session, trying unencrypted format: {e}")
+                try:
+                    data = json.loads(file_data)
+                    logger.warning("SECURITY WARNING: Loaded unencrypted session file. This file will be re-saved as encrypted.")
+                except json.JSONDecodeError as json_err:
+                    logger.error(f"Session file corrupted: {json_err}")
+                    # Security: Delete corrupted session file
+                    logger.info("Removing corrupted session file")
+                    self.session_file.unlink(missing_ok=True)
+                    return False
 
             self.access_token = data.get("access_token")
             self.refresh_token = data.get("refresh_token")
@@ -100,7 +107,6 @@ class SessionManager:
             else:
                 self.metadata = None
 
-            logger.info("Session loaded from file")
             return True
 
         except Exception as e:
