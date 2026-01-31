@@ -278,6 +278,8 @@ def get_encryption() -> PasswordEncryption:
         instance = _encryption_instance  # Local reference to prevent race condition
         if instance is None or (current_key and _normalize_key(current_key) != instance._key):
             _encryption_instance = PasswordEncryption()
+        # At this point, _encryption_instance is guaranteed to be initialized
+        assert _encryption_instance is not None
         return _encryption_instance
 
 

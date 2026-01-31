@@ -4,11 +4,14 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, List, Union, Callable
+from typing import Any, Dict, Optional, List, Union, Callable, TYPE_CHECKING
 from dataclasses import dataclass, asdict
 from enum import Enum
 from functools import wraps
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from ..models.database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +90,7 @@ class AuditLogger:
         "session",
     }
 
-    def __init__(self, db=None, log_file: Optional[str] = None):
+    def __init__(self, db: Optional["Database"] = None, log_file: Optional[str] = None):
         """
         Initialize audit logger.
 
@@ -97,7 +100,7 @@ class AuditLogger:
         """
         self.db = db
         self.log_file = Path(log_file) if log_file else None
-        self._buffer = []
+        self._buffer: List[AuditEntry] = []
         self._buffer_size = 100
 
         # Create log file directory if needed
@@ -191,8 +194,9 @@ class AuditLogger:
     async def _write_to_file(self, entry: AuditEntry) -> None:
         """Write audit entry to JSONL file."""
         try:
-            with open(self.log_file, "a", encoding="utf-8") as f:
-                f.write(entry.to_json() + "\n")
+            if self.log_file is not None:
+                with open(self.log_file, "a", encoding="utf-8") as f:
+                    f.write(entry.to_json() + "\n")
         except Exception as e:
             logger.error(f"Failed to write audit entry to file: {e}")
 
@@ -259,7 +263,9 @@ class AuditLogger:
             return []
 
 
-def audit(action: AuditAction, resource_type: Optional[str] = None):
+def audit(
+    action: AuditAction, resource_type: Optional[str] = None
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for automatic audit logging of function calls.
 

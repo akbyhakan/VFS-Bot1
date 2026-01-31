@@ -15,7 +15,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List, Pattern
+from typing import Optional, Dict, List, Pattern, Any
 from dataclasses import dataclass
 from html.parser import HTMLParser
 
@@ -331,9 +331,13 @@ class EmailOTPHandler:
 
             for num in message_numbers[0].split():
                 try:
-                    _, msg_data = mail.fetch(num, "(RFC822)")
-                    email_body = msg_data[0][1]
-                    msg = message_from_bytes(email_body)
+                    status, msg_data = mail.fetch(num, "(RFC822)")
+                    if msg_data and isinstance(msg_data[0], tuple) and len(msg_data[0]) >= 2:
+                        email_body_raw = msg_data[0][1]
+                        if isinstance(email_body_raw, bytes):
+                            msg = message_from_bytes(email_body_raw)
+                        else:
+                            continue  # Skip if not bytes
 
                     # Extract target email from headers
                     msg_target = self._extract_target_email(msg)
@@ -463,7 +467,7 @@ class EmailOTPHandler:
 
             return entry.code
 
-    def clear_cache(self, target_email: Optional[str] = None):
+    def clear_cache(self, target_email: Optional[str] = None) -> None:
         """
         Clear OTP cache.
 
@@ -491,7 +495,7 @@ _handler_lock = threading.Lock()
 
 
 def get_email_otp_handler(
-    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs
+    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs: Any
 ) -> EmailOTPHandler:
     """
     Get global EmailOTPHandler instance (thread-safe singleton).

@@ -109,7 +109,7 @@ class CircuitBreaker:
                     f"(threshold reached: {self._failure_count})"
                 )
 
-    async def execute(self, func: Callable, *args, **kwargs) -> Any:
+    async def execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Execute function with circuit breaker protection."""
         if not await self.can_execute():
             raise CircuitBreakerOpenError(f"Circuit {self.name} is OPEN")
@@ -146,7 +146,7 @@ _circuit_breakers: dict[str, CircuitBreaker] = {}
 _cb_lock = asyncio.Lock()
 
 
-async def get_circuit_breaker(name: str, **kwargs) -> CircuitBreaker:
+async def get_circuit_breaker(name: str, **kwargs: Any) -> CircuitBreaker:
     """Get or create a circuit breaker by name."""
     async with _cb_lock:
         if name not in _circuit_breakers:

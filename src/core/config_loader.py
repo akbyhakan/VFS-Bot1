@@ -157,7 +157,9 @@ def get_selector(group: str, name: str, default: str = "") -> str:
         selector = group_selectors.get(name)
         # Handle both simple strings and objects with primary/fallbacks
         if isinstance(selector, dict) and "primary" in selector:
-            return selector["primary"]
+            primary = selector["primary"]
+            if isinstance(primary, str):
+                return primary
         elif isinstance(selector, str):
             return selector
 
