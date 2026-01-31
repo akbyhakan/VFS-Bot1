@@ -63,10 +63,10 @@ def test_load_session_success(temp_session_file):
 
     # Save encrypted session data
     from src.utils.encryption import encrypt_password
-    
+
     json_data = json.dumps(session_data)
     encrypted_data = encrypt_password(json_data)
-    
+
     with open(temp_session_file, "w") as f:
         f.write(encrypted_data)
 
@@ -99,10 +99,10 @@ def test_save_session_success(temp_session_file):
 
     # Verify file contents - now encrypted
     from src.utils.encryption import decrypt_password
-    
+
     with open(temp_session_file, "r") as f:
         encrypted_content = f.read()
-    
+
     # Decrypt and parse
     decrypted_data = decrypt_password(encrypted_content)
     data = json.loads(decrypted_data)

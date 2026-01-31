@@ -93,7 +93,7 @@ class TestDatabaseIntegration:
         with pytest.raises(DatabasePoolTimeoutError, match="Database connection pool exhausted"):
             async with integration_db.get_connection(timeout=0.5):
                 pass
-        
+
         # Clean up: wait for holding tasks to complete or cancel them
         try:
             await asyncio.wait_for(gather_future, timeout=3.0)

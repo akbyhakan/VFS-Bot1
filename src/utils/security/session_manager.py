@@ -88,7 +88,10 @@ class SessionManager:
                 logger.warning(f"Failed to decrypt session, trying unencrypted format: {e}")
                 try:
                     data = json.loads(file_data)
-                    logger.warning("SECURITY WARNING: Loaded unencrypted session file. This file will be re-saved as encrypted.")
+                    logger.warning(
+                        "SECURITY WARNING: Loaded unencrypted session file. "
+                        "This file will be re-saved as encrypted."
+                    )
                 except json.JSONDecodeError as json_err:
                     logger.error(f"Session file corrupted: {json_err}")
                     # Security: Delete corrupted session file

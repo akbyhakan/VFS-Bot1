@@ -45,7 +45,7 @@ class APIKeyManager:
             # Check if global variable was reset for testing
             if _API_KEY_SALT is None:
                 self._salt = None
-            
+
             if self._salt is None:
                 self._load_salt()
             # After _load_salt, _salt should be set, but we need to handle type checker
