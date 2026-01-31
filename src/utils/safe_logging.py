@@ -14,7 +14,6 @@ class SafeException:
         "token",
         "password",
         "secret",
-        "key",
         "auth",
         "credential",
         "api_key",
@@ -83,11 +82,8 @@ class SafeException:
             is_sensitive = any(pattern in key_lower for pattern in cls.SENSITIVE_PATTERNS)
 
             if is_sensitive:
-                if isinstance(value, str) and len(value) > 4:
-                    # Keep first 2 and last 2 characters
-                    sanitized[key] = value[:2] + "***" + value[-2:]
-                else:
-                    sanitized[key] = "[REDACTED]"
+                # Always use full redaction for security
+                sanitized[key] = "[REDACTED]"
             elif isinstance(value, dict):
                 # Recursively sanitize nested dictionaries
                 sanitized[key] = cls.safe_dict(value)
