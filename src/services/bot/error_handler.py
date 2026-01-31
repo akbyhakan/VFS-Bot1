@@ -106,7 +106,6 @@ class ErrorHandler:
             logger.error(f"Failed to save checkpoint: {e}")
             return None
 
-    async def load_checkpoint(self) -> Optional[Dict[str, Any]]:
     def load_checkpoint(self) -> Dict[str, Any] | None:
         """
         Load state from checkpoint file.
