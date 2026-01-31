@@ -96,10 +96,10 @@ async def test_update_personal_details_blocks_disallowed_fields(
 ):
     """Test that update_personal_details blocks disallowed fields and logs warning."""
     import logging
-    
+
     # Set caplog to capture WARNING level logs
     caplog.set_level(logging.WARNING)
-    
+
     # Create a user first
     user_id = await test_db.add_user(
         email="test@example.com",
