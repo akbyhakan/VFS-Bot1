@@ -1,6 +1,6 @@
 """Utility functions for masking sensitive data in logs and outputs."""
 
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Optional
 
 
 def mask_email(email: str) -> str:
@@ -148,7 +148,7 @@ def mask_cvv(cvv: str) -> str:
     return "***"
 
 
-def mask_sensitive_dict(data: Dict[str, Any], sensitive_keys: Set[str] = None) -> Dict[str, Any]:
+def mask_sensitive_dict(data: Dict[str, Any], sensitive_keys: Optional[Set[str]] = None) -> Dict[str, Any]:
     """
     Mask sensitive values in a dictionary for logging.
 

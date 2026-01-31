@@ -4,7 +4,7 @@ import logging
 import sys
 import json
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import os
 
 
@@ -43,8 +43,8 @@ class JSONFormatter(logging.Formatter):
 
 
 def setup_logging(
-    level: str = None,
-    json_format: bool = None,
+    level: Optional[str] = None,
+    json_format: Optional[bool] = None,
 ) -> None:
     """
     Setup logging configuration.

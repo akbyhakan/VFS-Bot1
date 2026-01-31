@@ -3,6 +3,7 @@
 import logging
 import random
 from dataclasses import dataclass
+from typing import Optional
 
 from playwright.async_api import Page
 
@@ -45,7 +46,7 @@ class FingerprintBypass:
             logger.error(f"Error applying fingerprint bypass: {e}")
 
     @staticmethod
-    async def _inject_canvas_noise(page: Page, config: CanvasNoiseConfig = None) -> None:
+    async def _inject_canvas_noise(page: Page, config: Optional[CanvasNoiseConfig] = None) -> None:
         """
         Inject noise into Canvas to randomize fingerprint.
 
