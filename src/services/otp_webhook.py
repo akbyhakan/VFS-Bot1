@@ -445,7 +445,8 @@ class OTPWebhookService:
         if fallback_callback:
             logger.info("Requesting manual OTP input")
             try:
-                return await fallback_callback()
+                result: Optional[str] = await fallback_callback()
+                return result
             except Exception as e:
                 logger.error(f"Fallback OTP input failed: {e}")
 

@@ -257,7 +257,7 @@ class VFSAccountManager:
             return self._accounts.get(account_id)
         return None
 
-    def update_account(self, account_id: str, **kwargs) -> VFSAccount:
+    def update_account(self, account_id: str, **kwargs: Any) -> VFSAccount:
         """
         Update account fields.
 
@@ -298,7 +298,7 @@ class VFSAccountManager:
         logger.info(f"Updated account {account_id}")
         return account
 
-    def deactivate_account(self, account_id: str):
+    def deactivate_account(self, account_id: str) -> None:
         """
         Deactivate an account.
 
@@ -319,7 +319,7 @@ class VFSAccountManager:
 
         logger.info(f"Deactivated account {account_id}")
 
-    def reactivate_account(self, account_id: str):
+    def reactivate_account(self, account_id: str) -> None:
         """
         Reactivate a deactivated account.
 

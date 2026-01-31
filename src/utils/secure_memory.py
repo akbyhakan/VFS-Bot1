@@ -52,5 +52,5 @@ class SecureCVV:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Securely clear CVV from memory when exiting context."""
         secure_zero_memory(self._data)
-        self._data = None
+        self._data = bytearray()
         return False

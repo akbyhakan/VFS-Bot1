@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
-def handle_errors(operation_name: str, reraise: bool = True, log_level: str = "error"):
+def handle_errors(
+    operation_name: str, reraise: bool = True, log_level: str = "error"
+) -> Callable[[F], F]:
     """
     Decorator for consistent error handling across async operations.
 

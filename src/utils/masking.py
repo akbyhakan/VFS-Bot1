@@ -148,7 +148,9 @@ def mask_cvv(cvv: str) -> str:
     return "***"
 
 
-def mask_sensitive_dict(data: Dict[str, Any], sensitive_keys: Optional[Set[str]] = None) -> Dict[str, Any]:
+def mask_sensitive_dict(
+    data: Dict[str, Any], sensitive_keys: Optional[Set[str]] = None
+) -> Dict[str, Any]:
     """
     Mask sensitive values in a dictionary for logging.
 
@@ -176,7 +178,7 @@ def mask_sensitive_dict(data: Dict[str, Any], sensitive_keys: Optional[Set[str]]
             "otp_code",
         }
 
-    masked_data = {}
+    masked_data: Dict[str, Any] = {}
 
     for key, value in data.items():
         if key.lower() in sensitive_keys:

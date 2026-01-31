@@ -210,7 +210,15 @@ class SelectorManager:
                     or semantic.get("label_en")
                 )
 
-                locator = page.get_by_role(role, name=name) if name else page.get_by_role(role)
+                from typing import cast, Literal
+
+                # Cast role to proper Literal type
+                valid_role = cast(Literal["button", "link", "textbox"], role)
+                locator = (
+                    page.get_by_role(valid_role, name=name)
+                    if name
+                    else page.get_by_role(valid_role)
+                )
 
                 # Check if element exists and is visible
                 try:

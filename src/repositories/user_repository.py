@@ -203,21 +203,27 @@ class UserRepository(BaseRepository[User]):
         if data.get("phone") and not validate_phone(data["phone"]):
             raise ValidationError("Invalid phone format", field="phone")
 
-        # Use database's create_user method for consistency
-        user_id = await self.db.create_user(
+        # Use database's add_user method for consistency
+        user_id = await self.db.add_user(
             email=data["email"],
             password=data.get("password", ""),
-            phone=data.get("phone", ""),
-            first_name=data.get("first_name", ""),
-            last_name=data.get("last_name", ""),
-            center_name=data["center_name"],
-            visa_category=data.get("visa_category", ""),
-            visa_subcategory=data.get("visa_subcategory", ""),
-            is_active=data.get("is_active", True),
+            centre=data["center_name"],
+            category=data.get("visa_category", ""),
+            subcategory=data.get("visa_subcategory", ""),
         )
 
+        # Add personal details if provided
+        personal_details = {}
+        for key in ["first_name", "last_name", "phone", "mobile_number"]:
+            if key in data and data[key]:
+                personal_details[key] = data[key]
+
+        if personal_details:
+            await self.db.add_personal_details(user_id, personal_details)
+
         logger.info(f"Created user {user_id} with email {data['email']}")
-        return user_id
+        result_id: int = user_id if isinstance(user_id, int) else int(user_id)
+        return result_id
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
@@ -248,7 +254,16 @@ class UserRepository(BaseRepository[User]):
             raise ValidationError("Invalid phone format", field="phone")
 
         # Use database's update_user method for consistency
-        success = await self.db.update_user(id, data)
+        # Extract specific fields from data dict
+        success = await self.db.update_user(
+            user_id=id,
+            email=data.get("email"),
+            password=data.get("password"),
+            centre=data.get("center_name") or data.get("centre"),
+            category=data.get("visa_category") or data.get("category"),
+            subcategory=data.get("visa_subcategory") or data.get("subcategory"),
+            active=data.get("is_active"),
+        )
 
         if success:
             logger.info(f"Updated user {id}")
@@ -286,7 +301,8 @@ class UserRepository(BaseRepository[User]):
             if deleted:
                 logger.warning(f"Hard deleted user {id}")
 
-            return deleted
+            result: bool = deleted
+            return result
 
     async def get_active_count(self) -> int:
         """
@@ -298,4 +314,5 @@ class UserRepository(BaseRepository[User]):
         async with self.db.get_connection() as conn:
             cursor = await conn.execute("SELECT COUNT(*) FROM users WHERE is_active = 1")
             row = await cursor.fetchone()
-            return row[0] if row else 0
+            count: int = row[0] if row else 0
+            return count

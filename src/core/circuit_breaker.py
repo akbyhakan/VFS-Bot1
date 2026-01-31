@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional, Callable, TypeVar, Any, Awaitable
+from typing import Optional, Callable, TypeVar, Any, Awaitable, Type
 from functools import wraps
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         timeout_seconds: float = 60.0,
-        expected_exception: type = Exception,
+        expected_exception: Type[BaseException] = Exception,
         name: Optional[str] = None,
         half_open_threshold: int = 3,
     ):

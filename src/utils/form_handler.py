@@ -291,7 +291,11 @@ class FormHandler:
             SelectorNotFoundError: If timeout reached
         """
         try:
-            await page.wait_for_selector(selector, state=state, timeout=timeout)
+            from typing import Literal, cast
+
+            # Cast state to proper Literal type for type checking
+            valid_state = cast(Literal["attached", "detached", "hidden", "visible"], state)
+            await page.wait_for_selector(selector, state=valid_state, timeout=timeout)
             logger.debug(f"Element '{selector}' reached state: {state}")
             return True
 
@@ -322,7 +326,10 @@ class FormHandler:
         try:
             await page.wait_for_selector(selector, timeout=timeout)
             text = await page.text_content(selector)
-            return text
+            # text_content returns str | None
+            if isinstance(text, str):
+                return text
+            return None
 
         except PlaywrightTimeout:
             logger.error(f"Timeout waiting for element: {selector}")

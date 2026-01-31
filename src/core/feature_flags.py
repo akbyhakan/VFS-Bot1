@@ -185,11 +185,11 @@ class FeatureFlags:
         logger.info(f"Disabled ({len(disabled)}): {', '.join(sorted(disabled))}")
 
 
-def get_feature_flags() -> FeatureFlags:
+def get_feature_flags() -> type[FeatureFlags]:
     """
-    Get the feature flags instance.
+    Get the feature flags class.
 
     Returns:
-        FeatureFlags instance
+        FeatureFlags class
     """
     return FeatureFlags

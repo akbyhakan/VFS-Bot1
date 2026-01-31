@@ -1498,7 +1498,8 @@ class Database:
                     (now,),
                 )
                 await conn.commit()
-                return cursor.rowcount
+                count: int = cursor.rowcount
+                return count
 
     @require_connection
     async def save_payment_card(self, card_data: Dict[str, str]) -> int:
@@ -1576,7 +1577,8 @@ class Database:
                     if card_id is None:
                         raise RuntimeError("Failed to get inserted card ID")
                     logger.info(f"Payment card created with ID: {card_id}")
-                    return card_id
+                    result_id: int = card_id
+                    return result_id
 
     @require_connection
     async def get_payment_card(self) -> Optional[Dict[str, Any]]:
@@ -1753,7 +1755,8 @@ class Database:
 
                 await conn.commit()
                 logger.info(f"Appointment request created: {request_id}")
-                return request_id
+                result_id: int = request_id
+                return result_id
 
     @require_connection
     async def get_appointment_request(self, request_id: int) -> Optional[Dict[str, Any]]:
@@ -1947,7 +1950,8 @@ class Database:
                 if deleted_count > 0:
                     logger.info(f"Cleaned up {deleted_count} old appointment requests")
 
-                return deleted_count
+                result_count: int = deleted_count
+                return result_count
 
     @require_connection
     async def add_audit_log(
@@ -2210,7 +2214,8 @@ class Database:
 
         if deleted:
             logger.info(f"Webhook deleted for user {user_id}")
-        return deleted
+        result: bool = deleted
+        return result
 
     # ================================================================================
     # Proxy Management Methods
@@ -2399,7 +2404,8 @@ class Database:
 
                 if updated:
                     logger.info(f"Proxy {proxy_id} updated")
-                return updated
+                result: bool = updated
+                return result
 
             except Exception as e:
                 if "UNIQUE constraint failed" in str(e):
@@ -2427,7 +2433,8 @@ class Database:
 
         if deleted:
             logger.info(f"Proxy {proxy_id} deleted")
-        return deleted
+        result: bool = deleted
+        return result
 
     @require_connection
     async def mark_proxy_failed(self, proxy_id: int) -> bool:
@@ -2456,7 +2463,8 @@ class Database:
 
         if updated:
             logger.debug(f"Proxy {proxy_id} marked as failed")
-        return updated
+        result: bool = updated
+        return result
 
     @require_connection
     async def reset_proxy_failures(self) -> int:
@@ -2479,7 +2487,8 @@ class Database:
             count = cursor.rowcount
 
         logger.info(f"Reset failure count for {count} proxies")
-        return count
+        result_count: int = count
+        return result_count
 
     @require_connection
     async def get_proxy_stats(self) -> Dict[str, int]:
@@ -2523,7 +2532,8 @@ class Database:
             count = cursor.rowcount
 
         logger.info(f"Cleared all {count} proxies")
-        return count
+        result_count: int = count
+        return result_count
 
     @require_connection
     async def get_user_by_webhook_token(self, token: str) -> Optional[Dict[str, Any]]:

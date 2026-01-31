@@ -60,7 +60,9 @@ def setup_logging(
 
     # Root logger configuration
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, level.upper()))
+    # Ensure level is a string (mypy type guard)
+    log_level = level.upper() if level else "INFO"
+    root_logger.setLevel(getattr(logging, log_level))
 
     # Remove existing handlers
     for handler in root_logger.handlers[:]:
@@ -68,7 +70,7 @@ def setup_logging(
 
     # Create handler
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(getattr(logging, level.upper()))
+    handler.setLevel(getattr(logging, log_level))
 
     # Set formatter
     if json_format:

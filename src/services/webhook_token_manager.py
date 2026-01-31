@@ -254,7 +254,7 @@ class WebhookTokenManager:
 
         return webhook_token
 
-    def link_session(self, token: str, session_id: str):
+    def link_session(self, token: str, session_id: str) -> None:
         """
         Link a token to an active bot session (thread-safe).
 
@@ -273,7 +273,7 @@ class WebhookTokenManager:
             webhook_token.session_id = session_id
             logger.info(f"Linked token {token[:10]}... to session {session_id}")
 
-    def unlink_session(self, token: str):
+    def unlink_session(self, token: str) -> None:
         """
         Unlink a token from its session.
 
@@ -342,7 +342,7 @@ class WebhookTokenManager:
                 return match.group(1)
         return None
 
-    def revoke_token(self, token: str):
+    def revoke_token(self, token: str) -> None:
         """
         Revoke (deactivate) a webhook token.
 
