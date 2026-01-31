@@ -70,7 +70,8 @@ class SelectorLearner:
                 "current_preferred": 0,  # 0 = primary, 1+ = fallback index
                 "last_updated": datetime.now(timezone.utc).isoformat(),
             }
-        return self.metrics[selector_path]
+        result: Dict[str, Any] = self.metrics[selector_path]
+        return result
 
     def record_success(self, selector_path: str, selector_index: int) -> None:
         """
@@ -260,9 +261,11 @@ class SelectorLearner:
             summary["total_failures"] += total_fail
 
             if metrics.get("current_preferred", 0) != 0:
-                summary["selectors_with_promotions"] += 1
+                selectors_with_promotions: int = summary["selectors_with_promotions"]
+                summary["selectors_with_promotions"] = selectors_with_promotions + 1
 
-            summary["details"][path] = {
+            details_dict: Dict[str, Any] = summary["details"]
+            details_dict[path] = {
                 "success_rate": (
                     total_success / (total_success + total_fail)
                     if (total_success + total_fail) > 0

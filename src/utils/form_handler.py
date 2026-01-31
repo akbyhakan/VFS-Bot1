@@ -322,7 +322,10 @@ class FormHandler:
         try:
             await page.wait_for_selector(selector, timeout=timeout)
             text = await page.text_content(selector)
-            return text
+            # text_content returns str | None
+            if isinstance(text, str):
+                return text
+            return None
 
         except PlaywrightTimeout:
             logger.error(f"Timeout waiting for element: {selector}")

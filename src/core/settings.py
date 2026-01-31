@@ -199,7 +199,7 @@ def get_settings() -> VFSSettings:
     """
     global _settings
     if _settings is None:
-        _settings = VFSSettings()  # type: ignore[call-arg]
+        _settings = VFSSettings()
     return _settings
 
 

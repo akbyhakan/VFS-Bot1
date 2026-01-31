@@ -6,7 +6,7 @@ from typing import Any, Optional
 try:
     from curl_cffi.requests import AsyncSession
 except ImportError:
-    AsyncSession = None  # type: ignore[assignment, misc]
+    AsyncSession = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class TLSHandler:
             return
 
         try:
-            self.session = AsyncSession(impersonate=self.impersonate)  # type: ignore[arg-type]
+            self.session = AsyncSession(impersonate=self.impersonate)
             logger.info(f"TLS session created with {self.impersonate} impersonation")
         except Exception as e:
             logger.error(f"Failed to create TLS session: {e}")
@@ -77,7 +77,7 @@ class TLSHandler:
             return None
 
         try:
-            response = await self.session.request(method, url, **kwargs)  # type: ignore[arg-type]
+            response = await self.session.request(method, url, **kwargs)
             logger.debug(f"TLS request successful: {method} {url}")
             return response
         except Exception as e:

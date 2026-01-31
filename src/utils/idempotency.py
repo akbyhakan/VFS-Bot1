@@ -3,7 +3,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable, Awaitable
 from dataclasses import dataclass
 import asyncio
 import logging
@@ -72,7 +72,7 @@ class IdempotencyStore:
             logger.debug(f"Idempotency stored for key: {key[:16]}...")
 
     async def check_and_set(
-        self, operation: str, params: Dict[str, Any], execute_fn
+        self, operation: str, params: Dict[str, Any], execute_fn: Callable[[], Awaitable[Any]]
     ) -> tuple[Any, bool]:
         """
         Check for existing result, or execute and store.
