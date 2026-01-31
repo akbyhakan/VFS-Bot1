@@ -129,9 +129,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     def _handle_rate_limit_error(self, error: RateLimitError, request: Request) -> JSONResponse:
         """Handle rate limit errors."""
         client_host = request.client.host if request.client else "unknown"
-        logger.warning(
-            f"Rate limit exceeded for {client_host}", extra={"path": request.url.path}
-        )
+        logger.warning(f"Rate limit exceeded for {client_host}", extra={"path": request.url.path})
 
         headers = {}
         if error.wait_time:
