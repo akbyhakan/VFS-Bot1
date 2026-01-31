@@ -90,6 +90,7 @@ class TestDatabaseIntegration:
 
         # Try to get another connection with short timeout - should fail
         from src.core.exceptions import DatabasePoolTimeoutError
+
         with pytest.raises(DatabasePoolTimeoutError, match="Database connection pool exhausted"):
             async with integration_db.get_connection(timeout=0.5):
                 pass
