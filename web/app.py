@@ -74,6 +74,10 @@ def validate_cors_origins(origins_str: str) -> List[str]:
     # Parse origins first
     origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
 
+    # Fail-fast: Block wildcard in production BEFORE filtering
+    if env == "production" and "*" in origins:
+        raise ValueError("Wildcard CORS origin ('*') not allowed in production")
+
     # Production-specific validation
     if env not in {"development", "dev", "testing", "test", "local"}:
         # More precise localhost detection
@@ -95,10 +99,6 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
             if not origins:
                 logger.error("All CORS origins were insecure and removed. Using empty list.")
-
-    # Additional check: fail-fast if wildcard in production
-    if env == "production" and "*" in origins:
-        raise ValueError("Wildcard CORS origin ('*') not allowed in production")
 
     return origins
 

@@ -300,7 +300,7 @@ def audit(
                     resource_id = str(result["id"])
 
                 return result
-            except Exception as _e:
+            except Exception:
                 success = False
                 raise
             finally:

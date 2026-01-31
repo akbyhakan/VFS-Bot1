@@ -61,7 +61,7 @@ class TestDatabaseIntegration:
 
         async def long_running_query(delay: float) -> bool:
             """Hold a connection for specified delay."""
-            async with integration_db.get_connection(timeout=5.0) as _conn:
+            async with integration_db.get_connection(timeout=5.0):
                 await asyncio.sleep(delay)
                 return True
 
@@ -78,19 +78,30 @@ class TestDatabaseIntegration:
 
         async def hold_connection(duration: float) -> None:
             """Hold a connection for specified duration."""
-            async with integration_db.get_connection(timeout=5.0) as _conn:
+            async with integration_db.get_connection(timeout=5.0):
                 await asyncio.sleep(duration)
 
         # Fill the connection pool (default size is 10)
         hold_tasks = [hold_connection(2.0) for _ in range(10)]
 
-        # Start the holding tasks
-        asyncio.create_task(asyncio.gather(*hold_tasks))
+        # Start the holding tasks - gather returns a future, not a coroutine
+        gather_future = asyncio.gather(*hold_tasks)
         await asyncio.sleep(0.1)  # Give time for connections to be acquired
 
         # Try to get another connection with short timeout - should fail
-        with pytest.raises(RuntimeError, match="Database connection pool exhausted"):
+        from src.core.exceptions import DatabasePoolTimeoutError
+        with pytest.raises(DatabasePoolTimeoutError, match="Database connection pool exhausted"):
             async with integration_db.get_connection(timeout=0.5):
+                pass
+
+        # Clean up: wait for holding tasks to complete or cancel them
+        try:
+            await asyncio.wait_for(gather_future, timeout=3.0)
+        except asyncio.TimeoutError:
+            gather_future.cancel()
+            try:
+                await gather_future
+            except asyncio.CancelledError:
                 pass
 
     @pytest.mark.asyncio

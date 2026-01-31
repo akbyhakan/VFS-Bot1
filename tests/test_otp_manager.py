@@ -215,8 +215,8 @@ class TestSessionRegistry:
     def test_get_all_sessions(self):
         """Test getting all active sessions."""
         registry = SessionRegistry()
-        _session_id1 = registry.register(target_email="test1@example.com")
-        _session_id2 = registry.register(target_email="test2@example.com")
+        registry.register(target_email="test1@example.com")
+        registry.register(target_email="test2@example.com")
 
         sessions = registry.get_all_sessions()
         assert len(sessions) == 2
@@ -361,7 +361,7 @@ class TestOTPManagerIntegration:
         with patch("src.services.otp_manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
-            _session_id = manager.register_session(phone_number="+905551234567")
+            manager.register_session(phone_number="+905551234567")
             otp = manager.process_sms_webhook("+905551234567", "Your code is 123456")
 
             assert otp == "123456"
@@ -473,7 +473,7 @@ class TestIMAPListener:
             session_registry=registry,
         )
 
-        _mail = listener._connect_imap()
+        listener._connect_imap()
 
         mock_imap_class.assert_called_once_with("outlook.office365.com", 993)
         mock_mail.login.assert_called_once_with("test@example.com", "password")

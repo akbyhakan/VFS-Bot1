@@ -151,7 +151,6 @@ async def try_selectors(
     """
     from ..core.exceptions import SelectorNotFoundError
 
-    _last_error = None
     for selector in selectors:
         try:
             element = page.locator(selector)
@@ -172,8 +171,7 @@ async def try_selectors(
                 await element.wait_for(state="hidden", timeout=timeout)
                 return True
 
-        except Exception as e:
-            _last_error = e
+        except Exception:
             continue
 
     # No selector worked
@@ -275,7 +273,6 @@ class AppointmentBookingService:
         from ..core.exceptions import SelectorNotFoundError
 
         selectors = resolve_selector(selector_key)
-        _last_error = None
 
         for selector in selectors:
             try:
@@ -291,7 +288,6 @@ class AppointmentBookingService:
                 return  # Success
 
             except Exception as e:
-                _last_error = e
                 logger.debug(f"Selector '{selector}' failed: {e}, trying next...")
                 continue
 

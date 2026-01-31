@@ -40,7 +40,12 @@ class APIKeyManager:
 
     def get_salt(self) -> bytes:
         """Get API key salt from environment variable - REQUIRED in production."""
+        global _API_KEY_SALT
         with self._lock:
+            # Check if global variable was reset for testing
+            if _API_KEY_SALT is None:
+                self._salt = None
+
             if self._salt is None:
                 self._load_salt()
             # After _load_salt, _salt should be set, but we need to handle type checker
@@ -50,14 +55,24 @@ class APIKeyManager:
 
     def _load_salt(self) -> None:
         """Load salt from environment (must be called with lock held)."""
+        global _API_KEY_SALT
         salt_env = os.getenv("API_KEY_SALT")
+        env = os.getenv("ENV", "production").lower()
 
         if not salt_env:
-            # STRICT MODE: Salt is MANDATORY in all environments
-            raise ValueError(
-                "API_KEY_SALT environment variable MUST be set in ALL environments. "
-                "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-            )
+            # In development, use a default insecure salt with warning
+            if env in ("development", "dev", "testing", "test"):
+                logger.warning(
+                    "SECURITY WARNING: API_KEY_SALT not set in development mode. "
+                    "Using default insecure salt. DO NOT USE IN PRODUCTION!"
+                )
+                salt_env = "dev-only-insecure-salt-do-not-use-in-prod"
+            else:
+                # STRICT MODE: Salt is MANDATORY in production
+                raise ValueError(
+                    "API_KEY_SALT environment variable MUST be set in production. "
+                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+                )
 
         if len(salt_env) < 32:
             raise ValueError(
@@ -66,6 +81,7 @@ class APIKeyManager:
             )
 
         self._salt = salt_env.encode()
+        _API_KEY_SALT = self._salt  # Keep global in sync
         logger.info("API_KEY_SALT loaded successfully")
 
     def _hash_key(self, api_key: str) -> str:

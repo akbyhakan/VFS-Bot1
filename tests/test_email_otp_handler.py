@@ -337,8 +337,6 @@ class TestEmailOTPHandler:
         """Test thread-safe operations."""
         handler = EmailOTPHandler(email="test@vizecep.com", app_password="test-password")
 
-        _results = []
-
         def add_to_cache(email_suffix):
             for i in range(10):
                 entry = EmailOTPEntry(

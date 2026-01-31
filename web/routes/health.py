@@ -355,7 +355,7 @@ async def check_notification_health() -> Dict[str, Any]:
 
         # Check if notification service can be initialized
         # We don't actually send a notification, just check the service is available
-        _notifier = NotificationService()
+        NotificationService()
 
         # Basic health check - service is available
         return {

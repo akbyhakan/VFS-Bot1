@@ -312,7 +312,7 @@ class TestProxyDatabase:
             assert stats["inactive"] == 0
 
             # Add proxies
-            _proxy1_id = await db.add_proxy(
+            await db.add_proxy(
                 server="proxy1.example.com", port=8080, username="user1", password="pass1"
             )
             proxy2_id = await db.add_proxy(

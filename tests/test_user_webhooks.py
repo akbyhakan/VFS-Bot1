@@ -120,7 +120,7 @@ async def test_get_user_by_invalid_token(db):
 async def test_webhook_cascade_delete(db, test_user):
     """Test that webhook is deleted when user is deleted."""
     # Create webhook
-    _token = await db.create_user_webhook(test_user)
+    await db.create_user_webhook(test_user)
 
     # Verify webhook exists
     webhook = await db.get_user_webhook(test_user)

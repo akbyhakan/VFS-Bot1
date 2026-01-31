@@ -41,11 +41,11 @@ async def test_connection_pool_timeout(tmp_path):
         assert db._available_connections.qsize() == 2
 
         # Acquire connections
-        async with db.get_connection() as _conn1:
+        async with db.get_connection():
             # Pool should have 1 available
             assert db._available_connections.qsize() == 1
 
-            async with db.get_connection() as _conn2:
+            async with db.get_connection():
                 # Pool should be empty
                 assert db._available_connections.qsize() == 0
 

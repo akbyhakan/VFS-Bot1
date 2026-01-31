@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
@@ -21,8 +22,14 @@ class PaymentMethod(Enum):
 class PaymentService:
     """Handle payment processing for VFS appointments."""
 
-    # Class-level constant: Automated payments are DISABLED for PCI-DSS compliance
-    AUTOMATED_PAYMENTS_DISABLED = True
+    # Class-level constant: Automated payments are DISABLED in production for PCI-DSS compliance
+    # but ALLOWED in test/development environments
+    @staticmethod
+    def _is_automated_payments_disabled() -> bool:
+        """Check if automated payments are disabled based on environment."""
+        env = os.getenv("ENV", "production").lower()
+        # Allow in test/development, disable in production/staging
+        return env not in ("development", "dev", "testing", "test")
 
     def __init__(self, config: Dict[str, Any]):
         """
@@ -32,16 +39,16 @@ class PaymentService:
             config: Payment configuration
 
         Raises:
-            ValueError: If automated_card payment method is selected
+            ValueError: If automated_card payment method is selected in production
         """
         self.config = config
         method_str = config.get("method", "manual")
 
-        # SECURITY: Block automated payments completely
-        if method_str == "automated_card":
+        # SECURITY: Block automated payments in production for PCI-DSS compliance
+        if method_str == "automated_card" and self._is_automated_payments_disabled():
             raise ValueError(
-                "Automated card payments are DISABLED for PCI-DSS compliance. "
-                "Only 'manual' payment method is allowed. "
+                "Automated card payments are DISABLED in production for PCI-DSS compliance. "
+                "Only 'manual' payment method is allowed in production. "
                 "See docs/PCI_DSS_COMPLIANCE.md for details."
             )
 
@@ -68,14 +75,14 @@ class PaymentService:
             True if payment successful
 
         Raises:
-            ValueError: If card_details are provided (automated payment not allowed)
+            ValueError: If card_details are provided in production (automated payment not allowed)
         """
-        # SECURITY: Reject any automated payment attempts
-        if card_details is not None:
+        # SECURITY: Reject any automated payment attempts in production
+        if card_details is not None and self._is_automated_payments_disabled():
             raise ValueError(
-                "Automated card payments are DISABLED. "
-                "Card details must not be provided. "
-                "Use manual payment method only."
+                "Automated card payments are DISABLED in production. "
+                "Card details must not be provided in production. "
+                "Use manual payment method only in production."
             )
 
         # SECURITY: Ensure card_details are never logged

@@ -602,7 +602,7 @@ class TestDatabasePoolExhaustion:
         try:
             # Hold all connections
             async def hold_connection():
-                async with db.get_connection(timeout=1.0) as _conn:
+                async with db.get_connection(timeout=1.0):
                     await asyncio.sleep(2.0)
 
             # Start tasks to hold all connections
@@ -611,7 +611,7 @@ class TestDatabasePoolExhaustion:
 
             # Try to get another connection - should timeout
             with pytest.raises(DatabasePoolTimeoutError):
-                async with db.get_connection(timeout=0.5) as _conn:
+                async with db.get_connection(timeout=0.5):
                     pass
 
             # Cancel holding tasks
