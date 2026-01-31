@@ -4,7 +4,9 @@ import pytest
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
-from web.app import app, bot_state, metrics, check_database_health, increment_metric
+from web.app import app
+from web.dependencies import bot_state, metrics
+from web.routes.health import check_database_health, increment_metric
 
 
 @pytest.fixture
