@@ -88,7 +88,7 @@ class AuthService:
                 safe_error = str(e)
                 if password and password in safe_error:
                     safe_error = safe_error.replace(password, "[REDACTED]")
-                
+
                 # Capture error with sanitized message
                 await self.error_capture.capture(
                     page,

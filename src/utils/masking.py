@@ -7,30 +7,30 @@ from typing import Any, Dict, List, Set
 def mask_email(email: str) -> str:
     """
     Mask email address for logging purposes.
-    
+
     Example: user@example.com -> u***@e***.com
-    
+
     Args:
         email: Email address to mask
-    
+
     Returns:
         Masked email address
     """
     if not email or "@" not in email:
         return "***"
-    
+
     parts = email.split("@")
     if len(parts) != 2:
         return "***"
-    
+
     local, domain = parts
-    
+
     # Mask local part: keep first character
     if len(local) > 0:
         masked_local = local[0] + "***"
     else:
         masked_local = "***"
-    
+
     # Mask domain: keep first character before dot
     domain_parts = domain.split(".")
     if len(domain_parts) >= 2:
@@ -38,25 +38,25 @@ def mask_email(email: str) -> str:
         masked_domain += "." + ".".join(domain_parts[1:])
     else:
         masked_domain = "***"
-    
+
     return f"{masked_local}@{masked_domain}"
 
 
 def mask_phone(phone: str) -> str:
     """
     Mask phone number for logging purposes.
-    
+
     Example: +905551234567 -> +***4567
-    
+
     Args:
         phone: Phone number to mask
-    
+
     Returns:
         Masked phone number
     """
     if not phone or len(phone) < 4:
         return "***"
-    
+
     # Keep country code (if starts with +) and last 4 digits
     if phone.startswith("+"):
         # Find where country code ends (varies: +1, +44, +971, etc.)
@@ -70,10 +70,10 @@ def mask_phone(phone: str) -> str:
 def mask_password(_password: str) -> str:
     """
     Completely mask password.
-    
+
     Args:
         _password: Password to mask (unused, parameter for API consistency)
-    
+
     Returns:
         Masked password (always ******** - 8 asterisks)
     """
@@ -83,12 +83,12 @@ def mask_password(_password: str) -> str:
 def mask_card_number(card_number: str) -> str:
     """
     Mask credit card number showing only last 4 digits.
-    
+
     Example: 1234567890123456 -> ************3456
-    
+
     Args:
         card_number: Credit card number to mask
-    
+
     Returns:
         Masked card number showing only last 4 digits
     """
@@ -100,10 +100,10 @@ def mask_card_number(card_number: str) -> str:
 def mask_otp(otp: str) -> str:
     """
     Mask OTP code completely.
-    
+
     Args:
         otp: OTP code to mask
-    
+
     Returns:
         Completely masked OTP (all asterisks)
     """
@@ -115,65 +115,70 @@ def mask_otp(otp: str) -> str:
 def mask_expiry_date(month: str, year: str) -> str:
     """
     Mask credit card expiry date.
-    
+
     Args:
         month: Expiry month (MM)
         year: Expiry year (YYYY or YY)
-    
+
     Returns:
         Masked expiry date (e.g., "**/****")
     """
     # Validate inputs
     if not month or not year:
         return "**/**"
-    
+
     # Determine year format based on length
     try:
         year_mask = "****" if len(year) == 4 else "**"
     except (TypeError, AttributeError):
         year_mask = "**"
-    
+
     return f"**/{year_mask}"
 
 
 def mask_cvv(cvv: str) -> str:
     """
     Mask CVV code completely.
-    
+
     Args:
         cvv: CVV code to mask
-    
+
     Returns:
         Completely masked CVV (always "***")
     """
     return "***"
 
 
-def mask_sensitive_dict(
-    data: Dict[str, Any],
-    sensitive_keys: Set[str] = None
-) -> Dict[str, Any]:
+def mask_sensitive_dict(data: Dict[str, Any], sensitive_keys: Set[str] = None) -> Dict[str, Any]:
     """
     Mask sensitive values in a dictionary for logging.
-    
+
     Default sensitive keys: password, cvv, card_number, api_key, secret, token
-    
+
     Args:
         data: Dictionary with potentially sensitive data
         sensitive_keys: Set of keys to mask (uses defaults if None)
-    
+
     Returns:
         New dictionary with masked sensitive values
     """
     if sensitive_keys is None:
         sensitive_keys = {
-            "password", "cvv", "card_number", "api_key", "secret", 
-            "token", "access_token", "refresh_token", "encryption_key",
-            "otp", "otp_code"
+            "password",
+            "cvv",
+            "card_number",
+            "api_key",
+            "secret",
+            "token",
+            "access_token",
+            "refresh_token",
+            "encryption_key",
+            "otp",
+            "otp_code",
         }
-    
+
     masked_data = {}
-    
+
     for key, value in data.items():
         if key.lower() in sensitive_keys:
             # Completely mask sensitive fields
@@ -181,7 +186,9 @@ def mask_sensitive_dict(
         elif key.lower() == "email" and isinstance(value, str):
             # Mask email addresses
             masked_data[key] = mask_email(value)
-        elif key.lower() in {"phone", "mobile", "mobile_number", "phone_number"} and isinstance(value, str):
+        elif key.lower() in {"phone", "mobile", "mobile_number", "phone_number"} and isinstance(
+            value, str
+        ):
             # Mask phone numbers
             masked_data[key] = mask_phone(value)
         elif isinstance(value, dict):
@@ -195,17 +202,17 @@ def mask_sensitive_dict(
             ]
         else:
             masked_data[key] = value
-    
+
     return masked_data
 
 
 def safe_log_user(user_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
     Prepare user dictionary for safe logging by masking sensitive fields.
-    
+
     Args:
         user_dict: User dictionary from database
-    
+
     Returns:
         Dictionary safe for logging
     """

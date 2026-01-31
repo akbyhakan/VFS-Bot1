@@ -46,7 +46,10 @@ class CaptchaError(VFSBotError):
     """Captcha verification failed."""
 
     def __init__(
-        self, message: str = "Captcha verification failed", recoverable: bool = True, details: Optional[Dict[str, Any]] = None
+        self,
+        message: str = "Captcha verification failed",
+        recoverable: bool = True,
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, recoverable, details)
 
@@ -70,7 +73,10 @@ class BookingError(VFSBotError):
     """Appointment booking failed."""
 
     def __init__(
-        self, message: str = "Booking failed", recoverable: bool = False, details: Optional[Dict[str, Any]] = None
+        self,
+        message: str = "Booking failed",
+        recoverable: bool = False,
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, recoverable, details)
 
@@ -79,7 +85,10 @@ class SessionError(VFSBotError):
     """Session-related error."""
 
     def __init__(
-        self, message: str = "Session error occurred", recoverable: bool = True, details: Optional[Dict[str, Any]] = None
+        self,
+        message: str = "Session error occurred",
+        recoverable: bool = True,
+        details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, recoverable, details)
 
@@ -121,7 +130,10 @@ class RateLimitError(VFSBotError):
     """Rate limit exceeded."""
 
     def __init__(
-        self, message: str = "Rate limit exceeded", wait_time: Optional[int] = None, retry_after: Optional[int] = None
+        self,
+        message: str = "Rate limit exceeded",
+        wait_time: Optional[int] = None,
+        retry_after: Optional[int] = None,
     ):
         """
         Initialize rate limit error.
@@ -134,7 +146,7 @@ class RateLimitError(VFSBotError):
         # Support both wait_time (old) and retry_after (new)
         self.retry_after = retry_after or wait_time
         self.wait_time = self.retry_after  # Keep for backward compatibility
-        
+
         if self.retry_after:
             message += f". Please wait {self.retry_after} seconds."
         super().__init__(message, recoverable=True, details={"retry_after": self.retry_after})
@@ -143,7 +155,9 @@ class RateLimitError(VFSBotError):
 class CircuitBreakerOpenError(VFSBotError):
     """Circuit breaker is open."""
 
-    def __init__(self, message: str = "Circuit breaker is open", reset_time: Optional[datetime] = None):
+    def __init__(
+        self, message: str = "Circuit breaker is open", reset_time: Optional[datetime] = None
+    ):
         """
         Initialize circuit breaker error.
 
@@ -160,18 +174,23 @@ class CircuitBreakerOpenError(VFSBotError):
 class ConfigurationError(VFSBotError):
     """Configuration error occurred."""
 
-    def __init__(self, message: str = "Configuration error", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str = "Configuration error",
+        recoverable: bool = False,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable, details)
 
 
 class MissingEnvironmentVariableError(ConfigurationError):
     """Raised when a required environment variable is missing."""
-    
+
     def __init__(self, variable_name: str):
         super().__init__(
             f"Required environment variable '{variable_name}' is not set",
             recoverable=False,
-            details={"variable": variable_name}
+            details={"variable": variable_name},
         )
 
 
@@ -179,32 +198,37 @@ class MissingEnvironmentVariableError(ConfigurationError):
 class AuthenticationError(VFSBotError):
     """Authentication failed."""
 
-    def __init__(self, message: str = "Authentication failed", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        message: str = "Authentication failed",
+        recoverable: bool = False,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable, details)
 
 
 class InvalidCredentialsError(AuthenticationError):
     """Raised when credentials are invalid."""
-    
+
     def __init__(self):
         super().__init__("Invalid username or password", recoverable=False)
 
 
 class TokenExpiredError(AuthenticationError):
     """Raised when JWT token has expired."""
-    
+
     def __init__(self):
         super().__init__("Authentication token has expired", recoverable=True)
 
 
 class InsufficientPermissionsError(AuthenticationError):
     """Raised when user lacks required permissions."""
-    
+
     def __init__(self, required_permission: str):
         super().__init__(
             f"Insufficient permissions. Required: {required_permission}",
             recoverable=False,
-            details={"required_permission": required_permission}
+            details={"required_permission": required_permission},
         )
 
 
@@ -251,7 +275,7 @@ class VFSSlotNotFoundError(VFSApiError):
 
 class SlotNotAvailableError(VFSSlotNotFoundError):
     """Alias for VFSSlotNotFoundError - No appointment slots available."""
-    
+
     pass
 
 
@@ -264,7 +288,7 @@ class VFSSessionExpiredError(VFSApiError):
 
 class CaptchaRequiredError(VFSApiError):
     """Raised when captcha solving is required."""
-    
+
     def __init__(self, message: str = "Captcha solving is required"):
         super().__init__(message, recoverable=True)
 
@@ -290,98 +314,115 @@ class ValidationError(VFSBotError):
 # Database Errors
 class DatabaseError(VFSBotError):
     """Base class for database-related errors."""
-    
-    def __init__(self, message: str = "Database error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self,
+        message: str = "Database error occurred",
+        recoverable: bool = False,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable, details)
 
 
 class DatabaseConnectionError(DatabaseError):
     """Raised when database connection fails."""
-    
+
     def __init__(self, message: str = "Failed to connect to database"):
         super().__init__(message, recoverable=True)
 
 
 class DatabaseNotConnectedError(DatabaseError):
     """Raised when operation attempted without connection."""
-    
+
     def __init__(self):
-        super().__init__("Database connection is not established. Call connect() first.", recoverable=False)
+        super().__init__(
+            "Database connection is not established. Call connect() first.", recoverable=False
+        )
 
 
 class DatabasePoolTimeoutError(DatabaseError):
     """Raised when database connection pool is exhausted and timeout occurs."""
-    
+
     def __init__(self, timeout: float, pool_size: int):
         super().__init__(
             f"Database connection pool exhausted after {timeout}s (pool size: {pool_size}). "
             "Consider increasing DB_POOL_SIZE or optimizing database queries.",
             recoverable=True,
-            details={"timeout": timeout, "pool_size": pool_size}
+            details={"timeout": timeout, "pool_size": pool_size},
         )
 
 
 class RecordNotFoundError(DatabaseError):
     """Raised when a database record is not found."""
-    
+
     def __init__(self, resource_type: str, resource_id: Any):
         super().__init__(
             f"{resource_type} with id '{resource_id}' not found",
             recoverable=False,
-            details={"resource_type": resource_type, "resource_id": resource_id}
+            details={"resource_type": resource_type, "resource_id": resource_id},
         )
 
 
 # Payment Errors
 class PaymentError(VFSBotError):
     """Base class for payment-related errors."""
-    
-    def __init__(self, message: str = "Payment error occurred", recoverable: bool = False, details: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self,
+        message: str = "Payment error occurred",
+        recoverable: bool = False,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable, details)
 
 
 class PaymentCardNotFoundError(PaymentError):
     """Raised when no payment card is saved."""
-    
+
     def __init__(self):
         super().__init__("No payment card found. Please save a card first.", recoverable=False)
 
 
 class PaymentProcessingError(PaymentError):
     """Raised when payment processing fails."""
-    
+
     def __init__(self, message: str = "Payment processing failed"):
         super().__init__(message, recoverable=True)
 
 
 class PaymentFailedError(PaymentProcessingError):
     """Alias for PaymentProcessingError - Payment transaction failed."""
-    
+
     pass
 
 
 # OTP Errors
 class OTPError(VFSBotError):
     """Base class for OTP-related errors."""
-    
-    def __init__(self, message: str = "OTP error occurred", recoverable: bool = True, details: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self,
+        message: str = "OTP error occurred",
+        recoverable: bool = True,
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable, details)
 
 
 class OTPTimeoutError(OTPError):
     """Raised when OTP is not received within timeout."""
-    
+
     def __init__(self, timeout_seconds: int):
         super().__init__(
             f"OTP not received within {timeout_seconds} seconds",
             recoverable=True,
-            details={"timeout_seconds": timeout_seconds}
+            details={"timeout_seconds": timeout_seconds},
         )
 
 
 class OTPInvalidError(OTPError):
     """Raised when OTP verification fails."""
-    
+
     def __init__(self, message: str = "OTP verification failed"):
         super().__init__(message, recoverable=True)
 
@@ -389,19 +430,23 @@ class OTPInvalidError(OTPError):
 # Session Security Errors
 class SessionBindingError(SessionError):
     """Session binding validation failed."""
-    
-    def __init__(self, message: str = "Session binding validation failed", details: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self,
+        message: str = "Session binding validation failed",
+        details: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, recoverable=False, details=details)
 
 
 # Shutdown Errors
 class ShutdownTimeoutError(VFSBotError):
     """Graceful shutdown timed out."""
-    
+
     def __init__(self, message: str = "Graceful shutdown timed out", timeout: Optional[int] = None):
         """
         Initialize shutdown timeout error.
-        
+
         Args:
             message: Error message
             timeout: Timeout value in seconds
@@ -414,17 +459,17 @@ class ShutdownTimeoutError(VFSBotError):
 # Batch Operation Errors
 class BatchOperationError(DatabaseError):
     """Batch database operation failed."""
-    
+
     def __init__(
-        self, 
+        self,
         message: str = "Batch operation failed",
         operation: Optional[str] = None,
         failed_count: Optional[int] = None,
-        total_count: Optional[int] = None
+        total_count: Optional[int] = None,
     ):
         """
         Initialize batch operation error.
-        
+
         Args:
             message: Error message
             operation: Name of the batch operation
@@ -434,7 +479,7 @@ class BatchOperationError(DatabaseError):
         self.operation = operation
         self.failed_count = failed_count
         self.total_count = total_count
-        
+
         details = {}
         if operation:
             details["operation"] = operation
@@ -443,5 +488,5 @@ class BatchOperationError(DatabaseError):
         if total_count is not None:
             details["total_count"] = total_count
             details["success_count"] = total_count - failed_count if failed_count else total_count
-        
+
         super().__init__(message, recoverable=False, details=details)

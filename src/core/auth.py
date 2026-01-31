@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class TokenBlacklist:
     """
     Thread-safe token blacklist for JWT revocation.
-    
+
     Uses OrderedDict for efficient memory management with automatic cleanup
     of expired tokens.
     """
@@ -48,10 +48,10 @@ class TokenBlacklist:
         with self._lock:
             # Remove expired tokens first
             self._cleanup_expired()
-            
+
             # Add new token
             self._blacklist[jti] = exp
-            
+
             # Enforce max size by removing oldest entries
             while len(self._blacklist) > self._max_size:
                 self._blacklist.popitem(last=False)
@@ -86,7 +86,7 @@ class TokenBlacklist:
     async def start_cleanup_task(self, interval: int = 300) -> None:
         """
         Start background cleanup task.
-        
+
         Args:
             interval: Cleanup interval in seconds (default: 5 minutes)
         """
@@ -107,11 +107,11 @@ class PersistentTokenBlacklist(TokenBlacklist):
     Database-backed token blacklist for production environments.
     Falls back to memory if database unavailable.
     """
-    
+
     def __init__(self, db: Optional[Any] = None, max_size: int = 10000):
         """
         Initialize persistent blacklist.
-        
+
         Args:
             db: Database instance (optional)
             max_size: Maximum size of in-memory cache
@@ -119,39 +119,39 @@ class PersistentTokenBlacklist(TokenBlacklist):
         super().__init__(max_size)
         self._db = db
         self._use_db = db is not None
-        
+
     async def add_async(self, jti: str, exp: datetime) -> None:
         """Add token to blacklist with database persistence."""
         # Always add to memory cache
         self.add(jti, exp)
-        
+
         # Persist to database if available
         if self._use_db and self._db:
             try:
                 await self._db.add_blacklisted_token(jti, exp)
             except Exception as e:
                 logger.warning(f"Failed to persist blacklisted token: {e}")
-    
+
     async def is_blacklisted_async(self, jti: str) -> bool:
         """Check if token is blacklisted (checks both memory and database)."""
         # Check memory first (fast path)
         if self.is_blacklisted(jti):
             return True
-        
+
         # Check database if available
         if self._use_db and self._db:
             try:
                 return await self._db.is_token_blacklisted(jti)
             except Exception as e:
                 logger.warning(f"Failed to check blacklist in database: {e}")
-        
+
         return False
-    
+
     async def load_from_database(self) -> int:
         """Load active blacklisted tokens from database on startup."""
         if not self._use_db or not self._db:
             return 0
-        
+
         try:
             tokens = await self._db.get_active_blacklisted_tokens()
             for jti, exp in tokens:
@@ -357,10 +357,10 @@ def create_access_token(
     key_version = os.getenv("API_KEY_VERSION", "1")
 
     to_encode = data.copy()
-    
+
     # Generate unique token ID for blacklist support
     jti = str(uuid.uuid4())
-    
+
     # Set timestamps
     iat = datetime.now(timezone.utc)
     if expires_delta:
@@ -369,13 +369,9 @@ def create_access_token(
         expire = iat + timedelta(hours=expire_hours)
 
     # Add standard and custom claims
-    to_encode.update({
-        "exp": expire,
-        "iat": iat,
-        "jti": jti,
-        "type": "access",
-        "key_version": key_version
-    })
+    to_encode.update(
+        {"exp": expire, "iat": iat, "jti": jti, "type": "access", "key_version": key_version}
+    )
 
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     if isinstance(encoded_jwt, bytes):
@@ -406,7 +402,7 @@ def verify_token(token: str) -> Dict[str, Any]:
     # Try current key first
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        
+
         # Check if token is blacklisted
         jti = payload.get("jti")
         if jti and get_token_blacklist().is_blacklisted(jti):
@@ -415,7 +411,7 @@ def verify_token(token: str) -> Dict[str, Any]:
                 detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         return cast(dict[str, Any], payload)
     except JWTError as primary_error:
         # Try previous key for rotation support
@@ -424,7 +420,7 @@ def verify_token(token: str) -> Dict[str, Any]:
             try:
                 logger.debug("Attempting token verification with previous key")
                 payload = jwt.decode(token, previous_key, algorithms=[algorithm])
-                
+
                 # Check blacklist for old key tokens too
                 jti = payload.get("jti")
                 if jti and get_token_blacklist().is_blacklisted(jti):
@@ -433,7 +429,7 @@ def verify_token(token: str) -> Dict[str, Any]:
                         detail="Token has been revoked",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
-                
+
                 logger.info("Token verified with previous key - consider refreshing token")
                 return cast(dict[str, Any], payload)
             except JWTError:
@@ -539,30 +535,32 @@ def revoke_token(token: str) -> bool:
         # Decode without verifying to get claims (we just need jti and exp)
         secret_key = get_secret_key()
         algorithm = get_algorithm()
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm], options={"verify_exp": False})
-        
+        payload = jwt.decode(
+            token, secret_key, algorithms=[algorithm], options={"verify_exp": False}
+        )
+
         jti = payload.get("jti")
         if not jti:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Token does not contain jti claim",
             )
-        
+
         exp = payload.get("exp")
         if not exp:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Token does not contain exp claim",
             )
-        
+
         # Convert exp to datetime
         exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
-        
+
         # Add to blacklist
         get_token_blacklist().add(jti, exp_dt)
         logger.info(f"Token {jti[:8]}... revoked successfully")
         return True
-        
+
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

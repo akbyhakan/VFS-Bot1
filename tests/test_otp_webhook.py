@@ -158,7 +158,7 @@ class TestOTPWebhookService:
         # At least one task should have received an OTP
         valid_otps = [r for r in results if isinstance(r, str) and r is not None]
         assert len(valid_otps) >= 1, "At least one wait operation should receive an OTP"
-        
+
         # All results should be either None or a valid OTP (no exceptions)
         for result in results:
             assert result is None or isinstance(result, str), f"Unexpected result: {result}"

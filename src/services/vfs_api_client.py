@@ -40,6 +40,7 @@ CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE", "https://d2ab400qlgxn2g.cloudfron
 
 class CentreInfo(TypedDict):
     """Type definition for VFS Centre information."""
+
     id: str
     name: str
     code: str
@@ -48,6 +49,7 @@ class CentreInfo(TypedDict):
 
 class VisaCategoryInfo(TypedDict):
     """Type definition for Visa Category information."""
+
     id: str
     name: str
     code: str
@@ -55,6 +57,7 @@ class VisaCategoryInfo(TypedDict):
 
 class VisaSubcategoryInfo(TypedDict):
     """Type definition for Visa Subcategory information."""
+
     id: str
     name: str
     code: str
@@ -63,6 +66,7 @@ class VisaSubcategoryInfo(TypedDict):
 
 class BookingResponse(TypedDict):
     """Type definition for Appointment Booking response."""
+
     bookingId: str
     status: str
     message: str
@@ -105,7 +109,7 @@ class VFSPasswordEncryption:
             ConfigurationError: If VFS_ENCRYPTION_KEY is not set or invalid
         """
         from ..utils.secure_memory import secure_zero_memory
-        
+
         key = os.getenv("VFS_ENCRYPTION_KEY")
         if not key:
             raise ConfigurationError(
@@ -238,7 +242,7 @@ class VFSApiClient:
                 keepalive_timeout=30,  # Keepalive timeout
                 enable_cleanup_closed=True,  # Enable closed connection cleanup
             )
-            
+
             timeout = aiohttp.ClientTimeout(
                 total=self.timeout,
                 connect=10,  # Connection timeout
@@ -500,12 +504,14 @@ class VFSApiClient:
                 else:
                     raise VFSAuthenticationError("Token refresh completed but session invalid")
             except asyncio.TimeoutError:
-                raise VFSAuthenticationError("Token refresh timeout - another refresh taking too long")
-        
+                raise VFSAuthenticationError(
+                    "Token refresh timeout - another refresh taking too long"
+                )
+
         # Clear the event to signal refresh in progress
         self._refresh_complete_event.clear()
         self._is_refreshing = True
-        
+
         try:
             if not self.session or not self.session.refresh_token:
                 raise VFSAuthenticationError(
@@ -532,10 +538,12 @@ class VFSApiClient:
                 )
                 expires_in = data.get("expiresIn", 60)
                 effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
-                
+
                 self.session.access_token = data["accessToken"]
                 self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
+                self.session.expires_at = datetime.now(timezone.utc) + timedelta(
+                    minutes=effective_expiry
+                )
 
                 # Update session headers with new auth token
                 self._session.headers.update(
@@ -543,7 +551,7 @@ class VFSApiClient:
                 )
 
                 logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
-        
+
         except Exception as e:
             logger.error(f"Token refresh failed: {e}")
             if isinstance(e, VFSAuthenticationError):

@@ -134,7 +134,7 @@ class BotMetrics:
 
         Args:
             updates: Dictionary of metric names to increment values
-        
+
         Example:
             await metrics.batch_update({
                 "total_checks": 1,

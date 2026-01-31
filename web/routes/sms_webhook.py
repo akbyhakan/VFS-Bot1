@@ -28,7 +28,7 @@ _webhook_manager: Optional[WebhookTokenManager] = None
 def set_webhook_manager(manager: WebhookTokenManager):
     """
     Set the global webhook token manager.
-    
+
     Args:
         manager: WebhookTokenManager instance
     """
@@ -40,10 +40,10 @@ def set_webhook_manager(manager: WebhookTokenManager):
 def get_webhook_manager() -> WebhookTokenManager:
     """
     Get the webhook token manager instance.
-    
+
     Returns:
         WebhookTokenManager instance
-        
+
     Raises:
         RuntimeError: If manager not initialized
     """
@@ -57,74 +57,72 @@ def get_webhook_manager() -> WebhookTokenManager:
 async def receive_sms(token: str, request: Request):
     """
     Receive SMS from SMS Forwarder app.
-    
+
     Supported payload formats:
     1. SMS Forwarder (Android):
        {"message": "OTP: 123456", "from": "+905551234567", "timestamp": "..."}
-    
+
     2. Alternative format:
        {"text": "OTP: 123456", "phone": "+905551234567"}
-    
+
     3. Simple format:
        {"body": "OTP: 123456"}
-    
+
     Args:
         token: Unique webhook token
         request: FastAPI request object
-        
+
     Returns:
         Success response with extracted OTP
-        
+
     Raises:
         HTTPException: On validation or processing errors
     """
     try:
         # Get webhook manager
         manager = get_webhook_manager()
-        
+
         # Parse request body
         try:
             body = await request.json()
         except Exception as e:
             logger.error(f"Failed to parse request body: {e}")
             raise HTTPException(status_code=400, detail="Invalid JSON payload")
-        
+
         # Validate token and process SMS
         try:
             otp = manager.process_sms(token, body)
         except ValueError as e:
             logger.warning(f"Token validation failed: {e}")
             raise HTTPException(status_code=404, detail=str(e))
-        
+
         # Get webhook token details
         webhook_token = manager.validate_token(token)
-        
+
         if not otp:
-            logger.warning(
-                f"No OTP extracted from SMS for account {webhook_token.account_id}"
-            )
+            logger.warning(f"No OTP extracted from SMS for account {webhook_token.account_id}")
             # Still return success as SMS was received
             return {
                 "status": "received",
                 "account_id": webhook_token.account_id,
                 "otp_extracted": False,
-                "message": "SMS received but no OTP found"
+                "message": "SMS received but no OTP found",
             }
-        
+
         # If there's a linked session, notify it via OTP manager
         if webhook_token.session_id:
             try:
                 # Import here to avoid circular dependency
                 from src.services.otp_webhook import get_otp_service
+
                 otp_service = get_otp_service()
-                
+
                 # Process OTP for the session
                 # Use account_id as identifier to route to correct session
                 await otp_service.process_appointment_sms(
-                    phone_number=f"webhook_{webhook_token.account_id}",
-                    message=otp
+                    phone_number=f"webhook_{webhook_token.account_id}", message=otp
                 )
-                
+
                 logger.info(
                     f"OTP delivered to session {webhook_token.session_id} "
                     f"for account {webhook_token.account_id}"
@@ -132,15 +130,15 @@ async def receive_sms(token: str, request: Request):
             except Exception as e:
                 logger.error(f"Failed to notify session: {e}", exc_info=True)
                 # Continue anyway as we successfully extracted OTP
-        
+
         return {
             "status": "success",
             "account_id": webhook_token.account_id,
             "otp_extracted": True,
             "session_id": webhook_token.session_id,
-            "message": "OTP received and processed"
+            "message": "OTP received and processed",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -153,25 +151,25 @@ async def receive_sms(token: str, request: Request):
 async def webhook_status(token: str, request: Request):
     """
     Check webhook token status.
-    
+
     Args:
         token: Webhook token
         request: FastAPI request object
-        
+
     Returns:
         Token status information
-        
+
     Raises:
         HTTPException: If token is invalid
     """
     try:
         manager = get_webhook_manager()
-        
+
         webhook_token = manager.validate_token(token)
-        
+
         if not webhook_token:
             raise HTTPException(status_code=404, detail="Invalid or inactive token")
-        
+
         return {
             "status": "active",
             "account_id": webhook_token.account_id,
@@ -179,14 +177,12 @@ async def webhook_status(token: str, request: Request):
             "webhook_url": webhook_token.webhook_url,
             "created_at": webhook_token.created_at.isoformat(),
             "last_used_at": (
-                webhook_token.last_used_at.isoformat()
-                if webhook_token.last_used_at
-                else None
+                webhook_token.last_used_at.isoformat() if webhook_token.last_used_at else None
             ),
             "session_linked": webhook_token.session_id is not None,
-            "session_id": webhook_token.session_id
+            "session_id": webhook_token.session_id,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -199,57 +195,56 @@ async def webhook_status(token: str, request: Request):
 async def test_webhook(token: str, request: Request):
     """
     Test webhook connection without processing OTP.
-    
+
     Useful for verifying webhook setup in SMS Forwarder app.
-    
+
     Args:
         token: Webhook token
         request: FastAPI request object
-        
+
     Returns:
         Test success response
-        
+
     Raises:
         HTTPException: If token is invalid
     """
     try:
         manager = get_webhook_manager()
-        
+
         webhook_token = manager.validate_token(token)
-        
+
         if not webhook_token:
             raise HTTPException(status_code=404, detail="Invalid or inactive token")
-        
+
         # Parse body to validate format
         try:
             body = await request.json()
             # Try to parse as SMS payload
             sms_payload = SMSPayloadParser.parse(body)
-            
+
             return {
                 "status": "test_success",
                 "message": "Webhook is correctly configured",
                 "account_id": webhook_token.account_id,
-                "parsed_message": sms_payload.message[:30] + "..." if len(sms_payload.message) > 30 else sms_payload.message,  # Truncate for safety
+                "parsed_message": sms_payload.message[:30] + "..."
+                if len(sms_payload.message) > 30
+                else sms_payload.message,  # Truncate for safety
                 "parsed_phone": sms_payload.phone_number,
-                "note": "This is a test - OTP was NOT processed"
+                "note": "This is a test - OTP was NOT processed",
             }
-            
+
         except ValueError as e:
             # Payload parsing failed
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid SMS payload format: {str(e)}"
-            )
+            raise HTTPException(status_code=400, detail=f"Invalid SMS payload format: {str(e)}")
         except Exception:
             # No body provided or invalid JSON - that's OK for test
             return {
                 "status": "test_success",
                 "message": "Webhook is reachable",
                 "account_id": webhook_token.account_id,
-                "note": "Send a proper SMS payload to verify format"
+                "note": "Send a proper SMS payload to verify format",
             }
-        
+
     except HTTPException:
         raise
     except Exception as e:

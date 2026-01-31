@@ -13,13 +13,13 @@ from loguru import logger
 
 # Context variable for request correlation ID
 correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
-    'correlation_id', default=None
+    "correlation_id", default=None
 )
 
 
 class CorrelationIdFilter(logging.Filter):
     """Add correlation ID to log records."""
-    
+
     def filter(self, record):
         record.correlation_id = correlation_id_ctx.get() or "N/A"
         return True

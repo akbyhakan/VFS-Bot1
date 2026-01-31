@@ -347,7 +347,9 @@ class VFSBot:
                     if details:
                         # Fill details and book
                         if await self.fill_personal_details(page, details):
-                            reference = await self.book_appointment(page, slot["date"], slot["time"])
+                            reference = await self.book_appointment(
+                                page, slot["date"], slot["time"]
+                            )
                             if reference:
                                 await self.db.add_appointment(
                                     user["id"],
@@ -404,7 +406,9 @@ class VFSBot:
                 )
 
             if details.get("date_of_birth"):
-                await smart_fill(page, "input#dob", details.get("date_of_birth", ""), self.human_sim)
+                await smart_fill(
+                    page, "input#dob", details.get("date_of_birth", ""), self.human_sim
+                )
 
             logger.info("Personal details filled successfully")
             return True

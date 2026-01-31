@@ -8,7 +8,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Context variable to store correlation ID for the current request
-correlation_id: ContextVar[str] = ContextVar('correlation_id', default='')
+correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
 
 
 class CorrelationMiddleware(BaseHTTPMiddleware):
@@ -26,7 +26,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
             HTTP response with correlation ID header
         """
         # Get or generate correlation ID
-        request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
 
         # Store in context variable for access in logs
         correlation_id.set(request_id)
@@ -35,7 +35,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Add correlation ID to response headers
-        response.headers['X-Request-ID'] = request_id
+        response.headers["X-Request-ID"] = request_id
 
         return response
 

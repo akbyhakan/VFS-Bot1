@@ -345,8 +345,7 @@ async def toggle_user_status(
 
 @router.post("/import")
 async def import_users_csv(
-    file: UploadFile = File(...),
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    file: UploadFile = File(...), token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
     Import users from CSV file - requires authentication.
@@ -364,7 +363,7 @@ async def import_users_csv(
     Raises:
         HTTPException: If file is not CSV or import fails
     """
-    if not file.filename or not file.filename.endswith('.csv'):
+    if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Sadece CSV dosyası kabul edilir")
 
     db = Database()
@@ -373,30 +372,41 @@ async def import_users_csv(
 
         # Read file content
         content = await file.read()
-        
+
         # Handle BOM (Byte Order Mark) for UTF-8
         try:
-            text = content.decode('utf-8-sig')
+            text = content.decode("utf-8-sig")
         except UnicodeDecodeError:
             try:
-                text = content.decode('latin-1')
+                text = content.decode("latin-1")
             except UnicodeDecodeError:
-                raise HTTPException(status_code=400, detail="Dosya kodlaması desteklenmiyor. UTF-8 veya Latin-1 kullanın.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Dosya kodlaması desteklenmiyor. UTF-8 veya Latin-1 kullanın.",
+                )
 
         # Parse CSV
         reader = csv.DictReader(io.StringIO(text))
-        
+
         # Validate headers
-        expected_headers = {'email', 'password', 'first_name', 'last_name', 'phone', 'centre', 'visa_category', 'visa_subcategory'}
+        expected_headers = {
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "phone",
+            "centre",
+            "visa_category",
+            "visa_subcategory",
+        }
         if reader.fieldnames is None:
             raise HTTPException(status_code=400, detail="CSV dosyası boş veya geçersiz")
-        
+
         actual_headers = set(reader.fieldnames)
         missing_headers = expected_headers - actual_headers
         if missing_headers:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Eksik CSV başlıkları: {', '.join(missing_headers)}"
+                status_code=400, detail=f"Eksik CSV başlıkları: {', '.join(missing_headers)}"
             )
 
         imported = 0
@@ -406,34 +416,36 @@ async def import_users_csv(
         for row_num, row in enumerate(reader, start=2):  # Start from 2 (1 is header)
             try:
                 # Validate required fields
-                if not row.get('email') or not row.get('password'):
+                if not row.get("email") or not row.get("password"):
                     errors.append(f"Satır {row_num}: E-posta ve şifre gerekli")
                     failed += 1
                     continue
 
                 # Create user record
                 user_id = await db.add_user(
-                    email=row['email'].strip(),
-                    password=row['password'].strip(),
-                    centre=row.get('centre', '').strip(),
-                    category=row.get('visa_category', '').strip(),
-                    subcategory=row.get('visa_subcategory', '').strip(),
+                    email=row["email"].strip(),
+                    password=row["password"].strip(),
+                    centre=row.get("centre", "").strip(),
+                    category=row.get("visa_category", "").strip(),
+                    subcategory=row.get("visa_subcategory", "").strip(),
                 )
 
                 # Add personal details
                 await db.add_personal_details(
                     user_id=user_id,
                     details={
-                        'first_name': row.get('first_name', '').strip(),
-                        'last_name': row.get('last_name', '').strip(),
-                        'email': row['email'].strip(),
-                        'mobile_number': row.get('phone', '').strip(),
-                        'passport_number': '',  # Empty for now
+                        "first_name": row.get("first_name", "").strip(),
+                        "last_name": row.get("last_name", "").strip(),
+                        "email": row["email"].strip(),
+                        "mobile_number": row.get("phone", "").strip(),
+                        "passport_number": "",  # Empty for now
                     },
                 )
 
                 imported += 1
-                logger.info(f"CSV Import: User created {row['email']} by {token_data.get('sub', 'unknown')}")
+                logger.info(
+                    f"CSV Import: User created {row['email']} by {token_data.get('sub', 'unknown')}"
+                )
 
             except ValidationError as e:
                 failed += 1
@@ -443,7 +455,9 @@ async def import_users_csv(
                 error_msg = str(e)
                 # Make error message more user-friendly
                 if "UNIQUE constraint failed" in error_msg:
-                    errors.append(f"Satır {row_num}: E-posta zaten kayıtlı ({row.get('email', 'N/A')})")
+                    errors.append(
+                        f"Satır {row_num}: E-posta zaten kayıtlı ({row.get('email', 'N/A')})"
+                    )
                 else:
                     errors.append(f"Satır {row_num}: {error_msg}")
 
@@ -456,7 +470,7 @@ async def import_users_csv(
             "imported": imported,
             "failed": failed,
             "errors": errors[:10],  # Return first 10 errors only
-            "message": f"{imported} kullanıcı eklendi, {failed} başarısız"
+            "message": f"{imported} kullanıcı eklendi, {failed} başarısız",
         }
 
     except HTTPException:

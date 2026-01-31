@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class OTPSource(Enum):
     """OTP source enumeration."""
+
     EMAIL = "email"
     SMS = "sms"
     MANUAL = "manual"
@@ -34,6 +35,7 @@ class OTPSource(Enum):
 
 class SessionState(Enum):
     """Bot session state enumeration."""
+
     ACTIVE = "active"
     WAITING_OTP = "waiting_otp"
     OTP_RECEIVED = "otp_received"
@@ -44,7 +46,7 @@ class SessionState(Enum):
 class OTPEntry:
     """
     Represents a received OTP code.
-    
+
     Attributes:
         code: The extracted OTP code (e.g., "123456")
         source: Source of the OTP (EMAIL, SMS, or MANUAL)
@@ -53,6 +55,7 @@ class OTPEntry:
         raw_data: Raw message content (truncated for storage)
         used: Whether the OTP has been consumed
     """
+
     code: str
     source: OTPSource
     target_identifier: str
@@ -65,7 +68,7 @@ class OTPEntry:
 class BotSession:
     """
     Represents a bot session waiting for OTP.
-    
+
     Attributes:
         session_id: Unique session identifier (UUID)
         target_email: Optional email address for email OTP delivery
@@ -77,6 +80,7 @@ class BotSession:
         otp_event: Threading event for OTP notification (auto-initialized)
         otp_code: Received OTP code (None until received)
     """
+
     session_id: str
     target_email: Optional[str] = None
     phone_number: Optional[str] = None
@@ -97,13 +101,14 @@ class BotSession:
 class IMAPConfig:
     """
     IMAP server configuration.
-    
+
     Attributes:
         host: IMAP server hostname (default: outlook.office365.com)
         port: IMAP server port (default: 993 for SSL)
         use_ssl: Whether to use SSL/TLS connection (default: True)
         folder: IMAP folder to monitor (default: INBOX)
     """
+
     host: str = "outlook.office365.com"
     port: int = 993
     use_ssl: bool = True
@@ -120,15 +125,15 @@ class HTMLTextExtractor(HTMLParser):
         self.in_style = False
 
     def handle_starttag(self, tag, attrs):
-        if tag.lower() == 'script':
+        if tag.lower() == "script":
             self.in_script = True
-        elif tag.lower() == 'style':
+        elif tag.lower() == "style":
             self.in_style = True
 
     def handle_endtag(self, tag):
-        if tag.lower() == 'script':
+        if tag.lower() == "script":
             self.in_script = False
-        elif tag.lower() == 'style':
+        elif tag.lower() == "style":
             self.in_style = False
 
     def handle_data(self, data):
@@ -136,7 +141,7 @@ class HTMLTextExtractor(HTMLParser):
             self.text.append(data)
 
     def get_text(self) -> str:
-        return ' '.join(self.text)
+        return " ".join(self.text)
 
 
 class OTPPatternMatcher:
@@ -211,7 +216,7 @@ class SessionRegistry:
         target_email: Optional[str] = None,
         phone_number: Optional[str] = None,
         country: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Register a new bot session.
@@ -226,13 +231,13 @@ class SessionRegistry:
             Session ID
         """
         session_id = str(uuid.uuid4())
-        
+
         session = BotSession(
             session_id=session_id,
             target_email=target_email.lower() if target_email else None,
             phone_number=phone_number,
             country=country,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         with self._lock:
@@ -242,7 +247,9 @@ class SessionRegistry:
             if phone_number:
                 self._phone_to_session[phone_number] = session_id
 
-        logger.info(f"Session registered: {session_id} (email={target_email}, phone={phone_number})")
+        logger.info(
+            f"Session registered: {session_id} (email={target_email}, phone={phone_number})"
+        )
         return session_id
 
     def unregister(self, session_id: str) -> bool:
@@ -365,11 +372,11 @@ class EmailProcessor:
         decoded_parts = []
         for part, encoding in decode_header(header_value):
             if isinstance(part, bytes):
-                decoded_parts.append(part.decode(encoding or 'utf-8', errors='ignore'))
+                decoded_parts.append(part.decode(encoding or "utf-8", errors="ignore"))
             else:
                 decoded_parts.append(part)
 
-        return ' '.join(decoded_parts)
+        return " ".join(decoded_parts)
 
     def _extract_target_email(self, msg: Message) -> Optional[str]:
         """
@@ -381,7 +388,7 @@ class EmailProcessor:
             value = msg.get(header)
             if value:
                 decoded = self._decode_header_value(value)
-                match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', decoded)
+                match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", decoded)
                 if match:
                     target = match.group(0).lower()
                     logger.debug(f"Target email found in {header}: {target}")
@@ -409,20 +416,20 @@ class EmailProcessor:
 
                 if content_type == "text/plain":
                     try:
-                        body = part.get_payload(decode=True).decode(errors='ignore')
+                        body = part.get_payload(decode=True).decode(errors="ignore")
                         break
                     except Exception as e:
                         logger.warning(f"Failed to decode plain text: {e}")
 
                 elif content_type == "text/html" and not body:
                     try:
-                        html = part.get_payload(decode=True).decode(errors='ignore')
+                        html = part.get_payload(decode=True).decode(errors="ignore")
                         body = self._extract_text_from_html(html)
                     except Exception as e:
                         logger.warning(f"Failed to decode HTML: {e}")
         else:
             try:
-                body = msg.get_payload(decode=True).decode(errors='ignore')
+                body = msg.get_payload(decode=True).decode(errors="ignore")
                 if msg.get_content_type() == "text/html":
                     body = self._extract_text_from_html(body)
             except Exception as e:
@@ -467,7 +474,7 @@ class EmailProcessor:
             source=OTPSource.EMAIL,
             target_identifier=target_email,
             received_at=received_at,
-            raw_data=full_text[:500]
+            raw_data=full_text[:500],
         )
 
 
@@ -482,7 +489,7 @@ class IMAPListener:
         email_processor: EmailProcessor,
         session_registry: SessionRegistry,
         poll_interval: int = 3,
-        max_email_age_seconds: int = 300
+        max_email_age_seconds: int = 300,
     ):
         """
         Initialize IMAP listener.
@@ -584,9 +591,9 @@ class IMAPListener:
         # Search for recent unread emails
         since_time = datetime.now(timezone.utc) - timedelta(seconds=self._max_email_age)
         since_date = since_time.strftime("%d-%b-%Y")
-        
+
         try:
-            _, message_numbers = mail.search(None, f'(UNSEEN SINCE {since_date})')
+            _, message_numbers = mail.search(None, f"(UNSEEN SINCE {since_date})")
         except Exception as e:
             logger.error(f"IMAP search failed: {e}")
             raise
@@ -603,7 +610,7 @@ class IMAPListener:
                     self._processed_uids.add(num)
 
                 # Fetch and process email
-                _, msg_data = mail.fetch(num, '(RFC822)')
+                _, msg_data = mail.fetch(num, "(RFC822)")
                 email_body = msg_data[0][1]
                 msg = message_from_bytes(email_body)
 
@@ -625,11 +632,7 @@ class IMAPListener:
 class SMSWebhookHandler:
     """Handle SMS OTP webhooks and route to sessions."""
 
-    def __init__(
-        self,
-        session_registry: SessionRegistry,
-        pattern_matcher: OTPPatternMatcher
-    ):
+    def __init__(self, session_registry: SessionRegistry, pattern_matcher: OTPPatternMatcher):
         """
         Initialize SMS webhook handler.
 
@@ -735,11 +738,10 @@ class OTPManager:
             imap_config=self._imap_config,
             email_processor=self._email_processor,
             session_registry=self._session_registry,
-            max_email_age_seconds=max_email_age_seconds
+            max_email_age_seconds=max_email_age_seconds,
         )
         self._sms_handler = SMSWebhookHandler(
-            session_registry=self._session_registry,
-            pattern_matcher=self._pattern_matcher
+            session_registry=self._session_registry, pattern_matcher=self._pattern_matcher
         )
 
         # Cleanup thread
@@ -793,7 +795,7 @@ class OTPManager:
         target_email: Optional[str] = None,
         phone_number: Optional[str] = None,
         country: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Register a new bot session.
@@ -811,10 +813,7 @@ class OTPManager:
             raise ValueError("At least one of target_email or phone_number must be provided")
 
         return self._session_registry.register(
-            target_email=target_email,
-            phone_number=phone_number,
-            country=country,
-            metadata=metadata
+            target_email=target_email, phone_number=phone_number, country=country, metadata=metadata
         )
 
     def unregister_session(self, session_id: str):
@@ -826,11 +825,7 @@ class OTPManager:
         """
         self._session_registry.unregister(session_id)
 
-    def wait_for_otp(
-        self,
-        session_id: str,
-        timeout: Optional[int] = None
-    ) -> Optional[str]:
+    def wait_for_otp(self, session_id: str, timeout: Optional[int] = None) -> Optional[str]:
         """
         Wait for OTP code (from email or SMS).
 
@@ -845,7 +840,7 @@ class OTPManager:
         """
         timeout = timeout or self._otp_timeout
         session = self._session_registry.get_session(session_id)
-        
+
         if not session:
             logger.error(f"Session not found: {session_id}")
             return None
@@ -901,7 +896,7 @@ class OTPManager:
         target_email: str,
         country: Optional[str] = None,
         visa_type: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """
         Register a VFS account with automatic webhook URL generation.
@@ -934,16 +929,17 @@ class OTPManager:
         from src.models.vfs_account import VFSAccountManager
 
         # Initialize account manager if not already done
-        if not hasattr(self, '_account_manager'):
+        if not hasattr(self, "_account_manager"):
             from src.services.webhook_token_manager import WebhookTokenManager
             import os
-            
-            base_url = os.getenv('WEBHOOK_BASE_URL', 'https://api.vizecep.com')
+
+            base_url = os.getenv("WEBHOOK_BASE_URL", "https://api.vizecep.com")
             webhook_manager = WebhookTokenManager(base_url=base_url)
             self._account_manager = VFSAccountManager(webhook_token_manager=webhook_manager)
-            
+
             # Set webhook manager for routes
             from web.routes.sms_webhook import set_webhook_manager
+
             set_webhook_manager(webhook_manager)
 
         # Register account
@@ -954,10 +950,12 @@ class OTPManager:
             target_email=target_email,
             country=country,
             visa_type=visa_type,
-            metadata=metadata
+            metadata=metadata,
         )
 
-        logger.info(f"Registered VFS account {account.account_id} with webhook URL: {account.webhook_url}")
+        logger.info(
+            f"Registered VFS account {account.account_id} with webhook URL: {account.webhook_url}"
+        )
         return account
 
     def get_webhook_url(self, account_id: str) -> str:
@@ -973,7 +971,7 @@ class OTPManager:
         Raises:
             ValueError: If account not found
         """
-        if not hasattr(self, '_account_manager'):
+        if not hasattr(self, "_account_manager"):
             raise ValueError("No accounts registered. Call register_account first.")
 
         account = self._account_manager.get_account(account_id)
@@ -999,14 +997,14 @@ class OTPManager:
         Raises:
             ValueError: If token is invalid or payload parsing fails
         """
-        if not hasattr(self, '_account_manager'):
+        if not hasattr(self, "_account_manager"):
             raise ValueError("Webhook system not initialized. Call register_account first.")
 
         webhook_manager = self._account_manager.webhook_manager
-        
+
         # Process SMS and extract OTP
         otp = webhook_manager.process_sms(token, payload)
-        
+
         if otp:
             # Get webhook token to find account
             webhook_token = webhook_manager.validate_token(token)
@@ -1014,14 +1012,10 @@ class OTPManager:
                 # Notify the session
                 self._session_registry.notify_otp(webhook_token.session_id, otp)
                 logger.info(f"OTP from webhook delivered to session {webhook_token.session_id}")
-        
+
         return otp
 
-    def start_session(
-        self,
-        account_id: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> str:
+    def start_session(self, account_id: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """
         Start a bot session for a VFS account.
 
@@ -1038,7 +1032,7 @@ class OTPManager:
         Raises:
             ValueError: If account not found
         """
-        if not hasattr(self, '_account_manager'):
+        if not hasattr(self, "_account_manager"):
             raise ValueError("No accounts registered. Call register_account first.")
 
         account = self._account_manager.get_account(account_id)
@@ -1050,7 +1044,7 @@ class OTPManager:
             target_email=account.target_email,
             phone_number=account.phone_number,
             country=account.country,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Link webhook token to session
@@ -1072,7 +1066,7 @@ class OTPManager:
             session_id: Session ID
         """
         session = self._session_registry.get_session(session_id)
-        if session and hasattr(self, '_account_manager'):
+        if session and hasattr(self, "_account_manager"):
             # Find webhook token linked to this session
             webhook_manager = self._account_manager.webhook_manager
             for webhook_token in webhook_manager.list_tokens():
@@ -1092,7 +1086,7 @@ class OTPManager:
             Dictionary with health metrics
         """
         sessions = self._session_registry.get_all_sessions()
-        
+
         return {
             "status": "healthy" if self._running else "stopped",
             "active_sessions": len(sessions),
@@ -1101,8 +1095,8 @@ class OTPManager:
             "imap_config": {
                 "host": self._imap_config.host,
                 "port": self._imap_config.port,
-                "folder": self._imap_config.folder
-            }
+                "folder": self._imap_config.folder,
+            },
         }
 
 
@@ -1112,9 +1106,7 @@ _manager_lock = threading.Lock()
 
 
 def get_otp_manager(
-    email: Optional[str] = None,
-    app_password: Optional[str] = None,
-    **kwargs
+    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs
 ) -> OTPManager:
     """
     Get global OTPManager instance (thread-safe singleton).

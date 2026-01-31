@@ -11,8 +11,7 @@ class VFSSettings(BaseSettings):
     # VFS Credentials
     vfs_email: str = Field(default="", description="VFS Global account email")
     vfs_password: SecretStr = Field(
-        default=SecretStr(""),
-        description="VFS Global account password"
+        default=SecretStr(""), description="VFS Global account password"
     )
 
     # Encryption Keys
@@ -21,105 +20,70 @@ class VFSSettings(BaseSettings):
         description=(
             "Base64-encoded Fernet encryption key for password encryption. "
             "Must be 32 bytes (44 characters when base64 encoded). "
-            "Generate with: python -c \"from cryptography.fernet import Fernet; "
-            "print(Fernet.generate_key().decode())\""
-        )
+            'Generate with: python -c "from cryptography.fernet import Fernet; '
+            'print(Fernet.generate_key().decode())"'
+        ),
     )
     vfs_encryption_key: Optional[SecretStr] = Field(
-        default=None,
-        description="Optional separate encryption key for VFS-specific data"
+        default=None, description="Optional separate encryption key for VFS-specific data"
     )
 
     # API Security
     api_secret_key: SecretStr = Field(
-        ...,  # Required field
-        description="Secret key for API authentication (JWT signing)"
+        ..., description="Secret key for API authentication (JWT signing)"  # Required field
     )
     api_key_salt: Optional[SecretStr] = Field(
-        default=None,
-        description="Optional salt for API key generation"
+        default=None, description="Optional salt for API key generation"
     )
 
     # Environment
     env: str = Field(
-        default="production",
-        description="Environment (production, development, testing)"
+        default="production", description="Environment (production, development, testing)"
     )
 
     # Database Configuration
-    database_path: str = Field(
-        default="vfs_bot.db",
-        description="Path to SQLite database file"
-    )
-    db_pool_size: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Database connection pool size"
-    )
+    database_path: str = Field(default="vfs_bot.db", description="Path to SQLite database file")
+    db_pool_size: int = Field(default=10, ge=1, le=100, description="Database connection pool size")
     db_connection_timeout: float = Field(
-        default=30.0,
-        gt=0,
-        description="Database connection timeout in seconds"
+        default=30.0, gt=0, description="Database connection timeout in seconds"
     )
 
     # CORS Configuration
     cors_allowed_origins: str = Field(
         default="http://localhost:3000,http://localhost:5173",
-        description="Comma-separated list of allowed CORS origins"
+        description="Comma-separated list of allowed CORS origins",
     )
 
     # Rate Limiting
-    rate_limit_enabled: bool = Field(
-        default=True,
-        description="Enable rate limiting"
-    )
+    rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     rate_limit_requests: int = Field(
-        default=60,
-        ge=1,
-        description="Maximum requests per time window"
+        default=60, ge=1, description="Maximum requests per time window"
     )
     rate_limit_window: int = Field(
-        default=60,
-        ge=1,
-        description="Rate limit time window in seconds"
+        default=60, ge=1, description="Rate limit time window in seconds"
     )
 
     # Webhook Configuration
     sms_webhook_secret: Optional[SecretStr] = Field(
-        default=None,
-        description="Secret for SMS webhook signature verification"
+        default=None, description="Secret for SMS webhook signature verification"
     )
 
     # Monitoring
-    metrics_enabled: bool = Field(
-        default=True,
-        description="Enable Prometheus metrics"
-    )
+    metrics_enabled: bool = Field(default=True, description="Enable Prometheus metrics")
 
     # Logging
     log_level: str = Field(
-        default="INFO",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+        default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
     # VFS Bot Configuration
     check_interval: int = Field(
-        default=60,
-        ge=10,
-        le=3600,
-        description="Interval between slot checks in seconds"
+        default=60, ge=10, le=3600, description="Interval between slot checks in seconds"
     )
     max_retries: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum retry attempts for operations"
+        default=3, ge=1, le=10, description="Maximum retry attempts for operations"
     )
-    headless: bool = Field(
-        default=True,
-        description="Run browser in headless mode"
-    )
+    headless: bool = Field(default=True, description="Run browser in headless mode")
 
     # Notification Settings
     telegram_enabled: bool = Field(default=False, description="Enable Telegram notifications")
@@ -141,50 +105,51 @@ class VFSSettings(BaseSettings):
         extra="ignore",  # Ignore extra fields in .env
     )
 
-    @field_validator('vfs_email')
+    @field_validator("vfs_email")
     @classmethod
     def validate_email(cls, v: str) -> str:
         """Validate email format."""
-        if v and '@' not in v:
-            raise ValueError('Invalid email format')
+        if v and "@" not in v:
+            raise ValueError("Invalid email format")
         return v
 
-    @field_validator('api_secret_key')
+    @field_validator("api_secret_key")
     @classmethod
     def validate_secret_key_length(cls, v: SecretStr) -> SecretStr:
         """Validate API secret key length."""
         secret_value = v.get_secret_value()
         if len(secret_value) < 64:
-            raise ValueError('API_SECRET_KEY must be at least 64 characters')
+            raise ValueError("API_SECRET_KEY must be at least 64 characters")
         return v
 
-    @field_validator('encryption_key')
+    @field_validator("encryption_key")
     @classmethod
     def validate_encryption_key_format(cls, v: SecretStr) -> SecretStr:
         """Validate encryption key format (should be base64)."""
         import base64
+
         try:
             key_value = v.get_secret_value()
             # Try to decode as base64
             base64.b64decode(key_value)
             return v
         except Exception:
-            raise ValueError('ENCRYPTION_KEY must be a valid base64-encoded string')
+            raise ValueError("ENCRYPTION_KEY must be a valid base64-encoded string")
 
-    @field_validator('env')
+    @field_validator("env")
     @classmethod
     def validate_env(cls, v: str) -> str:
         """Validate environment value."""
-        allowed = ['production', 'development', 'testing', 'staging']
+        allowed = ["production", "development", "testing", "staging"]
         if v.lower() not in allowed:
             raise ValueError(f'ENV must be one of: {", ".join(allowed)}')
         return v.lower()
 
-    @field_validator('log_level')
+    @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
         """Validate log level."""
-        allowed = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         v_upper = v.upper()
         if v_upper not in allowed:
             raise ValueError(f'LOG_LEVEL must be one of: {", ".join(allowed)}')
@@ -197,7 +162,7 @@ class VFSSettings(BaseSettings):
         Returns:
             List of allowed origin URLs
         """
-        return [origin.strip() for origin in self.cors_allowed_origins.split(',')]
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",")]
 
     def is_development(self) -> bool:
         """
@@ -206,7 +171,7 @@ class VFSSettings(BaseSettings):
         Returns:
             True if development environment
         """
-        return self.env == 'development'
+        return self.env == "development"
 
     def is_production(self) -> bool:
         """
@@ -215,7 +180,7 @@ class VFSSettings(BaseSettings):
         Returns:
             True if production environment
         """
-        return self.env == 'production'
+        return self.env == "production"
 
 
 # Singleton instance

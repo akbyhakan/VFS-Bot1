@@ -17,6 +17,7 @@ from typing import Optional
 from src.core.config_loader import load_config
 from src.models.database import Database
 from src.services.notification import NotificationService
+
 # VFSBot now uses modular structure (bot_service provides backward compatibility)
 # New code should use: from src.services.bot import VFSBot
 from src.services.bot_service import VFSBot
@@ -78,11 +79,15 @@ def validate_environment():
     # Validate minimum lengths
     api_secret = os.getenv("API_SECRET_KEY", "")
     if api_secret and len(api_secret) < 64:
-        raise ConfigurationError(f"API_SECRET_KEY must be at least 64 characters (current: {len(api_secret)})")
+        raise ConfigurationError(
+            f"API_SECRET_KEY must be at least 64 characters (current: {len(api_secret)})"
+        )
 
     api_key_salt = os.getenv("API_KEY_SALT", "")
     if api_key_salt and len(api_key_salt) < 32:
-        raise ConfigurationError(f"API_KEY_SALT must be at least 32 characters (current: {len(api_key_salt)})")
+        raise ConfigurationError(
+            f"API_KEY_SALT must be at least 32 characters (current: {len(api_key_salt)})"
+        )
 
     logger.info("✅ Environment validation passed")
 
@@ -122,7 +127,9 @@ async def graceful_shutdown(
         timeout: Maximum time to wait for tasks to complete (default: 30 seconds)
     """
     logger = logging.getLogger(__name__)
-    logger.info(f"Initiating graceful shutdown{f' (signal: {signal_name})' if signal_name else ''}...")
+    logger.info(
+        f"Initiating graceful shutdown{f' (signal: {signal_name})' if signal_name else ''}..."
+    )
 
     # Get all tasks except current
     tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
@@ -135,7 +142,9 @@ async def graceful_shutdown(
 
         # Wait for all tasks to be cancelled with timeout
         try:
-            results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=timeout)
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True), timeout=timeout
+            )
 
             # Log any exceptions
             for task, result in zip(tasks, results):
@@ -143,7 +152,9 @@ async def graceful_shutdown(
                     task_name = task.get_name() if hasattr(task, "get_name") else "unknown"
                     logger.error(f"Task {task_name} raised exception during shutdown: {result}")
         except asyncio.TimeoutError:
-            logger.warning(f"Graceful shutdown timed out after {timeout}s, some tasks may not have completed")
+            logger.warning(
+                f"Graceful shutdown timed out after {timeout}s, some tasks may not have completed"
+            )
 
     logger.info("Graceful shutdown complete")
 
@@ -151,16 +162,16 @@ async def graceful_shutdown(
 async def force_cleanup_critical_resources(db: Optional[Database] = None) -> None:
     """
     Force cleanup of critical resources during shutdown timeout.
-    
+
     This is a last-resort cleanup when graceful shutdown times out.
     Only cleans up the most critical resources to prevent data loss.
-    
+
     Args:
         db: Database instance to close
     """
     logger = logging.getLogger(__name__)
     logger.warning("Forcing cleanup of critical resources...")
-    
+
     try:
         # Close database connection to prevent corruption
         if db is not None:
@@ -168,7 +179,7 @@ async def force_cleanup_critical_resources(db: Optional[Database] = None) -> Non
             logger.info("Database connection closed")
     except Exception as e:
         logger.error(f"Error during forced database cleanup: {e}")
-    
+
     logger.info("Critical resource cleanup complete")
 
 
@@ -176,29 +187,28 @@ async def graceful_shutdown_with_timeout(
     loop: asyncio.AbstractEventLoop,
     db: Optional[Database] = None,
     notifier: Optional[NotificationService] = None,
-    signal_name: Optional[str] = None
+    signal_name: Optional[str] = None,
 ) -> None:
     """
     Graceful shutdown with timeout protection.
-    
+
     If graceful shutdown doesn't complete within SHUTDOWN_TIMEOUT seconds,
     forces cleanup of critical resources and exits.
-    
+
     Args:
         loop: Event loop
         db: Database instance
         notifier: Notification service instance
         signal_name: Name of signal that triggered shutdown (optional)
-    
+
     Raises:
         ShutdownTimeoutError: If graceful shutdown times out (raised but caught)
     """
     logger = logging.getLogger(__name__)
-    
+
     try:
         await asyncio.wait_for(
-            graceful_shutdown(loop, signal_name, timeout=SHUTDOWN_TIMEOUT),
-            timeout=SHUTDOWN_TIMEOUT
+            graceful_shutdown(loop, signal_name, timeout=SHUTDOWN_TIMEOUT), timeout=SHUTDOWN_TIMEOUT
         )
     except asyncio.TimeoutError:
         logger.error(
@@ -207,8 +217,7 @@ async def graceful_shutdown_with_timeout(
         await force_cleanup_critical_resources(db)
         # Raise error to signal abnormal shutdown
         raise ShutdownTimeoutError(
-            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s",
-            timeout=SHUTDOWN_TIMEOUT
+            f"Graceful shutdown timed out after {SHUTDOWN_TIMEOUT}s", timeout=SHUTDOWN_TIMEOUT
         )
 
 
@@ -287,7 +296,9 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         set_shutdown_event(None)
 
 
-async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Database] = None) -> None:
+async def run_web_mode(
+    config: dict, start_cleanup: bool = True, db: Optional[Database] = None
+) -> None:
     """
     Run bot with web dashboard.
 
@@ -315,7 +326,9 @@ async def run_web_mode(config: dict, start_cleanup: bool = True, db: Optional[Da
         # Start cleanup service in background (only if requested)
         if start_cleanup:
             cleanup_service = CleanupService(db, cleanup_days=30)
-            cleanup_task = asyncio.create_task(cleanup_service.run_periodic_cleanup(interval_hours=24))
+            cleanup_task = asyncio.create_task(
+                cleanup_service.run_periodic_cleanup(interval_hours=24)
+            )
             logger.info("Cleanup service started (runs every 24 hours)")
 
         # Run uvicorn server

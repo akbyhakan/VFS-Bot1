@@ -501,86 +501,86 @@ async def test_cleanup_completed_requests(test_db):
 @pytest.mark.asyncio
 class TestTokenBlacklist:
     """Tests for token blacklist operations."""
-    
+
     async def test_add_blacklisted_token(self, test_db):
         """Test adding a token to the blacklist."""
         from datetime import datetime, timezone, timedelta
-        
+
         jti = "test-jti-12345"
         exp = datetime.now(timezone.utc) + timedelta(hours=1)
-        
+
         await test_db.add_blacklisted_token(jti, exp)
-        
+
         # Verify it's blacklisted
         is_blacklisted = await test_db.is_token_blacklisted(jti)
         assert is_blacklisted is True
-    
+
     async def test_is_token_blacklisted_returns_false_for_non_blacklisted(self, test_db):
         """Test that non-blacklisted tokens return False."""
         is_blacklisted = await test_db.is_token_blacklisted("non-existent-jti")
         assert is_blacklisted is False
-    
+
     async def test_expired_token_not_blacklisted(self, test_db):
         """Test that expired tokens are not considered blacklisted."""
         from datetime import datetime, timezone, timedelta
-        
+
         jti = "expired-jti"
         exp = datetime.now(timezone.utc) - timedelta(hours=1)  # Already expired
-        
+
         await test_db.add_blacklisted_token(jti, exp)
-        
+
         # Should not be blacklisted because it's expired
         is_blacklisted = await test_db.is_token_blacklisted(jti)
         assert is_blacklisted is False
-    
+
     async def test_get_active_blacklisted_tokens(self, test_db):
         """Test getting all active blacklisted tokens."""
         from datetime import datetime, timezone, timedelta
-        
+
         # Add active tokens
         active_tokens = []
         for i in range(3):
             jti = f"active-jti-{i}"
-            exp = datetime.now(timezone.utc) + timedelta(hours=i+1)
+            exp = datetime.now(timezone.utc) + timedelta(hours=i + 1)
             await test_db.add_blacklisted_token(jti, exp)
             active_tokens.append(jti)
-        
+
         # Add expired token
         expired_jti = "expired-jti"
         expired_exp = datetime.now(timezone.utc) - timedelta(hours=1)
         await test_db.add_blacklisted_token(expired_jti, expired_exp)
-        
+
         # Get active tokens
         tokens = await test_db.get_active_blacklisted_tokens()
-        
+
         # Should only get active tokens
         assert len(tokens) == 3
         token_jtis = [t[0] for t in tokens]
         for jti in active_tokens:
             assert jti in token_jtis
         assert expired_jti not in token_jtis
-    
+
     async def test_cleanup_expired_tokens(self, test_db):
         """Test cleanup of expired tokens."""
         from datetime import datetime, timezone, timedelta
-        
+
         # Add expired tokens
         for i in range(3):
             jti = f"expired-jti-{i}"
-            exp = datetime.now(timezone.utc) - timedelta(hours=i+1)
+            exp = datetime.now(timezone.utc) - timedelta(hours=i + 1)
             await test_db.add_blacklisted_token(jti, exp)
-        
+
         # Add active token
         active_jti = "active-jti"
         active_exp = datetime.now(timezone.utc) + timedelta(hours=1)
         await test_db.add_blacklisted_token(active_jti, active_exp)
-        
+
         # Run cleanup
         deleted_count = await test_db.cleanup_expired_tokens()
-        
+
         # Should have deleted 3 expired tokens
         assert deleted_count == 3
-        
+
         # Active token should still be there
         is_blacklisted = await test_db.is_token_blacklisted(active_jti)
         assert is_blacklisted is True
@@ -589,40 +589,40 @@ class TestTokenBlacklist:
 @pytest.mark.asyncio
 class TestDatabasePoolExhaustion:
     """Tests for database connection pool exhaustion."""
-    
+
     async def test_connection_pool_exhaustion(self, tmp_path, unique_encryption_key):
         """Test behavior when connection pool is exhausted."""
         import asyncio
         from src.core.exceptions import DatabasePoolTimeoutError
-        
+
         db_path = tmp_path / "test_pool.db"
         db = Database(str(db_path), pool_size=2)
         await db.connect()
-        
+
         try:
             # Hold all connections
             async def hold_connection():
                 async with db.get_connection(timeout=1.0) as conn:
                     await asyncio.sleep(2.0)
-            
+
             # Start tasks to hold all connections
             tasks = [asyncio.create_task(hold_connection()) for _ in range(2)]
             await asyncio.sleep(0.1)  # Let tasks acquire connections
-            
+
             # Try to get another connection - should timeout
             with pytest.raises(DatabasePoolTimeoutError):
                 async with db.get_connection(timeout=0.5) as conn:
                     pass
-            
+
             # Cancel holding tasks
             for task in tasks:
                 task.cancel()
-            
+
             # Wait for cancellation
             await asyncio.gather(*tasks, return_exceptions=True)
         finally:
             await db.close()
-    
+
     async def test_health_check_passes(self, test_db):
         """Test that health check passes on healthy database."""
         result = await test_db.health_check()

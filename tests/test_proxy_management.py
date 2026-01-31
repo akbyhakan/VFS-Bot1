@@ -446,6 +446,7 @@ class TestProxyEncryption:
         # Ensure ENCRYPTION_KEY is set
         if not os.getenv("ENCRYPTION_KEY"):
             from cryptography.fernet import Fernet
+
             os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
         original_password = "test_secret_password_123"
@@ -467,6 +468,7 @@ class TestProxyEncryption:
         # Ensure ENCRYPTION_KEY is set
         if not os.getenv("ENCRYPTION_KEY"):
             from cryptography.fernet import Fernet
+
             os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
         password = "test_password"

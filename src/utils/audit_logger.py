@@ -57,7 +57,7 @@ class AuditEntry:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
-    
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict())
@@ -98,7 +98,7 @@ class AuditLogger:
         self.log_file = Path(log_file) if log_file else None
         self._buffer = []
         self._buffer_size = 100
-        
+
         # Create log file directory if needed
         if self.log_file:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
@@ -279,18 +279,18 @@ def audit(action: AuditAction, resource_type: Optional[str] = None):
             user_id = kwargs.get("user_id")
             username = kwargs.get("username")
             ip_address = kwargs.get("ip_address")
-            
+
             audit_logger = get_audit_logger()
             success = True
             resource_id = None
-            
+
             try:
                 result = await func(*args, **kwargs)
-                
+
                 # Try to extract resource_id from result if it's a dict
                 if isinstance(result, dict) and "id" in result:
                     resource_id = str(result["id"])
-                
+
                 return result
             except Exception as e:
                 success = False
@@ -307,20 +307,20 @@ def audit(action: AuditAction, resource_type: Optional[str] = None):
                     resource_id=resource_id,
                     details={"function": func.__name__},
                 )
-        
+
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             # For synchronous functions, we can't easily do async audit logging
             # So we just call the function normally
             logger.warning(f"Audit decorator used on sync function {func.__name__}")
             return func(*args, **kwargs)
-        
+
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper
-    
+
     return decorator
 
 

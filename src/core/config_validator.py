@@ -173,21 +173,21 @@ class ConfigValidator:
     def validate_environment_variables(cls) -> List[str]:
         """
         Validate critical environment variables for security and correctness.
-        
+
         This includes:
         - ADMIN_PASSWORD format check (bcrypt in production)
         - API_SECRET_KEY minimum length
         - ENCRYPTION_KEY format check
-        
+
         Returns:
             List of validation error messages (empty if all pass)
         """
         import os
         import re
-        
+
         errors = []
         env = os.getenv("ENV", "production").lower()
-        
+
         # 1. ADMIN_PASSWORD validation
         admin_password = os.getenv("ADMIN_PASSWORD")
         if admin_password and env == "production":
@@ -195,10 +195,10 @@ class ConfigValidator:
             if not admin_password.startswith(bcrypt_prefixes):
                 errors.append(
                     "ADMIN_PASSWORD must be bcrypt hashed in production. "
-                    "Use: python -c \"from passlib.context import CryptContext; "
+                    'Use: python -c "from passlib.context import CryptContext; '
                     "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
                 )
-        
+
         # 2. API_SECRET_KEY validation
         api_secret = os.getenv("API_SECRET_KEY")
         if api_secret:
@@ -207,14 +207,14 @@ class ConfigValidator:
                 errors.append(
                     f"API_SECRET_KEY must be at least {MIN_API_KEY_LENGTH} characters for security. Current length: {len(api_secret)}"
                 )
-        
+
         # 3. ENCRYPTION_KEY validation
         encryption_key = os.getenv("ENCRYPTION_KEY")
         if encryption_key:
             try:
                 import base64
                 from binascii import Error as Base64Error
-                
+
                 if len(encryption_key) != 44:
                     errors.append(
                         "ENCRYPTION_KEY must be 44 characters (Fernet key format). "
@@ -226,12 +226,14 @@ class ConfigValidator:
                     try:
                         decoded = base64.urlsafe_b64decode(encryption_key.encode())
                         if len(decoded) != 32:
-                            errors.append("ENCRYPTION_KEY is not a valid Fernet key (must decode to 32 bytes)")
+                            errors.append(
+                                "ENCRYPTION_KEY is not a valid Fernet key (must decode to 32 bytes)"
+                            )
                     except (Base64Error, ValueError) as e:
                         errors.append(f"ENCRYPTION_KEY is not valid base64: {e}")
             except Exception as e:
                 errors.append(f"ENCRYPTION_KEY validation failed: {e}")
-        
+
         # 4. CAPTCHA_API_KEY validation
         captcha_key = os.getenv("CAPTCHA_API_KEY")
         if captcha_key:
@@ -240,5 +242,5 @@ class ConfigValidator:
                 errors.append(
                     f"CAPTCHA_API_KEY should be at least {MIN_CAPTCHA_KEY_LENGTH} characters. Current length: {len(captcha_key)}"
                 )
-        
+
         return errors

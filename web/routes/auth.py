@@ -84,7 +84,7 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
             'Use: python -c "from passlib.context import CryptContext; '
             "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
         )
-    
+
     password_valid = verify_password(credentials.password, admin_password)
 
     if not password_valid:

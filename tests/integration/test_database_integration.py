@@ -41,7 +41,7 @@ class TestDatabaseIntegration:
                 password=f"password{i}",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
 
         # Create 10 users concurrently
@@ -103,7 +103,7 @@ class TestDatabaseIntegration:
             password="testpass",
             centre="Istanbul",
             category="Schengen",
-            subcategory="Tourism"
+            subcategory="Tourism",
         )
 
         async def read_user() -> dict:
@@ -119,8 +119,7 @@ class TestDatabaseIntegration:
             async with integration_db.get_connection() as conn:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
-                        "UPDATE users SET centre = ? WHERE id = ?",
-                        ("Ankara", user_id)
+                        "UPDATE users SET centre = ? WHERE id = ?", ("Ankara", user_id)
                     )
                     await conn.commit()
 
@@ -147,7 +146,7 @@ class TestDatabaseIntegration:
                 password=f"pass{i}",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
             user_ids.append(user_id)
 
@@ -163,8 +162,8 @@ class TestDatabaseIntegration:
                     "first_name": f"User{user_id}",
                     "last_name": "Test",
                     "passport_number": f"PASS{user_id:04d}",
-                    "email": f"concurrent{user_id}@test.com"
-                }
+                    "email": f"concurrent{user_id}@test.com",
+                },
             )
 
         # Mix reads and writes concurrently
@@ -197,7 +196,7 @@ class TestDatabaseIntegration:
                 password=f"pass{i}",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
             user_ids.append(user_id)
 
@@ -207,8 +206,8 @@ class TestDatabaseIntegration:
                     "first_name": f"User{i}",
                     "last_name": "Batch",
                     "passport_number": f"BATCH{i:04d}",
-                    "email": f"batch{i}@test.com"
-                }
+                    "email": f"batch{i}@test.com",
+                },
             )
 
         # Retrieve all at once (batch operation)
@@ -228,97 +227,93 @@ class TestDatabaseContextManager:
     async def test_database_context_manager(self, tmp_path):
         """Test database async context manager."""
         from src.models.database import Database
-        
+
         db_path = tmp_path / "context_test.db"
-        
+
         async with Database(str(db_path)) as db:
             assert db.conn is not None
-            
+
             # Should be able to use the database
             user_id = await db.add_user(
                 email="context@test.com",
                 password="password",
                 centre="Istanbul",
                 category="Schengen",
-                subcategory="Tourism"
+                subcategory="Tourism",
             )
             assert user_id > 0
-        
+
         # After context exit, connection should be closed
         # (We can't easily test this without accessing internals)
-    
+
     @pytest.mark.asyncio
     async def test_database_context_manager_exception_handling(self, tmp_path):
         """Test that database context manager closes on exception."""
         from src.models.database import Database
-        
+
         db_path = tmp_path / "context_exception_test.db"
-        
+
         with pytest.raises(RuntimeError):
             async with Database(str(db_path)) as db:
                 assert db.conn is not None
                 # Force an exception
                 raise RuntimeError("Test exception")
-        
+
         # Context manager should have closed the connection despite exception
 
 
 class TestCentreFetcherCache:
     """Tests for CentreFetcher cache functionality."""
-    
+
     @pytest.mark.asyncio
     async def test_cache_background_cleanup(self):
         """Test background cache cleanup removes expired entries."""
         from src.services.centre_fetcher import CentreFetcher
         import asyncio
-        
+
         fetcher = CentreFetcher(
             base_url="https://example.com",
             country="tur",
             mission="deu",
             language="tr",
-            cache_ttl=1  # 1 second TTL for testing
+            cache_ttl=1,  # 1 second TTL for testing
         )
-        
+
         # Manually add a cache entry
         fetcher._set_cache("test_key", "test_value", ttl=1)
-        
+
         # Verify entry exists
         assert fetcher._get_from_cache("test_key") == "test_value"
-        
+
         # Wait for expiry
         await asyncio.sleep(1.5)
-        
+
         # Clean up expired entries
         removed = await fetcher.cleanup_expired()
-        
+
         # Should have removed the expired entry
         assert removed == 1
         assert fetcher._get_from_cache("test_key") is None
-    
+
     @pytest.mark.asyncio
     async def test_periodic_cleanup_task(self):
         """Test that periodic cleanup task can be started."""
         from src.services.centre_fetcher import CentreFetcher
         import asyncio
-        
+
         fetcher = CentreFetcher(
-            base_url="https://example.com",
-            country="tur",
-            mission="deu",
-            language="tr",
-            cache_ttl=1
+            base_url="https://example.com", country="tur", mission="deu", language="tr", cache_ttl=1
         )
-        
+
         # Start periodic cleanup (short interval for testing)
         cleanup_task = await fetcher.start_periodic_cleanup(interval_seconds=0.5)
-        
+
         # Verify task is running
         assert not cleanup_task.done()
-        
+
         # Cancel the task
         cleanup_task.cancel()
-        
+
         try:
             await cleanup_task
         except asyncio.CancelledError:
@@ -327,29 +322,28 @@ class TestCentreFetcherCache:
 
 class TestDatabaseIdleConnectionCleanup:
     """Tests for database idle connection cleanup."""
-    
+
     @pytest.mark.asyncio
     async def test_cleanup_idle_connections(self, tmp_path):
         """Test idle connection cleanup."""
         from src.models.database import Database
         import time
-        
+
         db_path = tmp_path / "idle_test.db"
         db = Database(str(db_path), pool_size=3)
         await db.connect()
-        
+
         try:
             # Get a connection and mark it with last_used time
             async with db.get_connection() as conn:
                 # Simulate usage
                 conn._last_used = time.time() - 400  # 400 seconds ago
-            
+
             # Clean up connections idle for more than 300 seconds
             cleaned = await db.cleanup_idle_connections(idle_timeout_seconds=300)
-            
+
             # Should have cleaned at least one connection
             # (Note: This test is approximate as connection pooling behavior may vary)
             assert cleaned >= 0  # May or may not clean depending on implementation
         finally:
             await db.close()
-

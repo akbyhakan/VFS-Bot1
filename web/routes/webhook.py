@@ -20,10 +20,7 @@ PHONE_FIELD_PRIORITY = ["phone", "from", "phone_number"]
 
 
 @router.post("/users/{user_id}/create")
-async def create_webhook(
-    user_id: int,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
-):
+async def create_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Create a unique webhook for a user.
 
@@ -62,7 +59,7 @@ async def create_webhook(
         return {
             "token": token,
             "webhook_url": webhook_url,
-            "message": "Webhook created successfully"
+            "message": "Webhook created successfully",
         }
 
     except HTTPException:
@@ -77,10 +74,7 @@ async def create_webhook(
 
 
 @router.get("/users/{user_id}")
-async def get_webhook(
-    user_id: int,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
-):
+async def get_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Get webhook information for a user.
 
@@ -96,7 +90,7 @@ async def get_webhook(
         await db.connect()
 
         webhook = await db.get_user_webhook(user_id)
-        
+
         if not webhook:
             return {"webhook": None}
 
@@ -104,7 +98,7 @@ async def get_webhook(
             "webhook": {
                 "token": webhook["webhook_token"],
                 "webhook_url": f"/api/webhook/otp/{webhook['webhook_token']}",
-                "created_at": webhook["created_at"]
+                "created_at": webhook["created_at"],
             }
         }
 
@@ -116,10 +110,7 @@ async def get_webhook(
 
 
 @router.delete("/users/{user_id}")
-async def delete_webhook(
-    user_id: int,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
-):
+async def delete_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Delete a user's webhook.
 
@@ -138,7 +129,7 @@ async def delete_webhook(
         await db.connect()
 
         success = await db.delete_user_webhook(user_id)
-        
+
         if not success:
             raise HTTPException(status_code=404, detail="Webhook not found")
 
@@ -173,27 +164,21 @@ async def receive_otp(token: str, request: Request, body: dict):
     """
     # Get webhook secret from environment
     webhook_secret = os.getenv("WEBHOOK_SECRET", "")
-    
+
     # Verify webhook signature if secret is configured
     if webhook_secret:
         signature = request.headers.get("X-Webhook-Signature")
         if not signature:
             logger.warning(f"Webhook request without signature for token {token[:8]}...")
-            raise HTTPException(
-                status_code=401,
-                detail="Missing webhook signature"
-            )
-        
+            raise HTTPException(status_code=401, detail="Missing webhook signature")
+
         # Get raw body for signature verification
         raw_body = await request.body()
         if not verify_webhook_signature(raw_body, signature, webhook_secret):
             logger.error(f"Invalid webhook signature for token {token[:8]}...")
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid webhook signature"
-            )
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
         logger.debug(f"Webhook signature verified for token {token[:8]}...")
-    
+
     db = Database()
     try:
         await db.connect()
@@ -205,20 +190,21 @@ async def receive_otp(token: str, request: Request, body: dict):
 
         # Extract OTP from various possible fields (in priority order)
         otp_code = next((body.get(field) for field in OTP_FIELD_PRIORITY if body.get(field)), None)
-        phone_number = next((body.get(field) for field in PHONE_FIELD_PRIORITY if body.get(field)), "")
+        phone_number = next(
+            (body.get(field) for field in PHONE_FIELD_PRIORITY if body.get(field)), ""
+        )
 
         if not otp_code:
             raise HTTPException(status_code=400, detail="No OTP found in request body")
 
         # Get OTP service and process the SMS for this user
         otp_service = get_otp_service()
-        
+
         # Store OTP with user_id as identifier for lookup
         # Format: user_{user_id}_{phone_number} to ensure uniqueness per user
         phone_identifier = f"user_{user['id']}_{phone_number}"
         await otp_service.process_appointment_sms(
-            phone_number=phone_identifier,
-            message=str(otp_code)
+            phone_number=phone_identifier, message=str(otp_code)
         )
 
         logger.info(f"OTP received for user {user['id']} via webhook: {str(otp_code)[:2]}****")
@@ -226,7 +212,7 @@ async def receive_otp(token: str, request: Request, body: dict):
         return {
             "status": "received",
             "user_id": user["id"],
-            "message": "OTP processed successfully"
+            "message": "OTP processed successfully",
         }
 
     except HTTPException:

@@ -21,11 +21,11 @@ class CleanupService:
     """Service for cleaning up old completed appointment requests and screenshots."""
 
     def __init__(
-        self, 
-        db: "Database", 
+        self,
+        db: "Database",
         cleanup_days: int = 30,
         screenshot_cleanup_days: int = 7,
-        screenshot_dir: str = "screenshots"
+        screenshot_dir: str = "screenshots",
     ):
         """
         Initialize cleanup service.
@@ -66,32 +66,36 @@ class CleanupService:
         """
         try:
             if not self.screenshot_dir.exists():
-                logger.info(f"Screenshot directory {self.screenshot_dir} does not exist, skipping cleanup")
+                logger.info(
+                    f"Screenshot directory {self.screenshot_dir} does not exist, skipping cleanup"
+                )
                 return 0
-            
+
             deleted_count = 0
             cutoff_time = datetime.now().timestamp() - (self.screenshot_cleanup_days * 24 * 3600)
-            
+
             # Iterate through all files in screenshot directory
             for screenshot_file in self.screenshot_dir.glob("*.png"):
                 try:
                     # Check file modification time
                     file_mtime = screenshot_file.stat().st_mtime
-                    
+
                     if file_mtime < cutoff_time:
                         screenshot_file.unlink()
                         deleted_count += 1
                         logger.debug(f"Deleted old screenshot: {screenshot_file.name}")
-                        
+
                 except Exception as e:
                     logger.warning(f"Failed to delete screenshot {screenshot_file.name}: {e}")
                     continue
-            
+
             if deleted_count > 0:
-                logger.info(f"✅ Deleted {deleted_count} old screenshots (older than {self.screenshot_cleanup_days} days)")
-            
+                logger.info(
+                    f"✅ Deleted {deleted_count} old screenshots (older than {self.screenshot_cleanup_days} days)"
+                )
+
             return deleted_count
-            
+
         except Exception as e:
             logger.error(f"Error during screenshot cleanup: {e}", exc_info=True)
             return 0
@@ -105,15 +109,14 @@ class CleanupService:
         """
         try:
             from src.services.alert_service import send_critical_alert
+
             await send_critical_alert(message, metadata={"service": "cleanup"})
         except Exception as e:
             # Fallback to logging if alert service fails
             logger.critical(f"🚨 CRITICAL ALERT: {message}")
             logger.error(f"Alert service failed: {e}")
 
-    async def run_periodic_cleanup(
-        self, interval_hours: int = 24, max_retries: int = 5
-    ) -> None:
+    async def run_periodic_cleanup(self, interval_hours: int = 24, max_retries: int = 5) -> None:
         """
         Run periodic cleanup with exponential backoff on errors.
         Cleans both appointment requests and screenshots.
@@ -124,7 +127,7 @@ class CleanupService:
         """
         self._running = True
         self._consecutive_errors = 0
-        
+
         logger.info(
             f"Starting periodic cleanup service "
             f"(interval: {interval_hours}h, "
@@ -137,21 +140,23 @@ class CleanupService:
             try:
                 # Clean up old appointment requests
                 deleted_requests = await self.cleanup_old_requests()
-                logger.info(f"✅ Cleanup completed - deleted {deleted_requests} old appointment requests")
-                
+                logger.info(
+                    f"✅ Cleanup completed - deleted {deleted_requests} old appointment requests"
+                )
+
                 # Clean up old screenshots
                 deleted_screenshots = await self.cleanup_old_screenshots()
                 logger.info(f"✅ Cleanup completed - deleted {deleted_screenshots} old screenshots")
-                
+
                 self._consecutive_errors = 0  # Reset on success
-                
+
             except Exception as e:
                 self._consecutive_errors += 1
                 logger.error(
                     f"❌ Cleanup error (attempt {self._consecutive_errors}/{max_retries}): {e}",
-                    exc_info=True
+                    exc_info=True,
                 )
-                
+
                 if self._consecutive_errors >= max_retries:
                     logger.critical(
                         f"🚨 Max cleanup retries ({max_retries}) reached - stopping service"
@@ -162,11 +167,11 @@ class CleanupService:
                         f"Cleanup service stopped due to {max_retries} consecutive failures"
                     )
                     break
-                
+
                 # Exponential backoff: 5min, 10min, 20min, 40min, 80min (max 1.5h)
                 backoff_seconds = min(
                     BASE_BACKOFF_SECONDS * (2 ** (self._consecutive_errors - 1)),
-                    MAX_BACKOFF_SECONDS
+                    MAX_BACKOFF_SECONDS,
                 )
                 logger.warning(
                     f"⏳ Waiting {backoff_seconds}s ({backoff_seconds // 60} minutes) "
@@ -174,7 +179,7 @@ class CleanupService:
                 )
                 await asyncio.sleep(backoff_seconds)
                 continue
-            
+
             # Normal interval sleep
             await asyncio.sleep(interval_hours * 3600)
 

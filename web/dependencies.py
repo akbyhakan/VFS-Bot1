@@ -308,28 +308,28 @@ class ConnectionManager:
             True if message is allowed, False if rate limited
         """
         now = time.monotonic()
-        
+
         # Initialize bucket if not exists
         if websocket not in self._rate_limits:
             self._rate_limits[websocket] = {
                 "tokens": self.BURST_SIZE,
                 "last_update": now,
             }
-        
+
         bucket = self._rate_limits[websocket]
         elapsed = now - bucket["last_update"]
-        
+
         # Add tokens based on elapsed time
         bucket["tokens"] = min(
             self.BURST_SIZE, bucket["tokens"] + elapsed * self.MESSAGES_PER_SECOND
         )
         bucket["last_update"] = now
-        
+
         # Check if we have at least 1 token
         if bucket["tokens"] >= 1:
             bucket["tokens"] -= 1
             return True
-        
+
         return False
 
     async def connect(self, websocket: WebSocket) -> bool:
@@ -386,7 +386,7 @@ class ConnectionManager:
         if not self._check_rate_limit(websocket):
             logger.warning("WebSocket message rate limit exceeded")
             return False
-        
+
         try:
             await websocket.send_json(message)
             return True

@@ -8,140 +8,118 @@ logger = logging.getLogger(__name__)
 
 # Slot checking metrics
 SLOT_CHECKS_TOTAL = Counter(
-    'vfs_slot_checks_total',
-    'Total number of slot checks performed',
-    ['centre', 'status'],
-    registry=REGISTRY
+    "vfs_slot_checks_total",
+    "Total number of slot checks performed",
+    ["centre", "status"],
+    registry=REGISTRY,
 )
 
 # Booking metrics
 BOOKING_SUCCESS = Counter(
-    'vfs_bookings_success_total',
-    'Total number of successful bookings',
-    ['centre'],
-    registry=REGISTRY
+    "vfs_bookings_success_total",
+    "Total number of successful bookings",
+    ["centre"],
+    registry=REGISTRY,
 )
 
 BOOKING_FAILED = Counter(
-    'vfs_bookings_failed_total',
-    'Total number of failed bookings',
-    ['centre', 'reason'],
-    registry=REGISTRY
+    "vfs_bookings_failed_total",
+    "Total number of failed bookings",
+    ["centre", "reason"],
+    registry=REGISTRY,
 )
 
 # Response time metrics
 RESPONSE_TIME = Histogram(
-    'vfs_response_time_seconds',
-    'Response time for VFS operations',
-    ['operation'],
+    "vfs_response_time_seconds",
+    "Response time for VFS operations",
+    ["operation"],
     buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 # Active users gauge
 ACTIVE_USERS = Gauge(
-    'vfs_active_users',
-    'Currently active users being monitored',
-    registry=REGISTRY
+    "vfs_active_users", "Currently active users being monitored", registry=REGISTRY
 )
 
 # Circuit breaker state
 CIRCUIT_BREAKER_STATE = Gauge(
-    'vfs_circuit_breaker_state',
-    'Circuit breaker state (0=closed, 1=open)',
-    ['service'],
-    registry=REGISTRY
+    "vfs_circuit_breaker_state",
+    "Circuit breaker state (0=closed, 1=open)",
+    ["service"],
+    registry=REGISTRY,
 )
 
 # HTTP request metrics
 HTTP_REQUESTS_TOTAL = Counter(
-    'vfs_http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status'],
-    registry=REGISTRY
+    "vfs_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"],
+    registry=REGISTRY,
 )
 
 # Database metrics
 DB_CONNECTIONS_ACTIVE = Gauge(
-    'vfs_db_connections_active',
-    'Number of active database connections',
-    registry=REGISTRY
+    "vfs_db_connections_active", "Number of active database connections", registry=REGISTRY
 )
 
 DB_QUERIES_TOTAL = Counter(
-    'vfs_db_queries_total',
-    'Total number of database queries',
-    ['operation', 'status'],
-    registry=REGISTRY
+    "vfs_db_queries_total",
+    "Total number of database queries",
+    ["operation", "status"],
+    registry=REGISTRY,
 )
 
 DB_QUERY_DURATION = Histogram(
-    'vfs_db_query_duration_seconds',
-    'Database query duration',
-    ['operation'],
+    "vfs_db_query_duration_seconds",
+    "Database query duration",
+    ["operation"],
     buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 # OTP metrics
 OTP_RECEIVED_TOTAL = Counter(
-    'vfs_otp_received_total',
-    'Total OTPs received via webhook',
-    ['type'],
-    registry=REGISTRY
+    "vfs_otp_received_total", "Total OTPs received via webhook", ["type"], registry=REGISTRY
 )
 
 OTP_WAIT_DURATION = Histogram(
-    'vfs_otp_wait_duration_seconds',
-    'Time waiting for OTP to arrive',
+    "vfs_otp_wait_duration_seconds",
+    "Time waiting for OTP to arrive",
     buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 # Payment metrics
 PAYMENT_ATTEMPTS_TOTAL = Counter(
-    'vfs_payment_attempts_total',
-    'Total payment attempts',
-    ['method', 'status'],
-    registry=REGISTRY
+    "vfs_payment_attempts_total", "Total payment attempts", ["method", "status"], registry=REGISTRY
 )
 
 # Captcha solving metrics
 CAPTCHA_SOLVED_TOTAL = Counter(
-    'vfs_captcha_solved_total',
-    'Total captchas solved',
-    ['solver', 'status'],
-    registry=REGISTRY
+    "vfs_captcha_solved_total", "Total captchas solved", ["solver", "status"], registry=REGISTRY
 )
 
 CAPTCHA_SOLVE_DURATION = Histogram(
-    'vfs_captcha_solve_duration_seconds',
-    'Time to solve captcha',
-    ['solver'],
+    "vfs_captcha_solve_duration_seconds",
+    "Time to solve captcha",
+    ["solver"],
     buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 120.0),
-    registry=REGISTRY
+    registry=REGISTRY,
 )
 
 # Error metrics
 ERRORS_TOTAL = Counter(
-    'vfs_errors_total',
-    'Total errors by type',
-    ['error_type', 'component'],
-    registry=REGISTRY
+    "vfs_errors_total", "Total errors by type", ["error_type", "component"], registry=REGISTRY
 )
 
 # Bot state metrics
 BOT_RUNNING = Gauge(
-    'vfs_bot_running',
-    'Bot running state (1=running, 0=stopped)',
-    registry=REGISTRY
+    "vfs_bot_running", "Bot running state (1=running, 0=stopped)", registry=REGISTRY
 )
 
-BOT_UPTIME_SECONDS = Gauge(
-    'vfs_bot_uptime_seconds',
-    'Bot uptime in seconds',
-    registry=REGISTRY
-)
+BOT_UPTIME_SECONDS = Gauge("vfs_bot_uptime_seconds", "Bot uptime in seconds", registry=REGISTRY)
 
 
 class MetricsHelper:
@@ -156,7 +134,7 @@ class MetricsHelper:
             centre: VFS centre name
             found: Whether slot was found
         """
-        status = 'found' if found else 'not_found'
+        status = "found" if found else "not_found"
         SLOT_CHECKS_TOTAL.labels(centre=centre, status=status).inc()
 
     @staticmethod
@@ -211,11 +189,7 @@ class MetricsHelper:
             endpoint: API endpoint
             status: HTTP status code
         """
-        HTTP_REQUESTS_TOTAL.labels(
-            method=method,
-            endpoint=endpoint,
-            status=str(status)
-        ).inc()
+        HTTP_REQUESTS_TOTAL.labels(method=method, endpoint=endpoint, status=str(status)).inc()
 
     @staticmethod
     def record_db_query(operation: str, duration: float, success: bool) -> None:
@@ -227,7 +201,7 @@ class MetricsHelper:
             duration: Query duration in seconds
             success: Whether query was successful
         """
-        status = 'success' if success else 'failed'
+        status = "success" if success else "failed"
         DB_QUERIES_TOTAL.labels(operation=operation, status=status).inc()
         DB_QUERY_DURATION.labels(operation=operation).observe(duration)
 
@@ -270,7 +244,7 @@ class MetricsHelper:
             method: Payment method
             success: Whether payment was successful
         """
-        status = 'success' if success else 'failed'
+        status = "success" if success else "failed"
         PAYMENT_ATTEMPTS_TOTAL.labels(method=method, status=status).inc()
 
     @staticmethod
@@ -283,7 +257,7 @@ class MetricsHelper:
             duration: Time to solve in seconds
             success: Whether solving was successful
         """
-        status = 'success' if success else 'failed'
+        status = "success" if success else "failed"
         CAPTCHA_SOLVED_TOTAL.labels(solver=solver, status=status).inc()
         CAPTCHA_SOLVE_DURATION.labels(solver=solver).observe(duration)
 

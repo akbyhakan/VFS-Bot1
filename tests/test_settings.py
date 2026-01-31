@@ -28,7 +28,7 @@ def test_settings_validation_requires_encryption_key():
             VFSSettings(
                 api_secret_key="a" * 64,  # Valid secret key
             )
-        
+
         # Should fail due to missing encryption_key
         assert "encryption_key" in str(exc_info.value)
 
@@ -59,7 +59,7 @@ def test_settings_validation_api_secret_key_length():
             encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",  # Valid base64
             api_secret_key="too_short",
         )
-    
+
     assert "64 characters" in str(exc_info.value)
 
 
@@ -71,7 +71,7 @@ def test_settings_validation_email_format():
             api_secret_key="a" * 64,
             vfs_email="invalid-email",  # No @ symbol
         )
-    
+
     assert "email" in str(exc_info.value).lower()
 
 
@@ -83,7 +83,7 @@ def test_settings_validation_env():
             api_secret_key="a" * 64,
             env="invalid_env",
         )
-    
+
     # Should only allow production, development, testing, staging
     assert "env" in str(exc_info.value).lower()
 
@@ -96,7 +96,7 @@ def test_settings_validation_log_level():
             api_secret_key="a" * 64,
             log_level="INVALID",
         )
-    
+
     assert "log_level" in str(exc_info.value).lower()
 
 
@@ -109,7 +109,7 @@ def test_settings_valid_configuration():
         env="development",
         log_level="INFO",
     )
-    
+
     assert settings.vfs_email == "test@example.com"
     assert settings.env == "development"
     assert settings.log_level == "INFO"
@@ -123,7 +123,7 @@ def test_settings_default_values():
             encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
             api_secret_key="a" * 64,
         )
-        
+
         # Check defaults
         assert settings.env == "production"
         assert settings.database_path == "vfs_bot.db"
@@ -142,7 +142,7 @@ def test_settings_db_pool_size_validation():
         db_pool_size=50,
     )
     assert settings.db_pool_size == 50
-    
+
     # Too small
     with pytest.raises(ValidationError):
         VFSSettings(
@@ -150,7 +150,7 @@ def test_settings_db_pool_size_validation():
             api_secret_key="a" * 64,
             db_pool_size=0,
         )
-    
+
     # Too large
     with pytest.raises(ValidationError):
         VFSSettings(
@@ -167,9 +167,9 @@ def test_settings_get_cors_origins():
         api_secret_key="a" * 64,
         cors_allowed_origins="http://localhost:3000,http://example.com,https://app.example.com",
     )
-    
+
     origins = settings.get_cors_origins()
-    
+
     assert len(origins) == 3
     assert "http://localhost:3000" in origins
     assert "http://example.com" in origins
@@ -183,16 +183,16 @@ def test_settings_is_development():
         api_secret_key="a" * 64,
         env="development",
     )
-    
+
     prod_settings = VFSSettings(
         encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
         api_secret_key="a" * 64,
         env="production",
     )
-    
+
     assert dev_settings.is_development() is True
     assert dev_settings.is_production() is False
-    
+
     assert prod_settings.is_development() is False
     assert prod_settings.is_production() is True
 
@@ -201,25 +201,28 @@ def test_settings_singleton():
     """Test settings singleton pattern."""
     # First call creates instance
     settings1 = get_settings()
-    
+
     # Second call returns same instance
     settings2 = get_settings()
-    
+
     assert settings1 is settings2
 
 
 def test_settings_from_env():
     """Test loading settings from environment variables."""
-    with patch.dict(os.environ, {
-        "ENCRYPTION_KEY": "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
-        "API_SECRET_KEY": "a" * 64,
-        "ENV": "testing",
-        "VFS_EMAIL": "env@example.com",
-        "DB_POOL_SIZE": "20",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "ENCRYPTION_KEY": "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
+            "API_SECRET_KEY": "a" * 64,
+            "ENV": "testing",
+            "VFS_EMAIL": "env@example.com",
+            "DB_POOL_SIZE": "20",
+        },
+    ):
         reset_settings()
         settings = get_settings()
-        
+
         assert settings.env == "testing"
         assert settings.vfs_email == "env@example.com"
         assert settings.db_pool_size == 20
@@ -232,10 +235,10 @@ def test_settings_secret_str_fields():
         api_secret_key="a" * 64,
         vfs_password="mypassword",
     )
-    
+
     # Password should be stored as SecretStr
     assert settings.vfs_password.get_secret_value() == "mypassword"
-    
+
     # String representation should not reveal password
     settings_str = str(settings)
     assert "mypassword" not in settings_str
@@ -250,7 +253,7 @@ def test_settings_check_interval_validation():
         check_interval=120,
     )
     assert settings.check_interval == 120
-    
+
     # Too small
     with pytest.raises(ValidationError):
         VFSSettings(
@@ -258,7 +261,7 @@ def test_settings_check_interval_validation():
             api_secret_key="a" * 64,
             check_interval=5,
         )
-    
+
     # Too large
     with pytest.raises(ValidationError):
         VFSSettings(

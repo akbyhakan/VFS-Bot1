@@ -13,7 +13,7 @@ request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 def _generate_request_id() -> str:
     """
     Generate a new request ID.
-    
+
     Returns:
         12-character hex string from UUID
     """
@@ -23,7 +23,7 @@ def _generate_request_id() -> str:
 def get_request_id() -> str:
     """
     Get current request ID or generate new one.
-    
+
     Returns:
         Request ID (12-character hex string for lower collision risk)
     """
@@ -37,10 +37,10 @@ def get_request_id() -> str:
 def set_request_id(request_id: Optional[str] = None) -> str:
     """
     Set request ID for current context.
-    
+
     Args:
         request_id: Optional request ID to set. If None, generates a new one.
-        
+
     Returns:
         The request ID that was set
     """
@@ -57,25 +57,25 @@ def clear_request_id() -> None:
 class RequestIdFilter(logging.Filter):
     """
     Logging filter that adds request_id to log records.
-    
+
     Usage:
         import logging
         from src.utils.request_context import RequestIdFilter
-        
+
         logger = logging.getLogger(__name__)
         logger.addFilter(RequestIdFilter())
-        
+
         # In log format:
         # '%(asctime)s [%(request_id)s] %(levelname)s: %(message)s'
     """
-    
+
     def filter(self, record: logging.LogRecord) -> bool:
         """
         Add request_id to log record.
-        
+
         Args:
             record: Log record to modify
-            
+
         Returns:
             Always True (don't filter out any records)
         """
@@ -86,18 +86,18 @@ class RequestIdFilter(logging.Filter):
 def get_logger_with_request_id(name: str) -> logging.Logger:
     """
     Get a logger with RequestIdFilter already applied.
-    
+
     Args:
         name: Logger name (typically __name__)
-        
+
     Returns:
         Logger instance with request ID filter
     """
     logger = logging.getLogger(name)
-    
+
     # Check if filter already added to avoid duplicates
     has_filter = any(isinstance(f, RequestIdFilter) for f in logger.filters)
     if not has_filter:
         logger.addFilter(RequestIdFilter())
-    
+
     return logger

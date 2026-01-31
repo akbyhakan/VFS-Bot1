@@ -238,16 +238,16 @@ class FormHandler:
         """
         try:
             for field in fields:
-                selector = field['selector']
-                value = field['value']
-                field_type = field.get('type', 'input')
+                selector = field["selector"]
+                value = field["value"]
+                field_type = field.get("type", "input")
 
-                if field_type == 'input':
+                if field_type == "input":
                     await self.fill_input(page, selector, value)
-                elif field_type == 'dropdown':
+                elif field_type == "dropdown":
                     await self.select_dropdown(page, selector, value)
-                elif field_type == 'checkbox':
-                    checked = value in [True, 'true', 'True', '1', 1]
+                elif field_type == "checkbox":
+                    checked = value in [True, "true", "True", "1", 1]
                     await self.check_checkbox(page, selector, checked)
                 else:
                     logger.warning(f"Unknown field type: {field_type}, using fill_input")

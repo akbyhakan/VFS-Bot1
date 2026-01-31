@@ -109,10 +109,7 @@ async def liveness_probe() -> Dict[str, str]:
     Returns:
         Liveness status
     """
-    return {
-        "status": "alive",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.get("/ready")
@@ -135,16 +132,16 @@ async def readiness_probe(response: Response) -> Dict[str, Any]:
         "database": await check_database(),
         "encryption": await check_encryption(),
     }
-    
+
     all_healthy = all(c.get("status") == "healthy" for c in checks.values())
-    
+
     if not all_healthy:
         response.status_code = 503
-    
+
     return {
         "status": "ready" if all_healthy else "not_ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "checks": checks
+        "checks": checks,
     }
 
 
@@ -152,16 +149,13 @@ async def readiness_probe(response: Response) -> Dict[str, Any]:
 async def startup_probe() -> Dict[str, str]:
     """
     Kubernetes startup probe - checks if application has started.
-    
+
     Used by Kubernetes to know when the app has finished starting.
-    
+
     Returns:
         Startup status
     """
-    return {
-        "status": "started",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+    return {"status": "started", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @router.get("/health/detailed")
@@ -189,7 +183,7 @@ async def detailed_health_check() -> Dict[str, Any]:
         # Get circuit breaker and rate limiter status
         circuit_breaker_status = get_circuit_breaker_status(snapshot)
         rate_limiter_stats = get_rate_limiter_status()
-        
+
         # Check external services
         external_services = await check_external_services()
 
@@ -235,7 +229,7 @@ async def detailed_health_check() -> Dict[str, Any]:
     # Get circuit breaker and rate limiter status
     circuit_breaker_status = get_circuit_breaker_status(snapshot)
     rate_limiter_stats = get_rate_limiter_status()
-    
+
     # Check external services
     external_services = await check_external_services()
 
@@ -282,7 +276,7 @@ async def check_database_health() -> bool:
         True if database is healthy, False otherwise
     """
     import time
-    
+
     try:
         from src.models.database import Database
 
@@ -307,9 +301,10 @@ async def check_database_health() -> bool:
 async def check_database() -> Dict[str, Any]:
     """Check database connectivity with latency measurement."""
     import time
-    
+
     try:
         from src.models.database import Database
+
         db = Database()
         await db.connect()
         try:
@@ -324,7 +319,7 @@ async def check_database() -> Dict[str, Any]:
             await db.close()
         return {
             "status": "healthy" if is_healthy else "unhealthy",
-            "latency_ms": round(latency_ms, 2)
+            "latency_ms": round(latency_ms, 2),
         }
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
@@ -335,6 +330,7 @@ async def check_encryption() -> Dict[str, Any]:
     """Check encryption service."""
     try:
         from src.utils.encryption import get_encryption
+
         enc = get_encryption()
         # Test encrypt/decrypt cycle
         test_data = "health_check_test"
@@ -350,17 +346,17 @@ async def check_encryption() -> Dict[str, Any]:
 async def check_notification_health() -> Dict[str, Any]:
     """
     Check notification service health.
-    
+
     Returns:
         Dictionary with notification service status
     """
     try:
         from src.services.notification import NotificationService
-        
+
         # Check if notification service can be initialized
         # We don't actually send a notification, just check the service is available
         notifier = NotificationService()
-        
+
         # Basic health check - service is available
         return {
             "status": "healthy",
@@ -375,14 +371,14 @@ async def check_notification_health() -> Dict[str, Any]:
 async def check_vfs_api_health() -> bool:
     """
     Check VFS API connectivity.
-    
+
     Returns:
         True if VFS API is reachable
     """
     try:
         import aiohttp
         from src.services.vfs_api_client import VFS_API_BASE
-        
+
         timeout = aiohttp.ClientTimeout(total=5)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             # Just check if the base URL is reachable
@@ -396,19 +392,19 @@ async def check_vfs_api_health() -> bool:
 async def check_captcha_service() -> bool:
     """
     Check captcha service availability.
-    
+
     Returns:
         True if captcha service is available
     """
     try:
         from src.services.captcha_solver import CaptchaSolver
-        
+
         # Check if 2Captcha API key is configured
         api_key = os.getenv("CAPTCHA_API_KEY", "")
         if not api_key:
             logger.debug("Captcha service: No API key configured (manual mode)")
             return True  # Manual mode is still valid
-        
+
         # If API key is configured, consider it healthy
         # (we don't actually call the API to avoid costs)
         return True
@@ -420,7 +416,7 @@ async def check_captcha_service() -> bool:
 async def check_external_services() -> Dict[str, bool]:
     """
     Check external service health.
-    
+
     Returns:
         Dictionary of service names and their health status
     """
@@ -431,16 +427,15 @@ async def check_external_services() -> Dict[str, bool]:
     }
 
 
-
 def get_uptime() -> float:
     """
     Get service uptime in seconds.
-    
+
     Returns:
         Uptime in seconds
     """
     from web.dependencies import metrics
-    
+
     if "start_time" in metrics:
         uptime = (datetime.now(timezone.utc) - metrics["start_time"]).total_seconds()
         return uptime

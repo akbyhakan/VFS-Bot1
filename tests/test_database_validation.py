@@ -9,17 +9,17 @@ from cryptography.fernet import Fernet
 def unique_encryption_key(monkeypatch):
     """
     Set up unique encryption key for each test and reset global encryption instance.
-    
+
     This fixture ensures test isolation by:
     1. Generating a fresh Fernet encryption key for each test
     2. Setting it in the ENCRYPTION_KEY environment variable
     3. Resetting the global encryption instance before and after the test
-    
+
     Yields:
         str: The generated encryption key
     """
     from src.utils.encryption import reset_encryption
-    
+
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("ENCRYPTION_KEY", key)
     reset_encryption()
@@ -33,7 +33,7 @@ async def test_db(tmp_path, unique_encryption_key):
     db_path = tmp_path / "test_validation.db"
     db = Database(str(db_path))
     await db.connect()
-    
+
     # Add a test user
     await db.add_user(
         email="test@example.com",
@@ -42,7 +42,7 @@ async def test_db(tmp_path, unique_encryption_key):
         category="Tourism",
         subcategory="Short Stay",
     )
-    
+
     yield db
     await db.close()
 
@@ -84,7 +84,7 @@ async def test_add_personal_details_with_invalid_user_id(test_db):
         "passport_number": "ABC123",
         "email": "john@example.com",
     }
-    
+
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await test_db.add_personal_details(0, details)
 

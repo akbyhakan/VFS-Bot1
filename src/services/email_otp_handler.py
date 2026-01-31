@@ -54,15 +54,15 @@ class HTMLTextExtractor(HTMLParser):
         self.in_style = False
 
     def handle_starttag(self, tag, attrs):
-        if tag.lower() == 'script':
+        if tag.lower() == "script":
             self.in_script = True
-        elif tag.lower() == 'style':
+        elif tag.lower() == "style":
             self.in_style = True
 
     def handle_endtag(self, tag):
-        if tag.lower() == 'script':
+        if tag.lower() == "script":
             self.in_script = False
-        elif tag.lower() == 'style':
+        elif tag.lower() == "style":
             self.in_style = False
 
     def handle_data(self, data):
@@ -70,7 +70,7 @@ class HTMLTextExtractor(HTMLParser):
             self.text.append(data)
 
     def get_text(self) -> str:
-        return ' '.join(self.text)
+        return " ".join(self.text)
 
 
 class EmailOTPPatternMatcher:
@@ -215,11 +215,11 @@ class EmailOTPHandler:
         decoded_parts = []
         for part, encoding in decode_header(header_value):
             if isinstance(part, bytes):
-                decoded_parts.append(part.decode(encoding or 'utf-8', errors='ignore'))
+                decoded_parts.append(part.decode(encoding or "utf-8", errors="ignore"))
             else:
                 decoded_parts.append(part)
 
-        return ' '.join(decoded_parts)
+        return " ".join(decoded_parts)
 
     def _extract_target_email(self, msg: Message) -> Optional[str]:
         """
@@ -240,7 +240,7 @@ class EmailOTPHandler:
             if value:
                 decoded = self._decode_header_value(value)
                 # Extract email address from "Name <email@domain.com>" format
-                match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', decoded)
+                match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", decoded)
                 if match:
                     target = match.group(0).lower()
                     logger.debug(f"Target email found in {header}: {target}")
@@ -285,20 +285,20 @@ class EmailOTPHandler:
 
                 if content_type == "text/plain":
                     try:
-                        body = part.get_payload(decode=True).decode(errors='ignore')
+                        body = part.get_payload(decode=True).decode(errors="ignore")
                         break
                     except Exception as e:
                         logger.warning(f"Failed to decode plain text: {e}")
 
                 elif content_type == "text/html" and not body:
                     try:
-                        html = part.get_payload(decode=True).decode(errors='ignore')
+                        html = part.get_payload(decode=True).decode(errors="ignore")
                         body = self._extract_text_from_html(html)
                     except Exception as e:
                         logger.warning(f"Failed to decode HTML: {e}")
         else:
             try:
-                body = msg.get_payload(decode=True).decode(errors='ignore')
+                body = msg.get_payload(decode=True).decode(errors="ignore")
                 if msg.get_content_type() == "text/html":
                     body = self._extract_text_from_html(body)
             except Exception as e:
@@ -323,7 +323,7 @@ class EmailOTPHandler:
 
             # Search for recent unread emails
             since_date = since_time.strftime("%d-%b-%Y")
-            _, message_numbers = mail.search(None, f'(UNSEEN SINCE {since_date})')
+            _, message_numbers = mail.search(None, f"(UNSEEN SINCE {since_date})")
 
             if not message_numbers[0]:
                 logger.debug("No new emails found")
@@ -331,7 +331,7 @@ class EmailOTPHandler:
 
             for num in message_numbers[0].split():
                 try:
-                    _, msg_data = mail.fetch(num, '(RFC822)')
+                    _, msg_data = mail.fetch(num, "(RFC822)")
                     email_body = msg_data[0][1]
                     msg = message_from_bytes(email_body)
 
@@ -389,10 +389,7 @@ class EmailOTPHandler:
                     logger.debug(f"Error closing IMAP connection: {e}")
 
     def wait_for_otp(
-        self,
-        target_email: str,
-        timeout: Optional[int] = None,
-        mark_used: bool = True
+        self, target_email: str, timeout: Optional[int] = None, mark_used: bool = True
     ) -> Optional[str]:
         """
         Wait for OTP code for specific target email.
@@ -494,9 +491,7 @@ _handler_lock = threading.Lock()
 
 
 def get_email_otp_handler(
-    email: Optional[str] = None,
-    app_password: Optional[str] = None,
-    **kwargs
+    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs
 ) -> EmailOTPHandler:
     """
     Get global EmailOTPHandler instance (thread-safe singleton).

@@ -91,9 +91,7 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
 
 @router.post("/bot/restart")
 @limiter.limit("5/minute")
-async def restart_bot(
-    request: Request, api_key: dict = Depends(verify_api_key)
-) -> Dict[str, str]:
+async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
     Restart the bot - requires authentication.
 
@@ -135,9 +133,7 @@ async def restart_bot(
 
 @router.post("/bot/check-now")
 @limiter.limit("10/minute")
-async def check_now(
-    request: Request, api_key: dict = Depends(verify_api_key)
-) -> Dict[str, str]:
+async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
     Trigger a manual slot check - requires authentication.
 
