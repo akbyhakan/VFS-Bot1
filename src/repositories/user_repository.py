@@ -217,7 +217,7 @@ class UserRepository(BaseRepository[User]):
         for key in ["first_name", "last_name", "phone", "mobile_number"]:
             if key in data and data[key]:
                 personal_details[key] = data[key]
-        
+
         if personal_details:
             await self.db.add_personal_details(user_id, personal_details)
 

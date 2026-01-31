@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Any
+from aiohttp import ClientTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,8 @@ class AlertService:
             }
 
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, timeout=10) as response:
+                timeout = aiohttp.ClientTimeout(total=10)
+                async with session.post(url, json=payload, timeout=timeout) as response:
                     if response.status == 200:
                         logger.debug("Alert sent via Telegram")
                         return True
@@ -221,8 +223,9 @@ This is an automated alert from VFS-Bot Alert Service.
             import aiohttp
 
             async with aiohttp.ClientSession() as session:
+                timeout = aiohttp.ClientTimeout(total=10)
                 async with session.post(
-                    self.config.webhook_url, json=alert_data, timeout=10
+                    self.config.webhook_url, json=alert_data, timeout=timeout
                 ) as response:
                     if response.status in (200, 201, 204):
                         logger.debug("Alert sent via webhook")
