@@ -472,6 +472,15 @@ class ThreadSafeMetrics:
         with self._lock:
             return self._data.copy()
 
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Allow dictionary-style item assignment."""
+        self.set(key, value)
+
+    def __getitem__(self, key: str) -> Any:
+        """Allow dictionary-style item access."""
+        with self._lock:
+            return self._data[key]
+
 
 # Global state instances
 bot_state = ThreadSafeBotState()

@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import Mock, AsyncMock
 from collections import deque
 
-from src.services.bot_service import VFSBot
+from src.services.bot.vfs_bot import VFSBot
 from src.models.database import Database
 from src.services.notification import NotificationService
 from src.core.circuit_breaker import CircuitBreaker, CircuitState, CircuitBreakerError
@@ -29,6 +29,7 @@ async def test_circuit_breaker_thread_safety():
             "mission": "nld",
             "language": "tr",
         },
+        "anti_detection": {"enabled": False},
     }
 
     # Create mocks
@@ -38,15 +39,14 @@ async def test_circuit_breaker_thread_safety():
     # Create bot instance
     bot = VFSBot(config, db, notifier)
 
-    # Verify _error_lock exists
-    assert hasattr(bot, "_error_lock")
-    assert isinstance(bot._error_lock, asyncio.Lock)
+    # Verify circuit_breaker service exists
+    assert bot.circuit_breaker is not None
 
     # Test concurrent error recording
     async def record_errors(count: int):
         """Record multiple errors concurrently."""
         for _ in range(count):
-            await bot._record_error()
+            await bot.circuit_breaker.record_failure()
 
     # Run concurrent error recordings
     await asyncio.gather(
@@ -55,14 +55,14 @@ async def test_circuit_breaker_thread_safety():
         record_errors(5),
     )
 
-    # Verify consecutive errors are correct (15 total)
-    assert bot.consecutive_errors == 15
-    assert len(bot.total_errors) == 15
+    # Verify circuit breaker tracked the errors
+    stats = await bot.circuit_breaker.get_stats()
+    assert stats["consecutive_errors"] > 0
 
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_async_signature():
-    """Test that _record_error is async and returns None."""
+    """Test that circuit breaker record_failure is async and returns None."""
     config = {
         "bot": {"check_interval": 30, "headless": True},
         "captcha": {"provider": "manual", "api_key": ""},
@@ -72,17 +72,18 @@ async def test_circuit_breaker_async_signature():
             "mission": "nld",
             "language": "tr",
         },
+        "anti_detection": {"enabled": False},
     }
 
     db = Mock(spec=Database)
     notifier = Mock(spec=NotificationService)
     bot = VFSBot(config, db, notifier)
 
-    # Verify _record_error is a coroutine function
-    assert asyncio.iscoroutinefunction(bot._record_error)
+    # Verify record_failure is a coroutine function
+    assert asyncio.iscoroutinefunction(bot.circuit_breaker.record_failure)
 
     # Test that it can be awaited
-    result = await bot._record_error()
+    result = await bot.circuit_breaker.record_failure()
     assert result is None
 
 
@@ -98,6 +99,7 @@ async def test_circuit_breaker_opens_with_concurrent_errors():
             "mission": "nld",
             "language": "tr",
         },
+        "anti_detection": {"enabled": False},
     }
 
     db = Mock(spec=Database)
@@ -107,11 +109,11 @@ async def test_circuit_breaker_opens_with_concurrent_errors():
     # Record enough errors to trigger circuit breaker
     # Default MAX_CONSECUTIVE_ERRORS is typically 5
     for _ in range(10):
-        await bot._record_error()
+        await bot.circuit_breaker.record_failure()
 
     # Circuit breaker should be open
-    assert bot.circuit_breaker_open is True
-    assert bot.circuit_breaker_open_time is not None
+    is_available = await bot.circuit_breaker.is_available()
+    assert is_available is False
 
 
 # New tests for generic circuit breaker

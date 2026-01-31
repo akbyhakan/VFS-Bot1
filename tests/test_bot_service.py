@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.bot_service import VFSBot
+from src.services.bot.vfs_bot import VFSBot
 from src.models.database import Database
 from src.services.notification import NotificationService
 
@@ -76,10 +76,12 @@ def test_bot_initialization(bot_config, mock_db, mock_notifier):
     assert bot.db == mock_db
     assert bot.notifier == mock_notifier
     assert bot.running is False
-    assert bot.browser is None
-    assert bot.context is None
-    assert bot.consecutive_errors == 0
-    assert bot.circuit_breaker_open is False
+    # New modular architecture - components are initialized
+    assert bot.browser_manager is not None
+    assert bot.circuit_breaker is not None
+    assert bot.auth_service is not None
+    assert bot.slot_checker is not None
+    assert bot.error_handler is not None
 
 
 def test_bot_initialization_with_anti_detection_disabled(bot_config, mock_db, mock_notifier):
@@ -105,9 +107,8 @@ def test_bot_circuit_breaker_state(bot_config, mock_db, mock_notifier):
     """Test circuit breaker initial state."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.consecutive_errors == 0
-    assert bot.circuit_breaker_open is False
-    assert bot.circuit_breaker_open_time is None
+    # Circuit breaker is now a service component
+    assert bot.circuit_breaker is not None
 
 
 def test_bot_captcha_solver_initialization(bot_config, mock_db, mock_notifier):
@@ -146,34 +147,27 @@ async def test_bot_start_sets_running_flag(bot_config, mock_db, mock_notifier):
     """Test that start sets running flag."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    # Mock browser initialization
-    with patch("src.services.bot_service.async_playwright") as mock_playwright:
-        mock_playwright_instance = AsyncMock()
-        mock_playwright.return_value.__aenter__.return_value = mock_playwright_instance
+    # Mock browser manager's start method
+    bot.browser_manager.start = AsyncMock()
+    bot.browser_manager.browser = AsyncMock()
+    
+    # Mock get_active_users_with_decrypted_passwords to return empty list to stop the loop
+    mock_db.get_active_users_with_decrypted_passwords = AsyncMock(return_value=[])
 
-        mock_browser = AsyncMock()
-        mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
+    # Start bot in background task
+    task = asyncio.create_task(bot.start())
 
-        mock_context = AsyncMock()
-        mock_browser.new_context = AsyncMock(return_value=mock_context)
+    # Give it a moment to set running flag
+    await asyncio.sleep(0.1)
 
-        # Mock get_active_users to return empty list to stop the loop
-        mock_db.get_active_users = AsyncMock(return_value=[])
+    # Stop the bot
+    await bot.stop()
 
-        # Start bot in background task
-        task = asyncio.create_task(bot.start())
-
-        # Give it a moment to set running flag
-        await asyncio.sleep(0.1)
-
-        # Stop the bot
-        await bot.stop()
-
-        # Wait for task to complete
-        try:
-            await asyncio.wait_for(task, timeout=2.0)
-        except asyncio.TimeoutError:
-            task.cancel()
+    # Wait for task to complete
+    try:
+        await asyncio.wait_for(task, timeout=2.0)
+    except asyncio.TimeoutError:
+        task.cancel()
 
 
 @pytest.mark.asyncio
@@ -203,9 +197,10 @@ async def test_bot_stop_closes_browser(bot_config, mock_db, mock_notifier):
     """Test that stop closes browser."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
+    # Mock browser manager's browser
     mock_browser = AsyncMock()
     mock_browser.close = AsyncMock()
-    bot.browser = mock_browser
+    bot.browser_manager.browser = mock_browser
 
     await bot.stop()
 
@@ -216,7 +211,7 @@ async def test_bot_stop_closes_browser(bot_config, mock_db, mock_notifier):
 async def test_bot_stop_handles_browser_none(bot_config, mock_db, mock_notifier):
     """Test that stop handles None browser gracefully."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    bot.browser = None
+    bot.browser_manager.browser = None
 
     # Should not raise exception
     await bot.stop()
@@ -251,9 +246,9 @@ async def test_bot_circuit_breaker_tracking(bot_config, mock_db, mock_notifier):
     """Test circuit breaker error tracking."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    initial_errors = bot.consecutive_errors
-    assert initial_errors == 0
-    assert len(bot.total_errors) == 0
+    # Circuit breaker is now a service - check it's available
+    is_available = await bot.circuit_breaker.is_available()
+    assert is_available is True
 
 
 def test_bot_with_custom_captcha_config(mock_db, mock_notifier):
