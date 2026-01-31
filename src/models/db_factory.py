@@ -48,7 +48,9 @@ class DatabaseFactory:
         """
         with cls._lock:
             if cls._instance is None:
-                cls._instance = Database(db_path=db_path, pool_size=pool_size)
+                # Ensure db_path is not None when creating Database instance
+                path = db_path if db_path is not None else "vfs_bot.db"
+                cls._instance = Database(db_path=path, pool_size=pool_size)
                 logger.info("Created new database singleton instance")
             return cls._instance
 

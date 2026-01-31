@@ -6,7 +6,7 @@ from typing import Any, Optional
 try:
     from curl_cffi.requests import AsyncSession
 except ImportError:
-    AsyncSession = None  # type: ignore
+    AsyncSession = None
 
 logger = logging.getLogger(__name__)
 

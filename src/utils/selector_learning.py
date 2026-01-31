@@ -260,12 +260,15 @@ class SelectorLearner:
             summary["total_successes"] += total_success
             summary["total_failures"] += total_fail
 
-            if metrics.get("current_preferred", 0) != 0:
-                selectors_with_promotions: int = summary["selectors_with_promotions"]
-                summary["selectors_with_promotions"] = selectors_with_promotions + 1
+            current_preferred = metrics.get("current_preferred", 0)
+            if isinstance(current_preferred, int) and current_preferred != 0:
+                selectors_with_promotions = summary["selectors_with_promotions"]
+                if isinstance(selectors_with_promotions, int):
+                    summary["selectors_with_promotions"] = selectors_with_promotions + 1
 
-            details_dict: Dict[str, Any] = summary["details"]
-            details_dict[path] = {
+            details_dict = summary["details"]
+            if isinstance(details_dict, dict):
+                details_dict[path] = {
                 "success_rate": (
                     total_success / (total_success + total_fail)
                     if (total_success + total_fail) > 0

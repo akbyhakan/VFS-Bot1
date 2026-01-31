@@ -203,11 +203,12 @@ class AuditLogger:
     async def _persist(self, entry: AuditEntry) -> None:
         """Persist audit entry to database."""
         try:
-            async with self.db.get_connection() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute(
-                        """
-                        INSERT INTO audit_log
+            if self.db is not None:
+                async with self.db.get_connection() as conn:
+                    async with conn.cursor() as cursor:
+                        await cursor.execute(
+                            """
+                            INSERT INTO audit_log
                         (action, user_id, username, ip_address, user_agent,
                          details, timestamp, success)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
