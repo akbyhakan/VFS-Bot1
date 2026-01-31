@@ -212,6 +212,15 @@ class UserRepository(BaseRepository[User]):
             subcategory=data.get("visa_subcategory", ""),
         )
 
+        # Add personal details if provided
+        personal_details = {}
+        for key in ["first_name", "last_name", "phone", "mobile_number"]:
+            if key in data and data[key]:
+                personal_details[key] = data[key]
+        
+        if personal_details:
+            await self.db.add_personal_details(user_id, personal_details)
+
         logger.info(f"Created user {user_id} with email {data['email']}")
         result_id: int = user_id if isinstance(user_id, int) else int(user_id)
         return result_id
