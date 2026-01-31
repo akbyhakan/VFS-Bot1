@@ -121,13 +121,13 @@ def get_selector_with_fallback(selector_name: str) -> List[str]:
 
     # Ensure we always return a list
     if isinstance(selector, list):
-        return selector
+        return [str(s) for s in selector]
     else:
-        return [selector]
+        return [str(selector)]
 
 
 async def try_selectors(
-    page: Page, selectors: List[str], action: str = "click", text: str = None, timeout: int = 5000
+    page: Page, selectors: List[str], action: str = "click", text: str | None = None, timeout: int = 5000
 ) -> bool:
     """
     Try multiple selectors in order until one works.
@@ -163,7 +163,7 @@ async def try_selectors(
                 return True
             elif action == "count":
                 count = await element.count()
-                return count > 0
+                return bool(count > 0)
             elif action == "wait_hidden":
                 await element.wait_for(state="hidden", timeout=timeout)
                 return True
@@ -191,7 +191,7 @@ def resolve_selector(selector_key: str) -> List[str]:
     """
     if selector_key in VFS_SELECTORS:
         value = VFS_SELECTORS[selector_key]
-        return value if isinstance(value, list) else [value]
+        return [str(v) for v in value] if isinstance(value, list) else [str(value)]
     return [selector_key]
 
 
@@ -708,7 +708,7 @@ class AppointmentBookingService:
         logger.info("Filling payment form...")
 
         # Card number
-        await self.human_type(page, VFS_SELECTORS["card_number"], card_info["card_number"])
+        await self.human_type(page, "card_number", card_info["card_number"])
         logger.info("Card number entered")
 
         # Expiry month
@@ -720,7 +720,7 @@ class AppointmentBookingService:
         logger.info("Expiry year selected: ****")
 
         # CVV
-        await self.human_type(page, VFS_SELECTORS["cvv"], card_info["cvv"])
+        await self.human_type(page, "cvv", card_info["cvv"])
         logger.info("CVV entered")
 
         # Random wait

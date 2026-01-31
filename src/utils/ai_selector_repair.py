@@ -100,7 +100,7 @@ class AISelectorRepair:
                     logger.info("✅ AI suggestion validated successfully!")
                     # Auto-update YAML file
                     self._add_to_yaml(selector_path, suggested_selector)
-                    return suggested_selector
+                    return str(suggested_selector)
                 else:
                     logger.warning("❌ AI suggestion failed validation")
                     return None

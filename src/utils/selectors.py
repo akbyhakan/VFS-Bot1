@@ -25,6 +25,8 @@ class SelectorManager:
         """
         self.selectors_file = Path(selectors_file)
         self._selectors: Dict[str, Any] = {}
+        self.learner: Optional[Any] = None  # Type hint for SelectorLearner
+        self.ai_repair: Optional[Any] = None  # Type hint for AISelectorRepair
         self._load_selectors()
 
         # Import and initialize learning system
@@ -179,7 +181,7 @@ class SelectorManager:
 
         # Extract semantic field if it exists
         if isinstance(value, dict) and "semantic" in value:
-            return value["semantic"]
+            return dict(value["semantic"])
 
         return None
 

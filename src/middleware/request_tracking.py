@@ -2,7 +2,7 @@
 
 import uuid
 import logging
-from typing import Callable
+from typing import Callable, cast
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -53,4 +53,4 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
             },
         )
 
-        return response
+        return cast(Response, response)

@@ -610,17 +610,18 @@ class IMAPListener:
 
                 # Fetch and process email
                 _, msg_data = mail.fetch(num, "(RFC822)")
-                email_body = msg_data[0][1]
-                msg = message_from_bytes(email_body)
+                if msg_data and msg_data[0] and isinstance(msg_data[0], tuple):
+                    email_body = msg_data[0][1]
+                    msg = message_from_bytes(email_body)
 
-                # Process email
-                otp_entry = self._email_processor.process_email(msg)
-                if otp_entry:
-                    # Find session and notify
-                    session = self._session_registry.find_by_email(otp_entry.target_identifier)
-                    if session:
-                        self._session_registry.notify_otp(session.session_id, otp_entry.code)
-                        logger.info(f"OTP delivered to session {session.session_id}")
+                    # Process email
+                    otp_entry = self._email_processor.process_email(msg)
+                    if otp_entry:
+                        # Find session and notify
+                        session = self._session_registry.find_by_email(otp_entry.target_identifier)
+                        if session:
+                            self._session_registry.notify_otp(session.session_id, otp_entry.code)
+                            logger.info(f"OTP delivered to session {session.session_id}")
 
             except Exception as e:
                 logger.warning(f"Error processing email: {e}")
@@ -850,7 +851,10 @@ class OTPManager:
 
         # Wait for OTP
         session.state = SessionState.WAITING_OTP
-        result = session.otp_event.wait(timeout=timeout)
+        if session.otp_event is not None:
+            result = session.otp_event.wait(timeout=timeout)
+        else:
+            result = False
 
         if result and session.otp_code:
             logger.info(f"OTP received for session {session_id}")
@@ -955,7 +959,7 @@ class OTPManager:
         logger.info(
             f"Registered VFS account {account.account_id} with webhook URL: {account.webhook_url}"
         )
-        return account
+        return account.to_dict()
 
     def get_webhook_url(self, account_id: str) -> str:
         """
@@ -1105,7 +1109,7 @@ _manager_lock = threading.Lock()
 
 
 def get_otp_manager(
-    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs
+    email: Optional[str] = None, app_password: Optional[str] = None, **kwargs: Any
 ) -> OTPManager:
     """
     Get global OTPManager instance (thread-safe singleton).

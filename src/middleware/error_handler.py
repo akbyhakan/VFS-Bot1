@@ -2,7 +2,7 @@
 
 import logging
 import traceback
-from typing import Callable
+from typing import Callable, cast
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
@@ -39,7 +39,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         """
         try:
             response = await call_next(request)
-            return response
+            return cast(Response, response)
         except VFSBotError as e:
             # Handle known VFSBot exceptions
             return self._handle_vfsbot_error(e, request)

@@ -2,7 +2,7 @@
 
 import uuid
 from contextvars import ContextVar
-from typing import Callable
+from typing import Callable, cast
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -37,7 +37,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         # Add correlation ID to response headers
         response.headers["X-Request-ID"] = request_id
 
-        return response
+        return cast(Response, response)
 
 
 def get_correlation_id() -> str:
