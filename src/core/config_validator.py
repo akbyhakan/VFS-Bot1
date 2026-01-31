@@ -183,7 +183,6 @@ class ConfigValidator:
             List of validation error messages (empty if all pass)
         """
         import os
-        import re
 
         errors = []
         env = os.getenv("ENV", "production").lower()

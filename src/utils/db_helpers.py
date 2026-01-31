@@ -2,8 +2,7 @@
 
 import logging
 import re
-from typing import List, Dict, Any, TypeVar, Callable, Awaitable, Optional
-from contextlib import asynccontextmanager
+from typing import List, Dict, Any, TypeVar, Callable, Awaitable
 
 import aiosqlite
 

@@ -169,7 +169,7 @@ async def try_selectors(
                 return True
 
         except Exception as e:
-            last_error = e
+            _last_error = e
             continue
 
     # No selector worked
@@ -272,7 +272,7 @@ class AppointmentBookingService:
                 return  # Success
 
             except Exception as e:
-                last_error = e
+                _last_error = e
                 logger.debug(f"Selector '{selector}' failed: {e}, trying next...")
                 continue
 

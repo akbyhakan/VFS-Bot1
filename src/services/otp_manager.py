@@ -20,7 +20,6 @@ from typing import Optional, Dict, List, Pattern, Any
 from dataclasses import dataclass, field
 from enum import Enum
 from html.parser import HTMLParser
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 

@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
-from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+from datetime import datetime
 
 if TYPE_CHECKING:
     from src.models.database import Database

@@ -2,7 +2,6 @@
 
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timezone
 
 from src.repositories.base import BaseRepository
 from src.models.database import Database

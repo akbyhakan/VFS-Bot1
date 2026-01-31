@@ -19,7 +19,6 @@ from src.core.exceptions import (
     DatabasePoolTimeoutError,
     BatchOperationError,
 )
-from src.constants import Defaults
 
 logger = logging.getLogger(__name__)
 

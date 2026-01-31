@@ -1,7 +1,6 @@
 """Utility functions for masking sensitive data in logs and outputs."""
 
-import re
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, Set
 
 
 def mask_email(email: str) -> str:
