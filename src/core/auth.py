@@ -141,7 +141,7 @@ class PersistentTokenBlacklist(TokenBlacklist):
         # Check database if available
         if self._use_db and self._db:
             try:
-                return await self._db.is_token_blacklisted(jti)
+                return bool(await self._db.is_token_blacklisted(jti))
             except Exception as e:
                 logger.warning(f"Failed to check blacklist in database: {e}")
 

@@ -43,6 +43,9 @@ class APIKeyManager:
         with self._lock:
             if self._salt is None:
                 self._load_salt()
+            # After _load_salt, _salt should be set, but we need to handle type checker
+            if self._salt is None:
+                raise RuntimeError("Failed to load API key salt")
             return self._salt
 
     def _load_salt(self) -> None:

@@ -86,7 +86,7 @@ class CaptchaSolver:
             # Safe key access - KeyError fix
             if result and isinstance(result, dict) and "code" in result:
                 logger.info("2Captcha solved successfully")
-                return result["code"]
+                return str(result["code"])
 
             logger.warning(f"2Captcha returned unexpected result: {result}")
             return None

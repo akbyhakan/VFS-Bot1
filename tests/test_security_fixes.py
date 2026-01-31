@@ -15,7 +15,7 @@ from src.models.database import Database, ALLOWED_PERSONAL_DETAILS_FIELDS
 from src.core.security import hash_api_key, _get_api_key_salt
 from src.core.auth import _get_jwt_settings
 from src.utils.encryption import reset_encryption
-from web.app import ThreadSafeBotState
+from web.dependencies import ThreadSafeBotState
 
 
 @pytest.fixture(scope="function")

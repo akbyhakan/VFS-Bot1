@@ -35,7 +35,12 @@ class CentreFetcher:
     DEFAULT_CACHE_TTL = 3600  # 1 hour
 
     def __init__(
-        self, base_url: str, country: str, mission: str, language: str = "tr", cache_ttl: int = None
+        self,
+        base_url: str,
+        country: str,
+        mission: str,
+        language: str = "tr",
+        cache_ttl: int | None = None,
     ):
         """
         Initialize centre fetcher.
@@ -80,7 +85,7 @@ class CentreFetcher:
             del self._cache[key]
         return None
 
-    def _set_cache(self, key: str, value: Any, ttl: int = None) -> None:
+    def _set_cache(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set cache value with TTL.
 
@@ -147,7 +152,7 @@ class CentreFetcher:
         cached = self._get_from_cache(cache_key)
         if cached is not None:
             logger.debug(f"Returning cached centres for {self.mission}")
-            return cached
+            return list(cached)
 
         try:
             # Navigate to appointment page
@@ -197,7 +202,7 @@ class CentreFetcher:
         cached = self._get_from_cache(cache_key)
         if cached is not None:
             logger.debug(f"Returning cached categories for {centre}")
-            return cached
+            return list(cached)
 
         try:
             # Select the centre
@@ -252,7 +257,7 @@ class CentreFetcher:
         cached = self._get_from_cache(cache_key)
         if cached is not None:
             logger.debug(f"Returning cached subcategories for {centre}/{category}")
-            return cached
+            return list(cached)
 
         try:
             # Select the centre and category

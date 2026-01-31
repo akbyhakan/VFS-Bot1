@@ -124,7 +124,7 @@ class ErrorHandler:
                 checkpoint_data = json.load(f)
 
             logger.info(f"Checkpoint loaded from {checkpoint_file}")
-            return checkpoint_data
+            return dict(checkpoint_data)
 
         except Exception as e:
             logger.error(f"Failed to load checkpoint: {e}")
