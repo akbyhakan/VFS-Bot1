@@ -61,7 +61,7 @@ class TestDatabaseIntegration:
 
         async def long_running_query(delay: float) -> bool:
             """Hold a connection for specified delay."""
-            async with integration_db.get_connection(timeout=5.0) as _conn:
+            async with integration_db.get_connection(timeout=5.0):
                 await asyncio.sleep(delay)
                 return True
 
@@ -78,7 +78,7 @@ class TestDatabaseIntegration:
 
         async def hold_connection(duration: float) -> None:
             """Hold a connection for specified duration."""
-            async with integration_db.get_connection(timeout=5.0) as _conn:
+            async with integration_db.get_connection(timeout=5.0):
                 await asyncio.sleep(duration)
 
         # Fill the connection pool (default size is 10)

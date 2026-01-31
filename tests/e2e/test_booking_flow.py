@@ -54,7 +54,7 @@ class TestBookingFlow:
             assert details["passport_number"] == "AB1234567"
 
             # Create appointment
-            _appointment_id = await db.add_appointment(
+            await db.add_appointment(
                 user_id=user_id,
                 centre="Istanbul",
                 category="Schengen",

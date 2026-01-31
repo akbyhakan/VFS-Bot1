@@ -172,8 +172,7 @@ async def try_selectors(
                 await element.wait_for(state="hidden", timeout=timeout)
                 return True
 
-        except Exception as e:
-            _last_error = e
+        except Exception:
             continue
 
     # No selector worked
@@ -291,7 +290,6 @@ class AppointmentBookingService:
                 return  # Success
 
             except Exception as e:
-                _last_error = e
                 logger.debug(f"Selector '{selector}' failed: {e}, trying next...")
                 continue
 

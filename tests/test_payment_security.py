@@ -108,7 +108,7 @@ async def test_connection_pool_leak_protection(test_db):
 
     # Try to perform an operation that will fail
     try:
-        async with test_db.get_connection() as _conn:
+        async with test_db.get_connection():
             # Simulate an error
             raise Exception("Simulated error")
     except Exception:
