@@ -142,7 +142,9 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
     # Mock successful flow
     with (
         patch.object(bot.auth_service, "login", return_value=True),
-        patch.object(bot.slot_checker, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}),
+        patch.object(
+            bot.slot_checker, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}
+        ),
         patch.object(bot, "fill_personal_details", return_value=True),
         patch.object(bot, "book_appointment", return_value="REF-123456"),
     ):

@@ -218,7 +218,7 @@ class Database:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit."""
         await self.close()
 
@@ -250,7 +250,7 @@ class Database:
             if conn is not None:
                 try:
                     # Track when connection was last used for idle cleanup
-                    conn._last_used = time.time()  # type: ignore
+                    conn._last_used = time.time()  # noqa: type: ignore[attr-defined]
                     await self._available_connections.put(conn)
                 except Exception as e:
                     logger.error(f"Failed to return connection to pool: {e}")
@@ -977,8 +977,8 @@ class Database:
             raise ValidationError(f"Invalid email format: {email}", field="email")
 
         # Build dynamic update query
-        updates = []
-        params = []
+        updates: List[str] = []
+        params: List[Any] = []
 
         if email is not None:
             updates.append("email = ?")
@@ -1056,8 +1056,8 @@ class Database:
             )
 
         # Build dynamic update query
-        updates = []
-        params = []
+        updates: List[str] = []
+        params: List[Any] = []
 
         if first_name is not None:
             updates.append("first_name = ?")
@@ -1259,8 +1259,8 @@ class Database:
                             continue
 
                         # Build dynamic update query
-                        fields = []
-                        params = []
+                        fields: List[str] = []
+                        params: List[Any] = []
 
                         if "email" in update:
                             fields.append("email = ?")
@@ -2045,10 +2045,10 @@ class Database:
         centre: str,
         mission: str,
         status: str,
-        category: str = None,
-        slot_date: str = None,
-        slot_time: str = None,
-        error_message: str = None,
+        category: Optional[str] = None,
+        slot_date: Optional[str] = None,
+        slot_time: Optional[str] = None,
+        error_message: Optional[str] = None,
     ) -> int:
         """
         Add appointment history record.
@@ -2076,11 +2076,11 @@ class Database:
                 (user_id, centre, mission, category, slot_date, slot_time, status, error_message),
             )
             await conn.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid or 0
 
     @require_connection
     async def get_appointment_history(
-        self, user_id: int, limit: int = 50, status: str = None
+        self, user_id: int, limit: int = 50, status: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Get appointment history for user.
@@ -2094,7 +2094,7 @@ class Database:
             List of history records
         """
         query = "SELECT * FROM appointment_history WHERE user_id = ?"
-        params = [user_id]
+        params: List[Any] = [user_id]
 
         if status:
             query += " AND status = ?"
@@ -2110,7 +2110,7 @@ class Database:
 
     @require_connection
     async def update_appointment_status(
-        self, history_id: int, status: str, error_message: str = None
+        self, history_id: int, status: str, error_message: Optional[str] = None
     ) -> bool:
         """Update appointment history status."""
         async with self.get_connection() as conn:
@@ -2245,7 +2245,7 @@ class Database:
                     (server, port, username, encrypted_password),
                 )
                 await conn.commit()
-                proxy_id = cursor.lastrowid
+                proxy_id = cursor.lastrowid or 0
 
                 logger.info(f"Proxy added: {server}:{port} (ID: {proxy_id})")
                 return proxy_id
@@ -2357,8 +2357,8 @@ class Database:
             ValueError: If update violates uniqueness constraint
         """
         # Build dynamic update query
-        updates = []
-        params = []
+        updates: List[str] = []
+        params: List[Any] = []
 
         if server is not None:
             updates.append("server = ?")
