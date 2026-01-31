@@ -66,7 +66,7 @@ class TestSafeException:
 
     def test_safe_str_with_quoted_values(self):
         """Test redaction with quoted values."""
-        exc = Exception("Error: secret: \"my_secret_value\"")
+        exc = Exception('Error: secret: "my_secret_value"')
         safe_msg = SafeException.safe_str(exc)
         assert "[REDACTED]" in safe_msg
 

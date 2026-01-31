@@ -40,9 +40,6 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return cast(Response, response)
-        except VFSBotError as e:
-            # Handle known VFSBot exceptions
-            return self._handle_vfsbot_error(e, request)
         except ValidationError as e:
             # Handle validation errors (400)
             return self._handle_validation_error(e, request)
@@ -55,6 +52,9 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         except RateLimitError as e:
             # Handle rate limit errors (429)
             return self._handle_rate_limit_error(e, request)
+        except VFSBotError as e:
+            # Handle known VFSBot exceptions
+            return self._handle_vfsbot_error(e, request)
         except Exception as e:
             # Handle unexpected errors (500)
             return self._handle_unexpected_error(e, request)

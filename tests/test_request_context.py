@@ -157,10 +157,22 @@ class TestRequestIdFilter:
         filter_obj = RequestIdFilter()
 
         record1 = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=1, msg="Msg1", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Msg1",
+            args=(),
+            exc_info=None,
         )
         record2 = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="test.py", lineno=2, msg="Msg2", args=(), exc_info=None
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=2,
+            msg="Msg2",
+            args=(),
+            exc_info=None,
         )
 
         filter_obj.filter(record1)

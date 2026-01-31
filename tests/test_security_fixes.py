@@ -4,6 +4,7 @@ thread safety, and JWT validation."""
 import pytest
 import asyncio
 import os
+import logging
 import threading
 from pathlib import Path
 from cryptography.fernet import Fernet
@@ -95,6 +96,9 @@ async def test_update_personal_details_blocks_disallowed_fields(
     test_db, unique_encryption_key, caplog
 ):
     """Test that update_personal_details blocks disallowed fields and logs warning."""
+    # Set caplog to capture WARNING level logs
+    caplog.set_level(logging.WARNING)
+
     # Create a user first
     user_id = await test_db.add_user(
         email="test@example.com",

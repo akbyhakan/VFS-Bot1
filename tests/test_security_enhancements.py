@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import logging
 import tempfile
 import pytest
 from pathlib import Path
@@ -36,6 +37,9 @@ class TestAPIKeySaltSecurity:
 
     def test_api_key_salt_warning_in_development(self, monkeypatch, caplog):
         """Test that API_KEY_SALT shows warning in development."""
+        # Set caplog to capture WARNING level logs
+        caplog.set_level(logging.WARNING)
+
         # Clear the global salt
         from src.core import security
 
@@ -126,6 +130,9 @@ class TestSessionEncryption:
 
     def test_session_backward_compatibility(self, tmp_path, monkeypatch, caplog):
         """Test that old unencrypted sessions can still be loaded."""
+        # Set caplog to capture WARNING level logs
+        caplog.set_level(logging.WARNING)
+
         session_file = tmp_path / "session.json"
 
         # Ensure encryption key is set

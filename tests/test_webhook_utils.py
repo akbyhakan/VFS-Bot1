@@ -68,7 +68,9 @@ class TestVerifyWebhookSignature:
         old_timestamp = int(time.time()) - 400  # 400 seconds ago
         signature = f"t={old_timestamp},v1=abc123"
 
-        result = verify_webhook_signature(payload.encode(), signature, secret, timestamp_tolerance=300)
+        result = verify_webhook_signature(
+            payload.encode(), signature, secret, timestamp_tolerance=300
+        )
         assert result is False
 
     def test_verify_future_timestamp(self):
@@ -80,7 +82,9 @@ class TestVerifyWebhookSignature:
         future_timestamp = int(time.time()) + 400
         signature = f"t={future_timestamp},v1=abc123"
 
-        result = verify_webhook_signature(payload.encode(), signature, secret, timestamp_tolerance=300)
+        result = verify_webhook_signature(
+            payload.encode(), signature, secret, timestamp_tolerance=300
+        )
         assert result is False
 
     def test_verify_with_custom_tolerance(self):
@@ -97,7 +101,9 @@ class TestVerifyWebhookSignature:
         old_signature = ",".join(signature_parts)
 
         # Should pass with higher tolerance
-        result = verify_webhook_signature(payload.encode(), signature, secret, timestamp_tolerance=200)
+        result = verify_webhook_signature(
+            payload.encode(), signature, secret, timestamp_tolerance=200
+        )
         assert result is True
 
     def test_verify_malformed_signature(self):
