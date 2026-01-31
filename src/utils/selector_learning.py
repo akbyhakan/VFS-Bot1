@@ -100,7 +100,9 @@ class SelectorLearner:
 
             fallback_stats = metrics["fallback_stats"][fallback_key]
             fallback_stats["success_count"] += 1
-            fallback_stats["consecutive_success"] = fallback_stats.get("consecutive_success", 0) + 1
+            fallback_stats["consecutive_success"] = (
+                fallback_stats.get("consecutive_success", 0) + 1
+            )
 
             # Auto-promote after 5 consecutive successes
             if fallback_stats["consecutive_success"] >= 5:
@@ -128,7 +130,9 @@ class SelectorLearner:
         if selector_index == 0:
             # Primary selector failed
             metrics["primary_fail_count"] += 1
-            metrics["primary_consecutive_fail"] = metrics.get("primary_consecutive_fail", 0) + 1
+            metrics["primary_consecutive_fail"] = (
+                metrics.get("primary_consecutive_fail", 0) + 1
+            )
 
             # Demote after 3 consecutive failures
             if metrics["primary_consecutive_fail"] >= 3 and metrics["current_preferred"] == 0:

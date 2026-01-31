@@ -2,12 +2,12 @@
 
 import warnings
 import functools
-from typing import Callable, TypeVar, Optional
+from typing import Callable, TypeVar, Optional, Any, cast
 
-F = TypeVar("F", bound=Callable)
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def deprecated(reason: str, replacement: Optional[str] = None):
+def deprecated(reason: str, replacement: Optional[str] = None) -> Callable[[F], F]:
     """
     Decorator to mark functions/classes as deprecated.
 
@@ -30,11 +30,11 @@ def deprecated(reason: str, replacement: Optional[str] = None):
             message += f" Use {replacement} instead."
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             warnings.warn(message, DeprecationWarning, stacklevel=2)
             return func(*args, **kwargs)
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
 

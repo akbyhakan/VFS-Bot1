@@ -75,7 +75,7 @@ class SafeException:
         if not isinstance(data, dict):
             return data
 
-        sanitized = {}
+        sanitized: Dict[str, Any] = {}
         for key, value in data.items():
             key_lower = key.lower()
 

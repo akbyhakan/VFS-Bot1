@@ -480,13 +480,16 @@ class BatchOperationError(DatabaseError):
         self.failed_count = failed_count
         self.total_count = total_count
 
-        details = {}
+        details: Dict[str, Any] = {}
         if operation:
             details["operation"] = operation
         if failed_count is not None:
             details["failed_count"] = failed_count
         if total_count is not None:
             details["total_count"] = total_count
-            details["success_count"] = total_count - failed_count if failed_count else total_count
+            if failed_count is not None:
+                details["success_count"] = total_count - failed_count
+            else:
+                details["success_count"] = total_count
 
         super().__init__(message, recoverable=False, details=details)
