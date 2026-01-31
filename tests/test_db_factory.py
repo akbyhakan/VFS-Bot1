@@ -61,7 +61,7 @@ class TestDatabaseFactory:
     @pytest.mark.asyncio
     async def test_ensure_connected_creates_connection(self):
         """Test ensure_connected creates and connects database."""
-        with patch.object(Database, "connect", new_callable=AsyncMock) as mock_connect:
+        with patch.object(Database, "connect", new_callable=AsyncMock) as _:
             db = await DatabaseFactory.ensure_connected()
             assert isinstance(db, Database)
 
@@ -82,7 +82,7 @@ class TestDatabaseFactory:
     async def test_close_instance(self):
         """Test close_instance closes and resets singleton."""
         with patch.object(Database, "close", new_callable=AsyncMock) as mock_close:
-            db = DatabaseFactory.get_instance()
+            _ = DatabaseFactory.get_instance()
             await DatabaseFactory.close_instance()
             mock_close.assert_called_once()
             assert DatabaseFactory._instance is None
