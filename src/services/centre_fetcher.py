@@ -35,7 +35,12 @@ class CentreFetcher:
     DEFAULT_CACHE_TTL = 3600  # 1 hour
 
     def __init__(
-        self, base_url: str, country: str, mission: str, language: str = "tr", cache_ttl: int | None = None
+        self,
+        base_url: str,
+        country: str,
+        mission: str,
+        language: str = "tr",
+        cache_ttl: int | None = None,
     ):
         """
         Initialize centre fetcher.

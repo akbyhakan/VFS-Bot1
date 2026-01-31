@@ -127,7 +127,11 @@ def get_selector_with_fallback(selector_name: str) -> List[str]:
 
 
 async def try_selectors(
-    page: Page, selectors: List[str], action: str = "click", text: str | None = None, timeout: int = 5000
+    page: Page,
+    selectors: List[str],
+    action: str = "click",
+    text: str | None = None,
+    timeout: int = 5000,
 ) -> bool:
     """
     Try multiple selectors in order until one works.
