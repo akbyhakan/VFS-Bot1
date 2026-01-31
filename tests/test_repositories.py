@@ -26,7 +26,8 @@ async def mock_db():
     db.get_connection = MagicMock(return_value=mock_conn)
 
     # Mock database methods
-    db.create_user = AsyncMock(return_value=1)
+    db.add_user = AsyncMock(return_value=1)
+    db.add_personal_details = AsyncMock(return_value=None)
     db.update_user = AsyncMock(return_value=True)
 
     return db
@@ -144,7 +145,7 @@ async def test_user_repository_create_valid(mock_db):
     user_id = await repo.create(data)
 
     assert user_id == 1
-    mock_db.create_user.assert_called_once()
+    mock_db.add_user.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -200,7 +201,15 @@ async def test_user_repository_update_valid(mock_db, sample_user_data):
     success = await repo.update(1, update_data)
 
     assert success is True
-    mock_db.update_user.assert_called_once_with(1, update_data)
+    mock_db.update_user.assert_called_once_with(
+        user_id=1,
+        email=None,
+        password=None,
+        centre=None,
+        category=None,
+        subcategory=None,
+        active=False,
+    )
 
 
 @pytest.mark.asyncio
