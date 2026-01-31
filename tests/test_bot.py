@@ -9,7 +9,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.bot_service import VFSBot
+from src.services.bot.vfs_bot import VFSBot
 from src.models.database import Database
 from src.services.notification import NotificationService
 

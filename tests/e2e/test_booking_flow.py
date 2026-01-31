@@ -75,8 +75,8 @@ class TestBookingFlow:
     @pytest.mark.asyncio
     async def test_booking_flow_with_captcha(self):
         """Test booking flow when captcha is required."""
-        # Mock captcha solver
-        with patch("src.services.bot_service.solve_captcha") as mock_solve:
+        # Mock captcha solver - now it's part of the CaptchaSolver class
+        with patch("src.services.captcha_solver.CaptchaSolver.solve_recaptcha") as mock_solve:
             mock_solve.return_value = "captcha_solution"
 
             # Simulate captcha detection and solving
