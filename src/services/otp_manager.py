@@ -585,7 +585,7 @@ class IMAPListener:
                 time.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
 
-    def _poll_emails(self, mail: imaplib.IMAP4_SSL):
+    def _poll_emails(self, mail: imaplib.IMAP4_SSL) -> None:
         """Poll for new emails."""
         # Search for recent unread emails
         since_time = datetime.now(timezone.utc) - timedelta(seconds=self._max_email_age)
@@ -815,7 +815,7 @@ class OTPManager:
             target_email=target_email, phone_number=phone_number, country=country, metadata=metadata
         )
 
-    def unregister_session(self, session_id: str):
+    def unregister_session(self, session_id: str) -> None:
         """
         Unregister a session.
 
@@ -896,7 +896,7 @@ class OTPManager:
         country: Optional[str] = None,
         visa_type: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> Dict[str, str]:
         """
         Register a VFS account with automatic webhook URL generation.
 
@@ -1057,7 +1057,7 @@ class OTPManager:
 
         return session_id
 
-    def end_session(self, session_id: str):
+    def end_session(self, session_id: str) -> None:
         """
         End a bot session and unlink from webhook.
 
