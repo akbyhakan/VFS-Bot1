@@ -407,7 +407,8 @@ class ConnectionManager:
         disconnected = []
         for connection in connections:
             try:
-                # Note: Broadcast doesn't check rate limit to ensure important updates reach all clients
+                # Note: Broadcast doesn't check rate limit to ensure
+                # important updates reach all clients
                 await connection.send_json(message)
             except (WebSocketDisconnect, RuntimeError, ConnectionError) as e:
                 logger.debug(f"WebSocket connection closed during broadcast: {e}")

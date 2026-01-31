@@ -2253,7 +2253,8 @@ class Database:
             except Exception as e:
                 if "UNIQUE constraint failed" in str(e):
                     raise ValueError(
-                        f"Proxy with server={server}, port={port}, username={username} already exists"
+                        f"Proxy with server={server}, port={port}, "
+                        f"username={username} already exists"
                     )
                 raise
 

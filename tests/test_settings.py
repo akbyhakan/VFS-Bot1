@@ -41,7 +41,7 @@ def test_settings_validation_encryption_key_format():
         # by using a key that's too short after decoding
         # The validator checks for valid base64, Fernet requires 32 bytes (44 chars base64)
         try:
-            settings = VFSSettings(
+            _settings = VFSSettings(
                 encryption_key="YQ==",  # Valid base64 but too short for Fernet
                 api_secret_key="a" * 64,
             )

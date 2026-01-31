@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Response
 from fastapi.responses import PlainTextResponse
 
 from web.dependencies import bot_state, metrics
@@ -355,7 +355,7 @@ async def check_notification_health() -> Dict[str, Any]:
 
         # Check if notification service can be initialized
         # We don't actually send a notification, just check the service is available
-        notifier = NotificationService()
+        _notifier = NotificationService()
 
         # Basic health check - service is available
         return {
@@ -397,8 +397,6 @@ async def check_captcha_service() -> bool:
         True if captcha service is available
     """
     try:
-        from src.services.captcha_solver import CaptchaSolver
-
         # Check if 2Captcha API key is configured
         api_key = os.getenv("CAPTCHA_API_KEY", "")
         if not api_key:

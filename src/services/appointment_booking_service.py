@@ -147,7 +147,7 @@ async def try_selectors(
     """
     from ..core.exceptions import SelectorNotFoundError
 
-    last_error = None
+    _last_error = None
     for selector in selectors:
         try:
             element = page.locator(selector)
@@ -256,7 +256,7 @@ class AppointmentBookingService:
         from ..core.exceptions import SelectorNotFoundError
 
         selectors = resolve_selector(selector_key)
-        last_error = None
+        _last_error = None
 
         for selector in selectors:
             try:

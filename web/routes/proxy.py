@@ -1,11 +1,10 @@
 """Proxy management routes for VFS-Bot web application."""
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.models.database import Database
 from src.utils.security.netnut_proxy import NetNutProxyManager
