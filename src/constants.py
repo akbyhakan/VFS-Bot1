@@ -138,10 +138,8 @@ class Database:
 
     DEFAULT_PATH: Final[str] = os.getenv("DATABASE_PATH", "vfs_bot.db")
     TEST_PATH: Final[str] = "test.db"
-    # Pool size should be at least CONCURRENT_USERS * 3 for nested queries
-    POOL_SIZE: Final[int] = int(
-        os.getenv("DB_POOL_SIZE", str(max(15, RateLimits.CONCURRENT_USERS * 3)))
-    )
+    # Pool size: Default is 10, can be overridden via DB_POOL_SIZE env var
+    POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
     CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
     QUERY_TIMEOUT: Final[float] = 30.0
 
