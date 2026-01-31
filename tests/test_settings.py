@@ -199,13 +199,21 @@ def test_settings_is_development():
 
 def test_settings_singleton():
     """Test settings singleton pattern."""
-    # First call creates instance
-    settings1 = get_settings()
+    # Mock environment variables to ensure validation passes
+    with patch.dict(
+        os.environ,
+        {
+            "ENCRYPTION_KEY": "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
+            "API_SECRET_KEY": "a" * 64,
+        },
+    ):
+        # First call creates instance
+        settings1 = get_settings()
 
-    # Second call returns same instance
-    settings2 = get_settings()
+        # Second call returns same instance
+        settings2 = get_settings()
 
-    assert settings1 is settings2
+        assert settings1 is settings2
 
 
 def test_settings_from_env():
