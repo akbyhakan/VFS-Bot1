@@ -256,6 +256,8 @@ class Database:
                     logger.error(f"Failed to return connection to pool: {e}")
                     # Connection is lost - create a new one to maintain pool size
                     try:
+                        # Note: qsize() is a snapshot and may be inaccurate in concurrent scenarios
+                        # but provides useful debugging information for production issues
                         current_pool_size = self._available_connections.qsize()
                         logger.info(
                             f"Creating replacement connection for lost connection "
@@ -268,6 +270,7 @@ class Database:
                         await self._available_connections.put(new_conn)
                         logger.info("Replacement connection created successfully")
                     except Exception as create_error:
+                        # Note: qsize() is a best-effort metric for logging purposes
                         current_pool_size = self._available_connections.qsize()
                         logger.error(f"Failed to create replacement connection: {create_error}")
                         logger.warning(
