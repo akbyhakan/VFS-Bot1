@@ -117,3 +117,42 @@ class TestAuthRateLimiter:
         # 10th attempt should trigger limit
         limiter.record_attempt("user1")
         assert limiter.is_rate_limited("user1")
+
+    def test_memory_cleanup_after_expiration(self):
+        """Test that empty attempt lists are cleaned up to prevent memory leak."""
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=1)
+
+        # Record attempts for multiple users
+        limiter.record_attempt("user1")
+        limiter.record_attempt("user2")
+        limiter.record_attempt("user3")
+
+        # Check that attempts are recorded
+        assert len(limiter._attempts) == 3
+
+        # Wait for window to expire
+        time.sleep(1.1)
+
+        # Check rate limit status which should trigger cleanup
+        limiter.is_rate_limited("user1")
+        limiter.is_rate_limited("user2")
+        limiter.is_rate_limited("user3")
+
+        # After cleanup, empty lists should be removed from memory
+        assert len(limiter._attempts) == 0
+
+    def test_timezone_aware_datetime(self):
+        """Test that rate limiter uses timezone-aware datetime."""
+        from datetime import timezone
+
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
+
+        # Record an attempt
+        limiter.record_attempt("user1")
+
+        # Check that the stored timestamp is timezone-aware
+        assert len(limiter._attempts["user1"]) == 1
+        stored_time = limiter._attempts["user1"][0]
+        # Timezone-aware datetime should have tzinfo
+        assert stored_time.tzinfo is not None
+        assert stored_time.tzinfo == timezone.utc
