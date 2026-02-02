@@ -17,10 +17,7 @@ class TestCircuitBreaker:
     def test_custom_thresholds(self):
         """Test circuit breaker with custom thresholds."""
         cb = CircuitBreaker(
-            name="custom", 
-            failure_threshold=10, 
-            timeout_seconds=30.0, 
-            half_open_threshold=5
+            name="custom", failure_threshold=10, timeout_seconds=30.0, half_open_threshold=5
         )
         assert cb.failure_threshold == 10
         assert cb.timeout_seconds == 30.0
@@ -81,7 +78,9 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_success_in_half_open_closes_circuit(self):
         """Test success in HALF_OPEN state closes the circuit."""
-        cb = CircuitBreaker(name="test", failure_threshold=1, timeout_seconds=0, half_open_threshold=1)
+        cb = CircuitBreaker(
+            name="test", failure_threshold=1, timeout_seconds=0, half_open_threshold=1
+        )
         await cb._record_failure()
         cb._state = CircuitState.HALF_OPEN
         await cb._record_success()
@@ -145,4 +144,3 @@ class TestCircuitBreaker:
         assert stats["name"] == "test"
         assert stats["state"] == "closed"
         assert stats["failure_count"] == 0
-

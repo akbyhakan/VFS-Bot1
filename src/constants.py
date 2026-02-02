@@ -73,7 +73,7 @@ class RateLimits:
     LOGIN_MAX_REQUESTS: Final[int] = 5
     LOGIN_WINDOW_SECONDS: Final[int] = 300
     LOGIN_LOCKOUT_SECONDS: Final[int] = 900
-    
+
     # Authentication rate limiting (brute-force protection) - window in seconds
     AUTH_RATE_LIMIT_ATTEMPTS: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_ATTEMPTS", "5"))
     AUTH_RATE_LIMIT_WINDOW: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_WINDOW", "60"))

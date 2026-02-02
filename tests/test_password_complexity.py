@@ -21,42 +21,42 @@ class TestPasswordComplexity:
         """Test that password shorter than 12 characters fails."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("Short1!")
-        
+
         assert "at least 12 characters" in str(exc_info.value)
 
     def test_password_no_uppercase(self):
         """Test that password without uppercase fails."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("myp@ssw0rd123")
-        
+
         assert "uppercase letter" in str(exc_info.value)
 
     def test_password_no_lowercase(self):
         """Test that password without lowercase fails."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("MYP@SSW0RD123")
-        
+
         assert "lowercase letter" in str(exc_info.value)
 
     def test_password_no_digit(self):
         """Test that password without digit fails."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("MyP@ssword!!!")
-        
+
         assert "digit" in str(exc_info.value)
 
     def test_password_no_special_char(self):
         """Test that password without special character fails."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("MyPassword123")
-        
+
         assert "special character" in str(exc_info.value)
 
     def test_password_multiple_violations(self):
         """Test that password with multiple violations reports all."""
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("short")
-        
+
         error_msg = str(exc_info.value)
         assert "12 characters" in error_msg
         assert "uppercase" in error_msg
@@ -70,8 +70,8 @@ class TestPasswordComplexity:
 
     def test_password_various_special_chars(self):
         """Test that various special characters are accepted."""
-        special_chars = "!@#$%^&*(),.?\":{}|<>"
-        
+        special_chars = '!@#$%^&*(),.?":{}|<>'
+
         for char in special_chars:
             password = f"MyPassw0rd12{char}"
             # Should not raise for any of these
@@ -88,7 +88,7 @@ class TestPasswordComplexity:
         # Spaces are not special chars, so this should fail
         with pytest.raises(ValidationError) as exc_info:
             validate_password_complexity("My Pass Word 123")
-        
+
         assert "special character" in str(exc_info.value)
 
     def test_password_with_spaces_and_special(self):

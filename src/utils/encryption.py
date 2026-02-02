@@ -259,7 +259,7 @@ def reset_encryption() -> None:
 def get_encryption() -> PasswordEncryption:
     """
     Get global encryption instance (singleton) with double-checked locking.
-    
+
     Optimized implementation that only acquires lock when instance doesn't exist,
     improving performance under high load.
 
@@ -271,19 +271,21 @@ def get_encryption() -> PasswordEncryption:
         First check without lock (fast path), then recheck after acquiring lock.
     """
     global _encryption_instance
-    
+
     # First check without lock (fast path for existing instance)
     if _encryption_instance is not None:
         current_key = os.getenv("ENCRYPTION_KEY")
         # Quick check if key hasn't changed
         if current_key and _normalize_key(current_key) == _encryption_instance._key:
             return _encryption_instance
-    
+
     # Acquire lock only if instance doesn't exist or key changed
     with _encryption_lock:
         current_key = os.getenv("ENCRYPTION_KEY")
         # Double-check after acquiring lock
-        if _encryption_instance is None or (current_key and _normalize_key(current_key) != _encryption_instance._key):
+        if _encryption_instance is None or (
+            current_key and _normalize_key(current_key) != _encryption_instance._key
+        ):
             _encryption_instance = PasswordEncryption()
         # Ensure _encryption_instance is not None before returning
         if _encryption_instance is None:
