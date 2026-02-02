@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 class AuthRateLimiter:
     """Rate limiter for authentication endpoints to prevent brute-force attacks."""
-    
+
     def __init__(self, max_attempts: int = 5, window_seconds: int = 60):
         """
         Initialize rate limiter.
-        
+
         Args:
             max_attempts: Maximum authentication attempts allowed in window
             window_seconds: Time window in seconds
@@ -35,42 +35,40 @@ class AuthRateLimiter:
         self._lock = threading.Lock()
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
-    
+
     def is_rate_limited(self, identifier: str) -> bool:
         """
         Check if identifier is rate limited.
-        
+
         Args:
             identifier: Unique identifier (e.g., username, IP address)
-            
+
         Returns:
             True if rate limited
         """
         with self._lock:
             now = datetime.now()
             cutoff = now - timedelta(seconds=self.window_seconds)
-            
+
             # Clean old attempts
-            self._attempts[identifier] = [
-                t for t in self._attempts[identifier] if t > cutoff
-            ]
-            
+            self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
+
             return len(self._attempts[identifier]) >= self.max_attempts
-    
+
     def record_attempt(self, identifier: str) -> None:
         """
         Record an authentication attempt.
-        
+
         Args:
             identifier: Unique identifier (e.g., username, IP address)
         """
         with self._lock:
             self._attempts[identifier].append(datetime.now())
-    
+
     def clear_attempts(self, identifier: str) -> None:
         """
         Clear all attempts for an identifier.
-        
+
         Args:
             identifier: Unique identifier to clear
         """
@@ -87,7 +85,7 @@ _rate_limiter_lock = threading.Lock()
 def get_auth_rate_limiter() -> AuthRateLimiter:
     """
     Get or create auth rate limiter singleton.
-    
+
     Returns:
         AuthRateLimiter instance
     """
@@ -100,8 +98,7 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
             max_attempts = RateLimits.AUTH_RATE_LIMIT_ATTEMPTS
             window_seconds = RateLimits.AUTH_RATE_LIMIT_WINDOW
             _auth_rate_limiter = AuthRateLimiter(
-                max_attempts=max_attempts,
-                window_seconds=window_seconds
+                max_attempts=max_attempts, window_seconds=window_seconds
             )
         return _auth_rate_limiter
 
@@ -427,33 +424,33 @@ def validate_password_length(password: str) -> None:
 def validate_password_complexity(password: str) -> None:
     """
     Validate password meets complexity requirements.
-    
+
     Requirements:
     - At least 12 characters
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one digit
     - At least one special character
-    
+
     Args:
         password: Password to validate
-        
+
     Raises:
         ValidationError: If password doesn't meet requirements
     """
     errors = []
-    
+
     if len(password) < 12:
         errors.append("Password must be at least 12 characters")
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         errors.append("Password must contain at least one uppercase letter")
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         errors.append("Password must contain at least one lowercase letter")
-    if not re.search(r'[0-9]', password):
+    if not re.search(r"[0-9]", password):
         errors.append("Password must contain at least one digit")
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         errors.append("Password must contain at least one special character")
-    
+
     if errors:
         raise ValidationError("; ".join(errors), field="password")
 
@@ -504,10 +501,10 @@ def create_access_token(
 def _check_token_blacklist(payload: Dict[str, Any]) -> None:
     """
     Check if token is blacklisted.
-    
+
     Args:
         payload: JWT payload containing jti
-        
+
     Raises:
         HTTPException: If token is blacklisted
     """

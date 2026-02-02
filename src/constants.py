@@ -73,7 +73,7 @@ class RateLimits:
     LOGIN_MAX_REQUESTS: Final[int] = 5
     LOGIN_WINDOW_SECONDS: Final[int] = 300
     LOGIN_LOCKOUT_SECONDS: Final[int] = 900
-    
+
     # Authentication rate limiting (brute-force protection) - window in seconds
     AUTH_RATE_LIMIT_ATTEMPTS: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_ATTEMPTS", "5"))
     AUTH_RATE_LIMIT_WINDOW: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_WINDOW", "60"))
@@ -186,9 +186,9 @@ class BookingTimeouts:
     ELEMENT_WAIT_MS: Final[int] = 10000
     PAGE_LOAD_MS: Final[int] = 30000
     PAYMENT_CONFIRMATION: Final[int] = 60
-    OTP_WAIT: Final[
-        int
-    ] = 300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
+    OTP_WAIT: Final[int] = (
+        300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
+    )
 
 
 class BookingDelays:
