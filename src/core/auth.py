@@ -57,6 +57,8 @@ class AuthRateLimiter:
             is_limited = len(self._attempts[identifier]) >= self.max_attempts
 
             # Clean up empty lists to prevent unbounded memory growth
+            # Safe to delete here as we've already captured the rate limit status
+            # and won't access this identifier again in this call
             if not self._attempts[identifier]:
                 del self._attempts[identifier]
 

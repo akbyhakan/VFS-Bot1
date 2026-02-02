@@ -265,8 +265,11 @@ class Database:
                         logger.info("Replacement connection created successfully")
                     except Exception as create_error:
                         logger.error(f"Failed to create replacement connection: {create_error}")
-                        # Pool is now one connection smaller - this will eventually
-                        # lead to pool exhaustion if connections keep getting lost
+                        logger.warning(
+                            "Connection pool degraded: pool now has fewer connections than configured. "
+                            f"This may lead to pool exhaustion if more connections are lost. "
+                            f"Consider restarting the application to restore full pool capacity."
+                        )
 
     @asynccontextmanager
     async def get_connection_with_retry(
