@@ -245,7 +245,8 @@ class VFSBot:
                     )
                     await asyncio.sleep(wait_time)
                     # Don't unconditionally reset - let the next successful iteration close it
-                    # Unconditional reset could cause premature recovery if underlying issues persist
+                    # Unconditional reset could cause premature recovery if underlying
+                    # issues persist
                     # Circuit will be closed by record_success() if the next attempt succeeds
                     logger.info(
                         "Circuit breaker wait time elapsed - attempting next iteration "

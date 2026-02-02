@@ -66,11 +66,9 @@ class SlotChecker:
         Returns:
             Slot information if available, None otherwise
         """
-        semaphore_acquired = False
         try:
             # Apply rate limiting before making requests
             await self.rate_limiter.acquire()
-            semaphore_acquired = True
 
             # Navigate to appointment page
             base = self.config["vfs"]["base_url"]
@@ -140,7 +138,3 @@ class SlotChecker:
                 },
             )
             return None
-        finally:
-            # Only release if we successfully acquired
-            if semaphore_acquired:
-                self.rate_limiter.release()
