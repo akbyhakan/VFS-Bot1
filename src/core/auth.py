@@ -458,10 +458,6 @@ def validate_password_complexity(password: str) -> None:
     
     if errors:
         raise ValidationError("; ".join(errors), field="password")
-            f"Current length: {len(password_bytes)} bytes. "
-            "Please use a shorter password.",
-            field="password",
-        )
 
 
 def create_access_token(
