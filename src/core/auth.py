@@ -3,17 +3,105 @@
 import os
 import logging
 import uuid
+import re
 import threading
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional, cast, NamedTuple
 from functools import lru_cache
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
+
+
+class AuthRateLimiter:
+    """Rate limiter for authentication endpoints to prevent brute-force attacks."""
+    
+    def __init__(self, max_attempts: int = 5, window_seconds: int = 60):
+        """
+        Initialize rate limiter.
+        
+        Args:
+            max_attempts: Maximum authentication attempts allowed in window
+            window_seconds: Time window in seconds
+        """
+        self._attempts: Dict[str, list] = defaultdict(list)
+        self._lock = threading.Lock()
+        self.max_attempts = max_attempts
+        self.window_seconds = window_seconds
+    
+    def is_rate_limited(self, identifier: str) -> bool:
+        """
+        Check if identifier is rate limited.
+        
+        Args:
+            identifier: Unique identifier (e.g., username, IP address)
+            
+        Returns:
+            True if rate limited
+        """
+        with self._lock:
+            now = datetime.now()
+            cutoff = now - timedelta(seconds=self.window_seconds)
+            
+            # Clean old attempts
+            self._attempts[identifier] = [
+                t for t in self._attempts[identifier] if t > cutoff
+            ]
+            
+            return len(self._attempts[identifier]) >= self.max_attempts
+    
+    def record_attempt(self, identifier: str) -> None:
+        """
+        Record an authentication attempt.
+        
+        Args:
+            identifier: Unique identifier (e.g., username, IP address)
+        """
+        with self._lock:
+            self._attempts[identifier].append(datetime.now())
+    
+    def clear_attempts(self, identifier: str) -> None:
+        """
+        Clear all attempts for an identifier.
+        
+        Args:
+            identifier: Unique identifier to clear
+        """
+        with self._lock:
+            if identifier in self._attempts:
+                del self._attempts[identifier]
+
+
+# Global rate limiter instance
+_auth_rate_limiter: Optional[AuthRateLimiter] = None
+_rate_limiter_lock = threading.Lock()
+
+
+def get_auth_rate_limiter() -> AuthRateLimiter:
+    """
+    Get or create auth rate limiter singleton.
+    
+    Returns:
+        AuthRateLimiter instance
+    """
+    global _auth_rate_limiter
+    if _auth_rate_limiter is not None:
+        return _auth_rate_limiter
+    with _rate_limiter_lock:
+        if _auth_rate_limiter is None:
+            # Get rate limit config from environment or use defaults
+            from ..constants import RateLimits
+            max_attempts = RateLimits.AUTH_RATE_LIMIT_ATTEMPTS
+            window_seconds = RateLimits.AUTH_RATE_LIMIT_WINDOW_SECONDS
+            _auth_rate_limiter = AuthRateLimiter(
+                max_attempts=max_attempts,
+                window_seconds=window_seconds
+            )
+        return _auth_rate_limiter
 
 
 class TokenBlacklist:
@@ -336,6 +424,46 @@ def validate_password_length(password: str) -> None:
         )
 
 
+def validate_password_complexity(password: str) -> None:
+    """
+    Validate password meets complexity requirements.
+    
+    Requirements:
+    - At least 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one digit
+    - At least one special character
+    
+    Args:
+        password: Password to validate
+        
+    Raises:
+        ValidationError: If password doesn't meet requirements
+    """
+    from ..core.exceptions import ValidationError
+    
+    errors = []
+    
+    if len(password) < 12:
+        errors.append("Password must be at least 12 characters")
+    if not re.search(r'[A-Z]', password):
+        errors.append("Password must contain at least one uppercase letter")
+    if not re.search(r'[a-z]', password):
+        errors.append("Password must contain at least one lowercase letter")
+    if not re.search(r'[0-9]', password):
+        errors.append("Password must contain at least one digit")
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        errors.append("Password must contain at least one special character")
+    
+    if errors:
+        raise ValidationError("; ".join(errors), field="password")
+            f"Current length: {len(password_bytes)} bytes. "
+            "Please use a shorter password.",
+            field="password",
+        )
+
+
 def create_access_token(
     data: Dict[str, Any],
     expires_delta: Optional[timedelta] = None,
@@ -379,6 +507,25 @@ def create_access_token(
     return str(encoded_jwt)
 
 
+def _check_token_blacklist(payload: Dict[str, Any]) -> None:
+    """
+    Check if token is blacklisted.
+    
+    Args:
+        payload: JWT payload containing jti
+        
+    Raises:
+        HTTPException: If token is blacklisted
+    """
+    jti = payload.get("jti")
+    if jti and get_token_blacklist().is_blacklisted(jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 def verify_token(token: str) -> Dict[str, Any]:
     """
     Verify and decode JWT token with key rotation support.
@@ -403,14 +550,8 @@ def verify_token(token: str) -> Dict[str, Any]:
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
-        # Check if token is blacklisted
-        jti = payload.get("jti")
-        if jti and get_token_blacklist().is_blacklisted(jti):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        # Check if token is blacklisted using helper
+        _check_token_blacklist(payload)
 
         return cast(dict[str, Any], payload)
     except JWTError as primary_error:
@@ -421,14 +562,8 @@ def verify_token(token: str) -> Dict[str, Any]:
                 logger.debug("Attempting token verification with previous key")
                 payload = jwt.decode(token, previous_key, algorithms=[algorithm])
 
-                # Check blacklist for old key tokens too
-                jti = payload.get("jti")
-                if jti and get_token_blacklist().is_blacklisted(jti):
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Token has been revoked",
-                        headers={"WWW-Authenticate": "Bearer"},
-                    )
+                # Check blacklist for old key tokens too using helper
+                _check_token_blacklist(payload)
 
                 logger.info("Token verified with previous key - consider refreshing token")
                 return cast(dict[str, Any], payload)

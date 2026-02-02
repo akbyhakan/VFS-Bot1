@@ -1,6 +1,7 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
 import logging
+import os
 from typing import Any, List, Dict, Optional
 from datetime import datetime, timedelta
 from playwright.async_api import Page
@@ -32,7 +33,7 @@ class CacheEntry:
 class CentreFetcher:
     """Fetch available centres and categories from VFS website."""
 
-    DEFAULT_CACHE_TTL = 3600  # 1 hour
+    DEFAULT_CACHE_TTL = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # Configurable from env
 
     def __init__(
         self,
