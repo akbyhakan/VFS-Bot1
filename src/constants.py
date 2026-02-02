@@ -26,6 +26,8 @@ class Timeouts:
     DATABASE_CONNECTION_SECONDS: Final[float] = 30.0
     WEBSOCKET_PING_SECONDS: Final[int] = 30
     GRACEFUL_SHUTDOWN_SECONDS: Final[int] = 5
+    SHUTDOWN_TIMEOUT: Final[int] = 30
+    MAX_MANUAL_TIMEOUT: Final[int] = 300
 
 
 class Intervals:
@@ -41,6 +43,7 @@ class Intervals:
     ERROR_RECOVERY: Final[int] = 60
     CIRCUIT_BREAKER_RECOVERY: Final[int] = 300
     CLEANUP_INTERVAL: Final[int] = 60
+    DEFAULT_CHECK_INTERVAL: Final[int] = 60
 
 
 class Retries:
@@ -70,6 +73,10 @@ class RateLimits:
     LOGIN_MAX_REQUESTS: Final[int] = 5
     LOGIN_WINDOW_SECONDS: Final[int] = 300
     LOGIN_LOCKOUT_SECONDS: Final[int] = 900
+    
+    # Authentication rate limiting (brute-force protection) - window in seconds
+    AUTH_RATE_LIMIT_ATTEMPTS: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_ATTEMPTS", "5"))
+    AUTH_RATE_LIMIT_WINDOW: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_WINDOW", "60"))
 
 
 class Security:
@@ -142,6 +149,8 @@ class Database:
     POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
     CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
     QUERY_TIMEOUT: Final[float] = 30.0
+    BUSY_TIMEOUT_MS: Final[int] = 30000
+    DEFAULT_CACHE_TTL: Final[int] = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 
 
 class Pools:
