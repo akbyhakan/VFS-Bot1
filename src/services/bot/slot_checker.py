@@ -66,10 +66,12 @@ class SlotChecker:
         Returns:
             Slot information if available, None otherwise
         """
-        # Apply rate limiting before making requests
-        await self.rate_limiter.acquire()
-        
+        acquired = False
         try:
+            # Apply rate limiting before making requests
+            await self.rate_limiter.acquire()
+            acquired = True
+
             # Navigate to appointment page
             base = self.config["vfs"]["base_url"]
             country = self.config["vfs"]["country"]
@@ -139,5 +141,6 @@ class SlotChecker:
             )
             return None
         finally:
-            # Always release the rate limiter to prevent memory leak
-            self.rate_limiter.release()
+            # Only release if we successfully acquired
+            if acquired:
+                self.rate_limiter.release()

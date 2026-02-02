@@ -53,12 +53,14 @@ class AuthRateLimiter:
             # Clean old attempts
             self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
 
+            # Check rate limit status
+            is_limited = len(self._attempts[identifier]) >= self.max_attempts
+
             # Clean up empty lists to prevent unbounded memory growth
             if not self._attempts[identifier]:
                 del self._attempts[identifier]
-                return False
 
-            return len(self._attempts[identifier]) >= self.max_attempts
+            return is_limited
 
     def record_attempt(self, identifier: str) -> None:
         """
