@@ -14,6 +14,9 @@ from collections import OrderedDict, defaultdict
 from jose import JWTError, jwt
 from fastapi import HTTPException, status
 
+from ..constants import RateLimits
+from ..core.exceptions import ValidationError
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,9 +97,8 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
     with _rate_limiter_lock:
         if _auth_rate_limiter is None:
             # Get rate limit config from environment or use defaults
-            from ..constants import RateLimits
             max_attempts = RateLimits.AUTH_RATE_LIMIT_ATTEMPTS
-            window_seconds = RateLimits.AUTH_RATE_LIMIT_WINDOW_SECONDS
+            window_seconds = RateLimits.AUTH_RATE_LIMIT_WINDOW
             _auth_rate_limiter = AuthRateLimiter(
                 max_attempts=max_attempts,
                 window_seconds=window_seconds
@@ -412,8 +414,6 @@ def validate_password_length(password: str) -> None:
     Raises:
         ValidationError: If password exceeds maximum byte length
     """
-    from ..core.exceptions import ValidationError
-
     password_bytes = password.encode("utf-8")
     if len(password_bytes) > MAX_PASSWORD_BYTES:
         raise ValidationError(
@@ -441,8 +441,6 @@ def validate_password_complexity(password: str) -> None:
     Raises:
         ValidationError: If password doesn't meet requirements
     """
-    from ..core.exceptions import ValidationError
-    
     errors = []
     
     if len(password) < 12:
