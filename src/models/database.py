@@ -254,6 +254,31 @@ class Database:
                     await self._available_connections.put(conn)
                 except Exception as e:
                     logger.error(f"Failed to return connection to pool: {e}")
+                    # Connection is lost - create a new one to maintain pool size
+                    try:
+                        # Note: qsize() is a snapshot and may be inaccurate in concurrent scenarios
+                        # but provides useful debugging information for production issues
+                        current_pool_size = self._available_connections.qsize()
+                        logger.info(
+                            f"Creating replacement connection for lost connection "
+                            f"(current pool size: {current_pool_size}/{self.pool_size})"
+                        )
+                        new_conn = await aiosqlite.connect(self.db_path)
+                        new_conn.row_factory = aiosqlite.Row
+                        await new_conn.execute("PRAGMA journal_mode=WAL")
+                        await new_conn.execute("PRAGMA busy_timeout=30000")
+                        await self._available_connections.put(new_conn)
+                        logger.info("Replacement connection created successfully")
+                    except Exception as create_error:
+                        # Note: qsize() is a best-effort metric for logging purposes
+                        current_pool_size = self._available_connections.qsize()
+                        logger.error(f"Failed to create replacement connection: {create_error}")
+                        logger.warning(
+                            f"Connection pool degraded: {current_pool_size}/{self.pool_size} "
+                            f"connections available (configured: {self.pool_size}). "
+                            f"This may lead to pool exhaustion if more connections are lost. "
+                            f"Consider restarting the application to restore full pool capacity."
+                        )
 
     @asynccontextmanager
     async def get_connection_with_retry(

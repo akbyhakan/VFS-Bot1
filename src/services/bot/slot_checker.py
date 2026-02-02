@@ -66,9 +66,11 @@ class SlotChecker:
         Returns:
             Slot information if available, None otherwise
         """
+        semaphore_acquired = False
         try:
             # Apply rate limiting before making requests
             await self.rate_limiter.acquire()
+            semaphore_acquired = True
 
             # Navigate to appointment page
             base = self.config["vfs"]["base_url"]
@@ -110,8 +112,15 @@ class SlotChecker:
                 date = date_content.strip() if date_content else ""
                 time = time_content.strip() if time_content else ""
 
-                logger.info(f"Slot found! Date: {date}, Time: {time}")
-                return {"date": date, "time": time}
+                # Validate that date and time are not empty strings
+                if date and time:
+                    logger.info(f"Slot found! Date: {date}, Time: {time}")
+                    return {"date": date, "time": time}
+                else:
+                    logger.warning(
+                        f"Slot element found but date/time empty: date='{date}', time='{time}'"
+                    )
+                    return None
             else:
                 logger.info(f"No slots available for {centre}/{category}/{subcategory}")
                 return None
@@ -131,3 +140,7 @@ class SlotChecker:
                 },
             )
             return None
+        finally:
+            # Only release if we successfully acquired
+            if semaphore_acquired:
+                self.rate_limiter.release()
