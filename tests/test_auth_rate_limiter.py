@@ -2,6 +2,7 @@
 
 import pytest
 import time
+from datetime import timezone
 from src.core.auth import AuthRateLimiter
 
 
@@ -143,8 +144,6 @@ class TestAuthRateLimiter:
 
     def test_timezone_aware_datetime(self):
         """Test that rate limiter uses timezone-aware datetime."""
-        from datetime import timezone
-
         limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
 
         # Record an attempt
