@@ -254,6 +254,19 @@ class Database:
                     await self._available_connections.put(conn)
                 except Exception as e:
                     logger.error(f"Failed to return connection to pool: {e}")
+                    # Connection is lost - create a new one to maintain pool size
+                    try:
+                        logger.info("Creating replacement connection for lost connection")
+                        new_conn = await aiosqlite.connect(self.db_path)
+                        new_conn.row_factory = aiosqlite.Row
+                        await new_conn.execute("PRAGMA journal_mode=WAL")
+                        await new_conn.execute("PRAGMA busy_timeout=30000")
+                        await self._available_connections.put(new_conn)
+                        logger.info("Replacement connection created successfully")
+                    except Exception as create_error:
+                        logger.error(f"Failed to create replacement connection: {create_error}")
+                        # Pool is now one connection smaller - this will eventually
+                        # lead to pool exhaustion if connections keep getting lost
 
     @asynccontextmanager
     async def get_connection_with_retry(

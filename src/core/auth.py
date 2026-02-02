@@ -47,11 +47,16 @@ class AuthRateLimiter:
             True if rate limited
         """
         with self._lock:
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             cutoff = now - timedelta(seconds=self.window_seconds)
 
             # Clean old attempts
             self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
+
+            # Clean up empty lists to prevent unbounded memory growth
+            if not self._attempts[identifier]:
+                del self._attempts[identifier]
+                return False
 
             return len(self._attempts[identifier]) >= self.max_attempts
 
@@ -63,7 +68,7 @@ class AuthRateLimiter:
             identifier: Unique identifier (e.g., username, IP address)
         """
         with self._lock:
-            self._attempts[identifier].append(datetime.now())
+            self._attempts[identifier].append(datetime.now(timezone.utc))
 
     def clear_attempts(self, identifier: str) -> None:
         """

@@ -244,8 +244,12 @@ class VFSBot:
                         f"(consecutive errors: {stats['consecutive_errors']})"
                     )
                     await asyncio.sleep(wait_time)
-                    # Try to close circuit breaker
-                    await self.circuit_breaker.reset()
+                    # Don't unconditionally reset - let the next successful iteration close it
+                    # Circuit will be closed by record_success() if the next attempt succeeds
+                    logger.info(
+                        "Circuit breaker wait time elapsed - attempting next iteration "
+                        "(circuit will close on success)"
+                    )
                     continue
 
                 # Get active users with decrypted passwords
@@ -367,11 +371,18 @@ class VFSBot:
         except Exception as e:
             logger.error(f"Error processing user {masked_email}: {e}")
             if self.config["bot"].get("screenshot_on_error", True):
-                await self.error_handler.take_screenshot(
-                    page, f"error_{user['id']}_{datetime.now().timestamp()}"
-                )
+                try:
+                    await self.error_handler.take_screenshot(
+                        page, f"error_{user['id']}_{datetime.now().timestamp()}"
+                    )
+                except Exception as screenshot_error:
+                    logger.error(f"Failed to take screenshot: {screenshot_error}")
         finally:
-            await page.close()
+            # Always close the page to prevent resource leak
+            try:
+                await page.close()
+            except Exception as close_error:
+                logger.error(f"Failed to close page: {close_error}")
 
     async def fill_personal_details(self, page: Page, details: Dict[str, Any]) -> bool:
         """
