@@ -3,7 +3,6 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from functools import lru_cache
 
 import yaml
 from playwright.async_api import Locator, Page
