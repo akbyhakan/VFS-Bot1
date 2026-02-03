@@ -17,9 +17,7 @@ class CountryAwareSelectorManager:
     """Country-aware CSS selector management system."""
 
     def __init__(
-        self, 
-        country_code: str = "default",
-        selectors_file: str = "config/selectors.yaml"
+        self, country_code: str = "default", selectors_file: str = "config/selectors.yaml"
     ):
         """
         Initialize country-aware selector manager.
@@ -31,11 +29,16 @@ class CountryAwareSelectorManager:
             selectors_file: Path to selectors YAML file
         """
         # Backward compatibility: if country_code looks like a file path, swap the parameters
-        if "/" in country_code or "\\" in country_code or country_code.endswith(".yaml") or country_code.endswith(".yml"):
+        if (
+            "/" in country_code
+            or "\\" in country_code
+            or country_code.endswith(".yaml")
+            or country_code.endswith(".yml")
+        ):
             # Old API: SelectorManager(selectors_file)
             selectors_file = country_code
             country_code = "default"
-            
+
         self.country_code = country_code.lower()
         self.selectors_file = Path(selectors_file)
         self._selectors: Dict[str, Any] = {}
@@ -86,44 +89,44 @@ class CountryAwareSelectorManager:
     def _get_country_selector(self, path: str) -> Optional[Any]:
         """
         Get country-specific selector.
-        
+
         Args:
             path: Dot-separated path (e.g., "login.email_input")
-            
+
         Returns:
             Selector value or None if not found
         """
         if self.country_code == "default":
             return None
-            
+
         # Try to get from countries.{country_code}.{path}
         countries = self._selectors.get("countries", {})
         if not isinstance(countries, dict):
             return None
-            
+
         country_data = countries.get(self.country_code, {})
         if not isinstance(country_data, dict):
             return None
-        
+
         # Navigate through the path
         keys = path.split(".")
         value = country_data
-        
+
         for key in keys:
             if isinstance(value, dict) and key in value:
                 value = value[key]
             else:
                 return None
-        
+
         return value
 
     def _get_default_selector(self, path: str) -> Optional[Any]:
         """
         Get global default selector.
-        
+
         Args:
             path: Dot-separated path (e.g., "login.email_input")
-            
+
         Returns:
             Selector value or None if not found
         """
@@ -132,29 +135,29 @@ class CountryAwareSelectorManager:
         if isinstance(defaults, dict):
             # Navigate through the path
             keys = path.split(".")
-            value = defaults
-            
+            result: Optional[Any] = defaults
+
             for key in keys:
-                if isinstance(value, dict) and key in value:
-                    value = value[key]
+                if isinstance(result, dict) and key in result:
+                    result = result[key]
                 else:
-                    value = None
+                    result = None
                     break
-            
-            if value is not None:
-                return value
-        
+
+            if result is not None:
+                return result
+
         # Backward compatibility: try to get directly from root (old structure)
         keys = path.split(".")
-        value = self._selectors
-        
+        result = self._selectors
+
         for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
+            if isinstance(result, dict) and key in result:
+                result = result[key]
             else:
                 return None
-        
-        return value
+
+        return result
 
     def get(self, path: str, default: Optional[str] = None) -> Optional[str]:
         """
@@ -184,7 +187,7 @@ class CountryAwareSelectorManager:
             elif isinstance(country_value, str):
                 logger.debug(f"Using country-specific selector for {self.country_code}: {path}")
                 return country_value
-        
+
         # Priority 2: Try global default selector
         default_value = self._get_default_selector(path)
         if default_value is not None:
@@ -197,7 +200,7 @@ class CountryAwareSelectorManager:
             elif isinstance(default_value, str):
                 logger.debug(f"Using default selector for: {path}")
                 return default_value
-        
+
         # Priority 3: Return provided default
         if default is not None:
             logger.warning(f"Selector not found: {path}, using default: {default}")
@@ -222,7 +225,7 @@ class CountryAwareSelectorManager:
                     return fallbacks
                 else:
                     return [fallbacks]
-        
+
         # Fall back to default fallbacks
         default_value = self._get_default_selector(path)
         if default_value is not None and isinstance(default_value, dict):
@@ -238,7 +241,7 @@ class CountryAwareSelectorManager:
     def get_with_fallback(self, path: str) -> List[str]:
         """
         Get selector with combined fallback options.
-        
+
         Combines country-specific and global selectors in priority order:
         1. Country-specific primary
         2. Country-specific fallbacks
@@ -252,7 +255,7 @@ class CountryAwareSelectorManager:
             List of selectors to try (deduplicated)
         """
         selectors = []
-        
+
         # Get country-specific selector and fallbacks
         country_value = self._get_country_selector(path)
         if country_value is not None:
@@ -261,7 +264,7 @@ class CountryAwareSelectorManager:
                 country_primary = country_value["primary"]
                 if isinstance(country_primary, str):
                     selectors.append(country_primary)
-                    
+
                 # Add country fallbacks
                 if "fallbacks" in country_value:
                     country_fallbacks = country_value["fallbacks"]
@@ -271,7 +274,7 @@ class CountryAwareSelectorManager:
                         selectors.append(country_fallbacks)
             elif isinstance(country_value, str):
                 selectors.append(country_value)
-        
+
         # Get global default selector and fallbacks
         default_value = self._get_default_selector(path)
         if default_value is not None:
@@ -280,7 +283,7 @@ class CountryAwareSelectorManager:
                 default_primary = default_value["primary"]
                 if isinstance(default_primary, str) and default_primary not in selectors:
                     selectors.append(default_primary)
-                    
+
                 # Add global fallbacks (if not duplicate)
                 if "fallbacks" in default_value:
                     default_fallbacks = default_value["fallbacks"]
@@ -298,7 +301,7 @@ class CountryAwareSelectorManager:
     def _get_semantic(self, path: str) -> Optional[Dict[str, str]]:
         """
         Get semantic locator information for a path.
-        
+
         Priority:
         1. Country-specific semantic
         2. Global default semantic
@@ -314,7 +317,7 @@ class CountryAwareSelectorManager:
         if country_value is not None and isinstance(country_value, dict):
             if "semantic" in country_value:
                 return dict(country_value["semantic"])
-        
+
         # Fall back to default semantic
         default_value = self._get_default_selector(path)
         if default_value is not None and isinstance(default_value, dict):
@@ -542,19 +545,19 @@ _selector_managers: Dict[str, CountryAwareSelectorManager] = {}
 def get_selector_manager(country_code: str = "default") -> CountryAwareSelectorManager:
     """
     Get or create a selector manager for a specific country.
-    
+
     Args:
         country_code: Ülke kodu (fra, nld, vb.) veya "default"
-    
+
     Returns:
         CountryAwareSelectorManager instance
     """
     country_code = country_code.lower()
-    
+
     if country_code not in _selector_managers:
         _selector_managers[country_code] = CountryAwareSelectorManager(country_code)
         logger.info(f"Created selector manager for country: {country_code}")
-    
+
     return _selector_managers[country_code]
 
 
