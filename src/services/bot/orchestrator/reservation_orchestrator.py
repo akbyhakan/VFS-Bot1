@@ -100,7 +100,7 @@ class ReservationOrchestrator:
         try:
             proxies = await self.db.get_active_proxies()
             if proxies:
-                return proxies
+                return list(proxies)
         except Exception:
             pass
 
@@ -108,7 +108,9 @@ class ReservationOrchestrator:
         from ...utils.security.proxy_manager import ProxyManager
 
         proxy_manager = ProxyManager(self.config.get("proxy", {}))
-        return proxy_manager.proxies if proxy_manager.proxies else [{}]  # Empty dict = no proxy
+        if proxy_manager.proxies:
+            return list(proxy_manager.proxies)
+        return [{}]  # Empty dict = no proxy
 
     async def _run_monitoring_loop(self) -> None:
         """Monitor reservations and manage workers."""
@@ -151,7 +153,8 @@ class ReservationOrchestrator:
         # Try to get from database if method exists
         try:
             if hasattr(self.db, "get_active_reservations"):
-                return await self.db.get_active_reservations()
+                result = await self.db.get_active_reservations()
+                return list(result) if result else []
         except Exception as e:
             logger.warning(f"Could not get active reservations: {e}")
 

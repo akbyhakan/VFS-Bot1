@@ -192,7 +192,7 @@ class ReservationWorker:
             finally:
                 self.browser_manager = None
 
-    async def _process_check(self, page) -> Dict[str, Any]:
+    async def _process_check(self, page: Any) -> Dict[str, Any]:
         """Process a single check iteration."""
         # Bu metod mevcut auth_service ve slot_checker'ı kullanacak
         # Şimdilik placeholder
