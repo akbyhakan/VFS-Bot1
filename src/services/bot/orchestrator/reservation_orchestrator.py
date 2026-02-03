@@ -167,13 +167,35 @@ class ReservationOrchestrator:
         country = reservation.get("mission_code") or reservation.get("country")
         reservation_id = reservation.get("id")
 
-        if country in self.workers:
-            logger.warning(f"Worker for {country} already exists")
+        # Type guards - None check
+        if country is None:
+            logger.warning(f"Reservation missing country: {reservation}")
+            return
+
+        if reservation_id is None:
+            logger.warning(f"Reservation missing id: {reservation}")
+            return
+
+        # Now country is str and reservation_id is not None
+        country_str: str = str(country)
+        reservation_id_int: int = int(reservation_id)
+
+        if country_str in self.workers:
+            logger.warning(f"Worker for {country_str} already exists")
+            return
+
+        # Pool None checks
+        if self.account_pool is None:
+            logger.error("Account pool not initialized")
+            return
+
+        if self.proxy_pool is None:
+            logger.error("Proxy pool not initialized")
             return
 
         worker = ReservationWorker(
-            reservation_id=reservation_id,
-            country=country,
+            reservation_id=reservation_id_int,
+            country=country_str,
             config=self.config,
             account_pool=self.account_pool,
             proxy_pool=self.proxy_pool,
@@ -181,10 +203,10 @@ class ReservationOrchestrator:
             notifier=self.notifier,
         )
 
-        self.workers[country] = worker
-        self.worker_tasks[country] = asyncio.create_task(worker.start())
+        self.workers[country_str] = worker
+        self.worker_tasks[country_str] = asyncio.create_task(worker.start())
 
-        logger.info(f"Started worker for {country}")
+        logger.info(f"Started worker for {country_str}")
 
     async def _stop_worker(self, country: str) -> None:
         """Stop a worker."""

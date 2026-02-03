@@ -100,7 +100,11 @@ class ReservationWorker:
                 # 2. Get next proxy in country-specific sequence
                 self.current_proxy = await self.proxy_pool.get_next(self.country)
 
-                account_email = self.current_account.get("email", "unknown")
+                # Handle None check for current_account
+                if self.current_account is None:
+                    account_email = "unknown"
+                else:
+                    account_email = self.current_account.get("email", "unknown")
                 proxy_server = (
                     self.current_proxy.get("server", "no-proxy")
                     if self.current_proxy
@@ -118,6 +122,8 @@ class ReservationWorker:
 
                 try:
                     # 4. Create new page
+                    if self.browser_manager is None:
+                        raise RuntimeError("Browser manager not initialized")
                     page = await self.browser_manager.new_page()
 
                     # 5. Process check
@@ -191,7 +197,7 @@ class ReservationWorker:
     async def _process_check(self, page: Any) -> Dict[str, Any]:
         """
         Process a single check iteration.
-        
+
         TODO: Integrate existing auth_service and slot_checker for actual slot checking.
         Placeholder for now.
         """
