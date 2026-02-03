@@ -11,20 +11,20 @@ logger = logging.getLogger(__name__)
 class ResourcePool(Generic[T]):
     """
     Generic round-robin resource pool.
-    Her ülke için bağımsız index tutarak rotasyon yapar.
+    Maintains independent rotation index for each country.
 
-    Kullanım:
+    Usage:
         account_pool = ResourcePool[Account](accounts)
         proxy_pool = ResourcePool[Proxy](proxies)
 
-        # Her ülke için bağımsız rotasyon
+        # Independent rotation for each country
         fra_account = await account_pool.get_next("fra")  # A1
         nld_account = await account_pool.get_next("nld")  # A2
         bel_account = await account_pool.get_next("bel")  # A3
 
-        # Sonraki döngüde
-        fra_account = await account_pool.get_next("fra")  # A4 (devam ediyor)
-        nld_account = await account_pool.get_next("nld")  # A1 (devam ediyor)
+        # Next cycle
+        fra_account = await account_pool.get_next("fra")  # A4 (continues)
+        nld_account = await account_pool.get_next("nld")  # A1 (continues)
     """
 
     def __init__(self, resources: List[T], name: str = "resource"):
@@ -43,8 +43,8 @@ class ResourcePool(Generic[T]):
 
     async def get_next(self, country: str) -> T:
         """
-        Round-robin ile ülkeye özel sıradaki kaynağı döndür.
-        Her ülke farklı offset ile başlar.
+        Return the next resource in the country-specific round-robin sequence.
+        Each country starts with a different offset.
 
         Args:
             country: Country code (fra, nld, bel, etc.)
@@ -59,9 +59,9 @@ class ResourcePool(Generic[T]):
             if not self.resources:
                 raise ValueError(f"ResourcePool[{self.name}] is empty")
 
-            # İlk kez bu ülke için istek geliyorsa, offset hesapla
+            # If this is the first request for this country, calculate offset
             if country not in self.country_indices:
-                # Her ülke için farklı başlangıç noktası
+                # Different starting point for each country
                 countries_count = len(self.country_indices)
                 initial_offset = countries_count % len(self.resources)
                 self.country_indices[country] = initial_offset
@@ -70,11 +70,11 @@ class ResourcePool(Generic[T]):
                     f"with offset {initial_offset}"
                 )
 
-            # Mevcut index'teki kaynağı al
+            # Get resource at current index
             idx = self.country_indices[country]
             resource = self.resources[idx]
 
-            # Sonraki döngü için index'i güncelle
+            # Update index for next cycle
             self.country_indices[country] = (idx + 1) % len(self.resources)
 
             logger.debug(f"ResourcePool[{self.name}] returned index {idx} for country '{country}'")

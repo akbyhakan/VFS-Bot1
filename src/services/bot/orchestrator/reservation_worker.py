@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 
 class ReservationWorker:
     """
-    Tek bir rezervasyon (ülke) için bağımsız worker.
+    Independent worker for a single reservation (country).
 
-    Her worker:
-    - Kendi tarayıcı instance'ına sahip
-    - Her döngüde hesap ve proxy rotate eder
-    - Her döngü sonunda tarayıcıyı tamamen temizler
+    Each worker:
+    - Has its own browser instance
+    - Rotates account and proxy on each cycle
+    - Completely cleans browser at the end of each cycle
     """
 
     def __init__(
@@ -94,10 +94,10 @@ class ReservationWorker:
         """Main check loop with full browser isolation per iteration."""
         while self.running:
             try:
-                # 1. Ülkeye özel sıradaki hesabı al
+                # 1. Get next account in country-specific sequence
                 self.current_account = await self.account_pool.get_next(self.country)
 
-                # 2. Ülkeye özel sıradaki proxy'yi al
+                # 2. Get next proxy in country-specific sequence
                 self.current_proxy = await self.proxy_pool.get_next(self.country)
 
                 account_email = self.current_account.get("email", "unknown")
@@ -108,27 +108,27 @@ class ReservationWorker:
                 )
 
                 logger.info(
-                    f"[{self.country}] Döngü {self.check_count + 1} başlıyor - "
-                    f"Hesap: {self._mask_email(account_email)}, "
+                    f"[{self.country}] Cycle {self.check_count + 1} starting - "
+                    f"Account: {self._mask_email(account_email)}, "
                     f"Proxy: {proxy_server}"
                 )
 
-                # 3. YENİ tarayıcı başlat (TEMİZ, bu proxy ile)
+                # 3. Start NEW browser (CLEAN, with this proxy)
                 await self._start_fresh_browser()
 
                 try:
-                    # 4. Yeni sayfa oluştur
+                    # 4. Create new page
                     page = await self.browser_manager.new_page()
 
-                    # 5. İşlem yap
+                    # 5. Process check
                     result = await self._process_check(page)
 
                     if result.get("slot_found"):
-                        logger.info(f"[{self.country}] 🎉 SLOT BULUNDU!")
+                        logger.info(f"[{self.country}] 🎉 SLOT FOUND!")
                         await self.notifier.notify_slot_found(
                             self.country, result.get("date"), result.get("time")
                         )
-                        # Booking işlemi burada yapılabilir
+                        # Booking process can be done here
 
                     self.check_count += 1
                     self.last_check_time = datetime.now()
@@ -137,13 +137,13 @@ class ReservationWorker:
                     logger.error(f"[{self.country}] Check error: {e}")
 
                 finally:
-                    # 6. TAM TEMİZLİK - Browser tamamen kapat
+                    # 6. FULL CLEANUP - Close browser completely
                     await self._close_browser()
-                    logger.debug(f"[{self.country}] Browser temizlendi")
+                    logger.debug(f"[{self.country}] Browser cleaned")
 
-                # 7. Sonraki döngüye geç
+                # 7. Move to next cycle
                 check_interval = self.config["bot"].get("check_interval", 30)
-                logger.info(f"[{self.country}] Sonraki kontrol {check_interval}s sonra...")
+                logger.info(f"[{self.country}] Next check in {check_interval}s...")
                 await asyncio.sleep(check_interval)
 
             except asyncio.CancelledError:
@@ -154,10 +154,10 @@ class ReservationWorker:
 
     async def _start_fresh_browser(self) -> None:
         """Start a completely fresh browser instance with current proxy."""
-        # Önceki browser varsa kapat
+        # Close previous browser if exists
         await self._close_browser()
 
-        # Proxy config oluştur
+        # Create proxy config
         proxy_config = None
         if self.current_proxy:
             proxy_config = {
@@ -167,12 +167,12 @@ class ReservationWorker:
                 "password": self.current_proxy.get("password"),
             }
 
-        # Yeni config oluştur (proxy ile)
+        # Create new config (with proxy)
         browser_config = dict(self.config)
         if proxy_config:
             browser_config["proxy"] = proxy_config
 
-        # Yeni browser başlat
+        # Start new browser
         self.browser_manager = BrowserManager(browser_config)
         await self.browser_manager.start()
 
@@ -194,8 +194,8 @@ class ReservationWorker:
 
     async def _process_check(self, page: Any) -> Dict[str, Any]:
         """Process a single check iteration."""
-        # Bu metod mevcut auth_service ve slot_checker'ı kullanacak
-        # Şimdilik placeholder
+        # This method will use existing auth_service and slot_checker
+        # Placeholder for now
         return {"slot_found": False}
 
     def _mask_email(self, email: str) -> str:

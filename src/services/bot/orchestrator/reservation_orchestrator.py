@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 class ReservationOrchestrator:
     """
-    Ana koordinatör sınıfı.
+    Main coordinator class.
 
-    - Aktif rezervasyonları yönetir
-    - Her rezervasyon için ayrı worker başlatır
-    - Hesap ve proxy pool'larını paylaştırır
+    - Manages active reservations
+    - Starts separate worker for each reservation
+    - Shares account and proxy pools
     """
 
     def __init__(
@@ -96,7 +96,7 @@ class ReservationOrchestrator:
 
     async def _load_proxies(self) -> List[Dict[str, Any]]:
         """Load proxies from database or file."""
-        # Önce DB'den dene
+        # Try from DB first
         try:
             proxies = await self.db.get_active_proxies()
             if proxies:
@@ -104,7 +104,7 @@ class ReservationOrchestrator:
         except Exception:
             pass
 
-        # Fallback: ProxyManager'dan yükle
+        # Fallback: Load from ProxyManager
         from ...utils.security.proxy_manager import ProxyManager
 
         proxy_manager = ProxyManager(self.config.get("proxy", {}))
