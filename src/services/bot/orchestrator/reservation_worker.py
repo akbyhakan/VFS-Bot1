@@ -182,10 +182,6 @@ class ReservationWorker:
         """Close browser and clear all session data."""
         if self.browser_manager:
             try:
-                # Clear cookies and storage before closing
-                if self.browser_manager.context:
-                    await self.browser_manager.context.clear_cookies()
-
                 await self.browser_manager.close()
             except Exception as e:
                 logger.warning(f"[{self.country}] Browser close warning: {e}")
@@ -193,9 +189,12 @@ class ReservationWorker:
                 self.browser_manager = None
 
     async def _process_check(self, page: Any) -> Dict[str, Any]:
-        """Process a single check iteration."""
-        # This method will use existing auth_service and slot_checker
-        # Placeholder for now
+        """
+        Process a single check iteration.
+        
+        TODO: Integrate existing auth_service and slot_checker for actual slot checking.
+        Placeholder for now.
+        """
         return {"slot_found": False}
 
     def _mask_email(self, email: str) -> str:
