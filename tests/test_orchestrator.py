@@ -313,3 +313,194 @@ class TestReservationOrchestrator:
         assert stats["running"] is False
         assert stats["active_workers"] == 0
         assert stats["account_pool"] is None
+
+    @pytest.mark.asyncio
+    async def test_start_worker_with_valid_reservation(self, mock_config, mock_db, mock_notifier):
+        """Test starting a worker with valid reservation data."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Initialize pools
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        # Valid reservation
+        reservation = {"id": 123, "mission_code": "fra"}
+
+        await orchestrator._start_worker(reservation)
+
+        assert "fra" in orchestrator.workers
+        assert "fra" in orchestrator.worker_tasks
+        assert orchestrator.workers["fra"].reservation_id == 123
+        assert orchestrator.workers["fra"].country == "fra"
+
+        # Cleanup
+        await orchestrator.stop()
+
+    @pytest.mark.asyncio
+    async def test_start_worker_missing_country(self, mock_config, mock_db, mock_notifier):
+        """Test that worker is not started when country is missing."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Initialize pools
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        # Missing country
+        reservation = {"id": 123}
+
+        await orchestrator._start_worker(reservation)
+
+        assert len(orchestrator.workers) == 0
+
+    @pytest.mark.asyncio
+    async def test_start_worker_missing_id(self, mock_config, mock_db, mock_notifier):
+        """Test that worker is not started when id is missing."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Initialize pools
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        # Missing id
+        reservation = {"mission_code": "fra"}
+
+        await orchestrator._start_worker(reservation)
+
+        assert len(orchestrator.workers) == 0
+
+    @pytest.mark.asyncio
+    async def test_start_worker_no_account_pool(self, mock_config, mock_db, mock_notifier):
+        """Test that worker is not started when account pool is None."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Only proxy pool initialized
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        reservation = {"id": 123, "mission_code": "fra"}
+
+        await orchestrator._start_worker(reservation)
+
+        assert len(orchestrator.workers) == 0
+
+    @pytest.mark.asyncio
+    async def test_start_worker_no_proxy_pool(self, mock_config, mock_db, mock_notifier):
+        """Test that worker is not started when proxy pool is None."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Only account pool initialized
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+
+        reservation = {"id": 123, "mission_code": "fra"}
+
+        await orchestrator._start_worker(reservation)
+
+        assert len(orchestrator.workers) == 0
+
+    @pytest.mark.asyncio
+    async def test_start_worker_already_exists(self, mock_config, mock_db, mock_notifier):
+        """Test that duplicate worker is not started."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Initialize pools
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        reservation = {"id": 123, "mission_code": "fra"}
+
+        # Start first worker
+        await orchestrator._start_worker(reservation)
+        initial_worker = orchestrator.workers["fra"]
+
+        # Try to start duplicate
+        await orchestrator._start_worker(reservation)
+
+        # Should be same worker
+        assert orchestrator.workers["fra"] is initial_worker
+
+        # Cleanup
+        await orchestrator.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_worker(self, mock_config, mock_db, mock_notifier):
+        """Test stopping a specific worker."""
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Initialize pools and start worker
+        orchestrator.account_pool = ResourcePool([{"email": "test@test.com"}], name="accounts")
+        orchestrator.proxy_pool = ResourcePool([{"server": "http://proxy:8080"}], name="proxies")
+
+        reservation = {"id": 123, "mission_code": "fra"}
+        await orchestrator._start_worker(reservation)
+
+        assert "fra" in orchestrator.workers
+
+        # Stop the worker
+        await orchestrator._stop_worker("fra")
+
+        assert "fra" not in orchestrator.workers
+        assert "fra" not in orchestrator.worker_tasks
+
+    @pytest.mark.asyncio
+    async def test_get_active_reservations_fallback(self, mock_config, mock_notifier):
+        """Test fallback when db method doesn't exist."""
+        # DB without get_active_reservations method
+        mock_db = AsyncMock()
+        # Don't add the get_active_reservations attribute
+
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        result = await orchestrator._get_active_reservations()
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_load_proxies_from_db(self, mock_config, mock_notifier):
+        """Test loading proxies from database."""
+        mock_db = AsyncMock()
+        mock_db.get_active_users_with_decrypted_passwords = AsyncMock(return_value=[])
+        mock_db.get_active_proxies = AsyncMock(
+            return_value=[{"server": "http://proxy1:8080"}, {"server": "http://proxy2:8080"}]
+        )
+
+        orchestrator = ReservationOrchestrator(
+            config=mock_config,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        proxies = await orchestrator._load_proxies()
+
+        assert len(proxies) == 2
+        assert proxies[0]["server"] == "http://proxy1:8080"
