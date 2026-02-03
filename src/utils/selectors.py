@@ -13,28 +13,43 @@ from src.core.exceptions import SelectorNotFoundError
 logger = logging.getLogger(__name__)
 
 
-class SelectorManager:
-    """Manage CSS selectors from external configuration."""
+class CountryAwareSelectorManager:
+    """Country-aware CSS selector management system."""
 
-    def __init__(self, selectors_file: str = "config/selectors.yaml"):
+    def __init__(
+        self, 
+        country_code: str = "default",
+        selectors_file: str = "config/selectors.yaml"
+    ):
         """
-        Initialize selector manager.
+        Initialize country-aware selector manager.
 
         Args:
+            country_code: Ülke kodu (fra, nld, deu, vb.) veya "default"
+                         For backward compatibility, if this looks like a file path,
+                         it will be treated as selectors_file instead.
             selectors_file: Path to selectors YAML file
         """
+        # Backward compatibility: if country_code looks like a file path, swap the parameters
+        if "/" in country_code or "\\" in country_code or country_code.endswith(".yaml") or country_code.endswith(".yml"):
+            # Old API: SelectorManager(selectors_file)
+            selectors_file = country_code
+            country_code = "default"
+            
+        self.country_code = country_code.lower()
         self.selectors_file = Path(selectors_file)
         self._selectors: Dict[str, Any] = {}
         self.learner: Optional[Any] = None  # Type hint for SelectorLearner
         self.ai_repair: Optional[Any] = None  # Type hint for AISelectorRepair
         self._load_selectors()
 
-        # Import and initialize learning system
+        # Import and initialize learning system with country-specific metrics
         try:
             from src.utils.selector_learning import SelectorLearner
 
-            self.learner = SelectorLearner()
-            logger.info("♻️ Adaptive selector learning enabled")
+            metrics_file = f"data/selector_metrics_{self.country_code}.json"
+            self.learner = SelectorLearner(metrics_file=metrics_file)
+            logger.info(f"♻️ Adaptive selector learning enabled for country: {self.country_code}")
         except Exception as e:
             logger.warning(f"Failed to initialize selector learning: {e}")
             self.learner = None
@@ -61,16 +76,94 @@ class SelectorManager:
                 self._selectors = yaml.safe_load(f)
 
             version = self._selectors.get("version", "unknown")
-            logger.info(f"Selectors loaded (version: {version})")
+            logger.info(f"Selectors loaded (version: {version}) for country: {self.country_code}")
 
         except Exception as e:
             logger.error(f"Failed to load selectors: {e}")
             logger.info("Falling back to default selectors")
             self._selectors = self._get_default_selectors()
 
+    def _get_country_selector(self, path: str) -> Optional[Any]:
+        """
+        Get country-specific selector.
+        
+        Args:
+            path: Dot-separated path (e.g., "login.email_input")
+            
+        Returns:
+            Selector value or None if not found
+        """
+        if self.country_code == "default":
+            return None
+            
+        # Try to get from countries.{country_code}.{path}
+        countries = self._selectors.get("countries", {})
+        if not isinstance(countries, dict):
+            return None
+            
+        country_data = countries.get(self.country_code, {})
+        if not isinstance(country_data, dict):
+            return None
+        
+        # Navigate through the path
+        keys = path.split(".")
+        value = country_data
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        
+        return value
+
+    def _get_default_selector(self, path: str) -> Optional[Any]:
+        """
+        Get global default selector.
+        
+        Args:
+            path: Dot-separated path (e.g., "login.email_input")
+            
+        Returns:
+            Selector value or None if not found
+        """
+        # Try to get from defaults.{path} (new structure)
+        defaults = self._selectors.get("defaults", {})
+        if isinstance(defaults, dict):
+            # Navigate through the path
+            keys = path.split(".")
+            value = defaults
+            
+            for key in keys:
+                if isinstance(value, dict) and key in value:
+                    value = value[key]
+                else:
+                    value = None
+                    break
+            
+            if value is not None:
+                return value
+        
+        # Backward compatibility: try to get directly from root (old structure)
+        keys = path.split(".")
+        value = self._selectors
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        
+        return value
+
     def get(self, path: str, default: Optional[str] = None) -> Optional[str]:
         """
-        Get selector by dot-notation path with caching.
+        Get selector by dot-notation path with country-aware priority.
+
+        Priority:
+        1. Country-specific selector (countries.{country}.{path})
+        2. Global default selector (defaults.{path})
+        3. Provided default value
 
         Args:
             path: Dot-separated path (e.g., "login.email_input")
@@ -79,37 +172,36 @@ class SelectorManager:
         Returns:
             Selector string or default
         """
-        # Use cached version for better performance
-        return self._get_cached(path, default)
-
-    @lru_cache(maxsize=256)
-    def _get_cached(self, path: str, default: Optional[str] = None) -> Optional[str]:
-        """
-        Cached version of selector lookup.
-
-        Args:
-            path: Dot-separated path
-            default: Default value if not found
-
-        Returns:
-            Selector string or default
-        """
-        keys = path.split(".")
-        value = self._selectors
-
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                logger.warning(f"Selector not found: {path}, using default: {default}")
-                return default
-
-        # Handle new structure: if value is a dict with 'primary' key, return primary
-        if isinstance(value, dict) and "primary" in value:
-            primary = value["primary"]
-            return primary if isinstance(primary, str) else default
-
-        return value if isinstance(value, str) else default
+        # Priority 1: Try country-specific selector
+        country_value = self._get_country_selector(path)
+        if country_value is not None:
+            # Handle new structure: if value is a dict with 'primary' key, return primary
+            if isinstance(country_value, dict) and "primary" in country_value:
+                primary = country_value["primary"]
+                if isinstance(primary, str):
+                    logger.debug(f"Using country-specific selector for {self.country_code}: {path}")
+                    return primary
+            elif isinstance(country_value, str):
+                logger.debug(f"Using country-specific selector for {self.country_code}: {path}")
+                return country_value
+        
+        # Priority 2: Try global default selector
+        default_value = self._get_default_selector(path)
+        if default_value is not None:
+            # Handle new structure: if value is a dict with 'primary' key, return primary
+            if isinstance(default_value, dict) and "primary" in default_value:
+                primary = default_value["primary"]
+                if isinstance(primary, str):
+                    logger.debug(f"Using default selector for: {path}")
+                    return primary
+            elif isinstance(default_value, str):
+                logger.debug(f"Using default selector for: {path}")
+                return default_value
+        
+        # Priority 3: Return provided default
+        if default is not None:
+            logger.warning(f"Selector not found: {path}, using default: {default}")
+        return default
 
     def get_fallbacks(self, path: str) -> List[str]:
         """
@@ -121,48 +213,95 @@ class SelectorManager:
         Returns:
             List of fallback selectors (without primary)
         """
-        keys = path.split(".")
-        value = self._selectors
-
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                return []
-
-        # Handle new structure: if value is a dict with 'fallbacks' key
-        if isinstance(value, dict) and "fallbacks" in value:
-            fallbacks = value["fallbacks"]
-            if isinstance(fallbacks, list):
-                return fallbacks
-            else:
-                return [fallbacks]
+        # Try country-specific fallbacks first
+        country_value = self._get_country_selector(path)
+        if country_value is not None and isinstance(country_value, dict):
+            if "fallbacks" in country_value:
+                fallbacks = country_value["fallbacks"]
+                if isinstance(fallbacks, list):
+                    return fallbacks
+                else:
+                    return [fallbacks]
+        
+        # Fall back to default fallbacks
+        default_value = self._get_default_selector(path)
+        if default_value is not None and isinstance(default_value, dict):
+            if "fallbacks" in default_value:
+                fallbacks = default_value["fallbacks"]
+                if isinstance(fallbacks, list):
+                    return fallbacks
+                else:
+                    return [fallbacks]
 
         return []
 
     def get_with_fallback(self, path: str) -> List[str]:
         """
-        Get selector with fallback options.
+        Get selector with combined fallback options.
+        
+        Combines country-specific and global selectors in priority order:
+        1. Country-specific primary
+        2. Country-specific fallbacks
+        3. Global primary (if not duplicate)
+        4. Global fallbacks (if not duplicate)
 
         Args:
             path: Dot-separated path
 
         Returns:
-            List of selectors to try
+            List of selectors to try (deduplicated)
         """
-        primary = self.get(path)
-        fallbacks = self.get_fallbacks(path)
-
         selectors = []
-        if primary:
-            selectors.append(primary)
-        selectors.extend(fallbacks)
+        
+        # Get country-specific selector and fallbacks
+        country_value = self._get_country_selector(path)
+        if country_value is not None:
+            # Add country primary
+            if isinstance(country_value, dict) and "primary" in country_value:
+                country_primary = country_value["primary"]
+                if isinstance(country_primary, str):
+                    selectors.append(country_primary)
+                    
+                # Add country fallbacks
+                if "fallbacks" in country_value:
+                    country_fallbacks = country_value["fallbacks"]
+                    if isinstance(country_fallbacks, list):
+                        selectors.extend(country_fallbacks)
+                    else:
+                        selectors.append(country_fallbacks)
+            elif isinstance(country_value, str):
+                selectors.append(country_value)
+        
+        # Get global default selector and fallbacks
+        default_value = self._get_default_selector(path)
+        if default_value is not None:
+            # Add global primary (if not duplicate)
+            if isinstance(default_value, dict) and "primary" in default_value:
+                default_primary = default_value["primary"]
+                if isinstance(default_primary, str) and default_primary not in selectors:
+                    selectors.append(default_primary)
+                    
+                # Add global fallbacks (if not duplicate)
+                if "fallbacks" in default_value:
+                    default_fallbacks = default_value["fallbacks"]
+                    if isinstance(default_fallbacks, list):
+                        for fb in default_fallbacks:
+                            if fb not in selectors:
+                                selectors.append(fb)
+                    elif default_fallbacks not in selectors:
+                        selectors.append(default_fallbacks)
+            elif isinstance(default_value, str) and default_value not in selectors:
+                selectors.append(default_value)
 
         return selectors
 
     def _get_semantic(self, path: str) -> Optional[Dict[str, str]]:
         """
         Get semantic locator information for a path.
+        
+        Priority:
+        1. Country-specific semantic
+        2. Global default semantic
 
         Args:
             path: Dot-separated path
@@ -170,18 +309,17 @@ class SelectorManager:
         Returns:
             Semantic locator dict or None
         """
-        keys = path.split(".")
-        value = self._selectors
-
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                return None
-
-        # Extract semantic field if it exists
-        if isinstance(value, dict) and "semantic" in value:
-            return dict(value["semantic"])
+        # Try country-specific semantic first
+        country_value = self._get_country_selector(path)
+        if country_value is not None and isinstance(country_value, dict):
+            if "semantic" in country_value:
+                return dict(country_value["semantic"])
+        
+        # Fall back to default semantic
+        default_value = self._get_default_selector(path)
+        if default_value is not None and isinstance(default_value, dict):
+            if "semantic" in default_value:
+                return dict(default_value["semantic"])
 
         return None
 
@@ -374,35 +512,51 @@ class SelectorManager:
         return path.replace("_", " ").title()
 
     def reload(self) -> None:
-        """Reload selectors from file and clear cache."""
+        """Reload selectors from file."""
         logger.info("Reloading selectors...")
         self._load_selectors()
-        # Clear LRU cache when reloading selectors
-        self._get_cached.cache_clear()
 
     def _get_default_selectors(self) -> Dict[str, Any]:
         """Get default selectors as fallback."""
         return {
             "version": "default",
-            "login": {
-                "email_input": "input#mat-input-0",
-                "password_input": "input#mat-input-1",
-                "submit_button": "button[type='submit']",
+            "defaults": {
+                "login": {
+                    "email_input": "input#mat-input-0",
+                    "password_input": "input#mat-input-1",
+                    "submit_button": "button[type='submit']",
+                },
+                "appointment": {
+                    "centre_dropdown": "select#SelectLoc",
+                    "category_dropdown": "select#SelectVisaCategory",
+                },
             },
-            "appointment": {
-                "centre_dropdown": "select#SelectLoc",
-                "category_dropdown": "select#SelectVisaCategory",
-            },
+            "countries": {},
         }
 
 
-# Global selector manager instance
-_selector_manager: Optional[SelectorManager] = None
+# Global selector manager instances (one per country)
+_selector_managers: Dict[str, CountryAwareSelectorManager] = {}
 
 
-def get_selector_manager() -> SelectorManager:
-    """Get global selector manager instance."""
-    global _selector_manager
-    if _selector_manager is None:
-        _selector_manager = SelectorManager()
-    return _selector_manager
+def get_selector_manager(country_code: str = "default") -> CountryAwareSelectorManager:
+    """
+    Get or create a selector manager for a specific country.
+    
+    Args:
+        country_code: Ülke kodu (fra, nld, vb.) veya "default"
+    
+    Returns:
+        CountryAwareSelectorManager instance
+    """
+    country_code = country_code.lower()
+    
+    if country_code not in _selector_managers:
+        _selector_managers[country_code] = CountryAwareSelectorManager(country_code)
+        logger.info(f"Created selector manager for country: {country_code}")
+    
+    return _selector_managers[country_code]
+
+
+# Backward compatibility alias
+SelectorManager = CountryAwareSelectorManager

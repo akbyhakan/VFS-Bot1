@@ -1,89 +1,137 @@
-# VFS Global Selectors - Update when website changes
+# VFS Global Selectors - Country-aware hierarchical structure
 version: "2024.02"
 last_updated: "2026-01-24"
 
-# Login page selectors
-login:
-  email_input: 
-    primary: "input#mat-input-0"
-    fallbacks:
-      - "input[type='email']"
-      - "input[name='email']"
-      - "#email"
-    # Semantic locators (more resilient than CSS)
-    semantic:
-      role: "textbox"
-      label: "E-posta"
-      label_en: "Email"
-      placeholder: "ornek@email.com"
-  password_input:
-    primary: "input#mat-input-1"
-    fallbacks:
-      - "input[type='password']"
-      - "input[name='password']"
-      - "#password"
-    semantic:
-      role: "textbox"
-      label: "Şifre"
-      label_en: "Password"
-      type: "password"
-  submit_button:
-    primary: "button.mat-button-base[type='submit']"
-    fallbacks:
-      - "button[type='submit']"
-      - "button.login-btn"
-      - "#login-submit"
-    semantic:
-      role: "button"
-      text: "Giriş Yap"
-      text_en: "Login"
-  error_message: "div.mat-error"
-  
-# Appointment booking selectors
-appointment:
-  centre_dropdown:
-    primary: "select#SelectLoc"
-    fallbacks:
-      - "select[name='centre']"
-      - "select#centres"
-    semantic:
-      role: "combobox"
-      label: "Centre"
-  category_dropdown:
-    primary: "select#SelectVisaCategory"
-    fallbacks:
-      - "select[name='category']"
-      - "select#categories"
-    semantic:
-      role: "combobox"
-      label: "Visa Category"
-  subcategory_dropdown:
-    primary: "select#SelectVisaSubCategory"
-    fallbacks:
-      - "select[name='subcategory']"
-      - "select#subcategories"
-  date_picker: "input#mat-datepicker-input"
-  time_slot: "button.time-slot-btn"
-  submit_button: "button#submit-appointment"
-  check_slots_button:
-    primary: "button#check-slots"
-    fallbacks:
-      - "button.check-availability"
-      - "button[type='submit']"
-  available_slot:
-    primary: ".available-slot"
-    fallbacks:
-      - ".slot-available"
-      - "[data-available='true']"
-  
-# Captcha selectors
-captcha:
-  recaptcha_frame: "iframe[src*='recaptcha']"
-  recaptcha_checkbox: "div.recaptcha-checkbox"
-  recaptcha_response: "textarea#g-recaptcha-response"
-  
-# Common elements
-common:
-  loading_spinner: "div.mat-progress-spinner"
-  error_toast: "div.mat-snack-bar-container"
-  success_toast: "div.success-message"
+# Global default selectors (tüm ülkeler için geçerli)
+defaults:
+  # Login page selectors
+  login:
+    email_input: 
+      primary: "input#mat-input-0"
+      fallbacks:
+        - "input[type='email']"
+        - "input[name='email']"
+        - "#email"
+      # Semantic locators (more resilient than CSS)
+      semantic:
+        role: "textbox"
+        label: "E-posta"
+        label_en: "Email"
+        placeholder: "ornek@email.com"
+    password_input:
+      primary: "input#mat-input-1"
+      fallbacks:
+        - "input[type='password']"
+        - "input[name='password']"
+        - "#password"
+      semantic:
+        role: "textbox"
+        label: "Şifre"
+        label_en: "Password"
+        type: "password"
+    submit_button:
+      primary: "button.mat-button-base[type='submit']"
+      fallbacks:
+        - "button[type='submit']"
+        - "button.login-btn"
+        - "#login-submit"
+      semantic:
+        role: "button"
+        text: "Giriş Yap"
+        text_en: "Login"
+    error_message: "div.mat-error"
+    
+  # Appointment booking selectors
+  appointment:
+    centre_dropdown:
+      primary: "select#SelectLoc"
+      fallbacks:
+        - "select[name='centre']"
+        - "select#centres"
+      semantic:
+        role: "combobox"
+        label: "Centre"
+    category_dropdown:
+      primary: "select#SelectVisaCategory"
+      fallbacks:
+        - "select[name='category']"
+        - "select#categories"
+      semantic:
+        role: "combobox"
+        label: "Visa Category"
+    subcategory_dropdown:
+      primary: "select#SelectVisaSubCategory"
+      fallbacks:
+        - "select[name='subcategory']"
+        - "select#subcategories"
+    date_picker: "input#mat-datepicker-input"
+    time_slot: "button.time-slot-btn"
+    submit_button: "button#submit-appointment"
+    check_slots_button:
+      primary: "button#check-slots"
+      fallbacks:
+        - "button.check-availability"
+        - "button[type='submit']"
+    available_slot:
+      primary: ".available-slot"
+      fallbacks:
+        - ".slot-available"
+        - "[data-available='true']"
+    
+  # Captcha selectors
+  captcha:
+    recaptcha_frame: "iframe[src*='recaptcha']"
+    recaptcha_checkbox: "div.recaptcha-checkbox"
+    recaptcha_response: "textarea#g-recaptcha-response"
+    
+  # Common elements
+  common:
+    loading_spinner: "div.mat-progress-spinner"
+    error_toast: "div.mat-snack-bar-container"
+    success_toast: "div.success-message"
+
+# Ülke bazlı override'lar (sadece farklı olan selector'lar)
+countries:
+  fra:
+    # Fransa'ya özel selector'lar buraya eklenecek
+    # Şimdilik boş, learning system dolduracak
+  nld:
+    # Hollanda'ya özel selector'lar buraya eklenecek
+  aut:
+    # Avusturya
+  bel:
+    # Belçika
+  cze:
+    # Çek Cumhuriyeti
+  pol:
+    # Polonya
+  swe:
+    # İsveç
+  che:
+    # İsviçre
+  fin:
+    # Finlandiya
+  est:
+    # Estonya
+  lva:
+    # Letonya
+  ltu:
+    # Litvanya
+  lux:
+    # Lüksemburg
+  mlt:
+    # Malta
+  nor:
+    # Norveç
+  dnk:
+    # Danimarka
+  isl:
+    # İzlanda
+  svn:
+    # Slovenya
+  hrv:
+    # Hırvatistan
+  bgr:
+    # Bulgaristan
+  svk:
+    # Slovakya
