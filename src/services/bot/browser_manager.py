@@ -90,13 +90,11 @@ class BrowserManager:
             pass
         else:
             # Add basic stealth script for backwards compatibility
-            await self.context.add_init_script(
-                """
+            await self.context.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', {
                     get: () => undefined
                 });
-            """
-            )
+            """)
 
         logger.info("Browser started successfully")
 
@@ -150,6 +148,49 @@ class BrowserManager:
                 await FingerprintBypass.apply_all(page)
 
         return page
+
+    async def clear_session_data(self) -> None:
+        """Clear all cookies, local storage, and session storage."""
+        if not self.context:
+            return
+
+        try:
+            # Clear cookies
+            await self.context.clear_cookies()
+            logger.debug("Cleared cookies")
+
+            # Clear storage for all pages
+            for page in self.context.pages:
+                try:
+                    await page.evaluate("""
+                        () => {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                        }
+                    """)
+                except Exception:
+                    pass
+
+            logger.info("Session data cleared")
+
+        except Exception as e:
+            logger.warning(f"Failed to clear session data: {e}")
+
+    async def restart_with_new_proxy(self, proxy_config: Optional[Dict[str, Any]] = None) -> None:
+        """Restart browser with a new proxy configuration."""
+        # Close existing browser
+        await self.close()
+
+        # Update proxy config
+        if proxy_config:
+            self.config["proxy"] = proxy_config
+            if self.proxy_manager:
+                # Update proxy manager with specific proxy
+                pass
+
+        # Start fresh
+        await self.start()
+        logger.info("Browser restarted with new proxy")
 
     async def __aenter__(self) -> "BrowserManager":
         """Async context manager entry."""
