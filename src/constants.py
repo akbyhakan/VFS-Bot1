@@ -1,7 +1,6 @@
 """Unified constants and configuration values for VFS-Bot."""
 
 import os
-import warnings
 from typing import Final
 
 
