@@ -339,7 +339,7 @@ The bot will retry automatically.
 
             full_message = f"🤖 *{title}*\n\n{message}"
 
-            with open(photo_path, "rb") as photo:
+            with open(photo_file, "rb") as photo:
                 await bot.send_photo(
                     chat_id=chat_id, photo=photo, caption=full_message, parse_mode="Markdown"
                 )
