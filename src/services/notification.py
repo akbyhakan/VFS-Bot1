@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, Optional
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -220,7 +220,9 @@ The bot will retry automatically.
         message = "The bot has been stopped."
         await self.send_notification(title, message, priority="low")
 
-    async def notify_waitlist_success(self, details: dict, screenshot_path: str = None) -> None:
+    async def notify_waitlist_success(
+        self, details: dict, screenshot_path: Optional[str] = None
+    ) -> None:
         """
         Send notification when waitlist registration is successful.
 
