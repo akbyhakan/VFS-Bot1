@@ -1,0 +1,212 @@
+"""Tests for session_recovery module."""
+
+import pytest
+import json
+from datetime import datetime, timedelta
+from pathlib import Path
+from src.services.session_recovery import SessionRecovery
+
+
+class TestSessionRecovery:
+    """Tests for SessionRecovery class."""
+
+    @pytest.fixture
+    def temp_checkpoint_file(self, tmp_path):
+        """Create a temporary checkpoint file."""
+        return tmp_path / "session_checkpoint.json"
+
+    def test_init_creates_directory(self, temp_checkpoint_file):
+        """Test that initialization creates the data directory."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        assert temp_checkpoint_file.parent.exists()
+
+    def test_save_checkpoint_valid_step(self, temp_checkpoint_file):
+        """Test saving a checkpoint with a valid step."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context={"email": "test@example.com"}
+        )
+        
+        assert temp_checkpoint_file.exists()
+        with open(temp_checkpoint_file, 'r') as f:
+            data = json.load(f)
+        
+        assert data["step"] == "logged_in"
+        assert data["user_id"] == 123
+        assert data["context"]["email"] == "test@example.com"
+        assert "timestamp" in data
+
+    def test_save_checkpoint_unknown_step(self, temp_checkpoint_file):
+        """Test saving a checkpoint with an unknown step."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Should still save, but log a warning
+        recovery.save_checkpoint(
+            step="unknown_step",
+            user_id=123,
+            context={}
+        )
+        
+        assert temp_checkpoint_file.exists()
+
+    def test_load_checkpoint_exists(self, temp_checkpoint_file):
+        """Test loading an existing checkpoint."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Save a checkpoint
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context={"email": "test@example.com"}
+        )
+        
+        # Load it
+        checkpoint = recovery.load_checkpoint()
+        
+        assert checkpoint is not None
+        assert checkpoint["step"] == "logged_in"
+        assert checkpoint["user_id"] == 123
+
+    def test_load_checkpoint_not_exists(self, temp_checkpoint_file):
+        """Test loading when checkpoint doesn't exist."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        checkpoint = recovery.load_checkpoint()
+        
+        assert checkpoint is None
+
+    def test_load_checkpoint_expired(self, temp_checkpoint_file):
+        """Test that old checkpoints are ignored."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Create an old checkpoint (2 hours ago)
+        old_timestamp = datetime.now() - timedelta(hours=2)
+        old_checkpoint = {
+            "step": "logged_in",
+            "step_index": 1,
+            "user_id": 123,
+            "timestamp": old_timestamp.isoformat(),
+            "context": {}
+        }
+        temp_checkpoint_file.write_text(json.dumps(old_checkpoint))
+        
+        # Load should return None for expired checkpoint
+        checkpoint = recovery.load_checkpoint()
+        
+        assert checkpoint is None
+        # Checkpoint file should be deleted
+        assert not temp_checkpoint_file.exists()
+
+    def test_clear_checkpoint(self, temp_checkpoint_file):
+        """Test clearing a checkpoint."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Save a checkpoint
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context={}
+        )
+        
+        # Clear it
+        recovery.clear_checkpoint()
+        
+        assert not temp_checkpoint_file.exists()
+        assert recovery._current_checkpoint is None
+
+    def test_can_resume_from_valid(self, temp_checkpoint_file):
+        """Test can_resume_from with valid checkpoint."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Save checkpoint at "personal_info_filled"
+        recovery.save_checkpoint(
+            step="personal_info_filled",
+            user_id=123,
+            context={}
+        )
+        
+        # Should be able to resume from earlier steps
+        assert recovery.can_resume_from("logged_in") is True
+        assert recovery.can_resume_from("centre_selected") is True
+        assert recovery.can_resume_from("personal_info_filled") is True
+
+    def test_can_resume_from_invalid(self, temp_checkpoint_file):
+        """Test can_resume_from with later step."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Save checkpoint at "logged_in"
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context={}
+        )
+        
+        # Should not be able to resume from later steps
+        assert recovery.can_resume_from("payment_completed") is False
+
+    def test_can_resume_from_no_checkpoint(self, temp_checkpoint_file):
+        """Test can_resume_from when no checkpoint exists."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        assert recovery.can_resume_from("logged_in") is False
+
+    def test_get_resume_step(self, temp_checkpoint_file):
+        """Test getting the resume step."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context={}
+        )
+        
+        step = recovery.get_resume_step()
+        
+        assert step == "logged_in"
+
+    def test_get_resume_step_no_checkpoint(self, temp_checkpoint_file):
+        """Test getting resume step when no checkpoint exists."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        step = recovery.get_resume_step()
+        
+        assert step is None
+
+    def test_get_resume_context(self, temp_checkpoint_file):
+        """Test getting the resume context."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        context_data = {"email": "test@example.com", "centre": "Amsterdam"}
+        recovery.save_checkpoint(
+            step="logged_in",
+            user_id=123,
+            context=context_data
+        )
+        
+        context = recovery.get_resume_context()
+        
+        assert context == context_data
+
+    def test_get_resume_context_no_checkpoint(self, temp_checkpoint_file):
+        """Test getting resume context when no checkpoint exists."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        context = recovery.get_resume_context()
+        
+        assert context == {}
+
+    def test_checkpoint_steps_order(self):
+        """Test that checkpoint steps are in correct order."""
+        recovery = SessionRecovery()
+        
+        steps = recovery.CHECKPOINT_STEPS
+        
+        # Verify some key steps are in logical order
+        assert steps.index("initialized") < steps.index("logged_in")
+        assert steps.index("logged_in") < steps.index("personal_info_filled")
+        assert steps.index("personal_info_filled") < steps.index("payment_completed")
+        assert steps.index("payment_completed") < steps.index("completed")

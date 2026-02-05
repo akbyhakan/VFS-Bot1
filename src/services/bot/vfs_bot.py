@@ -16,6 +16,11 @@ from .error_handler import ErrorHandler
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
 from ..notification import NotificationService
+from ..adaptive_scheduler import AdaptiveScheduler
+from ..slot_analyzer import SlotPatternAnalyzer
+from ..selector_self_healing import SelectorSelfHealing
+from ..session_recovery import SessionRecovery
+from ..country_profile_loader import CountryProfileLoader
 from ...constants import Intervals, Retries, RateLimits
 from ...models.database import Database
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
@@ -190,6 +195,41 @@ class VFSBot:
             self.error_capture,
         )
 
+        # Initialize new maintenance-free automation services
+        self._init_automation_services()
+
+    def _init_automation_services(self) -> None:
+        """Initialize maintenance-free automation services."""
+        # Country profile loader
+        self.country_profiles = CountryProfileLoader()
+
+        # Get country from config
+        vfs_config = self.config.get("vfs", {})
+        country_code = vfs_config.get("country", "tur")
+
+        # Adaptive scheduler with country-specific multiplier
+        country_multiplier = self.country_profiles.get_retry_multiplier(country_code)
+        timezone = self.country_profiles.get_timezone(country_code)
+        self.scheduler = AdaptiveScheduler(
+            timezone=timezone,
+            country_multiplier=country_multiplier
+        )
+
+        # Slot pattern analyzer
+        self.slot_analyzer = SlotPatternAnalyzer()
+
+        # Selector self-healing
+        self.self_healing = SelectorSelfHealing()
+
+        # Session recovery
+        self.session_recovery = SessionRecovery()
+
+        logger.info(
+            f"Automation services initialized - "
+            f"Country: {country_code}, Timezone: {timezone}, "
+            f"Multiplier: {country_multiplier}"
+        )
+
     async def __aenter__(self) -> "VFSBot":
         """
         Async context manager entry.
@@ -297,8 +337,13 @@ class VFSBot:
 
                 if not users:
                     logger.info("No active users to process")
-                    check_interval = self.config["bot"].get(
-                        "check_interval", Intervals.CHECK_SLOTS_DEFAULT
+                    # Use adaptive scheduler for intelligent interval
+                    check_interval = self.scheduler.get_optimal_interval()
+                    mode_info = self.scheduler.get_mode_info()
+                    logger.info(
+                        f"Adaptive mode: {mode_info['mode']} "
+                        f"({mode_info['description']}), "
+                        f"Interval: {check_interval}s"
                     )
                     await asyncio.sleep(check_interval)
                     continue
@@ -316,11 +361,14 @@ class VFSBot:
                     # Successful batch - reset consecutive errors
                     await self.circuit_breaker.record_success()
 
-                # Wait before next check
-                check_interval = self.config["bot"].get(
-                    "check_interval", Intervals.CHECK_SLOTS_DEFAULT
+                # Wait before next check - use adaptive scheduler
+                check_interval = self.scheduler.get_optimal_interval()
+                mode_info = self.scheduler.get_mode_info()
+                logger.info(
+                    f"Adaptive mode: {mode_info['mode']} "
+                    f"({mode_info['description']}), "
+                    f"Waiting {check_interval}s before next check..."
                 )
-                logger.info(f"Waiting {check_interval}s before next check...")
                 await asyncio.sleep(check_interval)
 
             except Exception as e:
@@ -370,6 +418,13 @@ class VFSBot:
             if not await self.auth_service.login(page, user["email"], user["password"]):
                 logger.error(f"Login failed for {masked_email}")
                 return
+            
+            # Save checkpoint after successful login
+            self.session_recovery.save_checkpoint(
+                "logged_in",
+                user["id"],
+                {"email": user["email"], "masked_email": masked_email}
+            )
 
             # Check for waitlist mode first
             is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
@@ -390,6 +445,15 @@ class VFSBot:
 
                     if slot:
                         await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
+                        
+                        # Record slot pattern for analysis
+                        self.slot_analyzer.record_slot_found(
+                            country=user.get("country", "unknown"),
+                            centre=centre,
+                            category=user["category"],
+                            date=slot["date"],
+                            time=slot["time"]
+                        )
 
                         # Get personal details
                         details = await self.db.get_personal_details(user["id"])
@@ -412,6 +476,10 @@ class VFSBot:
                                     await self.notifier.notify_booking_success(
                                         centre, slot["date"], slot["time"], reference
                                     )
+                                    
+                                    # Clear checkpoint after successful booking
+                                    self.session_recovery.clear_checkpoint()
+                                    logger.info("Booking completed - checkpoint cleared")
                         break
         except Exception as e:
             logger.error(f"Error processing user {masked_email}: {e}")
