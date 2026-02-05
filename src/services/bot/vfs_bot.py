@@ -98,16 +98,18 @@ class VFSBot:
         from ..otp_webhook import get_otp_service
         self.otp_service = get_otp_service()
         
+        captcha_config = self.config.get("captcha", {})
         self.captcha_solver = captcha_solver or CaptchaSolver(
-            api_key=self.config["captcha"].get("api_key", ""),
-            manual_timeout=self.config["captcha"].get("manual_timeout", 120),
+            api_key=captcha_config.get("api_key", ""),
+            manual_timeout=captcha_config.get("manual_timeout", 120),
         )
         
+        vfs_config = self.config.get("vfs", {})
         self.centre_fetcher = centre_fetcher or CentreFetcher(
-            base_url=self.config["vfs"]["base_url"],
-            country=self.config["vfs"]["country"],
-            mission=self.config["vfs"]["mission"],
-            language=self.config["vfs"].get("language", "tr"),
+            base_url=vfs_config.get("base_url", ""),
+            country=vfs_config.get("country", ""),
+            mission=vfs_config.get("mission", ""),
+            language=vfs_config.get("language", "tr"),
         )
 
     def _init_anti_detection(self) -> None:
