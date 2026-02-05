@@ -9,8 +9,8 @@ from typing import Any, Dict, Optional, List
 
 from playwright.async_api import Page
 
-from ...constants import Timeouts, Delays
-from ...utils.helpers import smart_click, wait_for_selector_smart
+from ...constants import Delays
+from ...utils.helpers import smart_click
 from ...utils.anti_detection.human_simulator import HumanSimulator
 
 logger = logging.getLogger(__name__)
@@ -179,9 +179,7 @@ class WaitlistHandler:
             logger.error(f"Error accepting review checkboxes: {e}")
             return False
 
-    async def _check_checkbox(
-        self, page: Page, selectors: List[str], name: str
-    ) -> bool:
+    async def _check_checkbox(self, page: Page, selectors: List[str], name: str) -> bool:
         """
         Helper method to check a single checkbox.
 

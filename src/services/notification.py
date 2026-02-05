@@ -220,9 +220,7 @@ The bot will retry automatically.
         message = "The bot has been stopped."
         await self.send_notification(title, message, priority="low")
 
-    async def notify_waitlist_success(
-        self, details: dict, screenshot_path: str = None
-    ) -> None:
+    async def notify_waitlist_success(self, details: dict, screenshot_path: str = None) -> None:
         """
         Send notification when waitlist registration is successful.
 
@@ -274,9 +272,7 @@ The bot will retry automatically.
         except Exception as e:
             logger.error(f"Failed to send waitlist success notification: {e}")
 
-    async def _send_telegram_with_photo(
-        self, title: str, message: str, photo_path: str
-    ) -> bool:
+    async def _send_telegram_with_photo(self, title: str, message: str, photo_path: str) -> bool:
         """
         Send Telegram notification with photo attachment.
 
