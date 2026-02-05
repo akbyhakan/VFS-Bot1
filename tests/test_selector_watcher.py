@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.selector_watcher import SelectorHealthCheck
-from src.utils.selectors import SelectorManager
+from src.utils.selectors import CountryAwareSelectorManager
 
 
 class TestSelectorHealthCheck:
@@ -17,7 +17,7 @@ class TestSelectorHealthCheck:
 
     def test_init(self):
         """Test SelectorHealthCheck initialization."""
-        sm = SelectorManager()
+        sm = CountryAwareSelectorManager()
         health_checker = SelectorHealthCheck(sm)
 
         assert health_checker.selector_manager == sm
@@ -28,7 +28,7 @@ class TestSelectorHealthCheck:
 
     def test_init_with_custom_interval(self):
         """Test SelectorHealthCheck with custom interval."""
-        sm = SelectorManager()
+        sm = CountryAwareSelectorManager()
         health_checker = SelectorHealthCheck(sm, check_interval=1800)
 
         assert health_checker.check_interval == 1800
@@ -39,7 +39,7 @@ class TestSelectorManager:
 
     def test_get_fallbacks_with_list(self):
         """Test get_fallbacks returns fallback selectors."""
-        sm = SelectorManager()
+        sm = CountryAwareSelectorManager()
         fallbacks = sm.get_fallbacks("login.email_input")
 
         # Should return a list (may be empty or contain fallbacks)
@@ -47,7 +47,7 @@ class TestSelectorManager:
 
     def test_get_fallbacks_nonexistent(self):
         """Test get_fallbacks for nonexistent selector."""
-        sm = SelectorManager()
+        sm = CountryAwareSelectorManager()
         fallbacks = sm.get_fallbacks("nonexistent.selector")
 
         # Should return empty list for nonexistent selectors

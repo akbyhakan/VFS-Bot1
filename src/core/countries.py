@@ -121,29 +121,3 @@ def get_country_info(mission_code: str) -> CountryInfo:
 def get_all_supported_codes() -> List[str]:
     """Get list of all supported mission codes."""
     return list(SUPPORTED_COUNTRIES.keys())
-
-
-def get_centres_for_mission(mission_code: str) -> List[str]:
-    """
-    Get available VFS centres for a mission.
-
-    DEPRECATED: Centres should be fetched dynamically from VFS website
-    using CentreFetcher instead of this static list.
-
-    Args:
-        mission_code: Target country code
-
-    Returns:
-        Empty list (deprecated)
-
-    Raises:
-        DeprecationWarning: This function is deprecated
-    """
-    import warnings
-
-    warnings.warn(
-        "get_centres_for_mission() is deprecated. Use CentreFetcher to fetch centres dynamically.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return []

@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from playwright.async_api import Browser, Page
 
 from src.services.notification import NotificationService
-from src.utils.selectors import SelectorManager
+from src.utils.selectors import CountryAwareSelectorManager
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class SelectorHealthCheck:
 
     def __init__(
         self,
-        selector_manager: SelectorManager,
+        selector_manager: CountryAwareSelectorManager,
         notifier: Optional[NotificationService] = None,
         check_interval: int = 3600,  # 1 hour default
     ):

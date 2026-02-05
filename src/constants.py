@@ -228,38 +228,6 @@ class LogEmoji:
     PAYMENT: Final[str] = "💳"
 
 
-# =============================================================================
-# BACKWARD COMPATIBILITY (Deprecated - will be removed in v3.0)
-# =============================================================================
-class Defaults:
-    """DEPRECATED: Use specific classes instead. Will be removed in v3.0."""
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        warnings.warn(
-            "Defaults class is deprecated. Use specific classes "
-            "(Timeouts, Database, RateLimits) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-    API_TIMEOUT = Timeouts.HTTP_REQUEST_SECONDS
-    DB_POOL_SIZE = Database.POOL_SIZE
-    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
-    RATE_LIMIT_REQUESTS = RateLimits.MAX_REQUESTS
-    RATE_LIMIT_WINDOW = RateLimits.TIME_WINDOW_SECONDS
-    TOKEN_REFRESH_BUFFER_MINUTES = 5
-    GRACEFUL_SHUTDOWN_TIMEOUT = Timeouts.GRACEFUL_SHUTDOWN_SECONDS
-
-
-class Limits:
-    """DEPRECATED: Use specific classes instead."""
-
-    MAX_LOG_ENTRIES = 500
-    MAX_ERRORS_IN_MEMORY = ErrorCapture.MAX_IN_MEMORY
-    DB_CONNECTION_TIMEOUT = Database.CONNECTION_TIMEOUT
-
-
 class RateLimitDefaults:
     """Default values for rate limiting - used by rate_limiter.py."""
 

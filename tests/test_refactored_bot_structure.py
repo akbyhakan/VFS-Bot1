@@ -6,15 +6,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def test_backward_compatibility_import():
-    """Test that old imports still work."""
-    # This should work for backward compatibility
-    from src.services.bot_service import VFSBot, SlotInfo
-
-    assert VFSBot is not None
-    assert SlotInfo is not None
-
-
 def test_new_modular_imports():
     """Test that new modular imports work."""
     from src.services.bot import (
