@@ -138,6 +138,7 @@ async def test_join_waitlist_success(waitlist_handler):
     result = await waitlist_handler.join_waitlist(page)
     assert result is True
 
+
 @pytest.mark.asyncio
 async def test_join_waitlist_already_checked(waitlist_handler):
     """Test waitlist checkbox when already selected."""
