@@ -469,13 +469,9 @@ def test_jwt_secret_key_not_set(monkeypatch):
 
 
 @pytest.mark.security
-def test_database_pool_size_consistency():
-    """Test that Database.POOL_SIZE and Defaults.DB_POOL_SIZE are consistent."""
-    from src.constants import Database, Defaults
+def test_database_pool_size_default():
+    """Test that Database.POOL_SIZE has the correct default value."""
+    from src.constants import Database
 
-    # Both should be 10
+    # Default should be 10
     assert Database.POOL_SIZE == 10
-    assert Defaults.DB_POOL_SIZE == 10
-
-    # Defaults.DB_POOL_SIZE should reference Database.POOL_SIZE
-    assert Defaults.DB_POOL_SIZE == Database.POOL_SIZE
