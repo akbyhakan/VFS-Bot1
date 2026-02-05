@@ -26,7 +26,7 @@ from ..core.exceptions import (
     VFSSessionExpiredError,
     ConfigurationError,
 )
-from ..constants import Defaults
+
 from ..utils.token_utils import calculate_effective_expiry
 
 logger = logging.getLogger(__name__)
@@ -317,11 +317,7 @@ class VFSApiClient:
 
             # Calculate token expiration time
             # VFS tokens typically expire after 1 hour, but we add buffer for safety
-            token_refresh_buffer = int(
-                os.getenv(
-                    "TOKEN_REFRESH_BUFFER_MINUTES", str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
-                )
-            )
+            token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
             expires_in = data.get("expiresIn", 60)
             effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
@@ -535,11 +531,7 @@ class VFSApiClient:
                 data = await response.json()
 
                 # Update session with new tokens
-                token_refresh_buffer = int(
-                    os.getenv(
-                        "TOKEN_REFRESH_BUFFER_MINUTES", str(Defaults.TOKEN_REFRESH_BUFFER_MINUTES)
-                    )
-                )
+                token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
                 expires_in = data.get("expiresIn", 60)
                 effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
 

@@ -381,7 +381,10 @@ class TestCountryAwareSelectorManager:
 
     def test_backward_compatibility_alias(self):
         """Test that SelectorManager is an alias for CountryAwareSelectorManager."""
-        from src.utils.selectors import CountryAwareSelectorManager as SelectorManager, CountryAwareSelectorManager
+        from src.utils.selectors import (
+            CountryAwareSelectorManager as SelectorManager,
+            CountryAwareSelectorManager,
+        )
 
         assert SelectorManager is CountryAwareSelectorManager
 
