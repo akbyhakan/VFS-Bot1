@@ -117,16 +117,18 @@ async def test_join_waitlist_success(waitlist_handler):
     """Test successful waitlist checkbox selection."""
     page = MockPage()
 
-    # Mock checkbox element
-    mock_checkbox = AsyncMock()
-    mock_checkbox.get_attribute = AsyncMock(return_value="")
+    # Mock input element
     mock_input = AsyncMock()
     mock_input.click = AsyncMock()
-    mock_checkbox.locator = AsyncMock(return_value=mock_input)
 
-    mock_locator = AsyncMock()
-    mock_locator.first = AsyncMock()
-    mock_locator.first.wait_for = AsyncMock(return_value=mock_checkbox)
+    # Mock checkbox element (which is a Locator)
+    mock_checkbox = AsyncMock()
+    mock_checkbox.get_attribute = AsyncMock(return_value="")
+    mock_checkbox.wait_for = AsyncMock()  # wait_for returns None
+    mock_checkbox.locator = MagicMock(return_value=MagicMock(first=mock_input))
+
+    mock_locator = MagicMock()
+    mock_locator.first = mock_checkbox
     page.locator = MagicMock(return_value=mock_locator)
 
     result = await waitlist_handler.join_waitlist(page)
@@ -138,13 +140,13 @@ async def test_join_waitlist_already_checked(waitlist_handler):
     """Test waitlist checkbox when already selected."""
     page = MockPage()
 
-    # Mock already checked checkbox
+    # Mock already checked checkbox (which is a Locator)
     mock_checkbox = AsyncMock()
     mock_checkbox.get_attribute = AsyncMock(return_value="mat-mdc-checkbox-checked")
+    mock_checkbox.wait_for = AsyncMock()  # wait_for returns None
 
-    mock_locator = AsyncMock()
-    mock_locator.first = AsyncMock()
-    mock_locator.first.wait_for = AsyncMock(return_value=mock_checkbox)
+    mock_locator = MagicMock()
+    mock_locator.first = mock_checkbox
     page.locator = MagicMock(return_value=mock_locator)
 
     result = await waitlist_handler.join_waitlist(page)

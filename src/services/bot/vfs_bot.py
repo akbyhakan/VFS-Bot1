@@ -476,7 +476,10 @@ class VFSBot:
             if waitlist_details:
                 # Send notification with screenshot
                 screenshot_path = waitlist_details.get("screenshot_path")
-                await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
+                if screenshot_path is not None and isinstance(screenshot_path, str):
+                    await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
+                else:
+                    await self.notifier.notify_waitlist_success(waitlist_details)
                 logger.info(f"Waitlist registration successful for {masked_email}")
             else:
                 logger.error("Failed to handle waitlist success screen")
