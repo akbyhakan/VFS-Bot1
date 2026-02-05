@@ -2,10 +2,11 @@
 import logging
 import yaml
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from datetime import datetime
 
-from playwright.async_api import Page
+if TYPE_CHECKING:
+    from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class SelectorSelfHealing:
     
     async def attempt_heal(
         self,
-        page: Page,
+        page: "Page",
         selector_path: str,
         failed_selector: str,
         element_description: str
@@ -60,7 +61,7 @@ class SelectorSelfHealing:
         logger.warning(f"Yeterli güvenli aday bulunamadı: {selector_path}")
         return None
     
-    async def _find_candidates(self, page: Page, description: str) -> List[str]:
+    async def _find_candidates(self, page: "Page", description: str) -> List[str]:
         """Element açıklamasına göre aday selector'lar bul."""
         candidates = []
         
@@ -97,7 +98,7 @@ class SelectorSelfHealing:
     
     async def _calculate_confidence(
         self,
-        page: Page,
+        page: "Page",
         selector: str,
         description: str
     ) -> float:
