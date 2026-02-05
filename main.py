@@ -95,7 +95,7 @@ def verify_critical_dependencies():
     missing = []
 
     try:
-        import curl_cffi  # noqa: F401
+        import curl_cffi  # noqa: F401 - PyPI package name is curl-cffi
     except ImportError:
         missing.append("curl-cffi")
 
