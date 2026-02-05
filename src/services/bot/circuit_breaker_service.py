@@ -1,4 +1,35 @@
-"""Circuit breaker service for fault tolerance and error tracking."""
+"""
+Circuit breaker service for fault tolerance and error tracking.
+
+This is a thin wrapper around src.core.circuit_breaker.CircuitBreaker that
+maintains backward compatibility with the bot's existing API.
+
+⚠️ IMPORTANT: This is a compatibility wrapper. For new code, use
+   src.core.circuit_breaker.CircuitBreaker directly.
+
+Architecture:
+    - Delegates all circuit breaker logic to core implementation
+    - Maintains backward-compatible API methods:
+        * is_available() - check if requests allowed
+        * record_success() - record successful operation
+        * record_failure() - record failed operation
+        * get_wait_time() - get exponential backoff time
+        * get_stats() - get CircuitBreakerStats TypedDict
+    - Integrates with application metrics for circuit trips
+
+Migration Guide (for future reference):
+    Old (wrapper):
+        from src.services.bot.circuit_breaker_service import CircuitBreakerService
+        cb = CircuitBreakerService()
+        if await cb.is_available():
+            # do work
+
+    New (core):
+        from src.core.circuit_breaker import CircuitBreaker
+        cb = CircuitBreaker(...)
+        if await cb.can_execute():
+            # do work
+"""
 
 import asyncio
 import logging

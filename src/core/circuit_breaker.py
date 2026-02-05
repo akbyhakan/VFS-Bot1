@@ -1,4 +1,46 @@
-"""Generic circuit breaker implementation with async support."""
+"""
+Generic circuit breaker implementation with async support.
+
+This is the single source of truth for circuit breaker logic in the application.
+All other circuit breaker implementations should delegate to this class.
+
+Architecture:
+    - Core implementation: src/core/circuit_breaker.py (this file)
+    - Bot service wrapper: src/services/bot/circuit_breaker_service.py
+        Thin wrapper maintaining backward compatibility with bot's API
+
+Features:
+    - 3-state machine (CLOSED → OPEN → HALF_OPEN → CLOSED)
+    - Consecutive failure threshold
+    - Time-windowed error threshold (max_errors_per_hour)
+    - Exponential backoff with configurable base and max
+    - Decorator pattern for easy function wrapping
+    - Async/await support throughout
+    - Thread-safe with asyncio.Lock
+
+Example:
+    ```python
+    from src.core.circuit_breaker import CircuitBreaker
+
+    # Method 1: Decorator pattern (recommended)
+    cb = CircuitBreaker(failure_threshold=5, timeout_seconds=60.0)
+
+    @cb.protected
+    async def call_external_api():
+        # Your code here
+        pass
+
+    # Method 2: Direct calls
+    cb = CircuitBreaker(failure_threshold=5, timeout_seconds=60.0)
+    
+    if await cb.can_execute():
+        try:
+            result = await my_function()
+            await cb.record_success()
+        except Exception:
+            await cb.record_failure()
+    ```
+"""
 
 import asyncio
 import logging
