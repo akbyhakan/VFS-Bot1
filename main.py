@@ -18,9 +18,7 @@ from src.core.config_loader import load_config
 from src.models.database import Database
 from src.services.notification import NotificationService
 
-# VFSBot now uses modular structure (bot_service provides backward compatibility)
-# New code should use: from src.services.bot import VFSBot
-from src.services.bot_service import VFSBot
+from src.services.bot import VFSBot
 from src.core.logger import setup_structured_logging
 from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
@@ -255,9 +253,9 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         # when the browser is available. See VFSBot.start() for implementation.
         if config.get("selector_health_check", {}).get("enabled", True):
             from src.utils.selector_watcher import SelectorHealthCheck
-            from src.utils.selectors import SelectorManager
+            from src.utils.selectors import CountryAwareSelectorManager
 
-            selector_manager = SelectorManager()
+            selector_manager = CountryAwareSelectorManager()
             bot.health_checker = SelectorHealthCheck(
                 selector_manager,
                 notifier,
@@ -273,9 +271,9 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         logger.info("Bot stopped by user")
         shutdown_event.set()
         # Wait for graceful shutdown with timeout
-        from src.constants import Defaults
+        from src.constants import Timeouts
 
-        await asyncio.sleep(Defaults.GRACEFUL_SHUTDOWN_TIMEOUT)
+        await asyncio.sleep(Timeouts.GRACEFUL_SHUTDOWN_SECONDS)
 
         # Cleanup OTP service
         try:

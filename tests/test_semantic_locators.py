@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import yaml
 
-from src.utils.selectors import SelectorManager
+from src.utils.selectors import CountryAwareSelectorManager as SelectorManager
 
 
 @pytest.fixture

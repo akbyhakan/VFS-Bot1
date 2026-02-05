@@ -114,15 +114,7 @@ src/services/bot/
 
 ## 🔄 Migration Guide
 
-### Old Way (Still Works)
-```python
-from src.services.bot_service import VFSBot
-
-# Works exactly as before
-bot = VFSBot(config, db, notifier)
-```
-
-### New Way (Recommended)
+### Recommended Way
 ```python
 from src.services.bot import VFSBot
 
@@ -163,18 +155,7 @@ if await circuit_breaker.is_available():
 
 ## 🧪 Testing
 
-All existing tests continue to work through the backward compatibility layer:
-
-```python
-# Old tests still pass
-from src.services.bot_service import VFSBot
-
-def test_bot_initialization():
-    bot = VFSBot(config, db, notifier)
-    assert bot is not None
-```
-
-New tests can target individual components:
+Tests can target individual components:
 
 ```python
 from src.services.bot import CircuitBreakerService
@@ -190,9 +171,8 @@ async def test_circuit_breaker():
 
 ## 🔧 Deprecation Timeline
 
-- **Current**: Both old and new imports work
-- **v2.0**: Deprecation warnings added (already done)
-- **v3.0**: Consider removing `bot_service.py` compatibility layer
+- **v2.0**: Modular structure introduced with deprecation warnings
+- **v3.0**: Backward compatibility layer removed (completed)
 
 ## 📚 Related Documentation
 

@@ -558,7 +558,3 @@ def get_selector_manager(country_code: str = "default") -> CountryAwareSelectorM
         logger.info(f"Created selector manager for country: {country_code}")
 
     return _selector_managers[country_code]
-
-
-# Backward compatibility alias
-SelectorManager = CountryAwareSelectorManager

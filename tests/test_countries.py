@@ -11,7 +11,6 @@ from src.core.countries import (
     validate_mission_code,
     get_country_info,
     get_all_supported_codes,
-    get_centres_for_mission,
 )
 
 
@@ -192,27 +191,6 @@ class TestGetAllSupportedCodes:
         assert "nld" in codes
         assert "hrv" in codes
         assert "bgr" in codes
-
-
-class TestGetCentresForMission:
-    """Test get_centres_for_mission function (deprecated)."""
-
-    def test_get_centres_deprecated(self):
-        """Test that get_centres_for_mission is deprecated and returns empty list."""
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            centres = get_centres_for_mission("nld")
-
-            # Should return empty list
-            assert centres == []
-
-            # Should raise deprecation warning
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "deprecated" in str(w[0].message).lower()
-            assert "CentreFetcher" in str(w[0].message)
 
 
 class TestIntegration:

@@ -11,7 +11,7 @@ We release patches for security vulnerabilities. Which versions are eligible for
 
 ## Reporting a Vulnerability
 
-Please report (suspected) security vulnerabilities to **[your-email@example.com]**. You will receive a response from us within 48 hours. If the issue is confirmed, we will release a patch as soon as possible depending on complexity.
+Please report (suspected) security vulnerabilities through [GitHub Security Advisories](https://github.com/akbyhakan/VFS-Bot1/security/advisories/new) or contact the repository owner directly. You will receive a response from us within 48 hours. If the issue is confirmed, we will release a patch as soon as possible depending on complexity.
 
 ### What to include in your report
 
