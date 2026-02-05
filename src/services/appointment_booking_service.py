@@ -85,6 +85,36 @@ VFS_SELECTORS = {
     ],
     # Checkboxlar (Gözden Geçir ve Öde)
     "terms_checkbox": ['input[type="checkbox"]', ".terms-checkbox"],
+    # Waitlist checkbox (Başvuru Detayları)
+    "waitlist_checkbox": [
+        "//mat-checkbox[.//span[contains(text(), 'Waitlist')]]",
+        "//mat-checkbox[.//span[contains(text(), 'Bekleme Listesi')]]",
+        "mat-checkbox:has-text('Waitlist')",
+        "mat-checkbox:has-text('Bekleme Listesi')",
+    ],
+    # Gözden Geçir - Checkboxlar (Waitlist Flow)
+    "terms_consent_checkbox": [
+        'input[value="consent.checkbox_value.vas_term_condition"]',
+    ],
+    "marketing_consent_checkbox": [
+        'input[value="consent.checkbox_value.receive_mkt_info"]',
+    ],
+    "waitlist_consent_checkbox": [
+        "mat-checkbox:has-text('bekleme listesi') input",
+        "mat-checkbox:has-text('waitlist') input",
+    ],
+    # Onayla butonu
+    "confirm_button": [
+        'button:has(span.mdc-button__label:text("Onayla"))',
+        'button:has-text("Onayla")',
+        'button:has-text("Confirm")',
+    ],
+    # Başarı ekranı tespiti
+    "waitlist_success_indicator": [
+        "text=Bekleme Listesinde",
+        "text=İşlem Özeti",
+        "text=Waitlist",
+    ],
     # Ödeme Sayfası (Banka)
     "card_number": ['input[name="pan"]', 'input[name="cardNumber"]', 'input[placeholder*="Card"]'],
     "expiry_month": [
