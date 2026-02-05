@@ -1,9 +1,11 @@
 """Tests for core/monitoring module."""
 
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from src.core.monitoring import init_sentry, filter_sensitive_data
+
+from src.core.monitoring import filter_sensitive_data, init_sentry
 
 
 class TestInitSentry:

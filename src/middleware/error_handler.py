@@ -9,11 +9,11 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.exceptions import (
-    VFSBotError,
-    DatabaseError,
     AuthenticationError,
-    ValidationError,
+    DatabaseError,
     RateLimitError,
+    ValidationError,
+    VFSBotError,
 )
 
 logger = logging.getLogger(__name__)

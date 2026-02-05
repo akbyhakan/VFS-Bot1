@@ -1,8 +1,10 @@
 """Tests for utils/webhook_utils module."""
 
-import pytest
 import time
-from src.utils.webhook_utils import verify_webhook_signature, generate_webhook_signature
+
+import pytest
+
+from src.utils.webhook_utils import generate_webhook_signature, verify_webhook_signature
 
 
 class TestVerifyWebhookSignature:

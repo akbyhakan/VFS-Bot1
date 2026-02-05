@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import Any, Optional
+
 from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)

@@ -1,18 +1,19 @@
 """Tests for alert service."""
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.services.alert_service import (
-    AlertService,
-    AlertSeverity,
     AlertChannel,
     AlertConfig,
-    get_alert_service,
+    AlertService,
+    AlertSeverity,
     configure_alert_service,
+    get_alert_service,
     send_critical_alert,
 )
 

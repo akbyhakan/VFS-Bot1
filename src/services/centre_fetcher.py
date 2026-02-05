@@ -1,11 +1,12 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
+import asyncio
 import logging
 import os
-from typing import Any, List, Dict, Optional
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from playwright.async_api import Page
-import asyncio
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,11 @@
 """Tests for fingerprint bypass."""
 
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

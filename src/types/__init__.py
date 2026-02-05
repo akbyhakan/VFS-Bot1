@@ -5,12 +5,12 @@ to improve type safety across the application.
 """
 
 from .config import (
-    VFSConfig,
+    AntiDetectionConfig,
+    AppConfig,
     BotConfig,
     CaptchaConfig,
-    AntiDetectionConfig,
     NotificationConfig,
-    AppConfig,
+    VFSConfig,
 )
 
 __all__ = [

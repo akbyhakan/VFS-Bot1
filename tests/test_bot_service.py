@@ -1,16 +1,17 @@
 """Tests for VFS bot service."""
 
+import asyncio
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-from pathlib import Path
-import sys
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.bot.vfs_bot import VFSBot
 from src.models.database import Database
+from src.services.bot.vfs_bot import VFSBot
 from src.services.notification import NotificationService
 
 

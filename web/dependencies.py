@@ -8,10 +8,10 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Set, List
+from typing import Any, Dict, List, Optional, Set
 
 from fastapi import Depends, WebSocket, WebSocketDisconnect
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from src.core.auth import verify_token

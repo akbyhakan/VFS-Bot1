@@ -1,9 +1,11 @@
 """Tests for adaptive_scheduler module."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
+
+import pytest
+
 from src.services.adaptive_scheduler import AdaptiveScheduler
 
 

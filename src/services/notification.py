@@ -1,11 +1,12 @@
 """Notification system with Telegram and Email support."""
 
-import logging
 import asyncio
-from typing import Dict, Any, Literal, Optional
-import aiosmtplib
-from email.mime.text import MIMEText
+import logging
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any, Dict, Literal, Optional
+
+import aiosmtplib
 
 logger = logging.getLogger(__name__)
 
@@ -287,8 +288,9 @@ The bot will retry automatically.
             True if successful
         """
         try:
-            from telegram import Bot
             from pathlib import Path
+
+            from telegram import Bot
 
             telegram_config = self.config.get("telegram", {})
             bot_token = telegram_config.get("bot_token")

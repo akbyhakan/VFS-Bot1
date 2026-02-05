@@ -1,14 +1,15 @@
 """Tests for Prometheus metrics."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from src.utils.prometheus_metrics import (
+    ACTIVE_USERS,
+    BOOKING_SUCCESS,
+    SLOT_CHECKS_TOTAL,
     MetricsHelper,
     get_metrics,
-    SLOT_CHECKS_TOTAL,
-    BOOKING_SUCCESS,
-    ACTIVE_USERS,
 )
 
 

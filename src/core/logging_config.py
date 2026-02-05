@@ -1,11 +1,11 @@
 """Structured logging configuration - Standard library based."""
 
-import logging
-import sys
 import json
+import logging
+import os
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-import os
 
 
 class JSONFormatter(logging.Formatter):

@@ -1,15 +1,17 @@
 """Tests for application settings with Pydantic validation."""
 
 import os
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.settings import VFSSettings, get_settings, reset_settings
 from pydantic import ValidationError
+
+from src.core.settings import VFSSettings, get_settings, reset_settings
 
 
 @pytest.fixture(autouse=True)

@@ -1,19 +1,20 @@
 """Tests for core/retry module."""
 
 import pytest
-from src.core.retry import (
-    get_login_retry,
-    get_captcha_retry,
-    get_slot_check_retry,
-    get_network_retry,
-    get_rate_limit_retry,
-)
+
 from src.core.exceptions import (
-    LoginError,
     CaptchaError,
-    SlotCheckError,
+    LoginError,
     NetworkError,
     RateLimitError,
+    SlotCheckError,
+)
+from src.core.retry import (
+    get_captcha_retry,
+    get_login_retry,
+    get_network_retry,
+    get_rate_limit_retry,
+    get_slot_check_retry,
 )
 
 

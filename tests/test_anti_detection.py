@@ -8,8 +8,8 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.utils.security.header_manager import HeaderManager
 from src.utils.anti_detection.human_simulator import HumanSimulator
+from src.utils.security.header_manager import HeaderManager
 from src.utils.security.proxy_manager import ProxyManager
 from src.utils.security.session_manager import SessionManager
 

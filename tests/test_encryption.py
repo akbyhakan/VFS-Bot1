@@ -1,16 +1,17 @@
 """Tests for password encryption utilities."""
 
-import os
-import pytest
 import asyncio
+import os
+
+import pytest
 from cryptography.fernet import Fernet
 
 from src.utils.encryption import (
     PasswordEncryption,
-    encrypt_password,
     decrypt_password,
-    reset_encryption,
+    encrypt_password,
     get_encryption_async,
+    reset_encryption,
 )
 
 
@@ -204,6 +205,7 @@ def test_key_change_detection(monkeypatch):
 def test_encryption_thread_safety():
     """Test that encryption singleton is thread-safe."""
     import threading
+
     from src.utils.encryption import get_encryption, reset_encryption
 
     key = Fernet.generate_key().decode()
@@ -311,10 +313,9 @@ class TestAsyncEncryption:
 
 def test_async_lock_outside_event_loop():
     """Test that async lock raises error outside event loop."""
-    from src.utils.encryption import _get_async_lock, _encryption_lock_async
-
     # Reset the async lock to ensure clean state
     import src.utils.encryption as enc_mod
+    from src.utils.encryption import _encryption_lock_async, _get_async_lock
 
     enc_mod._encryption_lock_async = None
 

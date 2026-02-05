@@ -1,34 +1,34 @@
 """FastAPI web dashboard with WebSocket support for VFS-Bot."""
 
+import ipaddress
 import logging
 import os
 from pathlib import Path
 from typing import List
-import ipaddress
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from src.services.otp_webhook_routes import router as otp_router
-from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
+from src.middleware.request_tracking import RequestTrackingMiddleware
+from src.services.otp_webhook_routes import router as otp_router
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
-    auth_router,
-    users_router,
     appointments_router,
-    payment_router,
+    auth_router,
     bot_router,
-    health_router,
     dashboard_router,
+    health_router,
+    payment_router,
     proxy_router,
-    webhook_router,
     sms_webhook_router,
+    users_router,
+    webhook_router,
 )
 from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app

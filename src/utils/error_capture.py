@@ -1,11 +1,11 @@
 """Error capture with screenshots and context."""
 
-import logging
 import json
+import logging
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 

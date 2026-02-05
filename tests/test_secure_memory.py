@@ -1,12 +1,13 @@
 """Tests for secure memory utilities."""
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.utils.secure_memory import secure_zero_memory, SecureCVV
+from src.utils.secure_memory import SecureCVV, secure_zero_memory
 
 
 def test_secure_zero_memory_with_bytearray():

@@ -4,7 +4,7 @@ This module provides TypedDict definitions for configuration objects
 used throughout the application, enhancing type safety and IDE support.
 """
 
-from typing import TypedDict, List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, TypedDict
 
 
 class VFSConfig(TypedDict, total=False):

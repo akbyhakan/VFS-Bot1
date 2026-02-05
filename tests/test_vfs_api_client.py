@@ -1,20 +1,21 @@
 """Tests for VFS API Client."""
 
 import base64
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
+from src.core.exceptions import VFSAuthenticationError, VFSSessionExpiredError
 from src.services.vfs_api_client import (
-    VFSPasswordEncryption,
-    VFSApiClient,
-    VFSSession,
-    SlotAvailability,
     VFS_API_BASE,
+    SlotAvailability,
+    VFSApiClient,
+    VFSPasswordEncryption,
+    VFSSession,
 )
-from src.core.exceptions import VFSSessionExpiredError, VFSAuthenticationError
 
 
 class TestVFSPasswordEncryption:

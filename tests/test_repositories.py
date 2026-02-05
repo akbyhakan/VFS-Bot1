@@ -1,16 +1,17 @@
 """Tests for repository pattern implementation."""
 
-import pytest
-from pathlib import Path
-import sys
-from unittest.mock import Mock, AsyncMock, MagicMock
 import asyncio
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.repositories.user_repository import UserRepository, User
+from src.core.exceptions import RecordNotFoundError, ValidationError
 from src.models.database import Database
-from src.core.exceptions import ValidationError, RecordNotFoundError
+from src.repositories.user_repository import User, UserRepository
 
 
 @pytest.fixture

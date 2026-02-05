@@ -1,10 +1,11 @@
 """Extended tests for proxy manager."""
 
-import pytest
-from pathlib import Path
 import sys
-from unittest.mock import mock_open, patch, MagicMock
 import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

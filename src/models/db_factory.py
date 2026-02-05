@@ -1,8 +1,8 @@
 """Database factory with singleton pattern for connection management."""
 
 import logging
-from typing import Optional
 from threading import RLock
+from typing import Optional
 
 from src.models.database import Database
 

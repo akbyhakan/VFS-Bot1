@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

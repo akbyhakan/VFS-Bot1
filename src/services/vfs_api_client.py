@@ -7,26 +7,16 @@ import logging
 import os
 import secrets
 import time
-from typing import Any, Dict, List, Optional, TypedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, TypedDict
 
 import aiohttp
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
-from ..core.countries import (
-    SOURCE_COUNTRY_CODE,
-    get_route,
-    validate_mission_code,
-    get_country_info,
-)
-from ..core.exceptions import (
-    VFSAuthenticationError,
-    VFSSessionExpiredError,
-    ConfigurationError,
-)
-
+from ..core.countries import SOURCE_COUNTRY_CODE, get_country_info, get_route, validate_mission_code
+from ..core.exceptions import ConfigurationError, VFSAuthenticationError, VFSSessionExpiredError
 from ..utils.token_utils import calculate_effective_expiry
 
 logger = logging.getLogger(__name__)

@@ -350,7 +350,7 @@ class CountryAwareSelectorManager:
                     or semantic.get("label_en")
                 )
 
-                from typing import cast, Literal
+                from typing import Literal, cast
 
                 # Cast role to proper Literal type
                 valid_role = cast(Literal["button", "link", "textbox"], role)

@@ -1,10 +1,10 @@
 """Slot pattern analizi ve raporlama."""
-import logging
 import json
+import logging
+from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-from collections import defaultdict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

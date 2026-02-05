@@ -1,11 +1,11 @@
 """User repository implementation."""
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from src.repositories.base import BaseRepository
+from src.core.exceptions import RecordNotFoundError, ValidationError
 from src.models.database import Database
-from src.core.exceptions import ValidationError, RecordNotFoundError
+from src.repositories.base import BaseRepository
 from src.utils.validators import validate_email, validate_phone
 
 logger = logging.getLogger(__name__)

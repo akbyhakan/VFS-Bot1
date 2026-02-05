@@ -8,7 +8,7 @@ Requirements:
 import asyncio
 import logging
 import random
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from playwright.async_api import Page

@@ -1,8 +1,8 @@
 """Deprecation utilities for clean module transitions."""
 
-import warnings
 import functools
-from typing import Callable, TypeVar, Optional, Any, cast
+import warnings
+from typing import Any, Callable, Optional, TypeVar, cast
 
 F = TypeVar("F", bound=Callable[..., Any])
 

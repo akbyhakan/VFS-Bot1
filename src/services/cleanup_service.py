@@ -2,9 +2,9 @@
 
 import asyncio
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from datetime import datetime
 
 if TYPE_CHECKING:
     from src.models.database import Database

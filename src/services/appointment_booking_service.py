@@ -4,7 +4,7 @@ import asyncio
 import logging
 import random
 import re
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from playwright.async_api import Page
 

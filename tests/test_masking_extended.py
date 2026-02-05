@@ -1,14 +1,15 @@
 """Tests for masking utilities."""
 
 import pytest
+
 from src.utils.masking import (
-    mask_email,
-    mask_phone,
-    mask_password,
     mask_card_number,
-    mask_otp,
-    mask_expiry_date,
     mask_cvv,
+    mask_email,
+    mask_expiry_date,
+    mask_otp,
+    mask_password,
+    mask_phone,
     mask_sensitive_dict,
 )
 

@@ -4,20 +4,20 @@ This module provides thread-safe OTP handling for multiple bot sessions
 that receive OTP codes via a catch-all email configuration.
 """
 
-import imaplib
 import email
 import email.utils
-from email import message_from_bytes
-from email.message import Message
-from email.header import decode_header
-import re
+import imaplib
 import logging
+import re
 import threading
 import time
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List, Pattern, Any
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from email import message_from_bytes
+from email.header import decode_header
+from email.message import Message
 from html.parser import HTMLParser
+from typing import Any, Dict, List, Optional, Pattern
 
 logger = logging.getLogger(__name__)
 

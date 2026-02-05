@@ -1,7 +1,8 @@
 """Application settings with Pydantic validation."""
 
-from typing import Optional, List
-from pydantic import SecretStr, field_validator, Field
+from typing import List, Optional
+
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

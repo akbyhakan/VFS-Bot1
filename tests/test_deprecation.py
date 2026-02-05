@@ -1,7 +1,9 @@
 """Tests for utils/deprecation module."""
 
-import pytest
 import warnings
+
+import pytest
+
 from src.utils.deprecation import deprecated, deprecated_module
 
 

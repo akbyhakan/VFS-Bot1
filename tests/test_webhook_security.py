@@ -1,14 +1,16 @@
 """Tests for webhook signature verification security."""
 
-import pytest
 import json
 import os
 from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
+
+from src.utils.webhook_utils import generate_webhook_signature
 
 # Import app after all patches are in place
 from web.app import app
-from src.utils.webhook_utils import generate_webhook_signature
 
 
 class TestWebhookSecurity:

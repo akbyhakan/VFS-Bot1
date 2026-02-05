@@ -1,14 +1,12 @@
 """Tests for core/config_loader module."""
 
 import os
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
-from src.core.config_loader import (
-    load_env_variables,
-    substitute_env_vars,
-    load_config,
-)
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
+
+from src.core.config_loader import load_config, load_env_variables, substitute_env_vars
 
 
 class TestLoadEnvVariables:

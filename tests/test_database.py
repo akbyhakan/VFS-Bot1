@@ -1,7 +1,8 @@
 """Tests for database operations with password encryption."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from cryptography.fernet import Fernet
 
 from src.models.database import Database
@@ -452,7 +453,7 @@ async def test_delete_appointment_request(test_db):
 @pytest.mark.asyncio
 async def test_cleanup_completed_requests(test_db):
     """Test cleanup of old completed requests."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     persons = [
         {
@@ -504,7 +505,7 @@ class TestTokenBlacklist:
 
     async def test_add_blacklisted_token(self, test_db):
         """Test adding a token to the blacklist."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         jti = "test-jti-12345"
         exp = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -522,7 +523,7 @@ class TestTokenBlacklist:
 
     async def test_expired_token_not_blacklisted(self, test_db):
         """Test that expired tokens are not considered blacklisted."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         jti = "expired-jti"
         exp = datetime.now(timezone.utc) - timedelta(hours=1)  # Already expired
@@ -535,7 +536,7 @@ class TestTokenBlacklist:
 
     async def test_get_active_blacklisted_tokens(self, test_db):
         """Test getting all active blacklisted tokens."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         # Add active tokens
         active_tokens = []
@@ -562,7 +563,7 @@ class TestTokenBlacklist:
 
     async def test_cleanup_expired_tokens(self, test_db):
         """Test cleanup of expired tokens."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         # Add expired tokens
         for i in range(3):
@@ -593,6 +594,7 @@ class TestDatabasePoolExhaustion:
     async def test_connection_pool_exhaustion(self, tmp_path, unique_encryption_key):
         """Test behavior when connection pool is exhausted."""
         import asyncio
+
         from src.core.exceptions import DatabasePoolTimeoutError
 
         db_path = tmp_path / "test_pool.db"

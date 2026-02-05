@@ -1,9 +1,10 @@
 """Gelişmiş selector self-healing sistemi."""
 import logging
-import yaml
-from pathlib import Path
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+import yaml
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
@@ -117,7 +118,7 @@ class SelectorSelfHealing:
                 is_visible = await element.first.is_visible()
                 if is_visible:
                     score += 0.3
-            except:
+            except Exception:
                 pass
 
             # Etkileşilebilir mi?
@@ -125,7 +126,7 @@ class SelectorSelfHealing:
                 is_enabled = await element.first.is_enabled()
                 if is_enabled:
                     score += 0.2
-            except:
+            except Exception:
                 pass
 
             # Metin içeriği eşleşiyor mu?
@@ -135,7 +136,7 @@ class SelectorSelfHealing:
                     if keyword in text.lower():
                         score += 0.1
                         break
-            except:
+            except Exception:
                 pass
 
         except Exception as e:

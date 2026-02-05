@@ -1,12 +1,13 @@
 """Tests for orchestrator module."""
 
-import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.services.bot.orchestrator.resource_pool import ResourcePool
-from src.services.bot.orchestrator.reservation_worker import ReservationWorker
+import pytest
+
 from src.services.bot.orchestrator.reservation_orchestrator import ReservationOrchestrator
+from src.services.bot.orchestrator.reservation_worker import ReservationWorker
+from src.services.bot.orchestrator.resource_pool import ResourcePool
 
 
 class TestResourcePool:

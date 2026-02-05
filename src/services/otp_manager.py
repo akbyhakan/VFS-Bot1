@@ -4,22 +4,22 @@ This module provides a unified OTP management system that handles OTP codes
 from both email (catch-all mailbox) and SMS sources for 100+ concurrent bot sessions.
 """
 
-import imaplib
 import email
 import email.utils
-from email import message_from_bytes
-from email.message import Message
-from email.header import decode_header
-import re
+import imaplib
 import logging
+import re
 import threading
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List, Pattern, Any
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from email import message_from_bytes
+from email.header import decode_header
+from email.message import Message
 from enum import Enum
 from html.parser import HTMLParser
+from typing import Any, Dict, List, Optional, Pattern
 
 logger = logging.getLogger(__name__)
 
@@ -933,8 +933,9 @@ class OTPManager:
 
         # Initialize account manager if not already done
         if not hasattr(self, "_account_manager"):
-            from src.services.webhook_token_manager import WebhookTokenManager
             import os
+
+            from src.services.webhook_token_manager import WebhookTokenManager
 
             base_url = os.getenv("WEBHOOK_BASE_URL", "https://api.vizecep.com")
             webhook_manager = WebhookTokenManager(base_url=base_url)

@@ -1,8 +1,10 @@
 """Tests for AuthRateLimiter in auth module."""
 
-import pytest
 import time
 from datetime import timezone
+
+import pytest
+
 from src.core.auth import AuthRateLimiter
 
 

@@ -5,13 +5,13 @@ import logging
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
 from ...constants import Delays
-from ...utils.helpers import smart_click
 from ...utils.anti_detection.human_simulator import HumanSimulator
+from ...utils.helpers import smart_click
 
 logger = logging.getLogger(__name__)
 

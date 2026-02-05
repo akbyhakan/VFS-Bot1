@@ -1,9 +1,9 @@
 """Webhook signature verification utilities."""
 
-import hmac
 import hashlib
-import time
+import hmac
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 

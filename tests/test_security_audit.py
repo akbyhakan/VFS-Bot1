@@ -1,9 +1,11 @@
 """Security audit tests."""
 
-import pytest
-from src.core.env_validator import EnvValidator
 import os
 import sqlite3
+
+import pytest
+
+from src.core.env_validator import EnvValidator
 
 
 def test_production_requires_hashed_password():

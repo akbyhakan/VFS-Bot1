@@ -1,9 +1,11 @@
 """Tests for slot_analyzer module."""
 
-import pytest
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
+
 from src.services.slot_analyzer import SlotPatternAnalyzer
 
 
@@ -19,6 +21,7 @@ class TestSlotPatternAnalyzer:
         """Test that initialization creates the data directory."""
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
 
+        assert analyzer is not None
         assert temp_data_file.parent.exists()
 
     def test_init_loads_existing_data(self, temp_data_file):

@@ -1,17 +1,19 @@
 """Tests for middleware/error_handler module."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from src.middleware.error_handler import ErrorHandlerMiddleware
+
 from src.core.exceptions import (
-    VFSBotError,
-    DatabaseError,
     AuthenticationError,
-    ValidationError,
+    DatabaseError,
     RateLimitError,
+    ValidationError,
+    VFSBotError,
 )
+from src.middleware.error_handler import ErrorHandlerMiddleware
 
 
 class TestErrorHandlerMiddleware:

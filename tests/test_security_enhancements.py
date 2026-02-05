@@ -1,20 +1,21 @@
 """Tests for security enhancements."""
 
-import os
-import sys
 import json
 import logging
+import os
+import sys
 import tempfile
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.security import _get_api_key_salt, hash_api_key
-from src.utils.security.session_manager import SessionManager
-from src.utils.encryption import encrypt_password, decrypt_password
 from src.core.exceptions import ConfigurationError
+from src.core.security import _get_api_key_salt, hash_api_key
+from src.utils.encryption import decrypt_password, encrypt_password
+from src.utils.security.session_manager import SessionManager
 
 
 class TestAPIKeySaltSecurity:
@@ -170,8 +171,9 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_production_requirements(self, monkeypatch):
         """Test that production requires all security variables."""
-        from main import validate_environment
         from cryptography.fernet import Fernet
+
+        from main import validate_environment
 
         monkeypatch.setenv("ENV", "production")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -182,9 +184,11 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_api_secret_min_length(self, monkeypatch):
         """Test that API_SECRET_KEY must be at least 64 characters."""
-        from main import validate_environment
-        from cryptography.fernet import Fernet
         import secrets
+
+        from cryptography.fernet import Fernet
+
+        from main import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -195,8 +199,9 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_api_key_salt_min_length(self, monkeypatch):
         """Test that API_KEY_SALT must be at least 32 characters."""
-        from main import validate_environment
         from cryptography.fernet import Fernet
+
+        from main import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -208,9 +213,11 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_success_development(self, monkeypatch):
         """Test successful validation in development."""
-        from main import validate_environment
-        from cryptography.fernet import Fernet
         import logging
+
+        from cryptography.fernet import Fernet
+
+        from main import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -221,10 +228,12 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_success_production(self, monkeypatch):
         """Test successful validation in production with all variables."""
-        from main import validate_environment
-        from cryptography.fernet import Fernet
-        import secrets
         import logging
+        import secrets
+
+        from cryptography.fernet import Fernet
+
+        from main import validate_environment
 
         monkeypatch.setenv("ENV", "production")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -304,8 +313,9 @@ class TestCorrelationIDLogging:
 
     def test_correlation_id_filter(self):
         """Test CorrelationIdFilter adds correlation ID to records."""
-        from src.core.logger import CorrelationIdFilter, correlation_id_ctx
         import logging
+
+        from src.core.logger import CorrelationIdFilter, correlation_id_ctx
 
         filter_obj = CorrelationIdFilter()
         record = logging.LogRecord(
@@ -330,8 +340,9 @@ class TestCorrelationIDLogging:
 
     def test_json_formatter_includes_correlation_id(self):
         """Test that JSONFormatter includes correlation ID in output."""
-        from src.core.logger import JSONFormatter, correlation_id_ctx
         import logging
+
+        from src.core.logger import JSONFormatter, correlation_id_ctx
 
         formatter = JSONFormatter()
         correlation_id_ctx.set("test-corr-id")

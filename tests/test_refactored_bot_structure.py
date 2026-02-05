@@ -9,13 +9,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def test_new_modular_imports():
     """Test that new modular imports work."""
     from src.services.bot import (
-        VFSBot,
-        BrowserManager,
         AuthService,
-        SlotChecker,
+        BrowserManager,
         CircuitBreakerService,
         ErrorHandler,
+        SlotChecker,
         SlotInfo,
+        VFSBot,
     )
 
     assert VFSBot is not None
@@ -29,11 +29,11 @@ def test_new_modular_imports():
 
 def test_individual_component_imports():
     """Test that individual components can be imported."""
-    from src.services.bot.browser_manager import BrowserManager
     from src.services.bot.auth_service import AuthService
-    from src.services.bot.slot_checker import SlotChecker
+    from src.services.bot.browser_manager import BrowserManager
     from src.services.bot.circuit_breaker_service import CircuitBreakerService
     from src.services.bot.error_handler import ErrorHandler
+    from src.services.bot.slot_checker import SlotChecker
 
     assert BrowserManager is not None
     assert AuthService is not None

@@ -3,6 +3,7 @@
 
 import os
 import secrets
+
 from cryptography.fernet import Fernet
 from passlib.context import CryptContext
 

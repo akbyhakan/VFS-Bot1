@@ -1,14 +1,15 @@
 """Tests for OTP webhook service."""
 
-import pytest
 import asyncio
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-import sys
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.otp_webhook import OTPWebhookService, OTPPatternMatcher
+from src.services.otp_webhook import OTPPatternMatcher, OTPWebhookService
 
 
 class TestOTPPatternMatcher:

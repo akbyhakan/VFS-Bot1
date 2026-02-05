@@ -1,7 +1,7 @@
 """VFS Global Turkey - Supported Schengen Countries Configuration."""
 
-from typing import Dict, List, NamedTuple
 from enum import Enum
+from typing import Dict, List, NamedTuple
 
 
 class MissionCode(str, Enum):

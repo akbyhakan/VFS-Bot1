@@ -1,15 +1,16 @@
 """Security middleware for web dashboard."""
 
-import secrets
 import hashlib
 import hmac
-import os
 import logging
+import os
+import secrets
 from datetime import datetime
-from typing import Dict, Any, Optional
 from threading import RLock
+from typing import Any, Dict, Optional
+
 from fastapi import HTTPException, Security
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 logger = logging.getLogger(__name__)
 

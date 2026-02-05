@@ -1,7 +1,7 @@
 """Safe logging utilities for protecting sensitive data."""
 
-import re
 import logging
+import re
 from typing import Any, Dict, List, Pattern
 
 logger = logging.getLogger(__name__)

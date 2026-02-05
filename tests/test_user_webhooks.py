@@ -1,9 +1,11 @@
 """Test user webhook functionality."""
 
-import pytest
 import asyncio
 import os
 import tempfile
+
+import pytest
+
 from src.models.database import Database
 
 

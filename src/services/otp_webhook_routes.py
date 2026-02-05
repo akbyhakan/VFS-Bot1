@@ -3,11 +3,12 @@
 import logging
 import os
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Header, Depends, Request
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .otp_webhook import get_otp_service, OTPWebhookService
 from ..utils.webhook_utils import verify_webhook_signature
+from .otp_webhook import OTPWebhookService, get_otp_service
 
 logger = logging.getLogger(__name__)
 

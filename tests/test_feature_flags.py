@@ -1,8 +1,10 @@
 """Tests for feature flags system."""
 
 import os
+
 import pytest
-from src.core.feature_flags import FeatureFlags, FeatureFlag
+
+from src.core.feature_flags import FeatureFlag, FeatureFlags
 
 
 class TestFeatureFlags:

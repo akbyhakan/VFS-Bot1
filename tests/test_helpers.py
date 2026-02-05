@@ -1,21 +1,22 @@
 """Tests for helper utilities."""
 
+import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.helpers import (
-    smart_fill,
-    smart_click,
-    wait_for_selector_smart,
+    mask_password,
     random_delay,
     safe_navigate,
     safe_screenshot,
-    mask_password,
+    smart_click,
+    smart_fill,
+    wait_for_selector_smart,
 )
 
 

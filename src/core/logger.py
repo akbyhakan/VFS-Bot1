@@ -1,15 +1,15 @@
 """Advanced logging with Loguru."""
 
-import logging
-import json
-import sys
 import contextvars
+import json
+import logging
+import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
-from types import FrameType
 from pathlib import Path
-from loguru import logger
+from types import FrameType
+from typing import Any, Dict, Optional
 
+from loguru import logger
 
 # Context variable for request correlation ID
 correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(

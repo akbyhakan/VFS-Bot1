@@ -8,12 +8,7 @@ from pydantic import BaseModel
 
 from src.models.database import Database
 from src.utils.security.netnut_proxy import NetNutProxyManager
-from web.dependencies import (
-    verify_jwt_token,
-    ProxyCreateRequest,
-    ProxyUpdateRequest,
-    ProxyResponse,
-)
+from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/proxy", tags=["proxy"])

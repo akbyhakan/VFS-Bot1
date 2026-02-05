@@ -1,6 +1,7 @@
 """Tests for password complexity validation in auth module."""
 
 import pytest
+
 from src.core.auth import validate_password_complexity
 from src.core.exceptions import ValidationError
 

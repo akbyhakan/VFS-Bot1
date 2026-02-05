@@ -1,19 +1,17 @@
 """Tests for circuit breaker implementations."""
 
 import asyncio
-import pytest
-from unittest.mock import Mock, AsyncMock
 from collections import deque
+from unittest.mock import AsyncMock, Mock
 
-from src.services.bot.vfs_bot import VFSBot
+import pytest
+
+from src.core.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 from src.models.database import Database
+from src.services.bot.vfs_bot import VFSBot
+from src.services.circuit_breaker import CircuitBreakerService, CircuitBreakerStats
+from src.services.circuit_breaker import CircuitState as ServiceCircuitState
 from src.services.notification import NotificationService
-from src.core.circuit_breaker import CircuitBreaker, CircuitState, CircuitBreakerError
-from src.services.circuit_breaker import (
-    CircuitBreakerService,
-    CircuitState as ServiceCircuitState,
-    CircuitBreakerStats,
-)
 
 
 @pytest.mark.asyncio

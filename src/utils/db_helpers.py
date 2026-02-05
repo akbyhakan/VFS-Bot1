@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import List, Dict, Any, TypeVar, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, TypeVar
 
 import aiosqlite
 

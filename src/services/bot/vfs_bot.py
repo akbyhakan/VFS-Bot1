@@ -8,30 +8,30 @@ from typing import Any, Dict, Optional
 from playwright.async_api import Page
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
-from .browser_manager import BrowserManager
-from .auth_service import AuthService
-from .slot_checker import SlotChecker
-from .circuit_breaker_service import CircuitBreakerService
-from .error_handler import ErrorHandler
-from ..captcha_solver import CaptchaSolver
-from ..centre_fetcher import CentreFetcher
-from ..notification import NotificationService
-from ..adaptive_scheduler import AdaptiveScheduler
-from ..slot_analyzer import SlotPatternAnalyzer
-from ..selector_self_healing import SelectorSelfHealing
-from ..session_recovery import SessionRecovery
-from ..country_profile_loader import CountryProfileLoader
-from ...constants import Intervals, Retries, RateLimits
+from ...constants import Intervals, RateLimits, Retries
 from ...models.database import Database
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
+from ...utils.error_capture import ErrorCapture
+from ...utils.helpers import smart_click, smart_fill, wait_for_selector_smart
+from ...utils.masking import mask_email
 from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
-from ...utils.security.session_manager import SessionManager
 from ...utils.security.rate_limiter import get_rate_limiter
-from ...utils.error_capture import ErrorCapture
-from ...utils.helpers import smart_fill, smart_click, wait_for_selector_smart
-from ...utils.masking import mask_email
+from ...utils.security.session_manager import SessionManager
+from ..adaptive_scheduler import AdaptiveScheduler
+from ..captcha_solver import CaptchaSolver
+from ..centre_fetcher import CentreFetcher
+from ..country_profile_loader import CountryProfileLoader
+from ..notification import NotificationService
+from ..selector_self_healing import SelectorSelfHealing
+from ..session_recovery import SessionRecovery
+from ..slot_analyzer import SlotPatternAnalyzer
+from .auth_service import AuthService
+from .browser_manager import BrowserManager
+from .circuit_breaker_service import CircuitBreakerService
+from .error_handler import ErrorHandler
+from .slot_checker import SlotChecker
 
 logger = logging.getLogger(__name__)
 

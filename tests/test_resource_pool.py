@@ -1,7 +1,9 @@
 """Tests for ResourcePool round-robin rotation."""
 
-import pytest
 import asyncio
+
+import pytest
+
 from src.services.bot.orchestrator.resource_pool import ResourcePool
 
 

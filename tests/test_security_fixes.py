@@ -1,20 +1,21 @@
 """Tests for security improvements: SQL injection protection, API key hashing,
 thread safety, and JWT validation."""
 
-import pytest
 import asyncio
-import os
 import logging
+import os
 import threading
-from pathlib import Path
-from cryptography.fernet import Fernet
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict
 
-from src.models.database import Database, ALLOWED_PERSONAL_DETAILS_FIELDS
-from src.core.security import hash_api_key, _get_api_key_salt
+import pytest
+from cryptography.fernet import Fernet
+
 from src.core.auth import _get_jwt_settings
+from src.core.security import _get_api_key_salt, hash_api_key
+from src.models.database import ALLOWED_PERSONAL_DETAILS_FIELDS, Database
 from src.utils.encryption import reset_encryption
 from web.dependencies import ThreadSafeBotState
 

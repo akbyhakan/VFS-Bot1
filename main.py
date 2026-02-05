@@ -5,25 +5,24 @@ VFS-Bot - Automated VFS appointment booking bot.
 Main entry point for the application.
 """
 
+import argparse
 import asyncio
 import logging
-import sys
 import os
-import argparse
 import signal
+import sys
 import threading
 from typing import Optional
 
 from src.core.config_loader import load_config
-from src.models.database import Database
-from src.services.notification import NotificationService
-
-from src.services.bot import VFSBot
-from src.core.logger import setup_structured_logging
-from src.core.env_validator import EnvValidator
 from src.core.config_validator import ConfigValidator
-from src.core.monitoring import init_sentry
+from src.core.env_validator import EnvValidator
 from src.core.exceptions import ConfigurationError, ShutdownTimeoutError
+from src.core.logger import setup_structured_logging
+from src.core.monitoring import init_sentry
+from src.models.database import Database
+from src.services.bot import VFSBot
+from src.services.notification import NotificationService
 
 # Graceful shutdown timeout in seconds (configurable via env)
 SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
@@ -333,8 +332,9 @@ async def run_web_mode(
     logger.info("Starting VFS-Bot with web dashboard...")
 
     import uvicorn
-    from web.app import app
+
     from src.services.cleanup_service import CleanupService
+    from web.app import app
 
     # Initialize database if not provided
     db_owned = db is None

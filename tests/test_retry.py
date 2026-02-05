@@ -1,24 +1,25 @@
 """Tests for retry strategies."""
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.core.exceptions import (
+    CaptchaError,
+    LoginError,
+    NetworkError,
+    RateLimitError,
+    SlotCheckError,
+)
 from src.core.retry import (
-    get_login_retry,
     get_captcha_retry,
-    get_slot_check_retry,
+    get_login_retry,
     get_network_retry,
     get_rate_limit_retry,
-)
-from src.core.exceptions import (
-    LoginError,
-    CaptchaError,
-    NetworkError,
-    SlotCheckError,
-    RateLimitError,
+    get_slot_check_retry,
 )
 
 

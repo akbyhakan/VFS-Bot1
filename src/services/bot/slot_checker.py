@@ -7,11 +7,11 @@ from typing import Any, Dict, Optional, TypedDict
 
 from playwright.async_api import Page
 
-from ...constants import Timeouts, Delays
-from ...utils.helpers import smart_click, safe_navigate
-from ...utils.anti_detection.human_simulator import HumanSimulator
+from ...constants import Delays, Timeouts
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
+from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
+from ...utils.helpers import safe_navigate, smart_click
 from ...utils.security.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)

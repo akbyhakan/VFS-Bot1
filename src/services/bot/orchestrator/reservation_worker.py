@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 from ..browser_manager import BrowserManager
 from .resource_pool import ResourcePool

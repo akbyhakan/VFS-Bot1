@@ -1,8 +1,9 @@
 """End-to-end tests for booking flow with mocked VFS responses."""
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from typing import Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.models.database import Database
 

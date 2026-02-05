@@ -1,7 +1,7 @@
 """Tests for structured logging module."""
 
-import logging
 import json
+import logging
 
 from src.core.logger import JSONFormatter, setup_structured_logging
 

@@ -1,8 +1,9 @@
 """Tests for database parameter validation."""
 
 import pytest
-from src.models.database import Database
 from cryptography.fernet import Fernet
+
+from src.models.database import Database
 
 
 @pytest.fixture(scope="function")

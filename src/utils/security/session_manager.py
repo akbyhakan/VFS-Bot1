@@ -1,22 +1,22 @@
 """Manage JWT tokens with automatic refresh before expiry."""
 
+import hashlib
 import json
 import logging
 import os
 import stat
 import tempfile
 import time
-import hashlib
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Dict, Optional
-from dataclasses import dataclass, asdict
 
 try:
     import jwt as jwt_module
 except ImportError:
     jwt_module = None  # type: ignore[assignment]
 
-from src.utils.encryption import encrypt_password, decrypt_password
+from src.utils.encryption import decrypt_password, encrypt_password
 
 logger = logging.getLogger(__name__)
 

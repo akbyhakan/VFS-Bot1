@@ -1,10 +1,11 @@
 """Tests for masking utility functions."""
 
 import pytest
+
 from src.utils.masking import (
     mask_email,
-    mask_phone,
     mask_password,
+    mask_phone,
     mask_sensitive_dict,
     safe_log_user,
 )
