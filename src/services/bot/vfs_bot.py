@@ -161,10 +161,13 @@ class VFSBot:
     def _init_bot_components(self) -> None:
         """Initialize modular bot components."""
         from ..appointment_booking_service import AppointmentBookingService
+        from .waitlist_handler import WaitlistHandler
 
         self.booking_service = AppointmentBookingService(
             self.config, self.captcha_solver, self.human_sim
         )
+
+        self.waitlist_handler = WaitlistHandler(self.config, self.human_sim)
 
         self.browser_manager = BrowserManager(self.config, self.header_manager, self.proxy_manager)
         self.circuit_breaker = CircuitBreakerService()
@@ -368,39 +371,48 @@ class VFSBot:
                 logger.error(f"Login failed for {masked_email}")
                 return
 
-            # Check slots
-            centres = user["centre"].split(",")
-            for centre in centres:
-                centre = centre.strip()
-                slot = await self.slot_checker.check_slots(
-                    page, centre, user["category"], user["subcategory"]
-                )
+            # Check for waitlist mode first
+            is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
 
-                if slot:
-                    await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
+            if is_waitlist:
+                logger.info(f"Waitlist mode detected for {masked_email}")
+                # Handle waitlist flow
+                await self.process_waitlist_flow(page, user)
+            else:
+                # Normal appointment flow
+                # Check slots
+                centres = user["centre"].split(",")
+                for centre in centres:
+                    centre = centre.strip()
+                    slot = await self.slot_checker.check_slots(
+                        page, centre, user["category"], user["subcategory"]
+                    )
 
-                    # Get personal details
-                    details = await self.db.get_personal_details(user["id"])
-                    if details:
-                        # Fill details and book
-                        if await self.fill_personal_details(page, details):
-                            reference = await self.book_appointment(
-                                page, slot["date"], slot["time"]
-                            )
-                            if reference:
-                                await self.db.add_appointment(
-                                    user["id"],
-                                    centre,
-                                    user["category"],
-                                    user["subcategory"],
-                                    slot["date"],
-                                    slot["time"],
-                                    reference,
+                    if slot:
+                        await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
+
+                        # Get personal details
+                        details = await self.db.get_personal_details(user["id"])
+                        if details:
+                            # Fill details and book
+                            if await self.fill_personal_details(page, details):
+                                reference = await self.book_appointment(
+                                    page, slot["date"], slot["time"]
                                 )
-                                await self.notifier.notify_booking_success(
-                                    centre, slot["date"], slot["time"], reference
-                                )
-                    break
+                                if reference:
+                                    await self.db.add_appointment(
+                                        user["id"],
+                                        centre,
+                                        user["category"],
+                                        user["subcategory"],
+                                        slot["date"],
+                                        slot["time"],
+                                        reference,
+                                    )
+                                    await self.notifier.notify_booking_success(
+                                        centre, slot["date"], slot["time"], reference
+                                    )
+                        break
         except Exception as e:
             logger.error(f"Error processing user {masked_email}: {e}")
             if self.config["bot"].get("screenshot_on_error", True):
@@ -416,6 +428,56 @@ class VFSBot:
                 await page.close()
             except Exception as close_error:
                 logger.error(f"Failed to close page: {close_error}")
+
+    async def process_waitlist_flow(self, page: Page, user: Dict[str, Any]) -> None:
+        """
+        Process waitlist flow for a user.
+
+        Args:
+            page: Playwright page object
+            user: User dictionary from database
+        """
+        try:
+            masked_email = mask_email(user["email"])
+            logger.info(f"Starting waitlist flow for {masked_email}")
+
+            # Step 1: Join waitlist (check waitlist checkbox on Application Details)
+            if not await self.waitlist_handler.join_waitlist(page):
+                logger.error("Failed to join waitlist")
+                return
+
+            # Click Continue button to proceed to next step
+            await smart_click(page, "//button[contains(., 'Devam et')]", self.human_sim)
+            await asyncio.sleep(2)
+
+            # Note: Fill personal details and other steps would happen here
+            # For now, we'll navigate through the flow assuming forms are filled
+
+            # Step 2: Accept all checkboxes on Review and Pay screen
+            if not await self.waitlist_handler.accept_review_checkboxes(page):
+                logger.error("Failed to accept review checkboxes")
+                return
+
+            # Step 3: Click Confirm button
+            if not await self.waitlist_handler.click_confirm_button(page):
+                logger.error("Failed to click confirm button")
+                return
+
+            # Step 4: Handle success screen
+            waitlist_details = await self.waitlist_handler.handle_waitlist_success(
+                page, user["email"]
+            )
+
+            if waitlist_details:
+                # Send notification with screenshot
+                screenshot_path = waitlist_details.get("screenshot_path")
+                await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
+                logger.info(f"Waitlist registration successful for {masked_email}")
+            else:
+                logger.error("Failed to handle waitlist success screen")
+
+        except Exception as e:
+            logger.error(f"Error in waitlist flow: {e}", exc_info=True)
 
     async def fill_personal_details(self, page: Page, details: Dict[str, Any]) -> bool:
         """
