@@ -1,6 +1,7 @@
 """Notification system with Telegram and Email support."""
 
 import asyncio
+import html
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -28,6 +29,19 @@ class NotificationService:
         self.config = config
         self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
         self.email_enabled = config.get("email", {}).get("enabled", False)
+        
+        # Cache Telegram bot instance if enabled
+        self._telegram_bot = None
+        if self.telegram_enabled:
+            try:
+                from telegram import Bot
+                telegram_config = config.get("telegram", {})
+                bot_token = telegram_config.get("bot_token")
+                if bot_token:
+                    self._telegram_bot = Bot(token=bot_token)
+            except Exception as e:
+                logger.warning(f"Failed to initialize Telegram bot: {e}")
+        
         logger.info(
             f"NotificationService initialized "
             f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
@@ -72,17 +86,23 @@ class NotificationService:
             True if successful
         """
         try:
-            from telegram import Bot
-
             telegram_config = self.config.get("telegram", {})
-            bot_token = telegram_config.get("bot_token")
             chat_id = telegram_config.get("chat_id")
 
-            if not bot_token or not chat_id:
-                logger.error("Telegram credentials missing")
+            if not chat_id:
+                logger.error("Telegram chat_id missing")
                 return False
 
-            bot = Bot(token=bot_token)
+            # Use cached bot instance or create new one
+            bot = self._telegram_bot
+            if bot is None:
+                from telegram import Bot
+                bot_token = telegram_config.get("bot_token")
+                if not bot_token:
+                    logger.error("Telegram bot_token missing")
+                    return False
+                bot = Bot(token=bot_token)
+
             full_message = f"🤖 *{title}*\n\n{message}"
 
             await bot.send_message(chat_id=chat_id, text=full_message, parse_mode="Markdown")
@@ -122,14 +142,15 @@ class NotificationService:
             message["To"] = receiver
             message["Subject"] = f"VFS-Bot: {subject}"
 
-            # Add body
-            # Replace newlines with <br> tags for HTML
-            formatted_body = body.replace("\n", "<br>")
+            # Add body with XSS protection
+            # Escape HTML to prevent XSS attacks
+            escaped_subject = html.escape(subject)
+            escaped_body = html.escape(body).replace("\n", "<br>")
             html_body = f"""
             <html>
                 <body>
-                    <h2>{subject}</h2>
-                    <p>{formatted_body}</p>
+                    <h2>{escaped_subject}</h2>
+                    <p>{escaped_body}</p>
                     <hr>
                     <p><small>This is an automated message from VFS-Bot</small></p>
                 </body>
@@ -290,14 +311,11 @@ The bot will retry automatically.
         try:
             from pathlib import Path
 
-            from telegram import Bot
-
             telegram_config = self.config.get("telegram", {})
-            bot_token = telegram_config.get("bot_token")
             chat_id = telegram_config.get("chat_id")
 
-            if not bot_token or not chat_id:
-                logger.error("Telegram credentials missing")
+            if not chat_id:
+                logger.error("Telegram chat_id missing")
                 return False
 
             photo_file = Path(photo_path)
@@ -306,19 +324,25 @@ The bot will retry automatically.
                 # Fall back to text-only message
                 return await self.send_telegram(title, message)
 
-            bot = Bot(token=bot_token)
+            # Use cached bot instance or create new one
+            bot = self._telegram_bot
+            if bot is None:
+                from telegram import Bot
+                bot_token = telegram_config.get("bot_token")
+                if not bot_token:
+                    logger.error("Telegram bot_token missing")
+                    return False
+                bot = Bot(token=bot_token)
+
             full_message = f"🤖 *{title}*\n\n{message}"
 
-            # Send photo with caption
-            with open(photo_file, "rb") as photo:
+            with open(photo_path, "rb") as photo:
                 await bot.send_photo(
                     chat_id=chat_id, photo=photo, caption=full_message, parse_mode="Markdown"
                 )
 
             logger.info("Telegram notification with photo sent successfully")
             return True
-
         except Exception as e:
             logger.error(f"Telegram notification with photo failed: {e}")
-            # Fall back to text-only message
-            return await self.send_telegram(title, message)
+            return False

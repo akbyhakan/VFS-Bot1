@@ -118,16 +118,16 @@ class SelectorSelfHealing:
                 is_visible = await element.first.is_visible()
                 if is_visible:
                     score += 0.3
-            except Exception:
-                pass
+            except (TimeoutError, Exception) as e:
+                logger.debug(f"Visibility check failed for selector: {e}")
 
             # Etkileşilebilir mi?
             try:
                 is_enabled = await element.first.is_enabled()
                 if is_enabled:
                     score += 0.2
-            except Exception:
-                pass
+            except (TimeoutError, Exception) as e:
+                logger.debug(f"Enabled check failed for selector: {e}")
 
             # Metin içeriği eşleşiyor mu?
             try:
@@ -136,10 +136,10 @@ class SelectorSelfHealing:
                     if keyword in text.lower():
                         score += 0.1
                         break
-            except Exception:
-                pass
+            except (TimeoutError, Exception) as e:
+                logger.debug(f"Text content check failed for selector: {e}")
 
-        except Exception as e:
+        except (TimeoutError, Exception) as e:
             logger.debug(f"Confidence hesaplama hatası: {e}")
             return 0.0
 
