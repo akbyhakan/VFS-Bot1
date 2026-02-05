@@ -18,6 +18,7 @@ from ..centre_fetcher import CentreFetcher
 from ..notification import NotificationService
 from ...constants import Intervals, Retries, RateLimits
 from ...models.database import Database
+from ...types import AppConfig
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.security.header_manager import HeaderManager
@@ -36,7 +37,7 @@ class VFSBot:
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: AppConfig,
         db: Database,
         notifier: NotificationService,
         shutdown_event: Optional[asyncio.Event] = None,
@@ -54,68 +55,91 @@ class VFSBot:
             captcha_solver: Optional CaptchaSolver instance (created if not provided)
             centre_fetcher: Optional CentreFetcher instance (created if not provided)
         """
+        # Core initialization
         self.config = config
         self.db = db
         self.notifier = notifier
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
+        
+        # Initialize core services
+        self._init_core_services(captcha_solver, centre_fetcher)
+        
+        # Initialize anti-detection (extracted to method)
+        self._init_anti_detection()
+        
+        # Initialize modular components
+        self._init_bot_components()
+        
+        logger.info("VFSBot initialized with modular components")
 
-        # Concurrent processing semaphore
+    def _init_core_services(
+        self,
+        captcha_solver: Optional[CaptchaSolver],
+        centre_fetcher: Optional[CentreFetcher],
+    ) -> None:
+        """Initialize core services with dependency injection.
+        
+        Args:
+            captcha_solver: Optional CaptchaSolver instance. If None, creates a new
+                instance using configuration from self.config["captcha"].
+            centre_fetcher: Optional CentreFetcher instance. If None, creates a new
+                instance using configuration from self.config["vfs"].
+        
+        This method follows the dependency injection pattern, allowing external
+        instances to be provided for testing or reuse, while creating defaults
+        when not provided.
+        """
         self.user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
-
-        # Initialize rate limiter
         self.rate_limiter = get_rate_limiter()
-
-        # Initialize error capture
         self.error_capture = ErrorCapture()
-
-        # Initialize OTP service
+        
         from ..otp_webhook import get_otp_service
-
         self.otp_service = get_otp_service()
-
-        # Initialize components with dependency injection
+        
+        captcha_config = self.config.get("captcha", {})
         self.captcha_solver = captcha_solver or CaptchaSolver(
-            api_key=config["captcha"].get("api_key", ""),
-            manual_timeout=config["captcha"].get("manual_timeout", 120),
+            api_key=captcha_config.get("api_key", ""),
+            manual_timeout=captcha_config.get("manual_timeout", 120),
         )
-
+        
+        vfs_config = self.config.get("vfs", {})
+        # Validate required VFS configuration fields
+        if not centre_fetcher:
+            required_fields = ["base_url", "country", "mission"]
+            missing_fields = [f for f in required_fields if not vfs_config.get(f)]
+            if missing_fields:
+                raise ValueError(
+                    f"Missing required VFS configuration fields: {', '.join(missing_fields)}. "
+                    f"Please ensure config is validated with ConfigValidator before initializing VFSBot."
+                )
+        
         self.centre_fetcher = centre_fetcher or CentreFetcher(
-            base_url=config["vfs"]["base_url"],
-            country=config["vfs"]["country"],
-            mission=config["vfs"]["mission"],
-            language=config["vfs"].get("language", "tr"),
+            base_url=vfs_config["base_url"],
+            country=vfs_config["country"],
+            mission=vfs_config["mission"],
+            language=vfs_config.get("language", "tr"),
         )
 
-        # Initialize anti-detection components
-        anti_detection_config = config.get("anti_detection", {})
+    def _init_anti_detection(self) -> None:
+        """Initialize anti-detection components based on configuration."""
+        anti_detection_config = self.config.get("anti_detection", {})
         self.anti_detection_enabled = anti_detection_config.get("enabled", True)
-
+        
         if self.anti_detection_enabled:
-            # Human behavior simulator
-            self.human_sim: Optional[HumanSimulator] = HumanSimulator(
-                config.get("human_behavior", {})
-            )
-
-            # Header manager
-            self.header_manager: Optional[HeaderManager] = HeaderManager()
-
-            # Session manager
-            session_config = config.get("session", {})
-            self.session_manager: Optional[SessionManager] = SessionManager(
+            self.human_sim = HumanSimulator(self.config.get("human_behavior", {}))
+            self.header_manager = HeaderManager()
+            
+            session_config = self.config.get("session", {})
+            self.session_manager = SessionManager(
                 session_file=session_config.get("save_file", "data/session.json"),
                 token_refresh_buffer=session_config.get("token_refresh_buffer", 5),
             )
-
-            # Cloudflare handler
-            self.cloudflare_handler: Optional[CloudflareHandler] = CloudflareHandler(
-                config.get("cloudflare", {})
-            )
-
-            # Proxy manager
-            self.proxy_manager: Optional[ProxyManager] = ProxyManager(config.get("proxy", {}))
-
+            
+            self.cloudflare_handler = CloudflareHandler(self.config.get("cloudflare", {}))
+            self.proxy_manager = ProxyManager(self.config.get("proxy", {}))
+            
             logger.info("Anti-detection features initialized")
         else:
             self.human_sim = None
@@ -125,36 +149,36 @@ class VFSBot:
             self.proxy_manager = None
             logger.info("Anti-detection features disabled")
 
-        # Initialize appointment booking service (PART 2)
+    def _init_bot_components(self) -> None:
+        """Initialize modular bot components."""
         from ..appointment_booking_service import AppointmentBookingService
-
+        
         self.booking_service = AppointmentBookingService(
-            config, self.captcha_solver, self.human_sim
+            self.config, self.captcha_solver, self.human_sim
         )
-
-        # Initialize modular components
-        self.browser_manager = BrowserManager(config, self.header_manager, self.proxy_manager)
+        
+        self.browser_manager = BrowserManager(
+            self.config, self.header_manager, self.proxy_manager
+        )
         self.circuit_breaker = CircuitBreakerService()
         self.error_handler = ErrorHandler()
-
+        
         self.auth_service = AuthService(
-            config,
+            self.config,
             self.captcha_solver,
             self.human_sim,
             self.cloudflare_handler,
             self.error_capture,
             self.otp_service,
         )
-
+        
         self.slot_checker = SlotChecker(
-            config,
+            self.config,
             self.rate_limiter,
             self.human_sim,
             self.cloudflare_handler,
             self.error_capture,
         )
-
-        logger.info("VFSBot initialized with modular components")
 
     async def __aenter__(self) -> "VFSBot":
         """
