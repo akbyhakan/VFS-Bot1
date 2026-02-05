@@ -17,6 +17,7 @@ Public API:
 """
 
 from .auth_service import AuthService
+from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .circuit_breaker_service import CircuitBreakerService, CircuitBreakerStats
 from .error_handler import ErrorHandler
@@ -28,6 +29,7 @@ __all__ = [
     "VFSBot",
     "BrowserManager",
     "AuthService",
+    "BookingWorkflow",
     "SlotChecker",
     "SlotInfo",
     "CircuitBreakerService",
