@@ -29,19 +29,20 @@ class NotificationService:
         self.config = config
         self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
         self.email_enabled = config.get("email", {}).get("enabled", False)
-        
+
         # Cache Telegram bot instance if enabled
         self._telegram_bot = None
         if self.telegram_enabled:
             try:
                 from telegram import Bot
+
                 telegram_config = config.get("telegram", {})
                 bot_token = telegram_config.get("bot_token")
                 if bot_token:
                     self._telegram_bot = Bot(token=bot_token)
             except Exception as e:
                 logger.warning(f"Failed to initialize Telegram bot: {e}")
-        
+
         logger.info(
             f"NotificationService initialized "
             f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
@@ -97,6 +98,7 @@ class NotificationService:
             bot = self._telegram_bot
             if bot is None:
                 from telegram import Bot
+
                 bot_token = telegram_config.get("bot_token")
                 if not bot_token:
                     logger.error("Telegram bot_token missing")
@@ -328,6 +330,7 @@ The bot will retry automatically.
             bot = self._telegram_bot
             if bot is None:
                 from telegram import Bot
+
                 bot_token = telegram_config.get("bot_token")
                 if not bot_token:
                     logger.error("Telegram bot_token missing")

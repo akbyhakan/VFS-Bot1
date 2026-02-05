@@ -55,12 +55,13 @@ async def test_send_telegram_success():
     """Test successful Telegram notification."""
     config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
-    notifier = NotificationService(config)
-
     with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
         mock_bot.send_message = AsyncMock()
+
+        # Create notifier after patching Bot
+        notifier = NotificationService(config)
 
         result = await notifier.send_telegram("Test Title", "Test Message")
 
@@ -83,10 +84,12 @@ async def test_send_telegram_exception():
     """Test Telegram notification exception handling."""
     config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
-    notifier = NotificationService(config)
-
     with patch("telegram.Bot") as MockBot:
         MockBot.side_effect = Exception("Telegram error")
+        
+        # Create notifier after patching Bot
+        notifier = NotificationService(config)
+        
         result = await notifier.send_telegram("Test", "Message")
         assert result is False
 

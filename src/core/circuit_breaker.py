@@ -32,7 +32,7 @@ Example:
 
     # Method 2: Direct calls
     cb = CircuitBreaker(failure_threshold=5, timeout_seconds=60.0)
-    
+
     if await cb.can_execute():
         try:
             result = await my_function()
@@ -139,9 +139,11 @@ class CircuitBreaker:
         self._half_open_successes = 0
         self._last_failure_time: Optional[datetime] = None
         self._lock = asyncio.Lock()
-        
+
         # Error tracking for window-based threshold
-        self._error_timestamps: deque = deque(maxlen=max_errors_per_hour if max_errors_per_hour else 100)
+        self._error_timestamps: deque = deque(
+            maxlen=max_errors_per_hour if max_errors_per_hour else 100
+        )
 
     @property
     def state(self) -> CircuitState:
@@ -187,12 +189,12 @@ class CircuitBreaker:
         async with self._lock:
             self._failure_count += 1
             self._last_failure_time = datetime.now()
-            
+
             # Track error timestamp for window-based threshold
             if self._max_errors_per_hour:
                 current_time = time.time()
                 self._error_timestamps.append(current_time)
-                
+
                 # Clean old errors outside tracking window
                 cutoff_time = current_time - self._error_tracking_window
                 while self._error_timestamps and self._error_timestamps[0] < cutoff_time:
@@ -206,12 +208,12 @@ class CircuitBreaker:
             elif self._state == CircuitState.CLOSED:
                 # Check consecutive failures threshold
                 should_open = self._failure_count >= self.failure_threshold
-                
+
                 # Check window-based threshold if configured
                 if self._max_errors_per_hour:
                     recent_errors = len(self._error_timestamps)
                     should_open = should_open or (recent_errors >= self._max_errors_per_hour)
-                
+
                 if should_open:
                     self._state = CircuitState.OPEN
                     logger.warning(
@@ -308,7 +310,7 @@ class CircuitBreaker:
             self._last_failure_time = None
             self._error_timestamps.clear()
             logger.info(f"{self.name}: Circuit manually reset to closed state")
-    
+
     async def get_wait_time(self) -> float:
         """
         Calculate wait time with exponential backoff.
@@ -340,5 +342,7 @@ class CircuitBreaker:
             if self._last_failure_time
             else None,
             "timeout_seconds": self.timeout_seconds,
-            "total_errors_in_window": len(self._error_timestamps) if self._max_errors_per_hour else 0,
+            "total_errors_in_window": len(self._error_timestamps)
+            if self._max_errors_per_hour
+            else 0,
         }

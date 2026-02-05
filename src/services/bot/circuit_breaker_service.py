@@ -96,7 +96,7 @@ class CircuitBreakerService:
         Opens circuit if consecutive errors or total errors in window exceed thresholds.
         """
         await self._circuit_breaker.record_failure()
-        
+
         # Record circuit breaker trip in metrics if it just opened
         if self._circuit_breaker.state == CircuitState.OPEN:
             try:
@@ -129,7 +129,7 @@ class CircuitBreakerService:
             Dictionary with circuit breaker stats
         """
         stats = self._circuit_breaker.get_stats()
-        
+
         # Convert to backward-compatible format
         return {
             "consecutive_errors": stats["failure_count"],
@@ -137,4 +137,3 @@ class CircuitBreakerService:
             "is_open": stats["state"] == CircuitState.OPEN.value,
             "open_time": None,  # Core circuit breaker tracks last_failure_time instead
         }
-
