@@ -18,7 +18,6 @@ from ..centre_fetcher import CentreFetcher
 from ..notification import NotificationService
 from ...constants import Intervals, Retries, RateLimits
 from ...models.database import Database
-from ...types import AppConfig
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.security.header_manager import HeaderManager
@@ -119,15 +118,17 @@ class VFSBot:
             missing_fields = [f for f in required_fields if not vfs_config.get(f)]
             if missing_fields:
                 raise ValueError(
-                    f"Missing required VFS configuration fields: {', '.join(missing_fields)}. "
-                    f"Please ensure config is validated with ConfigValidator before initializing VFSBot."
+                    f"Missing required VFS configuration fields: "
+                    f"{', '.join(missing_fields)}. "
+                    f"Please ensure config is validated with ConfigValidator "
+                    f"before initializing VFSBot."
                 )
 
         self.centre_fetcher = centre_fetcher or CentreFetcher(
             base_url=vfs_config["base_url"],
             country=vfs_config["country"],
             mission=vfs_config["mission"],
-            language=vfs_config.get("language") or "tr",
+            language=vfs_config.get("language", "tr"),
         )
 
     def _init_anti_detection(self) -> None:
