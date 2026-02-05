@@ -20,9 +20,10 @@ twocaptcha==0.0.1
 anticaptchaofficial==1.0.69
 SpeechRecognition==3.10.1
 pydub==0.25.1
-curl-cffi>=0.6.0
+# Anti-detection - REQUIRED for bot functionality
+curl-cffi>=0.6.0  # Required for Cloudflare TLS fingerprint bypass
+numpy>=1.24.0  # Required for realistic Bézier curve mouse movements
 pyjwt>=2.8.0
-numpy>=1.24.0
 loguru>=0.7.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
