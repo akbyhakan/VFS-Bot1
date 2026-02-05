@@ -118,7 +118,7 @@ class SelectorSelfHealing:
                 is_visible = await element.first.is_visible()
                 if is_visible:
                     score += 0.3
-            except (TimeoutError, Exception) as e:
+            except Exception as e:
                 logger.debug(f"Visibility check failed for selector: {e}")
 
             # Is it interactable?
@@ -126,7 +126,7 @@ class SelectorSelfHealing:
                 is_enabled = await element.first.is_enabled()
                 if is_enabled:
                     score += 0.2
-            except (TimeoutError, Exception) as e:
+            except Exception as e:
                 logger.debug(f"Enabled check failed for selector: {e}")
 
             # Does text content match?
@@ -136,10 +136,10 @@ class SelectorSelfHealing:
                     if keyword in text.lower():
                         score += 0.1
                         break
-            except (TimeoutError, Exception) as e:
+            except Exception as e:
                 logger.debug(f"Text content check failed for selector: {e}")
 
-        except (TimeoutError, Exception) as e:
+        except Exception as e:
             logger.debug(f"Confidence calculation error: {e}")
             return 0.0
 
