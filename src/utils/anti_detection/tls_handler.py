@@ -1,12 +1,14 @@
-"""TLS fingerprinting bypass using curl-cffi to mimic Chrome browser handshake."""
+"""
+TLS fingerprinting bypass using curl-cffi to mimic Chrome browser handshake.
+
+Requirements:
+    - curl-cffi: Required for Cloudflare bypass. Install with: pip install curl-cffi
+"""
 
 import logging
 from typing import Any, Optional
 
-try:
-    from curl_cffi.requests import AsyncSession
-except ImportError:
-    AsyncSession = None  # type: ignore[assignment,misc]
+from curl_cffi.requests import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,6 @@ class TLSHandler:
         self.impersonate = impersonate
         self.session: Optional[AsyncSession] = None
 
-        if AsyncSession is None:
-            logger.warning("curl-cffi not installed, TLS bypass will be disabled")
-
     async def __aenter__(self):
         """Async context manager entry."""
         await self.create_session()
@@ -38,10 +37,6 @@ class TLSHandler:
 
     async def create_session(self) -> None:
         """Create async session with TLS impersonation."""
-        if AsyncSession is None:
-            logger.warning("curl-cffi not available, skipping TLS session creation")
-            return
-
         try:
             self.session = AsyncSession(impersonate=self.impersonate)  # type: ignore[arg-type]
             logger.info(f"TLS session created with {self.impersonate} impersonation")

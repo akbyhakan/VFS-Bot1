@@ -37,16 +37,6 @@ async def test_tls_handler_initialization_custom():
 
 
 @pytest.mark.asyncio
-async def test_create_session_without_curl_cffi():
-    """Test session creation when curl-cffi is not available."""
-    with patch("src.utils.anti_detection.tls_handler.AsyncSession", None):
-        handler = TLSHandler()
-        # AsyncSession is None when curl-cffi is not installed
-        await handler.create_session()
-        assert handler.session is None
-
-
-@pytest.mark.asyncio
 async def test_create_session_with_curl_cffi(mock_async_session):
     """Test session creation with curl-cffi available."""
     with patch(

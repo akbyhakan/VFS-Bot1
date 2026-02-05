@@ -25,7 +25,6 @@ from src.core.config_validator import ConfigValidator
 from src.core.monitoring import init_sentry
 from src.core.exceptions import ConfigurationError, ShutdownTimeoutError
 
-
 # Graceful shutdown timeout in seconds (configurable via env)
 SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
 
@@ -88,6 +87,30 @@ def validate_environment():
         )
 
     logger.info("✅ Environment validation passed")
+
+
+def verify_critical_dependencies():
+    """Verify all critical dependencies are installed."""
+    logger = logging.getLogger(__name__)
+    missing = []
+
+    try:
+        import curl_cffi  # noqa: F401 - PyPI package name is curl-cffi
+    except ImportError:
+        missing.append("curl-cffi")
+
+    try:
+        import numpy  # noqa: F401
+    except ImportError:
+        missing.append("numpy")
+
+    if missing:
+        raise ImportError(
+            f"Critical dependencies missing: {', '.join(missing)}. "
+            f"Install with: pip install {' '.join(missing)}"
+        )
+
+    logger.info("✅ Critical dependencies verified")
 
 
 def setup_signal_handlers():
@@ -417,6 +440,9 @@ def main() -> None:
     try:
         # Initialize Sentry monitoring
         init_sentry()
+
+        # Verify critical dependencies
+        verify_critical_dependencies()
 
         # Validate environment variables
         logger.info("Validating environment variables...")

@@ -89,15 +89,6 @@ def test_bezier_curve_different_steps():
     assert len(points_20) == 20
 
 
-def test_bezier_curve_without_numpy():
-    """Test bezier curve works without numpy."""
-    with patch("src.utils.anti_detection.human_simulator.np", None):
-        simulator = HumanSimulator()
-        points = simulator.bezier_curve((0, 0), (100, 100), steps=15)
-        assert len(points) == 15
-        assert isinstance(points[0], tuple)
-
-
 @pytest.mark.asyncio
 async def test_human_mouse_move_calls_mouse_move(mock_page):
     """Test human mouse move calls page.mouse.move."""

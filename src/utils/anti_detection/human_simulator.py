@@ -1,16 +1,17 @@
-"""Simulate realistic human interactions using Bézier curves and random delays."""
+"""
+Simulate realistic human interactions using Bézier curves and random delays.
+
+Requirements:
+    - numpy: Required for Bézier curve calculations. Install with: pip install numpy
+"""
 
 import asyncio
 import logging
 import random
 from typing import Dict, List, Optional, Tuple, Any
 
+import numpy as np
 from playwright.async_api import Page
-
-try:
-    import numpy as np
-except ImportError:
-    np = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,6 @@ class HumanSimulator:
         self.typing_wpm_range = self.config.get("typing_wpm_range", [40, 80])
         self.click_delay_range = self.config.get("click_delay_range", [0.1, 0.5])
         self.random_actions = self.config.get("random_actions", True)
-
-        if np is None:
-            logger.warning("numpy not installed, using simplified movement calculations")
 
     @staticmethod
     def bezier_curve(
@@ -66,42 +64,23 @@ class HumanSimulator:
 
         points = []
 
-        if np is not None:
-            # Use numpy for faster computation
-            t_values = np.linspace(0, 1, steps)
-            for t in t_values:
-                # Cubic Bézier formula
-                x = (
-                    (1 - t) ** 3 * start[0]
-                    + 3 * (1 - t) ** 2 * t * cp1_x
-                    + 3 * (1 - t) * t**2 * cp2_x
-                    + t**3 * end[0]
-                )
-                y = (
-                    (1 - t) ** 3 * start[1]
-                    + 3 * (1 - t) ** 2 * t * cp1_y
-                    + 3 * (1 - t) * t**2 * cp2_y
-                    + t**3 * end[1]
-                )
-                points.append((float(x), float(y)))
-        else:
-            # Fallback without numpy
-            for i in range(steps):
-                t = i / (steps - 1)
-                # Cubic Bézier formula
-                x = (
-                    (1 - t) ** 3 * start[0]
-                    + 3 * (1 - t) ** 2 * t * cp1_x
-                    + 3 * (1 - t) * t**2 * cp2_x
-                    + t**3 * end[0]
-                )
-                y = (
-                    (1 - t) ** 3 * start[1]
-                    + 3 * (1 - t) ** 2 * t * cp1_y
-                    + 3 * (1 - t) * t**2 * cp2_y
-                    + t**3 * end[1]
-                )
-                points.append((x, y))
+        # Use numpy for Bézier curve computation
+        t_values = np.linspace(0, 1, steps)
+        for t in t_values:
+            # Cubic Bézier formula
+            x = (
+                (1 - t) ** 3 * start[0]
+                + 3 * (1 - t) ** 2 * t * cp1_x
+                + 3 * (1 - t) * t**2 * cp2_x
+                + t**3 * end[0]
+            )
+            y = (
+                (1 - t) ** 3 * start[1]
+                + 3 * (1 - t) ** 2 * t * cp1_y
+                + 3 * (1 - t) * t**2 * cp2_y
+                + t**3 * end[1]
+            )
+            points.append((float(x), float(y)))
 
         return points
 
