@@ -56,7 +56,7 @@ class CircuitBreakerService:
 
     async def record_success(self) -> None:
         """Record successful operation and close circuit if open."""
-        await self._circuit_breaker._record_success()
+        await self._circuit_breaker.record_success()
 
     async def record_failure(self) -> None:
         """
@@ -64,7 +64,7 @@ class CircuitBreakerService:
 
         Opens circuit if consecutive errors or total errors in window exceed thresholds.
         """
-        await self._circuit_breaker._record_failure()
+        await self._circuit_breaker.record_failure()
         
         # Record circuit breaker trip in metrics if it just opened
         if self._circuit_breaker.state == CircuitState.OPEN:

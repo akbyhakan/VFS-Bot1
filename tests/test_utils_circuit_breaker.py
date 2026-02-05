@@ -32,18 +32,18 @@ class TestCircuitBreaker:
 
     @pytest.mark.asyncio
     async def test_record_success_resets_failure_count(self):
-        """Test _record_success resets failure count."""
+        """Test record_success resets failure count."""
         cb = CircuitBreaker(name="test", failure_threshold=3)
         cb._failure_count = 2
-        await cb._record_success()
+        await cb.record_success()
         assert cb._failure_count == 0
         assert cb.state == CircuitState.CLOSED
 
     @pytest.mark.asyncio
     async def test_record_failure_increments_count(self):
-        """Test _record_failure increments failure count."""
+        """Test record_failure increments failure count."""
         cb = CircuitBreaker(name="test", failure_threshold=3)
-        await cb._record_failure()
+        await cb.record_failure()
         assert cb._failure_count == 1
         assert cb.state == CircuitState.CLOSED
 
@@ -51,16 +51,16 @@ class TestCircuitBreaker:
     async def test_circuit_opens_after_threshold(self):
         """Test circuit opens after reaching failure threshold."""
         cb = CircuitBreaker(name="test", failure_threshold=3)
-        await cb._record_failure()
-        await cb._record_failure()
-        await cb._record_failure()
+        await cb.record_failure()
+        await cb.record_failure()
+        await cb.record_failure()
         assert cb.state == CircuitState.OPEN
 
     @pytest.mark.asyncio
     async def test_can_execute_returns_false_when_open(self):
         """Test can_execute returns False when circuit is OPEN."""
         cb = CircuitBreaker(name="test", failure_threshold=1)
-        await cb._record_failure()
+        await cb.record_failure()
         assert cb.state == CircuitState.OPEN
         assert not await cb.can_execute()
 
@@ -68,7 +68,7 @@ class TestCircuitBreaker:
     async def test_circuit_moves_to_half_open_after_timeout(self):
         """Test circuit moves to HALF_OPEN after reset timeout."""
         cb = CircuitBreaker(name="test", failure_threshold=1, timeout_seconds=0.01)
-        await cb._record_failure()
+        await cb.record_failure()
         assert cb.state == CircuitState.OPEN
         # Wait for timeout
         await asyncio.sleep(0.1)
@@ -83,9 +83,9 @@ class TestCircuitBreaker:
         cb = CircuitBreaker(
             name="test", failure_threshold=1, timeout_seconds=0, half_open_threshold=1
         )
-        await cb._record_failure()
+        await cb.record_failure()
         cb._state = CircuitState.HALF_OPEN
-        await cb._record_success()
+        await cb.record_success()
         # After enough successes, should close
         assert cb.state in [CircuitState.HALF_OPEN, CircuitState.CLOSED]
 
@@ -94,7 +94,7 @@ class TestCircuitBreaker:
         """Test failure in HALF_OPEN state reopens the circuit."""
         cb = CircuitBreaker(name="test", failure_threshold=1, timeout_seconds=0)
         cb._state = CircuitState.HALF_OPEN
-        await cb._record_failure()
+        await cb.record_failure()
         assert cb.state == CircuitState.OPEN
 
     @pytest.mark.asyncio

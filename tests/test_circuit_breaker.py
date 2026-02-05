@@ -292,12 +292,12 @@ async def test_circuit_breaker_service_opens_on_consecutive_failures():
     cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60.0, name="ServiceCB")
 
     # Record failures
-    await cb._record_failure()
-    await cb._record_failure()
+    await cb.record_failure()
+    await cb.record_failure()
     assert await cb.can_execute() is True
 
     # Third failure should open circuit
-    await cb._record_failure()
+    await cb.record_failure()
     assert await cb.can_execute() is False
     assert cb.state == CircuitState.OPEN
 
@@ -307,12 +307,12 @@ async def test_circuit_breaker_service_resets_on_success():
     """Test CircuitBreaker resets consecutive errors on success."""
     cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60.0, name="ServiceCB")
 
-    await cb._record_failure()
-    await cb._record_failure()
+    await cb.record_failure()
+    await cb.record_failure()
     assert cb.failure_count == 2
 
     # Success should reset counter
-    await cb._record_success()
+    await cb.record_success()
     assert cb.failure_count == 0
     assert cb.state == CircuitState.CLOSED
 
@@ -323,8 +323,8 @@ async def test_circuit_breaker_service_half_open_transition():
     cb = CircuitBreaker(failure_threshold=2, timeout_seconds=1.0, name="ServiceCB")
 
     # Open circuit
-    await cb._record_failure()
-    await cb._record_failure()
+    await cb.record_failure()
+    await cb.record_failure()
     assert cb.state == CircuitState.OPEN
 
     # Wait for reset timeout
@@ -341,8 +341,8 @@ async def test_circuit_breaker_service_get_stats():
     """Test getting CircuitBreaker statistics."""
     cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60.0, name="ServiceCB")
 
-    await cb._record_failure()
-    await cb._record_failure()
+    await cb.record_failure()
+    await cb.record_failure()
 
     stats = cb.get_stats()
 
@@ -358,8 +358,8 @@ async def test_circuit_breaker_service_manual_reset():
     cb = CircuitBreaker(failure_threshold=2, timeout_seconds=60.0, name="ServiceCB")
 
     # Open circuit
-    await cb._record_failure()
-    await cb._record_failure()
+    await cb.record_failure()
+    await cb.record_failure()
     assert cb.state == CircuitState.OPEN
 
     # Manual reset

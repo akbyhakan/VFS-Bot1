@@ -126,7 +126,7 @@ class CircuitBreaker:
                     self._half_open_successes = 0
                     logger.info(f"{self.name}: Circuit half-open, testing recovery")
 
-    async def _record_success(self) -> None:
+    async def record_success(self) -> None:
         """Record a successful call."""
         async with self._lock:
             if self._state == CircuitState.HALF_OPEN:
@@ -140,7 +140,7 @@ class CircuitBreaker:
                 # Reset failure count on success in closed state
                 self._failure_count = 0
 
-    async def _record_failure(self) -> None:
+    async def record_failure(self) -> None:
         """Record a failed call."""
         async with self._lock:
             self._failure_count += 1
@@ -224,10 +224,10 @@ class CircuitBreaker:
         # Attempt the call
         try:
             result = await func(*args, **kwargs)
-            await self._record_success()
+            await self.record_success()
             return result
         except self.expected_exception:
-            await self._record_failure()
+            await self.record_failure()
             raise
         except Exception as e:
             # Unexpected exceptions pass through without affecting circuit
