@@ -11,30 +11,31 @@ logger = logging.getLogger(__name__)
 
 class SlotPatternAnalyzer:
     """Slot açılma pattern'lerini analiz et ve raporla."""
-    
+
     def __init__(self, data_file: str = "data/slot_patterns.json"):
         self.data_file = Path(data_file)
         self.data_file.parent.mkdir(parents=True, exist_ok=True)
         self._patterns: Dict[str, Any] = self._load_data()
-    
+
     def _load_data(self) -> Dict[str, Any]:
         """Mevcut pattern verilerini yükle."""
         if self.data_file.exists():
             try:
-                with open(self.data_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                with open(self.data_file, "r", encoding="utf-8") as f:
+                    data: Dict[str, Any] = json.load(f)
+                    return data
             except Exception as e:
                 logger.error(f"Pattern data yüklenemedi: {e}")
         return {"slots": [], "stats": {}}
-    
+
     def _save_data(self) -> None:
         """Pattern verilerini kaydet."""
         try:
-            with open(self.data_file, 'w', encoding='utf-8') as f:
+            with open(self.data_file, "w", encoding="utf-8") as f:
                 json.dump(self._patterns, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Pattern data kaydedilemedi: {e}")
-    
+
     def record_slot_found(
         self,
         country: str,
@@ -42,7 +43,7 @@ class SlotPatternAnalyzer:
         category: str,
         date: str,
         time: str,
-        duration_seconds: Optional[int] = None
+        duration_seconds: Optional[int] = None,
     ) -> None:
         """Bulunan slot'u kaydet."""
         record = {
@@ -54,63 +55,64 @@ class SlotPatternAnalyzer:
             "found_at": datetime.now().isoformat(),
             "found_hour": datetime.now().hour,
             "found_weekday": datetime.now().strftime("%A"),
-            "duration_seconds": duration_seconds
+            "duration_seconds": duration_seconds,
         }
         self._patterns["slots"].append(record)
         self._save_data()
         logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
-    
+
     def analyze_patterns(self, days: int = 30) -> Dict[str, Any]:
         """Son N gündeki pattern'leri analiz et."""
         cutoff = datetime.now() - timedelta(days=days)
         recent_slots = [
-            s for s in self._patterns.get("slots", [])
+            s
+            for s in self._patterns.get("slots", [])
             if datetime.fromisoformat(s["found_at"]) > cutoff
         ]
-        
+
         if not recent_slots:
             return {"message": "Yeterli veri yok"}
-        
+
         # Saat bazlı analiz
-        hour_counts = defaultdict(int)
+        hour_counts: Dict[int, int] = defaultdict(int)
         for slot in recent_slots:
             hour_counts[slot["found_hour"]] += 1
-        
+
         # Gün bazlı analiz
-        day_counts = defaultdict(int)
+        day_counts: Dict[str, int] = defaultdict(int)
         for slot in recent_slots:
             day_counts[slot["found_weekday"]] += 1
-        
+
         # Merkez bazlı analiz
-        centre_counts = defaultdict(int)
+        centre_counts: Dict[str, int] = defaultdict(int)
         for slot in recent_slots:
             centre_counts[slot["centre"]] += 1
-        
+
         # En iyi saatler (top 3)
         best_hours = sorted(hour_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        
+
         # En iyi günler (top 3)
         best_days = sorted(day_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-        
+
         # En aktif merkezler
         best_centres = sorted(centre_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-        
+
         return {
             "period_days": days,
             "total_slots_found": len(recent_slots),
             "best_hours": [{"hour": f"{h}:00", "count": c} for h, c in best_hours],
             "best_days": [{"day": d, "count": c} for d, c in best_days],
             "best_centres": [{"centre": c, "count": cnt} for c, cnt in best_centres],
-            "avg_slots_per_day": round(len(recent_slots) / days, 2)
+            "avg_slots_per_day": round(len(recent_slots) / days, 2),
         }
-    
+
     def generate_weekly_report(self) -> str:
         """Haftalık Telegram raporu oluştur."""
         analysis = self.analyze_patterns(days=7)
-        
+
         if "message" in analysis:
             return "📊 Haftalık Rapor: Henüz yeterli veri toplanmadı."
-        
+
         report = f"""📊 **VFS-Bot Haftalık Slot Raporu**
 
 📈 **Son 7 Günde:**
@@ -119,15 +121,15 @@ class SlotPatternAnalyzer:
 
 ⏰ **En İyi Saatler:**
 """
-        for h in analysis['best_hours']:
+        for h in analysis["best_hours"]:
             report += f"  • {h['hour']} - {h['count']} slot\n"
-        
+
         report += "\n📅 **En İyi Günler:**\n"
-        for d in analysis['best_days']:
+        for d in analysis["best_days"]:
             report += f"  • {d['day']} - {d['count']} slot\n"
-        
+
         report += "\n🏢 **En Aktif Merkezler:**\n"
-        for c in analysis['best_centres']:
+        for c in analysis["best_centres"]:
             report += f"  • {c['centre']} - {c['count']} slot\n"
-        
+
         return report

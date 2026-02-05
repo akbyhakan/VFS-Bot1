@@ -58,12 +58,10 @@ class WaitlistHandler:
             for indicator in waitlist_indicators:
                 try:
                     # Try to find the text with a short timeout
-                    element = await page.locator(f"text={indicator}").first.wait_for(
-                        timeout=2000, state="visible"
-                    )
-                    if element:
-                        logger.info(f"Waitlist mode detected: found '{indicator}'")
-                        return True
+                    locator = page.locator(f"text={indicator}").first
+                    await locator.wait_for(timeout=2000, state="visible")
+                    logger.info(f"Waitlist mode detected: found '{indicator}'")
+                    return True
                 except Exception:
                     continue
 
@@ -96,12 +94,11 @@ class WaitlistHandler:
             checkbox = None
             for selector in waitlist_selectors:
                 try:
-                    checkbox = await page.locator(selector).first.wait_for(
-                        timeout=5000, state="visible"
-                    )
-                    if checkbox:
-                        logger.info(f"Found waitlist checkbox with selector: {selector}")
-                        break
+                    locator = page.locator(selector).first
+                    await locator.wait_for(timeout=5000, state="visible")
+                    checkbox = locator
+                    logger.info(f"Found waitlist checkbox with selector: {selector}")
+                    break
                 except Exception:
                     continue
 
@@ -195,12 +192,11 @@ class WaitlistHandler:
             checkbox = None
             for selector in selectors:
                 try:
-                    checkbox = await page.locator(selector).first.wait_for(
-                        timeout=5000, state="visible"
-                    )
-                    if checkbox:
-                        logger.info(f"Found {name} checkbox with selector: {selector}")
-                        break
+                    locator = page.locator(selector).first
+                    await locator.wait_for(timeout=5000, state="visible")
+                    checkbox = locator
+                    logger.info(f"Found {name} checkbox with selector: {selector}")
+                    break
                 except Exception:
                     continue
 
@@ -247,12 +243,11 @@ class WaitlistHandler:
             button = None
             for selector in confirm_selectors:
                 try:
-                    button = await page.locator(selector).first.wait_for(
-                        timeout=5000, state="visible"
-                    )
-                    if button:
-                        logger.info(f"Found confirm button with selector: {selector}")
-                        break
+                    locator = page.locator(selector).first
+                    await locator.wait_for(timeout=5000, state="visible")
+                    button = locator
+                    logger.info(f"Found confirm button with selector: {selector}")
+                    break
                 except Exception:
                     continue
 
@@ -334,12 +329,10 @@ class WaitlistHandler:
 
             for indicator in success_indicators:
                 try:
-                    element = await page.locator(f"text={indicator}").first.wait_for(
-                        timeout=5000, state="visible"
-                    )
-                    if element:
-                        logger.info(f"Success screen detected: found '{indicator}'")
-                        return True
+                    locator = page.locator(f"text={indicator}").first
+                    await locator.wait_for(timeout=5000, state="visible")
+                    logger.info(f"Success screen detected: found '{indicator}'")
+                    return True
                 except Exception:
                     continue
 
@@ -359,7 +352,7 @@ class WaitlistHandler:
         Returns:
             Dictionary with extracted details
         """
-        details = {
+        details: Dict[str, Any] = {
             "reference_number": "",
             "people": [],
             "country": "",

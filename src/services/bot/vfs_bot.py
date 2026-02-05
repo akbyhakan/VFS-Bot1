@@ -210,10 +210,7 @@ class VFSBot:
         # Adaptive scheduler with country-specific multiplier
         country_multiplier = self.country_profiles.get_retry_multiplier(country_code)
         timezone = self.country_profiles.get_timezone(country_code)
-        self.scheduler = AdaptiveScheduler(
-            timezone=timezone,
-            country_multiplier=country_multiplier
-        )
+        self.scheduler = AdaptiveScheduler(timezone=timezone, country_multiplier=country_multiplier)
 
         # Slot pattern analyzer
         self.slot_analyzer = SlotPatternAnalyzer()
@@ -418,12 +415,10 @@ class VFSBot:
             if not await self.auth_service.login(page, user["email"], user["password"]):
                 logger.error(f"Login failed for {masked_email}")
                 return
-            
+
             # Save checkpoint after successful login
             self.session_recovery.save_checkpoint(
-                "logged_in",
-                user["id"],
-                {"email": user["email"], "masked_email": masked_email}
+                "logged_in", user["id"], {"email": user["email"], "masked_email": masked_email}
             )
 
             # Check for waitlist mode first
@@ -445,14 +440,14 @@ class VFSBot:
 
                     if slot:
                         await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
-                        
+
                         # Record slot pattern for analysis
                         self.slot_analyzer.record_slot_found(
                             country=user.get("country", "unknown"),
                             centre=centre,
                             category=user["category"],
                             date=slot["date"],
-                            time=slot["time"]
+                            time=slot["time"],
                         )
 
                         # Get personal details
@@ -476,7 +471,7 @@ class VFSBot:
                                     await self.notifier.notify_booking_success(
                                         centre, slot["date"], slot["time"], reference
                                     )
-                                    
+
                                     # Clear checkpoint after successful booking
                                     self.session_recovery.clear_checkpoint()
                                     logger.info("Booking completed - checkpoint cleared")
@@ -543,7 +538,7 @@ class VFSBot:
 
             if waitlist_details:
                 # Send notification with screenshot
-                screenshot_path = waitlist_details.get("screenshot_path")
+                screenshot_path: Optional[str] = waitlist_details.get("screenshot_path")
                 await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
                 logger.info(f"Waitlist registration successful for {masked_email}")
             else:
