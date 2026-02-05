@@ -352,7 +352,22 @@ class CircuitBreaker:
 ### Usage
 
 ```python
-from src.services.circuit_breaker import CircuitBreakerService
+from src.core.circuit_breaker import CircuitBreaker
+
+# For general use with decorator pattern
+cb = CircuitBreaker(
+    failure_threshold=5,
+    timeout_seconds=60.0,
+    name="MyService"
+)
+
+@cb.protected
+async def risky_operation():
+    # Your code here
+    pass
+
+# Or for bot-specific wrapper with backward-compatible API
+from src.services.bot.circuit_breaker_service import CircuitBreakerService
 
 cb = CircuitBreakerService()
 
