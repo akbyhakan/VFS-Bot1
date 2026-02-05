@@ -86,10 +86,10 @@ async def test_send_telegram_exception():
 
     with patch("telegram.Bot") as MockBot:
         MockBot.side_effect = Exception("Telegram error")
-        
+
         # Create notifier after patching Bot
         notifier = NotificationService(config)
-        
+
         result = await notifier.send_telegram("Test", "Message")
         assert result is False
 
