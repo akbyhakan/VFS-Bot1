@@ -389,7 +389,10 @@ class WaitlistHandler:
                     break
 
             # Try to extract person names from visible text
-            # This is a best-effort extraction
+            # This is a best-effort extraction with limitations:
+            # - Assumes Western naming conventions (Capitalized First Last)
+            # - May not work for names with prefixes, suffixes, or multiple capitals
+            # - May not work for non-Western naming patterns
             try:
                 # Look for name patterns in the page
                 name_elements = await page.locator("text=/[A-Z][a-z]+\\s+[A-Z][a-z]+/").all()
