@@ -486,7 +486,7 @@ VFS-Bot1/
 │   ├── models/               # Data models
 │   │   └── database.py       # SQLite operations
 │   ├── services/             # Business logic
-│   │   ├── bot_service.py    # Main bot logic
+│   │   ├── bot/              # Main bot logic (modular)
 │   │   ├── captcha_solver.py # Captcha solving
 │   │   ├── centre_fetcher.py # Auto-fetch centres
 │   │   └── notification.py   # Telegram & Email
