@@ -61,6 +61,11 @@ class AppConfig(TypedDict, total=False):
     Note: total=False allows fields to be omitted at dictionary creation
     time but doesn't affect the type system. Fields that may be missing
     at runtime should be accessed with .get() method.
+    
+    Important: Callers should validate that required configuration sections
+    (vfs, bot, captcha, etc.) are present and contain necessary values before
+    passing to components that depend on them. Use ConfigValidator.validate()
+    to ensure configuration completeness.
     """
     
     vfs: VFSConfig

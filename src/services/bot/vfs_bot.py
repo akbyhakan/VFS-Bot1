@@ -105,10 +105,20 @@ class VFSBot:
         )
         
         vfs_config = self.config.get("vfs", {})
+        # Validate required VFS configuration fields
+        if not centre_fetcher:
+            required_fields = ["base_url", "country", "mission"]
+            missing_fields = [f for f in required_fields if not vfs_config.get(f)]
+            if missing_fields:
+                raise ValueError(
+                    f"Missing required VFS configuration fields: {', '.join(missing_fields)}. "
+                    f"Please ensure config is validated with ConfigValidator before initializing VFSBot."
+                )
+        
         self.centre_fetcher = centre_fetcher or CentreFetcher(
-            base_url=vfs_config.get("base_url", ""),
-            country=vfs_config.get("country", ""),
-            mission=vfs_config.get("mission", ""),
+            base_url=vfs_config["base_url"],
+            country=vfs_config["country"],
+            mission=vfs_config["mission"],
             language=vfs_config.get("language", "tr"),
         )
 
