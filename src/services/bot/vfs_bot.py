@@ -79,7 +79,18 @@ class VFSBot:
         captcha_solver: Optional[CaptchaSolver],
         centre_fetcher: Optional[CentreFetcher],
     ) -> None:
-        """Initialize core services with dependency injection."""
+        """Initialize core services with dependency injection.
+        
+        Args:
+            captcha_solver: Optional CaptchaSolver instance. If None, creates a new
+                instance using configuration from self.config["captcha"].
+            centre_fetcher: Optional CentreFetcher instance. If None, creates a new
+                instance using configuration from self.config["vfs"].
+        
+        This method follows the dependency injection pattern, allowing external
+        instances to be provided for testing or reuse, while creating defaults
+        when not provided.
+        """
         self.user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
         self.rate_limiter = get_rate_limiter()
         self.error_capture = ErrorCapture()

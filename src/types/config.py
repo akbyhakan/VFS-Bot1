@@ -56,7 +56,11 @@ class AppConfig(TypedDict, total=False):
     """Complete application configuration.
     
     This is the main configuration structure that combines all
-    configuration sections. Using total=False allows for optional fields.
+    configuration sections. 
+    
+    Note: total=False allows fields to be omitted at dictionary creation
+    time but doesn't affect the type system. Fields that may be missing
+    at runtime should be accessed with .get() method.
     """
     
     vfs: VFSConfig
