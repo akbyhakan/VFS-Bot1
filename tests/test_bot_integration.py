@@ -100,7 +100,7 @@ async def test_fill_personal_details(mock_page, config, mock_db, mock_notifier):
         "date_of_birth": "1990-01-01",
     }
 
-    result = await bot.fill_personal_details(mock_page, details)
+    result = await bot.booking_workflow.fill_personal_details(mock_page, details)
 
     assert result is True
     # Verify fields were filled
@@ -117,7 +117,7 @@ async def test_book_appointment_success(mock_page, config, mock_db, mock_notifie
     mock_reference.text_content = AsyncMock(return_value="REF-123456")
     mock_page.locator.return_value = mock_reference
 
-    reference = await bot.book_appointment(mock_page, "2024-02-15", "10:00")
+    reference = await bot.booking_workflow.book_appointment(mock_page, "2024-02-15", "10:00")
 
     assert reference == "REF-123456"
 
@@ -146,8 +146,8 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
         patch.object(
             bot.slot_checker, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}
         ),
-        patch.object(bot, "fill_personal_details", return_value=True),
-        patch.object(bot, "book_appointment", return_value="REF-123456"),
+        patch.object(bot.booking_workflow, "fill_personal_details", return_value=True),
+        patch.object(bot.booking_workflow, "book_appointment", return_value="REF-123456"),
     ):
         mock_db.get_personal_details.return_value = {
             "first_name": "John",
@@ -156,7 +156,7 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
             "email": "test@example.com",
         }
 
-        await bot.process_user(user)
+        await bot.booking_workflow.process_user(mock_page, user)
 
         # Verify notifications were sent
         mock_notifier.notify_slot_found.assert_called_once()
@@ -184,7 +184,7 @@ async def test_process_user_login_failure(config, mock_db, mock_notifier):
 
     # Mock failed login
     with patch.object(bot.auth_service, "login", return_value=False):
-        await bot.process_user(user)
+        await bot.booking_workflow.process_user(mock_page, user)
 
         # Verify check_slots was not called
         mock_notifier.notify_slot_found.assert_not_called()

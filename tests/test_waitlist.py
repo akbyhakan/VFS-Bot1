@@ -326,15 +326,15 @@ async def test_notify_waitlist_success(notification_service):
         "total_amount": "200 EUR",
     }
 
-    with patch("telegram.Bot") as MockBot:
-        mock_bot = AsyncMock()
-        MockBot.return_value = mock_bot
-        mock_bot.send_message = AsyncMock()
+    # Mock the cached bot instance directly
+    mock_bot = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+    notification_service._telegram_bot = mock_bot
 
-        await notification_service.notify_waitlist_success(details)
+    await notification_service.notify_waitlist_success(details)
 
-        # Verify send_message was called
-        assert mock_bot.send_message.called or mock_bot.send_photo.called
+    # Verify send_message was called
+    assert mock_bot.send_message.called
 
 
 @pytest.mark.asyncio
@@ -355,15 +355,15 @@ async def test_notify_waitlist_success_with_screenshot(notification_service, tmp
         "total_amount": "100 EUR",
     }
 
-    with patch("telegram.Bot") as MockBot:
-        mock_bot = AsyncMock()
-        MockBot.return_value = mock_bot
-        mock_bot.send_photo = AsyncMock()
+    # Mock the cached bot instance directly
+    mock_bot = AsyncMock()
+    mock_bot.send_photo = AsyncMock()
+    notification_service._telegram_bot = mock_bot
 
-        await notification_service.notify_waitlist_success(details, str(screenshot_file))
+    await notification_service.notify_waitlist_success(details, str(screenshot_file))
 
-        # Verify send_photo was called
-        mock_bot.send_photo.assert_called_once()
+    # Verify send_photo was called
+    mock_bot.send_photo.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -380,15 +380,15 @@ async def test_notify_waitlist_success_no_people(notification_service):
         "total_amount": "100 EUR",
     }
 
-    with patch("telegram.Bot") as MockBot:
-        mock_bot = AsyncMock()
-        MockBot.return_value = mock_bot
-        mock_bot.send_message = AsyncMock()
+    # Mock the cached bot instance directly
+    mock_bot = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+    notification_service._telegram_bot = mock_bot
 
-        await notification_service.notify_waitlist_success(details)
+    await notification_service.notify_waitlist_success(details)
 
-        # Should not raise exception
-        assert True
+    # Should not raise exception
+    assert True
 
 
 def test_waitlist_handler_initialization():

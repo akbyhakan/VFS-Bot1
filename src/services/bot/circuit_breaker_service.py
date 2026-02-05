@@ -1,12 +1,42 @@
-"""Circuit breaker service for fault tolerance and error tracking."""
+"""
+Circuit breaker service for fault tolerance and error tracking.
+
+This is a thin wrapper around src.core.circuit_breaker.CircuitBreaker that
+maintains backward compatibility with the bot's existing API.
+
+⚠️ IMPORTANT: This is a compatibility wrapper. For new code, use
+   src.core.circuit_breaker.CircuitBreaker directly.
+
+Architecture:
+    - Delegates all circuit breaker logic to core implementation
+    - Maintains backward-compatible API methods:
+        * is_available() - check if requests allowed
+        * record_success() - record successful operation
+        * record_failure() - record failed operation
+        * get_wait_time() - get exponential backoff time
+        * get_stats() - get CircuitBreakerStats TypedDict
+    - Integrates with application metrics for circuit trips
+
+Migration Guide (for future reference):
+    Old (wrapper):
+        from src.services.bot.circuit_breaker_service import CircuitBreakerService
+        cb = CircuitBreakerService()
+        if await cb.is_available():
+            # do work
+
+    New (core):
+        from src.core.circuit_breaker import CircuitBreaker
+        cb = CircuitBreaker(...)
+        if await cb.can_execute():
+            # do work
+"""
 
 import asyncio
 import logging
-import time
-from collections import deque
 from typing import Optional, TypedDict
 
-from ...constants import CircuitBreaker
+from ...constants import CircuitBreaker as CircuitBreakerConfig
+from ...core.circuit_breaker import CircuitBreaker, CircuitState
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +54,9 @@ class CircuitBreakerService:
     """
     Circuit breaker implementation for fault tolerance.
 
+    This is a thin wrapper around the core CircuitBreaker that maintains
+    backward compatibility with the bot's existing API.
+
     Tracks errors and opens circuit when thresholds are exceeded,
     preventing cascading failures. Supports exponential backoff and
     automatic recovery.
@@ -31,11 +64,17 @@ class CircuitBreakerService:
 
     def __init__(self):
         """Initialize circuit breaker with default settings."""
-        self.consecutive_errors = 0
-        self.total_errors: deque = deque(maxlen=CircuitBreaker.MAX_ERRORS_PER_HOUR)
-        self.circuit_breaker_open = False
-        self.circuit_breaker_open_time: Optional[float] = None
-        self._lock = asyncio.Lock()  # Thread-safety for circuit breaker
+        self._circuit_breaker = CircuitBreaker(
+            failure_threshold=CircuitBreakerConfig.MAX_CONSECUTIVE_ERRORS,
+            timeout_seconds=CircuitBreakerConfig.RESET_TIMEOUT_SECONDS,
+            name="BotCircuitBreaker",
+            half_open_threshold=CircuitBreakerConfig.HALF_OPEN_SUCCESS_THRESHOLD,
+            max_errors_per_hour=CircuitBreakerConfig.MAX_TOTAL_ERRORS_PER_HOUR,
+            error_tracking_window=CircuitBreakerConfig.ERROR_TRACKING_WINDOW,
+            backoff_base=CircuitBreakerConfig.BACKOFF_BASE,
+            backoff_max=CircuitBreakerConfig.BACKOFF_MAX,
+        )
+        self._lock = asyncio.Lock()  # For backward compatibility
 
     async def is_available(self) -> bool:
         """
@@ -44,17 +83,11 @@ class CircuitBreakerService:
         Returns:
             True if circuit is closed (requests allowed), False if open
         """
-        async with self._lock:
-            return not self.circuit_breaker_open
+        return await self._circuit_breaker.can_execute()
 
     async def record_success(self) -> None:
         """Record successful operation and close circuit if open."""
-        async with self._lock:
-            self.consecutive_errors = 0
-            if self.circuit_breaker_open:
-                self.circuit_breaker_open = False
-                self.circuit_breaker_open_time = None
-                logger.info("Circuit breaker closed after successful operation")
+        await self._circuit_breaker.record_success()
 
     async def record_failure(self) -> None:
         """
@@ -62,47 +95,22 @@ class CircuitBreakerService:
 
         Opens circuit if consecutive errors or total errors in window exceed thresholds.
         """
-        async with self._lock:
-            current_time = time.time()
-            self.consecutive_errors += 1
-            self.total_errors.append(current_time)
+        await self._circuit_breaker.record_failure()
 
-            # Clean old errors outside tracking window
-            cutoff_time = current_time - CircuitBreaker.ERROR_TRACKING_WINDOW
-            while self.total_errors and self.total_errors[0] < cutoff_time:
-                self.total_errors.popleft()
+        # Record circuit breaker trip in metrics if it just opened
+        if self._circuit_breaker.state == CircuitState.OPEN:
+            try:
+                from ...utils.metrics import get_metrics
 
-            # Check if circuit breaker should open
-            recent_errors = len(self.total_errors)
-
-            if (
-                self.consecutive_errors >= CircuitBreaker.MAX_CONSECUTIVE_ERRORS
-                or recent_errors >= CircuitBreaker.MAX_TOTAL_ERRORS_PER_HOUR
-            ):
-                self.circuit_breaker_open = True
-                self.circuit_breaker_open_time = current_time
-                logger.error(
-                    f"CIRCUIT BREAKER OPENED - "
-                    f"consecutive: {self.consecutive_errors}, "
-                    f"total in hour: {recent_errors}"
-                )
-
-                # Record circuit breaker trip in metrics
-                try:
-                    from ...utils.metrics import get_metrics
-
-                    metrics = await get_metrics()
-                    await metrics.record_circuit_breaker_trip()
-                except Exception as e:
-                    logger.debug(f"Failed to record circuit breaker trip metric: {e}")
+                metrics = await get_metrics()
+                await metrics.record_circuit_breaker_trip()
+            except Exception as e:
+                logger.debug(f"Failed to record circuit breaker trip metric: {e}")
 
     async def reset(self) -> None:
         """Reset circuit breaker state to closed."""
-        async with self._lock:
-            self.circuit_breaker_open = False
-            self.circuit_breaker_open_time = None
-            self.consecutive_errors = 0
-            logger.info("Circuit breaker CLOSED - resuming normal operation")
+        await self._circuit_breaker.reset()
+        logger.info("Circuit breaker CLOSED - resuming normal operation")
 
     async def get_wait_time(self) -> float:
         """
@@ -111,13 +119,7 @@ class CircuitBreakerService:
         Returns:
             Wait time in seconds based on number of consecutive errors
         """
-        async with self._lock:
-            # Exponential backoff: min(60 * 2^(errors-1), 600)
-            errors = min(self.consecutive_errors, 10)  # Cap for calculation
-            backoff = min(
-                CircuitBreaker.BACKOFF_BASE * (2 ** (errors - 1)), CircuitBreaker.BACKOFF_MAX
-            )
-            return float(backoff)
+        return await self._circuit_breaker.get_wait_time()
 
     async def get_stats(self) -> CircuitBreakerStats:
         """
@@ -126,16 +128,12 @@ class CircuitBreakerService:
         Returns:
             Dictionary with circuit breaker stats
         """
-        async with self._lock:
-            # Clean old errors for accurate count
-            current_time = time.time()
-            cutoff_time = current_time - CircuitBreaker.ERROR_TRACKING_WINDOW
-            while self.total_errors and self.total_errors[0] < cutoff_time:
-                self.total_errors.popleft()
+        stats = self._circuit_breaker.get_stats()
 
-            return {
-                "consecutive_errors": self.consecutive_errors,
-                "total_errors_in_window": len(self.total_errors),
-                "is_open": self.circuit_breaker_open,
-                "open_time": self.circuit_breaker_open_time,
-            }
+        # Convert to backward-compatible format
+        return {
+            "consecutive_errors": stats["failure_count"],
+            "total_errors_in_window": stats["total_errors_in_window"],
+            "is_open": stats["state"] == CircuitState.OPEN.value,
+            "open_time": None,  # Core circuit breaker tracks last_failure_time instead
+        }

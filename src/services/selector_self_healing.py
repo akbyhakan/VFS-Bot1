@@ -1,4 +1,4 @@
-"""Gelişmiş selector self-healing sistemi."""
+"""Advanced selector self-healing system."""
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class SelectorSelfHealing:
-    """Kırık selector'ları otomatik tespit et ve onar."""
+    """Automatically detect and repair broken selectors."""
 
-    CONFIDENCE_THRESHOLD = 0.80  # %80 güven skoru gerekli
+    CONFIDENCE_THRESHOLD = 0.80  # 80% confidence score required
 
     def __init__(
         self,
@@ -30,46 +30,46 @@ class SelectorSelfHealing:
     async def attempt_heal(
         self, page: "Page", selector_path: str, failed_selector: str, element_description: str
     ) -> Optional[str]:
-        """Kırık selector'ı onarmaya çalış."""
-        logger.info(f"🔧 Self-healing başlatılıyor: {selector_path}")
+        """Attempt to repair broken selector."""
+        logger.info(f"🔧 Self-healing started: {selector_path}")
 
-        # 1. Alternatif stratejiler dene
+        # 1. Try alternative strategies
         candidates = await self._find_candidates(page, element_description)
 
         if not candidates:
-            logger.warning(f"Aday selector bulunamadı: {selector_path}")
+            logger.warning(f"No candidate selectors found: {selector_path}")
             return None
 
-        # 2. Her aday için güven skoru hesapla
+        # 2. Calculate confidence score for each candidate
         for candidate in candidates:
             score = await self._calculate_confidence(page, candidate, element_description)
 
             if score >= self.CONFIDENCE_THRESHOLD:
-                logger.info(f"✅ Yüksek güvenli aday bulundu: {candidate} (skor: {score:.2f})")
+                logger.info(f"✅ High-confidence candidate found: {candidate} (score: {score:.2f})")
 
-                # 3. YAML'ı güncelle
+                # 3. Update YAML
                 await self._update_selectors_yaml(selector_path, candidate)
 
-                # 4. Healing log'a kaydet
+                # 4. Log to healing log
                 self._log_healing(selector_path, failed_selector, candidate, score)
 
                 return candidate
 
-        logger.warning(f"Yeterli güvenli aday bulunamadı: {selector_path}")
+        logger.warning(f"No sufficiently confident candidate found: {selector_path}")
         return None
 
     async def _find_candidates(self, page: "Page", description: str) -> List[str]:
-        """Element açıklamasına göre aday selector'lar bul."""
+        """Find candidate selectors based on element description."""
         candidates = []
 
-        # Strateji 1: Text içeriğine göre ara
+        # Strategy 1: Search by text content
         keywords = description.lower().split()
         for keyword in keywords:
             if len(keyword) > 2:
                 candidates.append(f"text={keyword}")
                 candidates.append(f"*:has-text('{keyword}')")
 
-        # Strateji 2: Yaygın input pattern'leri
+        # Strategy 2: Common input patterns
         if "email" in description.lower():
             candidates.extend(
                 [
@@ -96,69 +96,69 @@ class SelectorSelfHealing:
         return candidates
 
     async def _calculate_confidence(self, page: "Page", selector: str, description: str) -> float:
-        """Selector için güven skoru hesapla (0.0 - 1.0)."""
+        """Calculate confidence score for selector (0.0 - 1.0)."""
         score = 0.0
 
         try:
-            # Element var mı?
+            # Does element exist?
             element = page.locator(selector)
             count = await element.count()
 
             if count == 0:
                 return 0.0
 
-            # Tek element = daha yüksek skor
+            # Single element = higher score
             if count == 1:
                 score += 0.4
             elif count <= 3:
                 score += 0.2
 
-            # Görünür mü?
+            # Is it visible?
             try:
                 is_visible = await element.first.is_visible()
                 if is_visible:
                     score += 0.3
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Visibility check failed for selector: {e}")
 
-            # Etkileşilebilir mi?
+            # Is it interactable?
             try:
                 is_enabled = await element.first.is_enabled()
                 if is_enabled:
                     score += 0.2
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Enabled check failed for selector: {e}")
 
-            # Metin içeriği eşleşiyor mu?
+            # Does text content match?
             try:
                 text = await element.first.text_content() or ""
                 for keyword in description.lower().split():
                     if keyword in text.lower():
                         score += 0.1
                         break
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Text content check failed for selector: {e}")
 
         except Exception as e:
-            logger.debug(f"Confidence hesaplama hatası: {e}")
+            logger.debug(f"Confidence calculation error: {e}")
             return 0.0
 
         return min(score, 1.0)
 
     async def _update_selectors_yaml(self, selector_path: str, new_selector: str) -> None:
-        """Selectors YAML dosyasını güncelle."""
+        """Update selectors YAML file."""
         try:
             if not self.selectors_file.exists():
-                logger.warning("Selectors dosyası bulunamadı")
+                logger.warning("Selectors file not found")
                 return
 
             with open(self.selectors_file, "r", encoding="utf-8") as f:
                 selectors = yaml.safe_load(f)
 
-            # Path'i parse et (örn: "login.email_input")
+            # Parse path (e.g., "login.email_input")
             parts = selector_path.split(".")
 
-            # Mevcut fallback'lere ekle
+            # Add to existing fallbacks
             current = selectors
             for part in parts[:-1]:
                 if part not in current:
@@ -169,23 +169,23 @@ class SelectorSelfHealing:
             if last_key in current:
                 existing = current[last_key]
                 if isinstance(existing, dict):
-                    # Fallback listesine ekle
+                    # Add to fallback list
                     if "fallbacks" not in existing:
                         existing["fallbacks"] = []
                     if new_selector not in existing["fallbacks"]:
-                        existing["fallbacks"].insert(0, new_selector)  # Başa ekle
-                        logger.info(f"Fallback eklendi: {selector_path} -> {new_selector}")
+                        existing["fallbacks"].insert(0, new_selector)  # Add to front
+                        logger.info(f"Fallback added: {selector_path} -> {new_selector}")
 
             with open(self.selectors_file, "w", encoding="utf-8") as f:
                 yaml.dump(selectors, f, allow_unicode=True, default_flow_style=False)
 
         except Exception as e:
-            logger.error(f"YAML güncelleme hatası: {e}")
+            logger.error(f"YAML update error: {e}")
 
     def _log_healing(
         self, selector_path: str, old_selector: str, new_selector: str, confidence: float
     ) -> None:
-        """Healing işlemini logla."""
+        """Log healing operation."""
         record = {
             "timestamp": datetime.now().isoformat(),
             "selector_path": selector_path,
@@ -195,7 +195,7 @@ class SelectorSelfHealing:
         }
         self._healing_history.append(record)
 
-        # Dosyaya kaydet
+        # Save to file
         try:
             import json
 
@@ -207,4 +207,4 @@ class SelectorSelfHealing:
             with open(self.healing_log_file, "w") as f:
                 json.dump(existing, f, indent=2)
         except Exception as e:
-            logger.error(f"Healing log kaydetme hatası: {e}")
+            logger.error(f"Healing log save error: {e}")

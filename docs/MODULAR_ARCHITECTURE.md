@@ -72,8 +72,8 @@ src/services/bot/
 
 ### 5. **CircuitBreakerService**
 - **File**: `circuit_breaker_service.py`
-- **Responsibility**: Fault tolerance and error tracking
-- **Lines**: ~141
+- **Responsibility**: Fault tolerance wrapper around core circuit breaker
+- **Lines**: ~103
 - **Key Methods**:
   - `is_available()` - Check if circuit allows requests
   - `record_success()` - Reset on success
@@ -81,6 +81,7 @@ src/services/bot/
   - `reset()` - Close circuit breaker
   - `get_wait_time()` - Exponential backoff calculation
   - `get_stats()` - Current circuit state
+- **Note**: Thin wrapper around `src.core.circuit_breaker.CircuitBreaker` for backward compatibility
 - **Features**:
   - Thread-safe operation
   - Consecutive error tracking
