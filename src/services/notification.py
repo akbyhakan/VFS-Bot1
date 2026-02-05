@@ -219,3 +219,106 @@ The bot will retry automatically.
         title = "🛑 VFS-Bot Stopped"
         message = "The bot has been stopped."
         await self.send_notification(title, message, priority="low")
+
+    async def notify_waitlist_success(
+        self, details: dict, screenshot_path: str = None
+    ) -> None:
+        """
+        Send notification when waitlist registration is successful.
+
+        Args:
+            details: Dictionary with waitlist details
+            screenshot_path: Optional path to screenshot file
+        """
+        try:
+            # Build people list
+            people_list = ""
+            people = details.get("people", [])
+            if people:
+                for i, person in enumerate(people, 1):
+                    people_list += f"   {i}. {person}\n"
+            else:
+                people_list = "   (Bilgi alınamadı)\n"
+
+            # Format datetime
+            from datetime import datetime
+
+            dt_str = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+
+            # Build message
+            title = "✅ BEKLEME LİSTESİNE KAYIT BAŞARILI!"
+            message = f"""
+📧 Giriş Yapılan Hesap: {details.get('login_email', 'N/A')}
+📋 Referans: {details.get('reference_number', 'N/A')}
+
+👥 Kayıt Yapılan Kişiler:
+{people_list}
+🌍 Ülke: {details.get('country', 'N/A')}
+📍 Merkez: {details.get('centre', 'N/A')}
+📂 Kategori: {details.get('category', 'N/A')}
+📁 Alt Kategori: {details.get('subcategory', 'N/A')}
+
+💰 Toplam Ücret: {details.get('total_amount', 'N/A')}
+
+📅 Tarih: {dt_str}
+
+ℹ️ Bekleme listesi durumunuz güncellendiğinde bilgilendirileceksiniz.
+"""
+
+            # Send notification with screenshot if available
+            if self.telegram_enabled and screenshot_path:
+                await self._send_telegram_with_photo(title, message, screenshot_path)
+            else:
+                await self.send_notification(title, message, priority="high")
+
+        except Exception as e:
+            logger.error(f"Failed to send waitlist success notification: {e}")
+
+    async def _send_telegram_with_photo(
+        self, title: str, message: str, photo_path: str
+    ) -> bool:
+        """
+        Send Telegram notification with photo attachment.
+
+        Args:
+            title: Message title
+            message: Message content
+            photo_path: Path to photo file
+
+        Returns:
+            True if successful
+        """
+        try:
+            from telegram import Bot
+            from pathlib import Path
+
+            telegram_config = self.config.get("telegram", {})
+            bot_token = telegram_config.get("bot_token")
+            chat_id = telegram_config.get("chat_id")
+
+            if not bot_token or not chat_id:
+                logger.error("Telegram credentials missing")
+                return False
+
+            photo_file = Path(photo_path)
+            if not photo_file.exists():
+                logger.warning(f"Screenshot file not found: {photo_path}")
+                # Fall back to text-only message
+                return await self.send_telegram(title, message)
+
+            bot = Bot(token=bot_token)
+            full_message = f"🤖 *{title}*\n\n{message}"
+
+            # Send photo with caption
+            with open(photo_file, "rb") as photo:
+                await bot.send_photo(
+                    chat_id=chat_id, photo=photo, caption=full_message, parse_mode="Markdown"
+                )
+
+            logger.info("Telegram notification with photo sent successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Telegram notification with photo failed: {e}")
+            # Fall back to text-only message
+            return await self.send_telegram(title, message)
