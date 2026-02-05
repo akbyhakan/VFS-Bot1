@@ -9,7 +9,7 @@ from typing import TypedDict, List, Optional, Dict, Any
 
 class VFSConfig(TypedDict, total=False):
     """VFS-specific configuration."""
-    
+
     base_url: str
     country: str
     mission: str
@@ -21,7 +21,7 @@ class VFSConfig(TypedDict, total=False):
 
 class BotConfig(TypedDict, total=False):
     """Bot behavior configuration."""
-    
+
     check_interval: int
     headless: bool
     screenshot_on_error: bool
@@ -30,7 +30,7 @@ class BotConfig(TypedDict, total=False):
 
 class CaptchaConfig(TypedDict, total=False):
     """Captcha solver configuration."""
-    
+
     provider: str
     api_key: str
     manual_timeout: int
@@ -38,7 +38,7 @@ class CaptchaConfig(TypedDict, total=False):
 
 class AntiDetectionConfig(TypedDict, total=False):
     """Anti-detection features configuration."""
-    
+
     enabled: bool
     tls_bypass: Optional[bool]
     fingerprint_bypass: Optional[bool]
@@ -47,27 +47,27 @@ class AntiDetectionConfig(TypedDict, total=False):
 
 class NotificationConfig(TypedDict, total=False):
     """Notification services configuration."""
-    
+
     telegram: Dict[str, Any]
     email: Dict[str, Any]
 
 
 class AppConfig(TypedDict, total=False):
     """Complete application configuration.
-    
+
     This is the main configuration structure that combines all
-    configuration sections. 
-    
+    configuration sections.
+
     Note: total=False allows fields to be omitted at dictionary creation
     time but doesn't affect the type system. Fields that may be missing
     at runtime should be accessed with .get() method.
-    
+
     Important: Callers should validate that required configuration sections
     (vfs, bot, captcha, etc.) are present and contain necessary values before
     passing to components that depend on them. Use ConfigValidator.validate()
     to ensure configuration completeness.
     """
-    
+
     vfs: VFSConfig
     bot: BotConfig
     captcha: CaptchaConfig
