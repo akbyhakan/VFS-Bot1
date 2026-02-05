@@ -116,7 +116,7 @@ class WaitlistHandler:
                 return True
 
             # Click the checkbox input
-            input_element = await checkbox.locator("input").first
+            input_element = checkbox.locator("input").first
             await input_element.click()
             logger.info("Waitlist checkbox checked successfully")
 

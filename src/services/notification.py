@@ -236,7 +236,7 @@ The bot will retry automatically.
                 for i, person in enumerate(people, 1):
                     people_list += f"   {i}. {person}\n"
             else:
-                people_list = "   (Bilgi alınamadı)\n"
+                people_list = "   (Information unavailable)\n"
 
             # Format datetime
             from datetime import datetime

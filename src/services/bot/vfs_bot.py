@@ -447,7 +447,9 @@ class VFSBot:
                 return
 
             # Click Continue button to proceed to next step
-            await smart_click(page, "//button[contains(., 'Devam et')]", self.human_sim)
+            from ..appointment_booking_service import get_selector
+
+            await smart_click(page, get_selector("continue_button"), self.human_sim)
             await asyncio.sleep(2)
 
             # Note: Fill personal details and other steps would happen here

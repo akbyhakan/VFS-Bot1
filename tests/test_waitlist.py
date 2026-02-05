@@ -23,18 +23,24 @@ class MockPage:
 
     def locator(self, selector):
         """Mock locator method."""
-        mock_locator = AsyncMock()
-        mock_locator.first = AsyncMock()
+        mock_locator = MagicMock()
+        mock_locator.first = MagicMock()
         mock_locator.all = AsyncMock(return_value=[])
         mock_locator.wait_for = AsyncMock()
         mock_locator.get_attribute = AsyncMock(return_value="")
         mock_locator.is_checked = AsyncMock(return_value=False)
         mock_locator.click = AsyncMock()
 
-        # Setup nested input locator
-        input_locator = AsyncMock()
+        # Setup nested input locator - locator() is not async
+        input_locator = MagicMock()
+        input_locator.first = MagicMock()
         input_locator.click = AsyncMock()
-        mock_locator.locator = AsyncMock(return_value=input_locator)
+        mock_locator.locator = MagicMock(return_value=input_locator)
+
+        # Setup first.wait_for for async waiting
+        async_waitable = AsyncMock()
+        async_waitable.wait_for = AsyncMock(return_value=mock_locator)
+        mock_locator.first.wait_for = AsyncMock(return_value=mock_locator)
 
         if selector in self.locator_results:
             return self.locator_results[selector]
@@ -284,9 +290,9 @@ async def test_extract_waitlist_details(waitlist_handler):
     # Mock name elements
     mock_name_element = AsyncMock()
     mock_name_element.text_content = AsyncMock(return_value="John Doe")
-    page.locator = MagicMock(
-        return_value=AsyncMock(all=AsyncMock(return_value=[mock_name_element]))
-    )
+    mock_locator_with_all = MagicMock()
+    mock_locator_with_all.all = AsyncMock(return_value=[mock_name_element])
+    page.locator = MagicMock(return_value=mock_locator_with_all)
 
     details = await waitlist_handler.extract_waitlist_details(page)
 
