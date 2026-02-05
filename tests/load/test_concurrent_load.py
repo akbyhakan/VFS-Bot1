@@ -1,9 +1,10 @@
 """Load tests for concurrent operations."""
 
-import pytest
 import asyncio
 import time
 from pathlib import Path
+
+import pytest
 
 from src.models.database import Database
 from src.utils.security.rate_limiter import RateLimiter, reset_rate_limiter

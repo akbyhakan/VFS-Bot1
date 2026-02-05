@@ -1,7 +1,8 @@
 """Tests for core/result module."""
 
 import pytest
-from src.core.result import Success, Failure, Result
+
+from src.core.result import Failure, Result, Success
 
 
 class TestSuccess:

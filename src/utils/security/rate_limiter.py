@@ -1,11 +1,11 @@
 """Rate limiting for API requests."""
 
 import asyncio
+import logging
 import threading
 import time
-import logging
-from typing import Optional
 from collections import deque
+from typing import Optional
 
 from ...constants import RateLimitDefaults
 

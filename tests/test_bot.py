@@ -1,16 +1,17 @@
 """Tests for VFS bot functionality."""
 
+import asyncio
+import sys
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
-import asyncio
-from pathlib import Path
-import sys
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.services.bot.vfs_bot import VFSBot
 from src.models.database import Database
+from src.services.bot.vfs_bot import VFSBot
 from src.services.notification import NotificationService
 
 

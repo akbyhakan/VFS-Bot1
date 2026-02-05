@@ -4,8 +4,8 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
-from .resource_pool import ResourcePool
 from .reservation_worker import ReservationWorker
+from .resource_pool import ResourcePool
 
 logger = logging.getLogger(__name__)
 

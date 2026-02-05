@@ -1,7 +1,9 @@
 """Connection pool stress tests."""
 
-import pytest
 import asyncio
+
+import pytest
+
 from src.models.database import Database
 
 

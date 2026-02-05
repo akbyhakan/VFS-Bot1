@@ -1,10 +1,11 @@
 """Helper utilities for common bot operations."""
 
 import asyncio
-import random
 import logging
+import random
 import re
-from typing import Optional, Literal
+from typing import Literal, Optional
+
 from playwright.async_api import Page, TimeoutError
 
 from ..constants import Intervals, Timeouts

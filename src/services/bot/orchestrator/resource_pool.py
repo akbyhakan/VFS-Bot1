@@ -1,8 +1,8 @@
 """Generic round-robin resource pool for country-based resource rotation."""
 
-from typing import TypeVar, Generic, List, Dict, Any, Optional
 import asyncio
 import logging
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)

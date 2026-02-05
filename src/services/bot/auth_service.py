@@ -7,13 +7,13 @@ from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
-from ...constants import Timeouts, Delays
-from ...utils.helpers import smart_fill, smart_click, safe_navigate
-from ...utils.anti_detection.human_simulator import HumanSimulator
-from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
-from ...utils.error_capture import ErrorCapture
-from ..captcha_solver import CaptchaSolver
+from ...constants import Delays, Timeouts
 from ...core.exceptions import LoginError
+from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
+from ...utils.anti_detection.human_simulator import HumanSimulator
+from ...utils.error_capture import ErrorCapture
+from ...utils.helpers import safe_navigate, smart_click, smart_fill
+from ..captcha_solver import CaptchaSolver
 
 logger = logging.getLogger(__name__)
 

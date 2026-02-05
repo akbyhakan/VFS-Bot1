@@ -1,6 +1,7 @@
 """Tests for token utility functions."""
 
 import pytest
+
 from src.utils.token_utils import calculate_effective_expiry
 
 

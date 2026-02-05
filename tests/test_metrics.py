@@ -1,14 +1,15 @@
 """Tests for metrics tracking."""
 
-import pytest
-import pytest_asyncio
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
+
+import pytest
+import pytest_asyncio
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.utils.metrics import BotMetrics, get_metrics, MetricsSnapshot
+from src.utils.metrics import BotMetrics, MetricsSnapshot, get_metrics
 
 
 @pytest_asyncio.fixture

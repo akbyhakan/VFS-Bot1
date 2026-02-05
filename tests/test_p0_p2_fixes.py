@@ -3,9 +3,10 @@
 import asyncio
 import hashlib
 import os
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # P0-1: Encryption race condition fix
 from src.utils.encryption import get_encryption, reset_encryption
@@ -127,9 +128,10 @@ class TestSessionBinding:
         )
 
 
+from src.core.exceptions import LoginError
+
 # P0-3: Password leak prevention
 from src.services.bot.auth_service import AuthService
-from src.core.exceptions import LoginError
 
 
 class TestPasswordLeakPrevention:
@@ -254,8 +256,8 @@ class TestDatabaseBatchOperations:
     @pytest.mark.asyncio
     async def test_add_users_batch_validates_emails(self):
         """Test that batch user add validates all emails."""
-        from src.models.database import Database
         from src.core.exceptions import ValidationError
+        from src.models.database import Database
 
         db = Database(db_path=":memory:")
         await db.connect()

@@ -1,9 +1,11 @@
 """Tests for core/circuit_breaker module."""
 
-import pytest
 import asyncio
 from datetime import datetime, timedelta
-from src.core.circuit_breaker import CircuitBreaker, CircuitState, CircuitBreakerError
+
+import pytest
+
+from src.core.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 
 
 class TestCircuitBreaker:

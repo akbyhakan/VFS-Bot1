@@ -3,8 +3,8 @@
 import asyncio
 import functools
 import logging
-from typing import Callable, TypeVar, Any, Optional, Awaitable, Tuple, Type
 from datetime import datetime
+from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 

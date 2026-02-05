@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.services.webhook_token_manager import WebhookTokenManager, SMSPayloadParser
+from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
 
 logger = logging.getLogger(__name__)
 

@@ -1,13 +1,15 @@
 """Tests for utils/request_context module."""
 
-import pytest
 import logging
+
+import pytest
+
 from src.utils.request_context import (
+    RequestIdFilter,
+    _generate_request_id,
+    clear_request_id,
     get_request_id,
     set_request_id,
-    clear_request_id,
-    _generate_request_id,
-    RequestIdFilter,
 )
 
 

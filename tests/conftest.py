@@ -1,10 +1,11 @@
 """Pytest configuration and common fixtures."""
 
 import os
-import sys
 import secrets
+import sys
 import warnings
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Try to load test-specific environment file if it exists
@@ -31,11 +32,12 @@ if not os.getenv("ENCRYPTION_KEY"):
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from typing import Any, Dict
+from unittest.mock import AsyncMock, MagicMock
+
 # NOW it's safe to import from src
 import pytest
 import pytest_asyncio
-from typing import Dict, Any
-from unittest.mock import AsyncMock, MagicMock
 
 from src.models.database import Database
 from src.services.notification import NotificationService

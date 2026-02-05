@@ -1,21 +1,22 @@
 """Tests for Email OTP Handler."""
 
-import pytest
+import sys
 import threading
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.services.email_otp_handler import (
+    EmailOTPEntry,
     EmailOTPHandler,
     EmailOTPPatternMatcher,
-    EmailOTPEntry,
-    IMAPConfig,
     HTMLTextExtractor,
+    IMAPConfig,
 )
 
 
@@ -400,18 +401,17 @@ class TestEmailOTPHandlerSingleton:
     def test_get_handler_first_time(self):
         """Test getting handler for first time requires credentials."""
         with pytest.raises(ValueError, match="Email and app_password required"):
-            from src.services.email_otp_handler import get_email_otp_handler
-
             # Reset global
             import src.services.email_otp_handler as module
+            from src.services.email_otp_handler import get_email_otp_handler
 
             module._email_otp_handler = None
             get_email_otp_handler()
 
     def test_singleton_pattern(self):
         """Test that singleton returns same instance."""
-        from src.services.email_otp_handler import get_email_otp_handler
         import src.services.email_otp_handler as module
+        from src.services.email_otp_handler import get_email_otp_handler
 
         # Reset global
         module._email_otp_handler = None

@@ -1,9 +1,11 @@
 """Tests for db_factory module."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.models.db_factory import DatabaseFactory
+
+import pytest
+
 from src.models.database import Database
+from src.models.db_factory import DatabaseFactory
 
 
 class TestDatabaseFactory:

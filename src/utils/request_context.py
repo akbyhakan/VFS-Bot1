@@ -1,10 +1,9 @@
 """Request context utilities for structured logging with request IDs."""
 
-import uuid
 import logging
+import uuid
 from contextvars import ContextVar
 from typing import Optional
-
 
 # Context variable for storing request ID across async calls
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")

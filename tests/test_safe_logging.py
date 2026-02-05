@@ -1,6 +1,7 @@
 """Tests for utils/safe_logging module."""
 
 import pytest
+
 from src.utils.safe_logging import SafeException
 
 

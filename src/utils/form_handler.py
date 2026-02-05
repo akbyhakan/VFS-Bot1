@@ -2,8 +2,10 @@
 
 import asyncio
 import logging
-from typing import Optional, List, Any
-from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
+from typing import Any, List, Optional
+
+from playwright.async_api import Page
+from playwright.async_api import TimeoutError as PlaywrightTimeout
 
 from src.constants import Delays, Timeouts
 from src.core.exceptions import SelectorNotFoundError

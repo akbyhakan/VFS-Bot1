@@ -1,8 +1,9 @@
 """Pydantic models for data validation."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, List, TypedDict
 from datetime import datetime
+from typing import List, Optional, TypedDict
+
+from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):

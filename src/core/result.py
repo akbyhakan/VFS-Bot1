@@ -3,10 +3,10 @@
 Provides a type-safe way to handle success and failure cases without exceptions.
 """
 
-from dataclasses import dataclass
-from typing import TypeVar, Generic, Union, Callable, Optional, Any
-from functools import wraps
 import logging
+from dataclasses import dataclass
+from functools import wraps
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 logger = logging.getLogger(__name__)
 

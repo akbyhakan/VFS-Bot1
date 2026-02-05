@@ -4,7 +4,6 @@ import re
 import unicodedata
 from typing import List, Optional
 
-
 # Maximum lengths for different field types
 MAX_LENGTHS = {
     "email": 254,

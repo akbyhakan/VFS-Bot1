@@ -1,15 +1,15 @@
 """Authentication routes for VFS-Bot web application."""
 
-import os
 import logging
+import os
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.core.security import generate_api_key
 from src.core.auth import create_access_token
+from src.core.security import generate_api_key
 from web.dependencies import LoginRequest, TokenResponse
 
 logger = logging.getLogger(__name__)

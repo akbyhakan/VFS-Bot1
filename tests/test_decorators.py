@@ -1,9 +1,11 @@
 """Tests for utils/decorators module."""
 
-import pytest
 import asyncio
-from src.utils.decorators import handle_errors, log_errors
+
+import pytest
+
 from src.core.exceptions import VFSBotError
+from src.utils.decorators import handle_errors, log_errors
 
 
 class TestHandleErrors:

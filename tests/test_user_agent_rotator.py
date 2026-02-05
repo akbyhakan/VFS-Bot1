@@ -1,6 +1,7 @@
 """Tests for utils/user_agent_rotator module."""
 
 import pytest
+
 from src.utils.user_agent_rotator import UserAgentRotator
 
 

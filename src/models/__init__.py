@@ -27,12 +27,12 @@ def __getattr__(name):
         "NotificationConfig",
     ]:
         from .schemas import (
-            UserCreate,
-            UserResponse,
             AppointmentCreate,
             AppointmentResponse,
             BotConfig,
             NotificationConfig,
+            UserCreate,
+            UserResponse,
         )
 
         return locals()[name]

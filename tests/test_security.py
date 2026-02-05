@@ -1,13 +1,14 @@
 """Tests for security utilities."""
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.security import generate_api_key, hash_api_key, load_api_keys, API_KEYS
 from src.core.auth import hash_password, verify_password
+from src.core.security import API_KEYS, generate_api_key, hash_api_key, load_api_keys
 from src.utils.helpers import mask_email, mask_sensitive_data
 
 
@@ -206,7 +207,7 @@ class TestPasswordValidation:
 
     def test_password_exceeding_72_bytes_raises_error(self):
         """Test that passwords exceeding 72 bytes raise ValidationError."""
-        from src.core.auth import validate_password_length, MAX_PASSWORD_BYTES
+        from src.core.auth import MAX_PASSWORD_BYTES, validate_password_length
         from src.core.exceptions import ValidationError
 
         # Create a password that exceeds 72 bytes
@@ -219,7 +220,7 @@ class TestPasswordValidation:
 
     def test_utf8_password_truncation_boundary(self):
         """Test UTF-8 character boundary handling."""
-        from src.core.auth import validate_password_length, MAX_PASSWORD_BYTES
+        from src.core.auth import MAX_PASSWORD_BYTES, validate_password_length
         from src.core.exceptions import ValidationError
 
         # Create a password with multi-byte UTF-8 characters that exceeds 72 bytes
@@ -239,7 +240,7 @@ class TestPasswordValidation:
 
     def test_hash_password_validates_length(self):
         """Test that hash_password calls validation."""
-        from src.core.auth import hash_password, MAX_PASSWORD_BYTES
+        from src.core.auth import MAX_PASSWORD_BYTES, hash_password
         from src.core.exceptions import ValidationError
 
         # This should raise ValidationError before attempting to hash
@@ -253,6 +254,7 @@ class TestCORSValidation:
     def test_cors_wildcard_blocked_in_production(self, monkeypatch):
         """Test that wildcard CORS is blocked in production."""
         import os
+
         from web.app import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
@@ -266,6 +268,7 @@ class TestCORSValidation:
     def test_cors_wildcard_allowed_in_development(self, monkeypatch):
         """Test that wildcard CORS is allowed in development."""
         import os
+
         from web.app import validate_cors_origins
 
         monkeypatch.setenv("ENV", "development")
@@ -291,9 +294,11 @@ class TestXForwardedFor:
 
     def test_untrusted_proxy_uses_direct_ip(self, monkeypatch):
         """Test that untrusted proxies don't affect IP detection."""
-        from web.app import get_real_client_ip
-        from fastapi import Request
         from unittest.mock import Mock
+
+        from fastapi import Request
+
+        from web.app import get_real_client_ip
 
         monkeypatch.setenv("TRUSTED_PROXIES", "")
 
@@ -309,9 +314,11 @@ class TestXForwardedFor:
 
     def test_trusted_proxy_uses_forwarded_ip(self, monkeypatch):
         """Test that trusted proxies allow X-Forwarded-For."""
-        from web.app import get_real_client_ip
-        from fastapi import Request
         from unittest.mock import Mock
+
+        from fastapi import Request
+
+        from web.app import get_real_client_ip
 
         monkeypatch.setenv("TRUSTED_PROXIES", "192.168.1.1")
 
@@ -327,9 +334,11 @@ class TestXForwardedFor:
 
     def test_no_client_returns_unknown(self):
         """Test that missing client returns unknown."""
-        from web.app import get_real_client_ip
-        from fastapi import Request
         from unittest.mock import Mock
+
+        from fastapi import Request
+
+        from web.app import get_real_client_ip
 
         mock_request = Mock(spec=Request)
         mock_request.client = None

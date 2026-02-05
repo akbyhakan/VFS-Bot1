@@ -6,14 +6,14 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from src.models.database import Database
 from src.core.exceptions import ValidationError
+from src.models.database import Database
 from web.dependencies import (
-    verify_jwt_token,
     AppointmentRequestCreate,
     AppointmentRequestResponse,
     CountryResponse,
     WebhookUrlsResponse,
+    verify_jwt_token,
 )
 
 logger = logging.getLogger(__name__)

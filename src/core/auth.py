@@ -1,18 +1,18 @@
 """JWT-based authentication for API endpoints."""
 
-import os
+import asyncio
 import logging
-import uuid
+import os
 import re
 import threading
-import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional, cast, NamedTuple
-from functools import lru_cache
+import uuid
 from collections import OrderedDict, defaultdict
+from datetime import datetime, timedelta, timezone
+from functools import lru_cache
+from typing import Any, Dict, NamedTuple, Optional, cast
 
-from jose import JWTError, jwt
 from fastapi import HTTPException, status
+from jose import JWTError, jwt
 
 from ..constants import RateLimits
 from ..core.exceptions import ValidationError

@@ -1,10 +1,11 @@
 """Integration tests for database operations."""
 
-import pytest
-import pytest_asyncio
 import asyncio
 from pathlib import Path
 from typing import AsyncGenerator
+
+import pytest
+import pytest_asyncio
 
 from src.models.database import Database
 
@@ -280,8 +281,9 @@ class TestCentreFetcherCache:
     @pytest.mark.asyncio
     async def test_cache_background_cleanup(self):
         """Test background cache cleanup removes expired entries."""
-        from src.services.centre_fetcher import CentreFetcher
         import asyncio
+
+        from src.services.centre_fetcher import CentreFetcher
 
         fetcher = CentreFetcher(
             base_url="https://example.com",
@@ -310,8 +312,9 @@ class TestCentreFetcherCache:
     @pytest.mark.asyncio
     async def test_periodic_cleanup_task(self):
         """Test that periodic cleanup task can be started."""
-        from src.services.centre_fetcher import CentreFetcher
         import asyncio
+
+        from src.services.centre_fetcher import CentreFetcher
 
         fetcher = CentreFetcher(
             base_url="https://example.com", country="tur", mission="deu", language="tr", cache_ttl=1
@@ -338,8 +341,9 @@ class TestDatabaseIdleConnectionCleanup:
     @pytest.mark.asyncio
     async def test_cleanup_idle_connections(self, tmp_path):
         """Test idle connection cleanup."""
-        from src.models.database import Database
         import time
+
+        from src.models.database import Database
 
         db_path = tmp_path / "idle_test.db"
         db = Database(str(db_path), pool_size=3)

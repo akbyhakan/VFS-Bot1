@@ -1,7 +1,8 @@
 """Tests for VFSAccount model and manager."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.models.vfs_account import VFSAccount, VFSAccountManager
 from src.services.webhook_token_manager import WebhookTokenManager

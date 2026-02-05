@@ -1,12 +1,14 @@
 """Tests for security improvements."""
 
-import pytest
 import asyncio
 import time
+
+import pytest
+
+from src.utils.audit_logger import AuditAction, AuditLogger
 from src.utils.decorators import log_errors, retry_async, timed_async
-from src.utils.audit_logger import AuditLogger, AuditAction
-from src.utils.webhook_utils import verify_webhook_signature, generate_webhook_signature
 from src.utils.security.adaptive_rate_limiter import AdaptiveRateLimiter
+from src.utils.webhook_utils import generate_webhook_signature, verify_webhook_signature
 
 
 class TestAdaptiveRateLimiter:
@@ -100,8 +102,9 @@ class TestWebhookSignature:
         secret = "test-secret-key"
 
         # Create signature with old timestamp using utility function
-        from src.utils.webhook_utils import generate_webhook_signature
         import time as time_module
+
+        from src.utils.webhook_utils import generate_webhook_signature
 
         # Temporarily mock time to create old signature
         old_time = time_module.time() - 400  # 400 seconds old

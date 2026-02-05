@@ -1,23 +1,18 @@
 """Retry strategies for different exception types."""
 
 import logging
+
 from tenacity import (
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
     wait_fixed,
     wait_random,
-    before_sleep_log,
 )
 
-from .exceptions import (
-    LoginError,
-    CaptchaError,
-    NetworkError,
-    SlotCheckError,
-    RateLimitError,
-)
+from .exceptions import CaptchaError, LoginError, NetworkError, RateLimitError, SlotCheckError
 
 logger = logging.getLogger(__name__)
 

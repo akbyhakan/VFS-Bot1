@@ -1,12 +1,13 @@
 """Tests for cache TTL functionality."""
 
-import pytest
 import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from playwright.async_api import Page
 
-from src.services.centre_fetcher import CentreFetcher, CacheEntry
+from src.services.centre_fetcher import CacheEntry, CentreFetcher
 
 
 class TestCacheEntry:

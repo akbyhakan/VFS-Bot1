@@ -1,11 +1,12 @@
 """Tests for SMS webhook routes."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
+from src.services.webhook_token_manager import WebhookToken, WebhookTokenManager
 from web.app import app
-from src.services.webhook_token_manager import WebhookTokenManager, WebhookToken
 from web.routes.sms_webhook import set_webhook_manager
 
 
@@ -210,10 +211,9 @@ class TestSMSWebhookRoutes:
 
     def test_webhook_manager_not_initialized(self):
         """Test error when webhook manager not initialized."""
-        from web.routes.sms_webhook import get_webhook_manager
-
         # Clear global manager
         import web.routes.sms_webhook as sms_webhook_module
+        from web.routes.sms_webhook import get_webhook_manager
 
         original_manager = sms_webhook_module._webhook_manager
         sms_webhook_module._webhook_manager = None

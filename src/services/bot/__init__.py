@@ -16,13 +16,13 @@ Public API:
 - ReservationOrchestrator: Main orchestrator for managing workers
 """
 
-from .vfs_bot import VFSBot
-from .browser_manager import BrowserManager
 from .auth_service import AuthService
-from .slot_checker import SlotChecker, SlotInfo
+from .browser_manager import BrowserManager
 from .circuit_breaker_service import CircuitBreakerService, CircuitBreakerStats
 from .error_handler import ErrorHandler
-from .orchestrator import ResourcePool, ReservationWorker, ReservationOrchestrator
+from .orchestrator import ReservationOrchestrator, ReservationWorker, ResourcePool
+from .slot_checker import SlotChecker, SlotInfo
+from .vfs_bot import VFSBot
 
 __all__ = [
     "VFSBot",

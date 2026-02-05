@@ -1,12 +1,13 @@
 """Tests for config_models module."""
 
 import pytest
+
 from src.core.config_models import (
-    CaptchaConfig,
-    VFSConfig,
-    BotConfig,
-    NotificationConfig,
     AppConfig,
+    BotConfig,
+    CaptchaConfig,
+    NotificationConfig,
+    VFSConfig,
 )
 
 

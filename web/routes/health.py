@@ -377,6 +377,7 @@ async def check_vfs_api_health() -> bool:
     """
     try:
         import aiohttp
+
         from src.services.vfs_api_client import VFS_API_BASE
 
         timeout = aiohttp.ClientTimeout(total=5)

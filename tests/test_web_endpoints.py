@@ -1,7 +1,8 @@
 """Tests for web dashboard endpoints."""
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from fastapi.testclient import TestClient
 
 from web.app import app

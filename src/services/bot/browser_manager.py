@@ -3,10 +3,10 @@
 import logging
 from typing import Any, Dict, Optional
 
-from playwright.async_api import Browser, BrowserContext, Page, async_playwright, Playwright
+from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
 
-from ...utils.anti_detection.stealth_config import StealthConfig
 from ...utils.anti_detection.fingerprint_bypass import FingerprintBypass
+from ...utils.anti_detection.stealth_config import StealthConfig
 from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
 

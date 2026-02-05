@@ -1,7 +1,9 @@
 """Unit tests for NetNut proxy manager."""
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from src.utils.security.netnut_proxy import NetNutProxyManager
 
 

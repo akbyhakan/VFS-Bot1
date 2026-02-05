@@ -1,19 +1,20 @@
 """Tests for authentication module."""
 
-import pytest
 import os
 from datetime import timedelta
+
+import pytest
+from fastapi import HTTPException
 from jose import jwt
 
 from src.core.auth import (
     create_access_token,
-    verify_token,
+    get_algorithm,
+    get_secret_key,
     hash_password,
     verify_password,
-    get_secret_key,
-    get_algorithm,
+    verify_token,
 )
-from fastapi import HTTPException
 
 
 def test_create_access_token():

@@ -1,9 +1,11 @@
 """Tests for selector_self_healing module."""
 
-import pytest
 import json
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch, mock_open
+from unittest.mock import AsyncMock, Mock, mock_open, patch
+
+import pytest
+
 from src.services.selector_self_healing import SelectorSelfHealing
 
 
@@ -29,6 +31,7 @@ class TestSelectorSelfHealing:
             selectors_file=str(temp_files["selectors"]), healing_log_file=str(temp_files["log"])
         )
 
+        assert healing is not None
         assert temp_files["log"].parent.exists()
 
     @pytest.mark.asyncio
@@ -101,7 +104,8 @@ class TestSelectorSelfHealing:
             mock_page, "button[type='submit']", "submit button"
         )
 
-        # Should have high confidence: single element (0.4) + visible (0.3) + enabled (0.2) + text match (0.1)
+        # Should have high confidence:
+        # single element (0.4) + visible (0.3) + enabled (0.2) + text match (0.1)
         assert score >= 0.9
 
     @pytest.mark.asyncio

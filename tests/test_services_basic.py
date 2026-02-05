@@ -1,14 +1,15 @@
 """Basic tests for service modules to boost coverage."""
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.services.captcha_solver import CaptchaSolver
 from src.services.centre_fetcher import CentreFetcher
-from src.services.payment_service import PaymentService, PaymentMethod
+from src.services.payment_service import PaymentMethod, PaymentService
 
 
 def test_captcha_solver_initialization():

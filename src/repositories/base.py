@@ -1,7 +1,8 @@
 """Base repository class."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TypeVar, Generic
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
 from src.models.database import Database
 
 T = TypeVar("T")

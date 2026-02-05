@@ -1,10 +1,11 @@
 """Tests for CSP nonce injection in web application."""
 
+import os
+import tempfile
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
-from pathlib import Path
-import tempfile
-import os
 
 from web.app import app
 
@@ -98,12 +99,14 @@ class TestCSPNonceInHeaders:
 
         # Import fresh app module to get the env setting
         import importlib
+
         import web.middleware.security_headers
 
         importlib.reload(web.middleware.security_headers)
 
-        from web.middleware.security_headers import SecurityHeadersMiddleware
         from fastapi import FastAPI, Request
+
+        from web.middleware.security_headers import SecurityHeadersMiddleware
 
         # Create a minimal app with the middleware
         test_app = FastAPI()
@@ -179,9 +182,10 @@ class TestCSPNonceInHTML:
 
             # Temporarily patch the path
             def mock_serve_react_app(request, full_path=""):
+                from pathlib import Path
+
                 from fastapi import HTTPException
                 from fastapi.responses import HTMLResponse
-                from pathlib import Path
 
                 if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
                     raise HTTPException(status_code=404, detail="Not found")

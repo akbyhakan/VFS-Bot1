@@ -1,20 +1,21 @@
 """Tests for Pydantic schemas."""
 
-import pytest
-from pathlib import Path
 import sys
 from datetime import datetime
+from pathlib import Path
+
+import pytest
 from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.models.schemas import (
-    UserCreate,
-    UserResponse,
     AppointmentCreate,
     AppointmentResponse,
     BotConfig,
     NotificationConfig,
+    UserCreate,
+    UserResponse,
 )
 
 

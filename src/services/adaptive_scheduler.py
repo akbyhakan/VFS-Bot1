@@ -1,7 +1,7 @@
 """Adaptive scheduler - saate göre akıllı interval yönetimi."""
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)

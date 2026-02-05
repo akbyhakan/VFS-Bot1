@@ -5,16 +5,11 @@ import io
 import logging
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from src.models.database import Database
 from src.core.exceptions import ValidationError
-from web.dependencies import (
-    verify_jwt_token,
-    UserModel,
-    UserCreateRequest,
-    UserUpdateRequest,
-)
+from src.models.database import Database
+from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users", tags=["users"])

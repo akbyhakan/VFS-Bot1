@@ -1,10 +1,11 @@
 """Tests for waitlist functionality."""
 
-import pytest
-from pathlib import Path
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch, call
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

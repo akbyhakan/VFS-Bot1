@@ -1,28 +1,29 @@
 """Tests for OTP Manager."""
 
-import pytest
+import sys
 import threading
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.services.otp_manager import (
-    OTPManager,
-    SessionRegistry,
-    OTPPatternMatcher,
-    EmailProcessor,
-    IMAPListener,
-    SMSWebhookHandler,
-    OTPEntry,
     BotSession,
-    IMAPConfig,
-    OTPSource,
-    SessionState,
+    EmailProcessor,
     HTMLTextExtractor,
+    IMAPConfig,
+    IMAPListener,
+    OTPEntry,
+    OTPManager,
+    OTPPatternMatcher,
+    OTPSource,
+    SessionRegistry,
+    SessionState,
+    SMSWebhookHandler,
 )
 
 

@@ -7,7 +7,8 @@ import pytest
 import yaml
 
 from src.core.exceptions import SelectorNotFoundError
-from src.utils.selectors import CountryAwareSelectorManager as SelectorManager, get_selector_manager
+from src.utils.selectors import CountryAwareSelectorManager as SelectorManager
+from src.utils.selectors import get_selector_manager
 
 
 @pytest.fixture
@@ -362,10 +363,9 @@ class TestCountryAwareSelectorManager:
 
     def test_factory_function_caching(self, temp_country_selectors_file):
         """Test that get_selector_manager returns cached instances."""
-        from src.utils.selectors import get_selector_manager
-
         # Clear cache first
         from src.utils import selectors
+        from src.utils.selectors import get_selector_manager
 
         selectors._selector_managers.clear()
 
@@ -381,10 +381,8 @@ class TestCountryAwareSelectorManager:
 
     def test_backward_compatibility_alias(self):
         """Test that SelectorManager is an alias for CountryAwareSelectorManager."""
-        from src.utils.selectors import (
-            CountryAwareSelectorManager as SelectorManager,
-            CountryAwareSelectorManager,
-        )
+        from src.utils.selectors import CountryAwareSelectorManager
+        from src.utils.selectors import CountryAwareSelectorManager as SelectorManager
 
         assert SelectorManager is CountryAwareSelectorManager
 

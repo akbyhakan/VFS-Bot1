@@ -1,9 +1,11 @@
 """Tests for session_recovery module."""
 
-import pytest
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
+
 from src.services.session_recovery import SessionRecovery
 
 
@@ -19,6 +21,7 @@ class TestSessionRecovery:
         """Test that initialization creates the data directory."""
         recovery = SessionRecovery(str(temp_checkpoint_file))
 
+        assert recovery is not None
         assert temp_checkpoint_file.parent.exists()
 
     def test_save_checkpoint_valid_step(self, temp_checkpoint_file):

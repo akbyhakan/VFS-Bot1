@@ -1,15 +1,16 @@
 """Tests for utils.validators module."""
 
 import pytest
+
 from src.utils.validators import (
+    sanitize_email,
+    sanitize_input,
+    sanitize_name,
+    sanitize_phone,
+    validate_category,
+    validate_centre,
     validate_email,
     validate_phone,
-    validate_centre,
-    validate_category,
-    sanitize_input,
-    sanitize_email,
-    sanitize_phone,
-    sanitize_name,
 )
 
 

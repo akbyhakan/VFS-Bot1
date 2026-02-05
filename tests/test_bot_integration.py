@@ -1,10 +1,11 @@
 """Integration tests for bot functionality."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.services.bot.vfs_bot import VFSBot
+import pytest
+
 from src.core.exceptions import LoginError, SelectorNotFoundError
+from src.services.bot.vfs_bot import VFSBot
 
 
 @pytest.mark.asyncio

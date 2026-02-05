@@ -1,10 +1,12 @@
 """Tests for logging_config module."""
 
-import logging
-import pytest
 import json
+import logging
 from io import StringIO
 from unittest.mock import patch
+
+import pytest
+
 from src.core.logging_config import JSONFormatter, setup_logging
 
 

@@ -1,10 +1,10 @@
 """Environment variables validation."""
 
-import os
-import sys
 import logging
+import os
 import re
-from typing import List, Dict
+import sys
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 

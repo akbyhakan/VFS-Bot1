@@ -1,10 +1,10 @@
 """Adaptive rate limiter that backs off on failures."""
 
 import asyncio
+import logging
 import random
 import time
 from dataclasses import dataclass, field
-import logging
 
 logger = logging.getLogger(__name__)
 

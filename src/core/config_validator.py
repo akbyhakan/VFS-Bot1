@@ -1,8 +1,9 @@
 """Configuration schema validation."""
 
 import logging
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field, HttpUrl, validator, model_validator
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, HttpUrl, model_validator, validator
 
 logger = logging.getLogger(__name__)
 

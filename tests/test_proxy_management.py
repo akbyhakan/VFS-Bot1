@@ -1,12 +1,13 @@
 """Tests for proxy management functionality."""
 
-import pytest
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 
+import pytest
+
 from src.models.database import Database
-from src.utils.encryption import encrypt_password, decrypt_password
+from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.security.netnut_proxy import NetNutProxyManager, mask_proxy_password
 
 

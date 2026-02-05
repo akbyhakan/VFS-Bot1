@@ -1,8 +1,10 @@
 """Tests for services/cleanup_service module."""
 
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from src.services.cleanup_service import CleanupService
 
 

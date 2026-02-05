@@ -11,15 +11,9 @@ from fastapi.responses import FileResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.core.security import verify_api_key
 from src.core.auth import verify_token
-from web.dependencies import (
-    verify_jwt_token,
-    BotCommand,
-    bot_state,
-    manager,
-    broadcast_message,
-)
+from src.core.security import verify_api_key
+from web.dependencies import BotCommand, bot_state, broadcast_message, manager, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["bot"])
