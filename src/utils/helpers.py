@@ -4,7 +4,9 @@ import asyncio
 import logging
 import random
 import re
+from datetime import datetime, timezone
 from typing import Literal, Optional
+from zoneinfo import ZoneInfo
 
 from playwright.async_api import Page, TimeoutError
 
@@ -27,6 +29,7 @@ __all__ = [
     "random_delay",
     "safe_navigate",
     "safe_screenshot",
+    "format_local_datetime",
 ]
 
 
@@ -232,3 +235,36 @@ async def safe_screenshot(page: Page, filepath: str, full_page: bool = True) -> 
     except Exception as e:
         logger.error(f"Failed to save screenshot to {filepath}: {e}")
         return False
+
+
+def format_local_datetime(
+    utc_dt: Optional[datetime] = None,
+    tz_name: str = "Europe/Istanbul",
+    fmt: str = "%d.%m.%Y %H:%M:%S",
+) -> str:
+    """
+    Convert UTC datetime to local timezone and format it for display.
+
+    Args:
+        utc_dt: UTC datetime to convert. If None, uses current UTC time.
+        tz_name: Timezone name (default: "Europe/Istanbul")
+        fmt: strftime format string (default: "%d.%m.%Y %H:%M:%S")
+
+    Returns:
+        Formatted datetime string in local timezone
+    """
+    if utc_dt is None:
+        utc_dt = datetime.now(timezone.utc)
+
+    # Ensure UTC datetime is timezone-aware
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+
+    try:
+        # Convert to local timezone
+        local_tz = ZoneInfo(tz_name)
+        local_dt = utc_dt.astimezone(local_tz)
+        return local_dt.strftime(fmt)
+    except Exception as e:
+        logger.error(f"Error converting timezone: {e}, falling back to UTC")
+        return utc_dt.strftime(fmt)

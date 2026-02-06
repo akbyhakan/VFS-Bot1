@@ -2,7 +2,7 @@
 
 import logging
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -53,7 +53,7 @@ class DatabaseBackup:
                 return None
 
             # Generate backup filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             if suffix:
                 backup_name = f"{self.db_path.stem}_{timestamp}_{suffix}{self.db_path.suffix}"
             else:

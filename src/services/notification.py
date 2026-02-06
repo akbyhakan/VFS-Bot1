@@ -264,10 +264,12 @@ The bot will retry automatically.
             else:
                 people_list = "   (Information unavailable)\n"
 
-            # Format datetime
-            from datetime import datetime
+            # Format datetime - use helper to convert UTC to local time for display
+            from ..utils.helpers import format_local_datetime
 
-            dt_str = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+            # Get timezone from config, default to Europe/Istanbul
+            timezone_name = self.config.get("timezone", "Europe/Istanbul")
+            dt_str = format_local_datetime(tz_name=timezone_name)
 
             # Build message
             title = "✅ BEKLEME LİSTESİNE KAYIT BAŞARILI!"

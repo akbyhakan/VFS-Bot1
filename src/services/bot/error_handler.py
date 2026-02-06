@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -44,7 +44,7 @@ class ErrorHandler:
             Path to screenshot if successful, None otherwise
         """
         try:
-            timestamp = datetime.now().timestamp()
+            timestamp = datetime.now(timezone.utc).timestamp()
             error_name = context.get("error_name", "error")
             screenshot_name = f"{error_name}_{timestamp}"
 
@@ -92,7 +92,7 @@ class ErrorHandler:
             checkpoint_file = self.checkpoint_dir / "checkpoint.json"
 
             checkpoint_data = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 **state,
             }
 

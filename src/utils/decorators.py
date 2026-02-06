@@ -3,7 +3,7 @@
 import asyncio
 import functools
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
 
 logger = logging.getLogger(__name__)
@@ -169,14 +169,14 @@ def timed_async(func: F) -> F:
 
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start = datetime.now()
+        start = datetime.now(timezone.utc)
         try:
             result = await func(*args, **kwargs)
-            elapsed = (datetime.now() - start).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - start).total_seconds()
             logger.debug(f"{func.__name__} completed in {elapsed:.3f}s")
             return result
         except Exception:
-            elapsed = (datetime.now() - start).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - start).total_seconds()
             logger.debug(f"{func.__name__} failed after {elapsed:.3f}s")
             raise
 

@@ -1,7 +1,7 @@
 """Gelişmiş session recovery sistemi."""
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -43,7 +43,7 @@ class SessionRecovery:
             if step in self.CHECKPOINT_STEPS
             else -1,
             "user_id": user_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "context": context,
         }
 
@@ -66,8 +66,12 @@ class SessionRecovery:
                 checkpoint: Dict[str, Any] = json.load(f)
 
             # 1 saatten eski checkpoint'leri ignore et
+            # Support both timezone-aware and naive datetime strings for backward compatibility
             checkpoint_time = datetime.fromisoformat(checkpoint["timestamp"])
-            age_hours = (datetime.now() - checkpoint_time).total_seconds() / 3600
+            # Make timezone-naive datetimes UTC-aware for comparison
+            if checkpoint_time.tzinfo is None:
+                checkpoint_time = checkpoint_time.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - checkpoint_time).total_seconds() / 3600
 
             if age_hours > 1:
                 logger.info("Checkpoint 1 saatten eski, ignore ediliyor")

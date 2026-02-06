@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
@@ -23,12 +23,12 @@ class CacheEntry:
             ttl_seconds: Time to live in seconds (default: 3600 = 1 hour)
         """
         self.value = value
-        self.created_at = datetime.now()
+        self.created_at = datetime.now(timezone.utc)
         self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
 
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
-        return datetime.now() >= self.expires_at
+        return datetime.now(timezone.utc) >= self.expires_at
 
 
 class CentreFetcher:
