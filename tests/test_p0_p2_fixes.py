@@ -363,7 +363,6 @@ class TestEmergencyCleanup:
             await _fast_emergency_cleanup()
 
 
-
 # P1-5: Environment validation
 class TestEnvironmentValidation:
     """Test environment validation with whitelist."""

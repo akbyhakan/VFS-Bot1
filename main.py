@@ -373,6 +373,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         db = Database()
         await db.connect()
 
+    # Initialize notifier to None so it's available in finally block if initialization fails
     notifier = None
     try:
         # Initialize notification service
