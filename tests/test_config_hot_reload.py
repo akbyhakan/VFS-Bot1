@@ -297,7 +297,6 @@ class TestConfigHotReload:
             Path(config_path).unlink()
 
 
-@pytest.mark.asyncio
 class TestConfigHotReloadGlobal:
     """Test cases for global config hot-reload service."""
 
