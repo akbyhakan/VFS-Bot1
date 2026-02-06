@@ -25,7 +25,10 @@ from src.services.bot import VFSBot
 from src.services.notification import NotificationService
 
 # Graceful shutdown timeout in seconds (configurable via env)
-SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
+try:
+    SHUTDOWN_TIMEOUT = max(5, min(int(os.getenv("SHUTDOWN_TIMEOUT", "30")), 300))
+except (ValueError, TypeError):
+    SHUTDOWN_TIMEOUT = 30
 
 
 # Global shutdown event for coordinating graceful shutdown - thread-safe singleton
