@@ -527,12 +527,12 @@ async def get_prometheus_metrics() -> str:
     Prometheus text format metrics.
 
     Returns:
-        Prometheus-formatted metrics
+        Prometheus-formatted metrics using prometheus_client registry
     """
-    from src.utils.metrics import get_metrics
+    from src.utils.prometheus_metrics import get_metrics
 
-    bot_metrics = await get_metrics()
-    return await bot_metrics.get_prometheus_metrics()
+    # Get metrics from prometheus_client registry
+    return get_metrics().decode("utf-8")
 
 
 def increment_metric(name: str, count: int = 1) -> None:

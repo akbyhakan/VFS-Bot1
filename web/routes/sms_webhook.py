@@ -5,6 +5,7 @@ via SMS Forwarder app. Each VFS account has a unique webhook URL.
 """
 
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -58,6 +59,8 @@ async def receive_sms(token: str, request: Request):
     """
     Receive SMS from SMS Forwarder app.
 
+    Supports HMAC signature verification for enhanced security.
+
     Supported payload formats:
     1. SMS Forwarder (Android):
        {"message": "OTP: 123456", "from": "+905551234567", "timestamp": "..."}
@@ -79,6 +82,48 @@ async def receive_sms(token: str, request: Request):
         HTTPException: On validation or processing errors
     """
     try:
+        # Get environment
+        env = os.getenv("ENV", "production").lower()
+        sms_webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
+
+        # HMAC signature verification (production only, optional in development)
+        signature_header = request.headers.get("X-Webhook-Signature")
+
+        if env == "production" and sms_webhook_secret:
+            # In production, HMAC is mandatory if secret is configured
+            if not signature_header:
+                logger.warning("Missing X-Webhook-Signature header in production mode")
+                raise HTTPException(
+                    status_code=401, detail="Missing webhook signature"
+                )
+
+            # Get raw body for signature verification
+            body_bytes = await request.body()
+
+            # Verify signature
+            from src.utils.webhook_utils import verify_webhook_signature
+
+            if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
+                logger.warning("Invalid webhook signature")
+                raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+            logger.debug("HMAC signature verified successfully")
+
+        elif signature_header and sms_webhook_secret:
+            # Development mode with signature provided - verify it
+            body_bytes = await request.body()
+
+            from src.utils.webhook_utils import verify_webhook_signature
+
+            if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
+                logger.warning("Invalid webhook signature (development mode)")
+                # Log warning but don't reject in development
+            else:
+                logger.debug("HMAC signature verified (development mode)")
+
+        elif env == "development":
+            logger.debug("Running in development mode without HMAC verification")
+
         # Get webhook manager
         manager = get_webhook_manager()
 
