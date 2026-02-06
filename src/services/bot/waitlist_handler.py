@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -241,11 +241,13 @@ class WaitlistHandler:
             ]
 
             button = None
+            working_selector = None
             for selector in confirm_selectors:
                 try:
                     locator = page.locator(selector).first
                     await locator.wait_for(timeout=5000, state="visible")
                     button = locator
+                    working_selector = selector
                     logger.info(f"Found confirm button with selector: {selector}")
                     break
                 except Exception:
@@ -256,8 +258,8 @@ class WaitlistHandler:
                 return False
 
             # Click with human simulation if available
-            if self.human_sim:
-                await smart_click(page, confirm_selectors[0], self.human_sim)
+            if self.human_sim and working_selector:
+                await smart_click(page, working_selector, self.human_sim)
             else:
                 await button.click()
 
@@ -292,7 +294,7 @@ class WaitlistHandler:
                 return None
 
             # Take full page screenshot
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             screenshot_path = self.screenshots_dir / f"waitlist_success_{timestamp}.png"
             await page.screenshot(path=str(screenshot_path), full_page=True)
             logger.info(f"Screenshot saved: {screenshot_path}")
