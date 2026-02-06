@@ -15,6 +15,21 @@ logger = logging.getLogger(__name__)
 
 # VFS Form Selectors with Fallback Support
 # Each selector can be a string (single selector) or a list (fallback chain)
+#
+# TODO: Migrate to config/selectors.yaml for single source of truth
+# This inline dictionary should eventually be moved to config/selectors.yaml under a 'booking' section
+# to align with the centralized CountryAwareSelectorManager (src/utils/selectors.py) architecture.
+# The centralized approach provides:
+#   - AI-powered selector repair when elements change
+#   - Learning and auto-promotion of successful fallback selectors
+#   - Country-specific selector overrides
+#   - Single source of truth for all selector definitions
+#
+# Migration steps:
+#   1. Add 'booking' section to config/selectors.yaml with all entries below
+#   2. Update get_selector() calls to use CountryAwareSelectorManager
+#   3. Remove this inline VFS_SELECTORS dictionary
+#
 VFS_SELECTORS = {
     # Detaylar Formu - Başvuru Sahibi
     "first_name": ["#mat-input-3", 'input[formcontrolname="firstName"]', 'input[name="firstName"]'],

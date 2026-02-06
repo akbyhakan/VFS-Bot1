@@ -138,9 +138,13 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
     return selectors if isinstance(selectors, dict) else {}
 
 
-def get_selector(group: str, name: str, default: str = "") -> str:
+def get_config_selector(group: str, name: str, default: str = "") -> str:
     """
-    Get a specific selector by group and name.
+    Get a specific selector by group and name from config/selectors.yaml.
+    
+    Note: This function is for reading selectors from YAML config files.
+    For runtime selector management with AI repair and learning, use
+    CountryAwareSelectorManager from src/utils/selectors.py instead.
 
     Args:
         group: Selector group (e.g., 'login', 'appointment')
@@ -164,3 +168,7 @@ def get_selector(group: str, name: str, default: str = "") -> str:
             return selector
 
     return default
+
+
+# Backward compatibility alias
+get_selector = get_config_selector
