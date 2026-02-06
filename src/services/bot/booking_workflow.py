@@ -6,15 +6,17 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from playwright.async_api import Page
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 from ...constants import Retries
+from ...core.exceptions import LoginError, VFSBotError
 from ...models.database import Database
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..appointment_booking_service import get_selector
+from ..appointment_deduplication import get_deduplication_service
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
@@ -84,6 +86,8 @@ class BookingWorkflow:
             min=Retries.EXPONENTIAL_MIN,
             max=Retries.EXPONENTIAL_MAX,
         ),
+        retry=retry_if_exception_type(VFSBotError),
+        reraise=True,
     )
     async def process_user(self, page: Page, user: Dict[str, Any]) -> None:
         """
@@ -100,11 +104,11 @@ class BookingWorkflow:
             # Login
             if not await self.auth_service.login(page, user["email"], user["password"]):
                 logger.error(f"Login failed for {masked_email}")
-                return
+                raise LoginError(f"Login failed for {masked_email}")
 
             # Save checkpoint after successful login
             self.session_recovery.save_checkpoint(
-                "logged_in", user["id"], {"email": user["email"], "masked_email": masked_email}
+                "logged_in", user["id"], {"masked_email": masked_email}
             )
 
             # Check for waitlist mode first
@@ -116,151 +120,18 @@ class BookingWorkflow:
                 await self.process_waitlist_flow(page, user)
             else:
                 # Normal appointment flow
-                # Get deduplication service once (outside loop)
-                from ..appointment_deduplication import get_deduplication_service
-
                 dedup_service = await get_deduplication_service()
+                await self._process_normal_flow(page, user, dedup_service)
 
-                # Check slots
-                centres = user["centre"].split(",")
-                for centre in centres:
-                    centre = centre.strip()
-                    slot = await self.slot_checker.check_slots(
-                        page, centre, user["category"], user["subcategory"]
-                    )
-
-                    if slot:
-                        await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
-
-                        # Record slot pattern for analysis
-                        self.slot_analyzer.record_slot_found(
-                            country=user.get("country", "unknown"),
-                            centre=centre,
-                            category=user["category"],
-                            date=slot["date"],
-                            time=slot["time"],
-                        )
-
-                        # Check for duplicate booking attempt
-                        is_duplicate = await dedup_service.is_duplicate(
-                            user["id"], centre, user["category"], slot["date"]
-                        )
-
-                        if is_duplicate:
-                            logger.warning(
-                                f"Skipping duplicate booking for user {user['id']}: "
-                                f"{centre}/{user['category']}/{slot['date']}"
-                            )
-                            continue  # Skip this slot and try next centre
-
-                        # Get appointment request for this user (with all persons)
-                        appointment_request = await self.db.get_pending_appointment_request_for_user(
-                            user["id"]
-                        )
-                        if appointment_request:
-                            # Build reservation from appointment request (supports N persons)
-                            reservation = self._build_reservation_from_request(
-                                appointment_request, slot
-                            )
-                            success = await self.booking_service.run_booking_flow(page, reservation)
-
-                            if success:
-                                # Verify booking confirmation and extract reference
-                                confirmation = (
-                                    await self.booking_service.verify_booking_confirmation(page)
-                                )
-                                if confirmation.get("success"):
-                                    reference = confirmation.get("reference", "UNKNOWN")
-                                    await self.db.add_appointment(
-                                        user["id"],
-                                        centre,
-                                        user["category"],
-                                        user["subcategory"],
-                                        slot["date"],
-                                        slot["time"],
-                                        reference,
-                                    )
-                                    await self.notifier.notify_booking_success(
-                                        centre, slot["date"], slot["time"], reference
-                                    )
-
-                                    # Mark booking in deduplication service
-                                    await dedup_service.mark_booked(
-                                        user["id"], centre, user["category"], slot["date"]
-                                    )
-
-                                    # Clear checkpoint after successful booking
-                                    self.session_recovery.clear_checkpoint()
-                                    logger.info("Booking completed - checkpoint cleared")
-                                else:
-                                    logger.error(
-                                        f"Booking verification failed: {confirmation.get('error')}"
-                                    )
-                            else:
-                                logger.error("Booking flow failed")
-                        else:
-                            # Fallback: legacy single-person flow using personal_details
-                            details = await self.db.get_personal_details(user["id"])
-                            if details:
-                                reservation = self._build_reservation(user, slot, details)
-                                success = await self.booking_service.run_booking_flow(
-                                    page, reservation
-                                )
-
-                                if success:
-                                    # Verify booking confirmation and extract reference
-                                    confirmation = (
-                                        await self.booking_service.verify_booking_confirmation(page)
-                                    )
-                                    if confirmation.get("success"):
-                                        reference = confirmation.get("reference", "UNKNOWN")
-                                        await self.db.add_appointment(
-                                            user["id"],
-                                            centre,
-                                            user["category"],
-                                            user["subcategory"],
-                                            slot["date"],
-                                            slot["time"],
-                                            reference,
-                                        )
-                                        await self.notifier.notify_booking_success(
-                                            centre, slot["date"], slot["time"], reference
-                                        )
-
-                                        # Mark booking in deduplication service
-                                        await dedup_service.mark_booked(
-                                            user["id"], centre, user["category"], slot["date"]
-                                        )
-
-                                        # Clear checkpoint after successful booking
-                                        self.session_recovery.clear_checkpoint()
-                                        logger.info("Booking completed - checkpoint cleared")
-                                    else:
-                                        logger.error(
-                                            f"Booking verification failed: {confirmation.get('error')}"
-                                        )
-                                else:
-                                    logger.error("Booking flow failed")
-                            else:
-                                logger.error(
-                                    f"No personal details or appointment request found for user {user['id']}"
-                                )
-                        break
+        except VFSBotError as e:
+            # Re-raise VFSBotError subclasses (LoginError, etc.) for retry
+            await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
+            raise
         except Exception as e:
+            # Wrap unexpected exceptions in VFSBotError and re-raise for retry
             logger.error(f"Error processing user {masked_email}: {e}")
-            if self.config["bot"].get("screenshot_on_error", True):
-                try:
-                    await self.error_capture.capture(
-                        page,
-                        e,
-                        context={
-                            "step": "process_user",
-                            "user_id": f"user_{user['id']}",
-                            "email": masked_email,
-                        },
-                    )
-                except Exception as capture_error:
-                    logger.error(f"Failed to capture error: {capture_error}")
+            await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
+            raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
 
     async def process_waitlist_flow(self, page: Page, user: Dict[str, Any]) -> None:
         """
@@ -319,18 +190,171 @@ class BookingWorkflow:
 
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
+            await self._capture_error_safe(
+                page, e, "waitlist_flow", user["id"], mask_email(user["email"])
+            )
+
+    async def _capture_error_safe(
+        self, page: Page, error: Exception, step: str, user_id: int, masked_email: str
+    ) -> None:
+        """
+        Safely capture error with screenshot (handles capture failures gracefully).
+
+        Args:
+            page: Playwright page object
+            error: Exception that occurred
+            step: Step name where error occurred
+            user_id: User ID
+            masked_email: Masked email for logging
+        """
+        if self.config["bot"].get("screenshot_on_error", True):
             try:
                 await self.error_capture.capture(
                     page,
-                    e,
+                    error,
                     context={
-                        "step": "waitlist_flow",
-                        "user_id": f"user_{user['id']}",
-                        "email": mask_email(user["email"]),
+                        "step": step,
+                        "user_id": f"user_{user_id}",
+                        "email": masked_email,
                     },
                 )
             except Exception as capture_error:
                 logger.error(f"Failed to capture error: {capture_error}")
+
+    async def _build_reservation_for_user(
+        self, user: Dict[str, Any], slot: "SlotInfo"
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Build reservation for user using appropriate strategy.
+
+        Tries get_pending_appointment_request_for_user first (multi-person support),
+        falls back to get_personal_details (legacy single-person).
+
+        Args:
+            user: User dictionary from database
+            slot: SlotInfo with date and time
+
+        Returns:
+            Reservation dict or None if no data available
+        """
+        # Try multi-person flow first
+        appointment_request = await self.db.get_pending_appointment_request_for_user(user["id"])
+        if appointment_request:
+            return self._build_reservation_from_request(appointment_request, slot)
+
+        # Fallback: legacy single-person flow
+        details = await self.db.get_personal_details(user["id"])
+        if details:
+            return self._build_reservation(user, slot, details)
+
+        logger.error(f"No personal details or appointment request found for user {user['id']}")
+        return None
+
+    async def _execute_and_confirm_booking(
+        self,
+        page: Page,
+        reservation: Dict[str, Any],
+        user: Dict[str, Any],
+        centre: str,
+        slot: "SlotInfo",
+        dedup_service: Any,
+    ) -> None:
+        """
+        Execute booking flow and confirm booking (common confirmation pipeline).
+
+        Handles: run_booking_flow → verify_confirmation → add_appointment →
+        notify_booking_success → mark_booked → clear_checkpoint
+
+        Args:
+            page: Playwright page object
+            reservation: Reservation dict
+            user: User dictionary from database
+            centre: Centre name
+            slot: SlotInfo with date and time
+            dedup_service: Deduplication service instance
+        """
+        success = await self.booking_service.run_booking_flow(page, reservation)
+
+        if success:
+            # Verify booking confirmation and extract reference
+            confirmation = await self.booking_service.verify_booking_confirmation(page)
+            if confirmation.get("success"):
+                reference = confirmation.get("reference", "UNKNOWN")
+                await self.db.add_appointment(
+                    user["id"],
+                    centre,
+                    user["category"],
+                    user["subcategory"],
+                    slot["date"],
+                    slot["time"],
+                    reference,
+                )
+                await self.notifier.notify_booking_success(
+                    centre, slot["date"], slot["time"], reference
+                )
+
+                # Mark booking in deduplication service
+                await dedup_service.mark_booked(user["id"], centre, user["category"], slot["date"])
+
+                # Clear checkpoint after successful booking
+                self.session_recovery.clear_checkpoint()
+                logger.info("Booking completed - checkpoint cleared")
+            else:
+                logger.error(f"Booking verification failed: {confirmation.get('error')}")
+        else:
+            logger.error("Booking flow failed")
+
+    async def _process_normal_flow(
+        self, page: Page, user: Dict[str, Any], dedup_service: Any
+    ) -> None:
+        """
+        Process normal appointment flow (slot checking and booking).
+
+        Args:
+            page: Playwright page object
+            user: User dictionary from database
+            dedup_service: Deduplication service instance
+        """
+        # Check slots
+        centres = user["centre"].split(",")
+        for centre in centres:
+            centre = centre.strip()
+            slot = await self.slot_checker.check_slots(
+                page, centre, user["category"], user["subcategory"]
+            )
+
+            if slot:
+                await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
+
+                # Record slot pattern for analysis
+                self.slot_analyzer.record_slot_found(
+                    country=user.get("country", "unknown"),
+                    centre=centre,
+                    category=user["category"],
+                    date=slot["date"],
+                    time=slot["time"],
+                )
+
+                # Check for duplicate booking attempt
+                is_duplicate = await dedup_service.is_duplicate(
+                    user["id"], centre, user["category"], slot["date"]
+                )
+
+                if is_duplicate:
+                    logger.warning(
+                        f"Skipping duplicate booking for user {user['id']}: "
+                        f"{centre}/{user['category']}/{slot['date']}"
+                    )
+                    continue  # Skip this slot and try next centre
+
+                # Build reservation using appropriate strategy
+                reservation = await self._build_reservation_for_user(user, slot)
+                if reservation:
+                    await self._execute_and_confirm_booking(
+                        page, reservation, user, centre, slot, dedup_service
+                    )
+
+                break
 
     def _build_reservation_from_request(
         self, request: Dict[str, Any], slot: "SlotInfo"
