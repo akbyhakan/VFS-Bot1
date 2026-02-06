@@ -651,10 +651,10 @@ class AppointmentBookingService:
                 # Check if this date is in preferred dates
                 # aria-label format: "23 Ocak 2026"
                 parsed_date = self.parse_aria_label_to_date(aria_label)
-                
+
                 if parsed_date:
                     logger.debug(f"Available date: {parsed_date} (aria-label: {aria_label})")
-                    
+
                     # Check if this date matches any preferred date
                     if not preferred_dates or parsed_date in preferred_dates:
                         await date_elem.click()
