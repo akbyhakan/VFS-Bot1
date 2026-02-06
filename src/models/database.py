@@ -686,9 +686,7 @@ class Database:
             # Add cvv_encrypted if missing
             if "cvv_encrypted" not in payment_column_names:
                 logger.info("Adding cvv_encrypted column to payment_card")
-                await cursor.execute(
-                    "ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT"
-                )
+                await cursor.execute("ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT")
 
             await self.conn.commit()
             logger.info("Schema migration completed")
