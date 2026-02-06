@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from src.models.database import Database
 from src.services.otp_webhook import get_otp_service
 from src.utils.webhook_utils import verify_webhook_signature
-from web.dependencies import verify_jwt_token
+from web.dependencies import get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
@@ -20,13 +20,18 @@ PHONE_FIELD_PRIORITY = ["phone", "from", "phone_number"]
 
 
 @router.post("/users/{user_id}/create")
-async def create_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+async def create_webhook(
+    user_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
+):
     """
     Create a unique webhook for a user.
 
     Args:
         user_id: User ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Webhook token and URL
@@ -34,10 +39,7 @@ async def create_webhook(user_id: int, token_data: Dict[str, Any] = Depends(veri
     Raises:
         HTTPException: If user already has a webhook or creation fails
     """
-    db = Database()
     try:
-        await db.connect()
-
         # Verify user exists
         async with db.get_connection() as conn:
             cursor = await conn.execute("SELECT id FROM users WHERE id = ?", (user_id,))
@@ -69,26 +71,26 @@ async def create_webhook(user_id: int, token_data: Dict[str, Any] = Depends(veri
     except Exception as e:
         logger.error(f"Error creating webhook: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create webhook")
-    finally:
-        await db.close()
 
 
 @router.get("/users/{user_id}")
-async def get_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+async def get_webhook(
+    user_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
+):
     """
     Get webhook information for a user.
 
     Args:
         user_id: User ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Webhook data or null if not found
     """
-    db = Database()
     try:
-        await db.connect()
-
         webhook = await db.get_user_webhook(user_id)
 
         if not webhook:
@@ -105,18 +107,21 @@ async def get_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_
     except Exception as e:
         logger.error(f"Error getting webhook: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get webhook")
-    finally:
-        await db.close()
 
 
 @router.delete("/users/{user_id}")
-async def delete_webhook(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+async def delete_webhook(
+    user_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
+):
     """
     Delete a user's webhook.
 
     Args:
         user_id: User ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Success message
@@ -124,10 +129,7 @@ async def delete_webhook(user_id: int, token_data: Dict[str, Any] = Depends(veri
     Raises:
         HTTPException: If webhook not found
     """
-    db = Database()
     try:
-        await db.connect()
-
         success = await db.delete_user_webhook(user_id)
 
         if not success:
@@ -142,12 +144,15 @@ async def delete_webhook(user_id: int, token_data: Dict[str, Any] = Depends(veri
     except Exception as e:
         logger.error(f"Error deleting webhook: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete webhook")
-    finally:
-        await db.close()
 
 
 @router.post("/otp/{token}")
-async def receive_otp(token: str, request: Request, body: dict):
+async def receive_otp(
+    token: str,
+    request: Request,
+    body: dict,
+    db: Database = Depends(get_db),
+):
     """
     Receive OTP via user-specific webhook.
 
@@ -155,6 +160,7 @@ async def receive_otp(token: str, request: Request, body: dict):
         token: Unique webhook token
         request: FastAPI request object
         body: Request body containing OTP data
+        db: Database instance
 
     Returns:
         Success message with user_id
@@ -179,10 +185,7 @@ async def receive_otp(token: str, request: Request, body: dict):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
         logger.debug(f"Webhook signature verified for token {token[:8]}...")
 
-    db = Database()
     try:
-        await db.connect()
-
         # Find user by webhook token
         user = await db.get_user_by_webhook_token(token)
         if not user:
@@ -220,5 +223,3 @@ async def receive_otp(token: str, request: Request, body: dict):
     except Exception as e:
         logger.error(f"Error processing OTP webhook: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to process OTP")
-    finally:
-        await db.close()
