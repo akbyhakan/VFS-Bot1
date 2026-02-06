@@ -247,6 +247,111 @@ class TestReservationWorker:
         await worker.cleanup()
         assert worker.browser_manager is None
 
+    @pytest.mark.asyncio
+    async def test_process_check_no_account(self, mock_pools, mock_config, mock_db, mock_notifier):
+        """Test _process_check returns error when no account available."""
+        account_pool, proxy_pool = mock_pools
+
+        worker = ReservationWorker(
+            reservation_id=1,
+            country="fra",
+            config=mock_config,
+            account_pool=account_pool,
+            proxy_pool=proxy_pool,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # No account set
+        worker.current_account = None
+
+        mock_page = MagicMock()
+        result = await worker._process_check(mock_page)
+
+        assert result["slot_found"] is False
+        assert "error" in result
+        assert result["error"] == "No account available"
+
+    @pytest.mark.asyncio
+    async def test_process_check_with_account(
+        self, mock_pools, mock_config, mock_db, mock_notifier
+    ):
+        """Test _process_check creates BookingWorkflow and calls process_user."""
+        account_pool, proxy_pool = mock_pools
+
+        worker = ReservationWorker(
+            reservation_id=1,
+            country="fra",
+            config=mock_config,
+            account_pool=account_pool,
+            proxy_pool=proxy_pool,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        # Set current account
+        worker.current_account = {"email": "test@example.com", "password": "pass123"}
+
+        mock_page = MagicMock()
+
+        # Mock BookingWorkflow to avoid actual execution
+        with patch(
+            "src.services.bot.orchestrator.reservation_worker.BookingWorkflow"
+        ) as MockWorkflow:
+            mock_workflow_instance = AsyncMock()
+            MockWorkflow.return_value = mock_workflow_instance
+
+            result = await worker._process_check(mock_page)
+
+            # Verify BookingWorkflow was created
+            MockWorkflow.assert_called_once()
+
+            # Verify process_user was called with correct arguments
+            mock_workflow_instance.process_user.assert_called_once_with(
+                mock_page, worker.current_account
+            )
+
+            # Verify result - slot_found is False because BookingWorkflow
+            # handles its own notifications internally
+            assert result["slot_found"] is False
+            assert "error" not in result
+
+    @pytest.mark.asyncio
+    async def test_process_check_handles_exception(
+        self, mock_pools, mock_config, mock_db, mock_notifier
+    ):
+        """Test _process_check handles exceptions from process_user."""
+        account_pool, proxy_pool = mock_pools
+
+        worker = ReservationWorker(
+            reservation_id=1,
+            country="fra",
+            config=mock_config,
+            account_pool=account_pool,
+            proxy_pool=proxy_pool,
+            db=mock_db,
+            notifier=mock_notifier,
+        )
+
+        worker.current_account = {"email": "test@example.com", "password": "pass123"}
+
+        mock_page = MagicMock()
+
+        # Mock BookingWorkflow to raise an exception
+        with patch(
+            "src.services.bot.orchestrator.reservation_worker.BookingWorkflow"
+        ) as MockWorkflow:
+            mock_workflow_instance = AsyncMock()
+            mock_workflow_instance.process_user.side_effect = Exception("Test error")
+            MockWorkflow.return_value = mock_workflow_instance
+
+            result = await worker._process_check(mock_page)
+
+            # Verify result indicates failure
+            assert result["slot_found"] is False
+            assert "error" in result
+            assert "Test error" in result["error"]
+
 
 class TestReservationOrchestrator:
     """Tests for ReservationOrchestrator class."""

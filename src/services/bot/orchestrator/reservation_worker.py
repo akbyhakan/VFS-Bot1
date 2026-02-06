@@ -5,7 +5,23 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from playwright.async_api import Page
+
+from ...appointment_booking_service import AppointmentBookingService
+from ...captcha_solver import CaptchaSolver
+from ...otp_webhook import get_otp_service
+from ...session_recovery import SessionRecovery
+from ...slot_analyzer import SlotPatternAnalyzer
+from ....utils.anti_detection.cloudflare_handler import CloudflareHandler
+from ....utils.anti_detection.human_simulator import HumanSimulator
+from ....utils.error_capture import ErrorCapture
+from ....utils.security.rate_limiter import get_rate_limiter
+from ..auth_service import AuthService
+from ..booking_workflow import BookingWorkflow
 from ..browser_manager import BrowserManager
+from ..error_handler import ErrorHandler
+from ..slot_checker import SlotChecker
+from ..waitlist_handler import WaitlistHandler
 from .resource_pool import ResourcePool
 
 logger = logging.getLogger(__name__)
@@ -194,14 +210,101 @@ class ReservationWorker:
             finally:
                 self.browser_manager = None
 
-    async def _process_check(self, page: Any) -> Dict[str, Any]:
+    def _create_booking_workflow(self) -> BookingWorkflow:
+        """Create a BookingWorkflow with fresh dependencies for this cycle."""
+        # Create captcha solver
+        captcha_config = self.config.get("captcha", {})
+        captcha_solver = CaptchaSolver(
+            api_key=captcha_config.get("api_key", ""),
+            manual_timeout=captcha_config.get("manual_timeout", 120),
+        )
+
+        # Get rate limiter and OTP service (singletons)
+        rate_limiter = get_rate_limiter()
+        otp_service = get_otp_service()
+
+        # Create anti-detection components if enabled
+        anti_detection_config = self.config.get("anti_detection", {})
+        if anti_detection_config.get("enabled", True):
+            human_sim = HumanSimulator(self.config.get("human_behavior", {}))
+            cloudflare_handler = CloudflareHandler(self.config.get("cloudflare", {}))
+        else:
+            human_sim = None
+            cloudflare_handler = None
+
+        # Create error capture
+        error_capture = ErrorCapture()
+
+        # Create service instances
+        auth_service = AuthService(
+            self.config,
+            captcha_solver,
+            human_sim,
+            cloudflare_handler,
+            error_capture,
+            otp_service,
+        )
+
+        slot_checker = SlotChecker(
+            self.config,
+            rate_limiter,
+            human_sim,
+            cloudflare_handler,
+            error_capture,
+        )
+
+        booking_service = AppointmentBookingService(
+            self.config,
+            captcha_solver,
+            human_sim,
+        )
+
+        waitlist_handler = WaitlistHandler(self.config, human_sim)
+
+        error_handler = ErrorHandler()
+
+        slot_analyzer = SlotPatternAnalyzer()
+
+        session_recovery = SessionRecovery()
+
+        # Create and return BookingWorkflow
+        return BookingWorkflow(
+            config=self.config,
+            db=self.db,
+            notifier=self.notifier,
+            auth_service=auth_service,
+            slot_checker=slot_checker,
+            booking_service=booking_service,
+            waitlist_handler=waitlist_handler,
+            error_handler=error_handler,
+            slot_analyzer=slot_analyzer,
+            session_recovery=session_recovery,
+            human_sim=human_sim,
+        )
+
+    async def _process_check(self, page: Page) -> Dict[str, Any]:
         """
         Process a single check iteration.
 
-        TODO: Integrate existing auth_service and slot_checker for actual slot checking.
-        Placeholder for now.
+        Delegates to BookingWorkflow.process_user() for actual business logic.
+        BookingWorkflow handles slot detection, booking, and notifications internally.
+
+        Returns:
+            Dict with slot_found=False (BookingWorkflow handles its own notifications)
+            or error dict if check fails
         """
-        return {"slot_found": False}
+        if not self.current_account:
+            return {"slot_found": False, "error": "No account available"}
+
+        try:
+            workflow = self._create_booking_workflow()
+            await workflow.process_user(page, self.current_account)
+            # BookingWorkflow handles all notifications internally
+            # Return False to avoid duplicate notifications in run_check_loop
+            return {"slot_found": False}
+        except Exception as e:
+            logger.error(f"[{self.country}] Error in _process_check: {e}", exc_info=True)
+            return {"slot_found": False, "error": str(e)}
 
     def _mask_email(self, email: str) -> str:
         """Mask email for logging."""
