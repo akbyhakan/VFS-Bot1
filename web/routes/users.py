@@ -9,55 +9,56 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from src.core.exceptions import ValidationError
 from src.models.database import Database
-from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, verify_jwt_token
+from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.get("", response_model=List[UserModel])
-async def get_users(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+async def get_users(
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
+):
     """
     Get all users from database - requires authentication.
 
     Args:
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         List of users with their personal details
     """
-    db = Database()
-    try:
-        await db.connect()
-        users_data = await db.get_all_users_with_details()
+    users_data = await db.get_all_users_with_details()
 
-        # Convert database records to UserModel format
-        users = []
-        for user in users_data:
-            users.append(
-                UserModel(
-                    id=user["id"],
-                    email=user["email"],
-                    phone=user.get("phone") or "",
-                    first_name=user.get("first_name") or "",
-                    last_name=user.get("last_name") or "",
-                    center_name=user["center_name"],
-                    visa_category=user["visa_category"],
-                    visa_subcategory=user["visa_subcategory"],
-                    is_active=bool(user["is_active"]),
-                    created_at=user["created_at"],
-                    updated_at=user["updated_at"],
-                )
+    # Convert database records to UserModel format
+    users = []
+    for user in users_data:
+        users.append(
+            UserModel(
+                id=user["id"],
+                email=user["email"],
+                phone=user.get("phone") or "",
+                first_name=user.get("first_name") or "",
+                last_name=user.get("last_name") or "",
+                center_name=user["center_name"],
+                visa_category=user["visa_category"],
+                visa_subcategory=user["visa_subcategory"],
+                is_active=bool(user["is_active"]),
+                created_at=user["created_at"],
+                updated_at=user["updated_at"],
             )
+        )
 
-        return users
-    finally:
-        await db.close()
+    return users
 
 
 @router.post("", response_model=UserModel)
 async def create_user(
-    user: UserCreateRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    user: UserCreateRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Create a new user in database - requires authentication.
@@ -65,6 +66,7 @@ async def create_user(
     Args:
         user: User data
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Created user
@@ -72,10 +74,7 @@ async def create_user(
     Raises:
         HTTPException: If user creation fails
     """
-    db = Database()
     try:
-        await db.connect()
-
         # Create user record
         user_id = await db.add_user(
             email=user.email,
@@ -129,8 +128,6 @@ async def create_user(
     except Exception as e:
         logger.error(f"Error creating user: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create user")
-    finally:
-        await db.close()
 
 
 @router.put("/{user_id}", response_model=UserModel)
@@ -138,6 +135,7 @@ async def update_user(
     user_id: int,
     user_update: UserUpdateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Update a user in database - requires authentication.
@@ -146,6 +144,7 @@ async def update_user(
         user_id: User ID
         user_update: Updated user data
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Updated user
@@ -153,10 +152,7 @@ async def update_user(
     Raises:
         HTTPException: If user not found or update fails
     """
-    db = Database()
     try:
-        await db.connect()
-
         # Update user table fields (including password if provided)
         user_updated = await db.update_user(
             user_id=user_id,
@@ -210,18 +206,21 @@ async def update_user(
     except Exception as e:
         logger.error(f"Error updating user: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to update user")
-    finally:
-        await db.close()
 
 
 @router.delete("/{user_id}")
-async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)):
+async def delete_user(
+    user_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
+):
     """
     Delete a user from database - requires authentication.
 
     Args:
         user_id: User ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Success message
@@ -229,10 +228,7 @@ async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_
     Raises:
         HTTPException: If user not found
     """
-    db = Database()
     try:
-        await db.connect()
-
         # Get user email before deletion for logging
         users = await db.get_all_users_with_details()
         user = next((u for u in users if u["id"] == user_id), None)
@@ -254,8 +250,6 @@ async def delete_user(user_id: int, token_data: Dict[str, Any] = Depends(verify_
     except Exception as e:
         logger.error(f"Error deleting user: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete user")
-    finally:
-        await db.close()
 
 
 @router.patch("/{user_id}", response_model=UserModel)
@@ -263,6 +257,7 @@ async def toggle_user_status(
     user_id: int,
     status_update: Dict[str, bool],
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Toggle user active status - requires authentication.
@@ -271,14 +266,12 @@ async def toggle_user_status(
         user_id: User ID
         status_update: Status update data (is_active)
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Updated user
     """
-    db = Database()
     try:
-        await db.connect()
-
         if "is_active" not in status_update:
             raise HTTPException(status_code=400, detail="is_active field required")
 
@@ -334,13 +327,13 @@ async def toggle_user_status(
     except Exception as e:
         logger.error(f"Error toggling user status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to toggle user status")
-    finally:
-        await db.close()
 
 
 @router.post("/import")
 async def import_users_csv(
-    file: UploadFile = File(...), token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    file: UploadFile = File(...),
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Import users from CSV file - requires authentication.
@@ -351,6 +344,7 @@ async def import_users_csv(
     Args:
         file: CSV file to import
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Import results with success/failure counts and error messages
@@ -361,10 +355,7 @@ async def import_users_csv(
     if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Sadece CSV dosyası kabul edilir")
 
-    db = Database()
     try:
-        await db.connect()
-
         # Read file content
         content = await file.read()
 
@@ -473,5 +464,3 @@ async def import_users_csv(
     except Exception as e:
         logger.error(f"Error importing CSV: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="CSV dosyası işlenirken hata oluştu")
-    finally:
-        await db.close()
