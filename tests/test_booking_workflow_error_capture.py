@@ -9,6 +9,7 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.core.exceptions import VFSBotError
 from src.services.bot.booking_workflow import BookingWorkflow
 from src.utils.error_capture import ErrorCapture
 
@@ -78,7 +79,7 @@ class TestBookingWorkflowErrorCapture:
 
     @pytest.mark.asyncio
     async def test_process_user_error_calls_error_capture(self, mock_dependencies):
-        """Test that process_user exception handler calls error_capture.capture."""
+        """Test that process_user exception handler calls error_capture.capture and re-raises."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
@@ -99,11 +100,12 @@ class TestBookingWorkflowErrorCapture:
         # Make auth_service.login raise an exception to trigger error handler
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Test login error"))
 
-        # Call process_user - it should catch the exception
-        await workflow.process_user(mock_page, mock_user)
+        # Call process_user - it should raise VFSBotError after max retries
+        with pytest.raises(VFSBotError):
+            await workflow.process_user(mock_page, mock_user)
 
-        # Verify error_capture.capture was called
-        mock_error_capture.capture.assert_called_once()
+        # Verify error_capture.capture was called (3 times due to retries)
+        assert mock_error_capture.capture.call_count == 3
         call_args = mock_error_capture.capture.call_args
 
         # Check that page was passed
@@ -123,7 +125,7 @@ class TestBookingWorkflowErrorCapture:
 
     @pytest.mark.asyncio
     async def test_process_user_respects_screenshot_on_error_config(self, mock_dependencies):
-        """Test that error capture respects screenshot_on_error config."""
+        """Test that error capture respects screenshot_on_error config and re-raises."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
@@ -147,10 +149,11 @@ class TestBookingWorkflowErrorCapture:
         # Make auth_service.login raise an exception
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Test error"))
 
-        # Call process_user
-        await workflow.process_user(mock_page, mock_user)
+        # Call process_user - it should raise VFSBotError after max retries
+        with pytest.raises(VFSBotError):
+            await workflow.process_user(mock_page, mock_user)
 
-        # Verify error_capture.capture was NOT called
+        # Verify error_capture.capture was NOT called (screenshot_on_error is False)
         mock_error_capture.capture.assert_not_called()
 
     @pytest.mark.asyncio
@@ -293,7 +296,7 @@ class TestBookingWorkflowErrorCapture:
 
     @pytest.mark.asyncio
     async def test_error_capture_exception_is_caught(self, mock_dependencies):
-        """Test that exceptions during error capture are caught and logged."""
+        """Test that exceptions during error capture are caught and logged, but main exception is still raised."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock(
             side_effect=Exception("Error capture failed")
@@ -316,11 +319,9 @@ class TestBookingWorkflowErrorCapture:
         # Make auth_service.login raise an exception
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Login error"))
 
-        # Call process_user - should not raise even if error capture fails
-        try:
+        # Call process_user - should raise VFSBotError even if error capture fails
+        with pytest.raises(VFSBotError):
             await workflow.process_user(mock_page, mock_user)
-        except Exception as e:
-            pytest.fail(f"process_user should not raise even if error capture fails: {e}")
 
-        # Verify error_capture.capture was called (and failed)
-        mock_error_capture.capture.assert_called_once()
+        # Verify error_capture.capture was called (and failed) - 3 times due to retries
+        assert mock_error_capture.capture.call_count == 3
