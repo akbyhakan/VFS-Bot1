@@ -11,9 +11,9 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 from ...constants import Retries, Timeouts
 from ...models.database import Database
 from ...utils.anti_detection.human_simulator import HumanSimulator
-from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click, smart_fill, wait_for_selector_smart
 from ...utils.masking import mask_email
+from ..appointment_booking_service import get_selector
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
@@ -186,8 +186,6 @@ class BookingWorkflow:
                 return
 
             # Click Continue button to proceed to next step
-            from ..appointment_booking_service import get_selector
-
             await smart_click(page, get_selector("continue_button"), self.human_sim)
             await asyncio.sleep(2)
 
