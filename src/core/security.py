@@ -5,7 +5,7 @@ import hmac
 import logging
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from threading import RLock
 from typing import Any, Dict, Optional
 
@@ -119,7 +119,7 @@ class APIKeyManager:
             key_hash = self._hash_key(api_key)
             # Ensure created timestamp
             if "created" not in metadata:
-                metadata["created"] = datetime.now().isoformat()
+                metadata["created"] = datetime.now(timezone.utc).isoformat()
             self._keys[key_hash] = metadata
             return key_hash
 
@@ -147,7 +147,7 @@ class APIKeyManager:
 
             # Add new key with same metadata but updated timestamp
             new_metadata = metadata.copy()
-            new_metadata["rotated_at"] = datetime.now().isoformat()
+            new_metadata["rotated_at"] = datetime.now(timezone.utc).isoformat()
             new_key_hash = self._hash_key(new_api_key)
             self._keys[new_key_hash] = new_metadata
 
@@ -164,10 +164,10 @@ class APIKeyManager:
         Returns:
             Number of keys removed
         """
-        from datetime import datetime, timedelta
+        from datetime import timedelta
 
         with self._lock:
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc)
             cutoff_time = current_time - timedelta(days=max_age_days)
 
             expired_keys = []
@@ -175,7 +175,11 @@ class APIKeyManager:
                 created_str = metadata.get("created")
                 if created_str:
                     try:
+                        # Support both timezone-aware and naive datetime strings for backward compatibility
                         created_time = datetime.fromisoformat(created_str)
+                        # Make timezone-naive datetimes UTC-aware for comparison
+                        if created_time.tzinfo is None:
+                            created_time = created_time.replace(tzinfo=timezone.utc)
                         if created_time < cutoff_time:
                             expired_keys.append(key_hash)
                     except (ValueError, TypeError):
@@ -196,7 +200,7 @@ class APIKeyManager:
                 master_key,
                 {
                     "name": "master",
-                    "created": datetime.now().isoformat(),
+                    "created": datetime.now(timezone.utc).isoformat(),
                     "scopes": ["read", "write", "admin"],
                 },
             )
@@ -248,7 +252,7 @@ def load_api_keys() -> None:
         key_hash = hash_api_key(master_key)
         API_KEYS[key_hash] = {
             "name": "master",
-            "created": datetime.now().isoformat(),
+            "created": datetime.now(timezone.utc).isoformat(),
             "scopes": ["read", "write", "admin"],
         }
 

@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -71,7 +71,7 @@ class CleanupService:
                 return 0
 
             deleted_count = 0
-            cutoff_time = datetime.now().timestamp() - (self.screenshot_cleanup_days * 24 * 3600)
+            cutoff_time = datetime.now(timezone.utc).timestamp() - (self.screenshot_cleanup_days * 24 * 3600)
 
             # Iterate through all files in screenshot directory
             for screenshot_file in self.screenshot_dir.glob("*.png"):

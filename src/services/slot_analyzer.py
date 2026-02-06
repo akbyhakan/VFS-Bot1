@@ -2,7 +2,7 @@
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -46,15 +46,16 @@ class SlotPatternAnalyzer:
         duration_seconds: Optional[int] = None,
     ) -> None:
         """Bulunan slot'u kaydet."""
+        now = datetime.now(timezone.utc)
         record = {
             "country": country,
             "centre": centre,
             "category": category,
             "slot_date": date,
             "slot_time": time,
-            "found_at": datetime.now().isoformat(),
-            "found_hour": datetime.now().hour,
-            "found_weekday": datetime.now().strftime("%A"),
+            "found_at": now.isoformat(),
+            "found_hour": now.hour,
+            "found_weekday": now.strftime("%A"),
             "duration_seconds": duration_seconds,
         }
         self._patterns["slots"].append(record)
@@ -63,12 +64,19 @@ class SlotPatternAnalyzer:
 
     def analyze_patterns(self, days: int = 30) -> Dict[str, Any]:
         """Son N gündeki pattern'leri analiz et."""
-        cutoff = datetime.now() - timedelta(days=days)
-        recent_slots = [
-            s
-            for s in self._patterns.get("slots", [])
-            if datetime.fromisoformat(s["found_at"]) > cutoff
-        ]
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        recent_slots = []
+        for s in self._patterns.get("slots", []):
+            try:
+                # Support both timezone-aware and naive datetime strings for backward compatibility
+                found_at = datetime.fromisoformat(s["found_at"])
+                # Make timezone-naive datetimes UTC-aware for comparison
+                if found_at.tzinfo is None:
+                    found_at = found_at.replace(tzinfo=timezone.utc)
+                if found_at > cutoff:
+                    recent_slots.append(s)
+            except (ValueError, KeyError):
+                continue
 
         if not recent_slots:
             return {"message": "Yeterli veri yok"}

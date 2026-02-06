@@ -46,7 +46,7 @@ import asyncio
 import logging
 import time
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, Type, TypeVar
@@ -164,7 +164,7 @@ class CircuitBreaker:
         if self._state == CircuitState.OPEN:
             # Check if enough time has passed to attempt recovery
             if self._last_failure_time:
-                time_since_failure = datetime.now() - self._last_failure_time
+                time_since_failure = datetime.now(timezone.utc) - self._last_failure_time
                 if time_since_failure >= timedelta(seconds=self.timeout_seconds):
                     self._state = CircuitState.HALF_OPEN
                     self._half_open_successes = 0
@@ -188,7 +188,7 @@ class CircuitBreaker:
         """Record a failed call."""
         async with self._lock:
             self._failure_count += 1
-            self._last_failure_time = datetime.now()
+            self._last_failure_time = datetime.now(timezone.utc)
 
             # Track error timestamp for window-based threshold
             if self._max_errors_per_hour:
@@ -228,7 +228,7 @@ class CircuitBreaker:
         if self._last_failure_time is None:
             return False
 
-        time_since_failure = datetime.now() - self._last_failure_time
+        time_since_failure = datetime.now(timezone.utc) - self._last_failure_time
         return time_since_failure >= timedelta(seconds=self.timeout_seconds)
 
     async def can_execute(self) -> bool:
