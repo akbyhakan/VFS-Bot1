@@ -11,9 +11,6 @@ Public API:
 - CircuitBreakerService: Fault tolerance and error tracking
 - ErrorHandler: Error capture and screenshot handling
 - SlotInfo: Type definition for slot information
-- ResourcePool: Generic round-robin resource pool
-- ReservationWorker: Country-based isolated worker
-- ReservationOrchestrator: Main orchestrator for managing workers
 """
 
 from .auth_service import AuthService
@@ -21,7 +18,6 @@ from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .circuit_breaker_service import CircuitBreakerService, CircuitBreakerStats
 from .error_handler import ErrorHandler
-from .orchestrator import ReservationOrchestrator, ReservationWorker, ResourcePool
 from .slot_checker import SlotChecker, SlotInfo
 from .vfs_bot import VFSBot
 
@@ -35,7 +31,4 @@ __all__ = [
     "CircuitBreakerService",
     "CircuitBreakerStats",
     "ErrorHandler",
-    "ResourcePool",
-    "ReservationWorker",
-    "ReservationOrchestrator",
 ]
