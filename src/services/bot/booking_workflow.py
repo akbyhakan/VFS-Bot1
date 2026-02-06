@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from ..appointment_booking_service import AppointmentBookingService
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
-    from .slot_checker import SlotChecker
+    from .slot_checker import SlotChecker, SlotInfo
     from .waitlist_handler import WaitlistHandler
 
 logger = logging.getLogger(__name__)
@@ -233,14 +233,14 @@ class BookingWorkflow:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
 
     def _build_reservation(
-        self, user: Dict[str, Any], slot: Dict[str, Any], details: Dict[str, Any]
+        self, user: Dict[str, Any], slot: "SlotInfo", details: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Build reservation data structure from user, slot, and personal details.
 
         Args:
             user: User dictionary from database
-            slot: Slot dictionary with date and time
+            slot: SlotInfo with date and time fields
             details: Personal details dictionary from database
 
         Returns:
