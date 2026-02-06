@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from playwright.async_api import Page
@@ -163,7 +163,7 @@ class BookingWorkflow:
             if self.config["bot"].get("screenshot_on_error", True):
                 try:
                     await self.error_handler.take_screenshot(
-                        page, f"error_{user['id']}_{datetime.now().timestamp()}"
+                        page, f"error_{user['id']}_{datetime.now(timezone.utc).timestamp()}"
                     )
                 except Exception as screenshot_error:
                     logger.error(f"Failed to take screenshot: {screenshot_error}")

@@ -5,32 +5,32 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_complete_payment_flow(database):
-    """Test: Save card (no CVV) → Payment with runtime CVV → Verify CVV not stored."""
+    """Test: Save card with CVV → Retrieve card → Verify CVV is encrypted and decrypted."""
     db = database
 
-    # 1. Save card WITHOUT CVV
+    # 1. Save card WITH CVV
     await db.save_payment_card(
         {
             "card_holder_name": "Test User",
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "123",
         }
     )
 
     # 2. Retrieve card
     card = await db.get_payment_card()
 
-    # 3. Verify CVV is NOT in retrieved data
-    assert "cvv" not in card
-    assert "cvv_encrypted" not in card
+    # 3. Verify CVV is decrypted and available
+    assert card is not None
+    assert card["cvv"] == "123"
+    assert "cvv_encrypted" not in card  # Encrypted field should be removed
 
-    # 4. Simulate payment with runtime CVV
-    # (payment processing would happen here)
-
-    # 5. Verify CVV still not in database after payment
-    card_after = await db.get_payment_card()
-    assert "cvv" not in card_after
+    # 4. Verify masked card does NOT include CVV
+    masked_card = await db.get_payment_card_masked()
+    assert "cvv" not in masked_card
+    assert "cvv_encrypted" not in masked_card
 
 
 @pytest.mark.asyncio
@@ -53,17 +53,18 @@ async def test_cvv_memory_cleanup():
 
 
 @pytest.mark.asyncio
-async def test_card_without_cvv_field(database):
-    """Test: Saving card without CVV field succeeds."""
+async def test_card_with_cvv_field(database):
+    """Test: Saving card with CVV field succeeds and encrypts CVV."""
     db = database
 
-    # Save card without CVV
+    # Save card with CVV
     card_id = await db.save_payment_card(
         {
             "card_holder_name": "Test User",
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "456",
         }
     )
 
@@ -74,7 +75,7 @@ async def test_card_without_cvv_field(database):
     assert card is not None
     assert card["card_holder_name"] == "Test User"
     assert card["card_number"] == "4111111111111111"
-    assert "cvv" not in card
+    assert card["cvv"] == "456"
 
 
 @pytest.mark.asyncio
@@ -89,6 +90,7 @@ async def test_masked_card_no_cvv(database):
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "789",
         }
     )
 

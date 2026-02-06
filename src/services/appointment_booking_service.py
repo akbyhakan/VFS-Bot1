@@ -4,13 +4,30 @@ import asyncio
 import logging
 import random
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
 from .otp_webhook import get_otp_service
 
 logger = logging.getLogger(__name__)
+
+
+# Turkish month name to number mapping for date parsing
+TURKISH_MONTHS = {
+    "Ocak": "01",
+    "Şubat": "02",
+    "Mart": "03",
+    "Nisan": "04",
+    "Mayıs": "05",
+    "Haziran": "06",
+    "Temmuz": "07",
+    "Ağustos": "08",
+    "Eylül": "09",
+    "Ekim": "10",
+    "Kasım": "11",
+    "Aralık": "12",
+}
 
 
 # VFS Form Selectors with Fallback Support
@@ -280,6 +297,47 @@ class AppointmentBookingService:
         self.otp_service = get_otp_service()
 
         logger.info("AppointmentBookingService initialized")
+
+    def parse_aria_label_to_date(self, aria_label: str) -> Optional[str]:
+        """
+        Parse Turkish date from aria-label to DD/MM/YYYY format.
+
+        Args:
+            aria_label: Date string in format "23 Ocak 2026" (day month_name year)
+
+        Returns:
+            Date string in DD/MM/YYYY format, or None if parsing fails
+
+        Examples:
+            >>> parse_aria_label_to_date("23 Ocak 2026")
+            "23/01/2026"
+            >>> parse_aria_label_to_date("5 Şubat 2026")
+            "05/02/2026"
+        """
+        try:
+            # aria-label format: "23 Ocak 2026"
+            parts = aria_label.strip().split()
+            if len(parts) != 3:
+                logger.warning(f"Unexpected aria-label format: {aria_label}")
+                return None
+
+            day, month_name, year = parts
+
+            # Pad day to 2 digits
+            day = day.zfill(2)
+
+            # Convert Turkish month name to number
+            month = TURKISH_MONTHS.get(month_name)
+            if not month:
+                logger.warning(f"Unknown Turkish month: {month_name}")
+                return None
+
+            # Return in DD/MM/YYYY format
+            return f"{day}/{month}/{year}"
+
+        except Exception as e:
+            logger.error(f"Failed to parse aria-label '{aria_label}': {e}")
+            return None
 
     async def wait_for_overlay(self, page: Page, timeout: int = 30000) -> None:
         """
@@ -579,6 +637,10 @@ class AppointmentBookingService:
         # Check for Captcha
         await self.handle_captcha_if_present(page)
 
+        # Get preferred dates from reservation
+        preferred_dates = reservation.get("preferred_dates", [])
+        logger.info(f"Looking for preferred dates: {preferred_dates}")
+
         # Find available dates (green bordered cells)
         available_dates = await page.locator("a.fc-daygrid-day-number").all()
 
@@ -588,13 +650,25 @@ class AppointmentBookingService:
             if aria_label:
                 # Check if this date is in preferred dates
                 # aria-label format: "23 Ocak 2026"
-                await date_elem.click()
-                selected_date = aria_label
-                logger.info(f"Selected date: {aria_label}")
-                break
+                parsed_date = self.parse_aria_label_to_date(aria_label)
+
+                if parsed_date:
+                    logger.debug(f"Available date: {parsed_date} (aria-label: {aria_label})")
+
+                    # Check if this date matches any preferred date
+                    if not preferred_dates or parsed_date in preferred_dates:
+                        await date_elem.click()
+                        selected_date = aria_label
+                        logger.info(f"Selected date: {aria_label} ({parsed_date})")
+                        break
+                    else:
+                        logger.debug(f"Skipping date {parsed_date} - not in preferred list")
 
         if not selected_date:
-            logger.error("No available date found")
+            if preferred_dates:
+                logger.error(f"No preferred date available. Preferred: {preferred_dates}")
+            else:
+                logger.error("No available date found")
             return False
 
         # Wait for time slots to load

@@ -1,6 +1,6 @@
 """Advanced selector self-healing system."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
@@ -187,7 +187,7 @@ class SelectorSelfHealing:
     ) -> None:
         """Log healing operation."""
         record = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "selector_path": selector_path,
             "old_selector": old_selector,
             "new_selector": new_selector,

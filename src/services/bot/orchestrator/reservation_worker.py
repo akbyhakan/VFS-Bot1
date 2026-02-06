@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from ..browser_manager import BrowserManager
@@ -137,7 +137,7 @@ class ReservationWorker:
                         # Booking process can be done here
 
                     self.check_count += 1
-                    self.last_check_time = datetime.now()
+                    self.last_check_time = datetime.now(timezone.utc)
 
                 except Exception as e:
                     logger.error(f"[{self.country}] Check error: {e}")

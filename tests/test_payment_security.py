@@ -1,4 +1,4 @@
-"""Tests for PCI-DSS compliant payment card security."""
+"""Tests for payment card security with CVV encryption."""
 
 import pytest
 from cryptography.fernet import Fernet
@@ -31,20 +31,21 @@ async def test_db(tmp_path, unique_encryption_key):
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_cvv_not_stored_in_database(test_db):
+async def test_cvv_stored_encrypted_in_database(test_db):
     """
-    CVV should NEVER be persisted to database (PCI-DSS requirement).
+    CVV should be encrypted when stored in the database.
 
-    This test ensures that CVV is not stored in the payment_card table,
-    which is a critical PCI-DSS compliance requirement.
+    Note: This is a personal bot where the user stores their own data
+    on their own server. CVV is encrypted for automatic payments.
     """
-    # Save card WITHOUT CVV
+    # Save card WITH CVV
     card_id = await test_db.save_payment_card(
         {
             "card_holder_name": "Test User",
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "123",
         }
     )
 
@@ -54,9 +55,9 @@ async def test_cvv_not_stored_in_database(test_db):
     card = await test_db.get_payment_card()
 
     assert card is not None
-    # Assert CVV field doesn't exist in returned data
-    assert "cvv" not in card
-    assert "cvv_encrypted" not in card
+    # Assert CVV is decrypted and available
+    assert card["cvv"] == "123"
+    assert "cvv_encrypted" not in card  # Encrypted field should be removed
 
     # Verify card has expected fields
     assert card["card_holder_name"] == "Test User"
@@ -70,7 +71,7 @@ async def test_cvv_not_stored_in_database(test_db):
 @pytest.mark.security
 async def test_masked_card_no_cvv(test_db):
     """
-    Test that masked card endpoint also doesn't expose CVV.
+    Test that masked card endpoint doesn't expose CVV.
     """
     # Save card
     await test_db.save_payment_card(
@@ -79,6 +80,7 @@ async def test_masked_card_no_cvv(test_db):
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "456",
         }
     )
 
@@ -86,7 +88,7 @@ async def test_masked_card_no_cvv(test_db):
     card = await test_db.get_payment_card_masked()
 
     assert card is not None
-    # Assert CVV is not present
+    # Assert CVV is not present in masked view
     assert "cvv" not in card
     assert "cvv_encrypted" not in card
 
@@ -128,11 +130,12 @@ async def test_connection_pool_leak_protection(test_db):
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_card_number_encryption(test_db):
+async def test_card_number_and_cvv_encryption(test_db):
     """
-    Test that card numbers are properly encrypted in the database.
+    Test that card numbers and CVV are properly encrypted in the database.
     """
     card_number = "4111111111111111"
+    cvv = "789"
 
     # Save card
     await test_db.save_payment_card(
@@ -141,26 +144,31 @@ async def test_card_number_encryption(test_db):
             "card_number": card_number,
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": cvv,
         }
     )
 
     # Query the database directly to check encryption
     async with test_db.get_connection() as conn:
         async with conn.cursor() as cursor:
-            await cursor.execute("SELECT card_number_encrypted FROM payment_card LIMIT 1")
+            await cursor.execute(
+                "SELECT card_number_encrypted, cvv_encrypted FROM payment_card LIMIT 1"
+            )
             row = await cursor.fetchone()
 
-            # The encrypted value should NOT be the plaintext card number
+            # The encrypted values should NOT be the plaintext
             assert row["card_number_encrypted"] != card_number
-            # The encrypted value should be a non-empty string
+            assert row["cvv_encrypted"] != cvv
+            # The encrypted values should be non-empty strings
             assert len(row["card_number_encrypted"]) > 0
+            assert len(row["cvv_encrypted"]) > 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_card_update_without_cvv(test_db):
+async def test_card_update_with_cvv(test_db):
     """
-    Test that updating a card doesn't require CVV.
+    Test that updating a card with CVV works correctly.
     """
     # Create initial card
     card_id = await test_db.save_payment_card(
@@ -169,16 +177,18 @@ async def test_card_update_without_cvv(test_db):
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
+            "cvv": "123",
         }
     )
 
-    # Update card (without CVV)
+    # Update card (with new CVV)
     updated_id = await test_db.save_payment_card(
         {
             "card_holder_name": "Updated User",
             "card_number": "4111111111111111",
             "expiry_month": "01",
             "expiry_year": "2026",
+            "cvv": "456",
         }
     )
 
@@ -190,6 +200,5 @@ async def test_card_update_without_cvv(test_db):
     assert card["card_holder_name"] == "Updated User"
     assert card["expiry_month"] == "01"
     assert card["expiry_year"] == "2026"
-    # CVV should still not be present
-    assert "cvv" not in card
-    assert "cvv_encrypted" not in card
+    assert card["cvv"] == "456"  # CVV should be updated
+
