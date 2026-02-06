@@ -136,6 +136,21 @@ class BookingWorkflow:
                             time=slot["time"],
                         )
 
+                        # Check for duplicate booking attempt
+                        from ..appointment_deduplication import get_deduplication_service
+
+                        dedup_service = await get_deduplication_service()
+                        is_duplicate = await dedup_service.is_duplicate(
+                            user["id"], centre, user["category"], slot["date"]
+                        )
+
+                        if is_duplicate:
+                            logger.warning(
+                                f"Skipping duplicate booking for user {user['id']}: "
+                                f"{centre}/{user['category']}/{slot['date']}"
+                            )
+                            continue  # Skip this slot and try next centre
+
                         # Get personal details
                         details = await self.db.get_personal_details(user["id"])
                         if details:
@@ -161,6 +176,11 @@ class BookingWorkflow:
                                     )
                                     await self.notifier.notify_booking_success(
                                         centre, slot["date"], slot["time"], reference
+                                    )
+
+                                    # Mark booking in deduplication service
+                                    await dedup_service.mark_booked(
+                                        user["id"], centre, user["category"], slot["date"]
                                     )
 
                                     # Clear checkpoint after successful booking
