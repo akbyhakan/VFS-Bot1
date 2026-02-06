@@ -79,6 +79,7 @@ class TestSelectPreferredTime:
 
         # Assert: Should select first 08:00 slot as fallback
         assert result is True
+        assert slots[0].clicked  # First 08:00 slot should be clicked
 
     @pytest.mark.asyncio
     async def test_select_preferred_time_skip_before_0800(self, service, mock_page):
@@ -116,6 +117,9 @@ class TestSelectPreferredTime:
 
         # Assert: Should select first 09:00+ slot (09:30)
         assert result is True
+        assert not slots[0].clicked  # 07:00 should not be clicked
+        assert not slots[1].clicked  # 08:15 should not be clicked
+        assert slots[2].clicked  # 09:30 should be clicked
 
     @pytest.mark.asyncio
     async def test_select_preferred_time_no_slots(self, service, mock_page):
@@ -146,6 +150,7 @@ class TestSelectPreferredTime:
 
         # Assert: Should still select valid 09:00 slot
         assert result is True
+        assert slots[1].clicked  # 09:00 should be clicked
 
     @pytest.mark.asyncio
     async def test_select_preferred_time_empty_text_content(self, service, mock_page):
@@ -164,6 +169,7 @@ class TestSelectPreferredTime:
 
         # Assert: Should find and select the valid 09:00 slot
         assert result is True
+        assert slots[2].clicked  # Valid 09:00 slot should be clicked
 
     @pytest.mark.asyncio
     async def test_select_preferred_time_exception_handling(self, service, mock_page):
@@ -221,3 +227,4 @@ class TestSelectPreferredTime:
 
         # Assert: Should strip whitespace and select correctly
         assert result is True
+        assert slots[0].clicked  # First 09:00+ slot should be clicked
