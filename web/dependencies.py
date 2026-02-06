@@ -58,7 +58,7 @@ class PaymentCardRequest(BaseModel):
     card_number: str
     expiry_month: str
     expiry_year: str
-    cvv: str  # Encrypted at storage, decrypted at payment time
+    cvv: str  # Stored encrypted in database
 
 
 class PaymentCardResponse(BaseModel):
