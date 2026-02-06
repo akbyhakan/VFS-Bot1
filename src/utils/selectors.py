@@ -297,6 +297,47 @@ class CountryAwareSelectorManager:
 
         return selectors
 
+    def get_all(self, path: str) -> List[str]:
+        """
+        Get all selectors for a path (primary + fallbacks).
+        
+        Args:
+            path: Dot-separated path (e.g., "booking.first_name")
+        
+        Returns:
+            List of selector strings [primary, fallback1, fallback2, ...]
+        """
+        # Try country-specific first
+        country_value = self._get_country_selector(path)
+        if country_value is not None:
+            return self._extract_all_selectors(country_value)
+        
+        # Fall back to defaults
+        value = self._get_default_selector(path)
+        if value is not None:
+            return self._extract_all_selectors(value)
+        
+        return []
+
+    def _extract_all_selectors(self, value: Any) -> List[str]:
+        """Extract all selectors from a value (dict with primary/fallbacks, string, or list)."""
+        if isinstance(value, dict):
+            result = []
+            if "primary" in value:
+                result.append(str(value["primary"]))
+            if "fallbacks" in value:
+                fallbacks = value["fallbacks"]
+                if isinstance(fallbacks, list):
+                    result.extend([str(f) for f in fallbacks])
+                else:
+                    result.append(str(fallbacks))
+            return result
+        elif isinstance(value, list):
+            return [str(v) for v in value]
+        elif isinstance(value, str):
+            return [value]
+        return []
+
     def _get_semantic(self, path: str) -> Optional[Dict[str, str]]:
         """
         Get semantic locator information for a path.
@@ -531,6 +572,16 @@ class CountryAwareSelectorManager:
                 "appointment": {
                     "centre_dropdown": "select#SelectLoc",
                     "category_dropdown": "select#SelectVisaCategory",
+                },
+                "booking": {
+                    "continue_button": {
+                        "primary": '//button[contains(., "Devam et")]',
+                        "fallbacks": ['//button[contains(., "Continue")]', "button.continue-btn"],
+                    },
+                    "save_button": {
+                        "primary": '//button[contains(., "Kaydet")]',
+                        "fallbacks": ['button[type="submit"]'],
+                    },
                 },
             },
             "countries": {},
