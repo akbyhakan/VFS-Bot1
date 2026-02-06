@@ -19,6 +19,37 @@ router = APIRouter(prefix="/api/proxy", tags=["proxy"])
 # consider using a shared cache (Redis) or database backend.
 proxy_manager = NetNutProxyManager()
 
+# Global database instance (singleton pattern)
+_db_instance = None
+_db_lock = None
+
+
+async def _get_or_create_db_lock():
+    """Get or create the database lock."""
+    global _db_lock
+    if _db_lock is None:
+        import asyncio
+
+        _db_lock = asyncio.Lock()
+    return _db_lock
+
+
+# Helper to get database instance
+async def get_db() -> Database:
+    """Get database instance for dependency injection (singleton pattern)."""
+    global _db_instance
+
+    lock = await _get_or_create_db_lock()
+    async with lock:
+        if _db_instance is None:
+            _db_instance = Database()
+            await _db_instance.connect()
+            logger.info("Database singleton instance created")
+
+    yield _db_instance
+    # Note: Do not close the database connection here - it's a singleton
+    # The connection will be closed when the application shuts down
+
 
 # Response models
 class ProxyStats(BaseModel):
@@ -44,17 +75,6 @@ class ProxyListResponse(BaseModel):
 
     proxies: List[ProxyInfo]
     stats: ProxyStats
-
-
-# Helper to get database instance
-async def get_db() -> Database:
-    """Get database instance for dependency injection."""
-    db = Database()
-    await db.connect()
-    try:
-        yield db
-    finally:
-        await db.close()
 
 
 # ================================================================================
@@ -116,7 +136,7 @@ async def add_proxy(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to add proxy: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to add proxy: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add proxy")
 
 
 @router.get("/list")
@@ -271,7 +291,7 @@ async def update_proxy(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to update proxy {proxy_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update proxy: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update proxy")
 
 
 @router.delete("/{proxy_id}")
@@ -491,7 +511,7 @@ async def upload_proxy_csv(
         raise
     except Exception as e:
         logger.error(f"Failed to upload proxy CSV: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload proxy file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload proxy file")
 
 
 # ================================================================================

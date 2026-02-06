@@ -1,10 +1,11 @@
 """Authentication routes for VFS-Bot web application."""
 
+import hmac
 import logging
 import os
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -18,12 +19,16 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/generate-key")
-async def create_api_key_endpoint(secret: str) -> Dict[str, str]:
+@limiter.limit("3/hour")
+async def create_api_key_endpoint(
+    request: Request, x_admin_secret: str = Header(..., alias="X-Admin-Secret")
+) -> Dict[str, str]:
     """
     Generate API key with admin secret - one-time use endpoint.
 
     Args:
-        secret: Admin secret from environment
+        request: FastAPI request object (required for rate limiter)
+        x_admin_secret: Admin secret from X-Admin-Secret header
 
     Returns:
         New API key
@@ -32,7 +37,11 @@ async def create_api_key_endpoint(secret: str) -> Dict[str, str]:
         HTTPException: If admin secret is invalid
     """
     admin_secret = os.getenv("ADMIN_SECRET")
-    if not admin_secret or secret != admin_secret:
+    if not admin_secret:
+        raise HTTPException(status_code=500, detail="Server configuration error")
+
+    # Use constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(x_admin_secret, admin_secret):
         raise HTTPException(status_code=403, detail="Invalid admin secret")
 
     new_key = generate_api_key()

@@ -67,18 +67,25 @@ class BotMetrics:
 
         logger.info(f"Metrics tracking initialized (retention: {retention_minutes}m)")
 
-    async def record_check(self, user_id: int, duration_ms: float) -> None:
+    async def record_check(self, user_id: int, duration_ms: float, centre: str = "unknown") -> None:
         """
         Record a slot check operation.
 
         Args:
             user_id: User ID
             duration_ms: Duration in milliseconds
+            centre: VFS centre name (default: "unknown")
         """
         async with self._lock:
             self.total_checks += 1
             self.response_times.append(duration_ms)
             self.check_timestamps.append(time.time())
+
+        # Update Prometheus metrics
+        from .prometheus_metrics import RESPONSE_TIME, MetricsHelper
+
+        MetricsHelper.record_slot_check(centre=centre, found=False)
+        RESPONSE_TIME.labels(operation="slot_check").observe(duration_ms / 1000.0)
 
     async def record_slot_found(self, user_id: int, centre: str) -> None:
         """
@@ -92,30 +99,47 @@ class BotMetrics:
             self.slots_found += 1
         logger.info(f"📊 Metrics: Slot found for user {user_id} at {centre}")
 
-    async def record_appointment_booked(self, user_id: int) -> None:
+        # Update Prometheus metrics
+        from .prometheus_metrics import MetricsHelper
+
+        MetricsHelper.record_slot_check(centre=centre, found=True)
+
+    async def record_appointment_booked(self, user_id: int, centre: str = "unknown") -> None:
         """
         Record a successful booking.
 
         Args:
             user_id: User ID
+            centre: VFS centre name
         """
         async with self._lock:
             self.appointments_booked += 1
         logger.info(f"📊 Metrics: Appointment booked for user {user_id}")
 
-    async def record_error(self, user_id: Optional[int], error_type: str) -> None:
+        # Update Prometheus metrics
+        from .prometheus_metrics import MetricsHelper
+
+        MetricsHelper.record_booking_success(centre=centre)
+
+    async def record_error(self, user_id: Optional[int], error_type: str, component: str = "bot") -> None:
         """
         Record an error.
 
         Args:
             user_id: User ID (if applicable)
             error_type: Type of error
+            component: Component where error occurred
         """
         async with self._lock:
             self.total_errors += 1
             self.errors_by_type[error_type] += 1
             if user_id:
                 self.errors_by_user[user_id] += 1
+
+        # Update Prometheus metrics
+        from .prometheus_metrics import MetricsHelper
+
+        MetricsHelper.record_error(error_type=error_type, component=component)
 
     async def record_circuit_breaker_trip(self) -> None:
         """Record circuit breaker opening."""
@@ -156,6 +180,11 @@ class BotMetrics:
         """
         async with self._lock:
             self.active_users = count
+
+        # Update Prometheus metrics
+        from .prometheus_metrics import MetricsHelper
+
+        MetricsHelper.set_active_users(count)
 
     async def set_status(self, status: str) -> None:
         """
