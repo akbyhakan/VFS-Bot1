@@ -34,7 +34,7 @@ class TestBookingWorkflowErrorCapture:
         error_handler = MagicMock()
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
-        
+
         return {
             "config": config,
             "db": db,
@@ -51,18 +51,18 @@ class TestBookingWorkflowErrorCapture:
     def test_init_with_error_capture(self, mock_dependencies):
         """Test BookingWorkflow initialization with ErrorCapture."""
         error_capture = ErrorCapture()
-        
+
         workflow = BookingWorkflow(
             **mock_dependencies,
             error_capture=error_capture,
         )
-        
+
         assert workflow.error_capture is error_capture
 
     def test_init_without_error_capture(self, mock_dependencies):
         """Test BookingWorkflow initialization without ErrorCapture creates default instance."""
         workflow = BookingWorkflow(**mock_dependencies)
-        
+
         assert workflow.error_capture is not None
         assert isinstance(workflow.error_capture, ErrorCapture)
 
@@ -72,7 +72,7 @@ class TestBookingWorkflowErrorCapture:
             **mock_dependencies,
             error_capture=None,
         )
-        
+
         assert workflow.error_capture is not None
         assert isinstance(workflow.error_capture, ErrorCapture)
 
@@ -81,12 +81,12 @@ class TestBookingWorkflowErrorCapture:
         """Test that process_user exception handler calls error_capture.capture."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
-        
+
         workflow = BookingWorkflow(
             **mock_dependencies,
             error_capture=mock_error_capture,
         )
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 123,
@@ -95,24 +95,24 @@ class TestBookingWorkflowErrorCapture:
             "country": "fra",
             "active": True,
         }
-        
+
         # Make auth_service.login raise an exception to trigger error handler
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Test login error"))
-        
+
         # Call process_user - it should catch the exception
         await workflow.process_user(mock_page, mock_user)
-        
+
         # Verify error_capture.capture was called
         mock_error_capture.capture.assert_called_once()
         call_args = mock_error_capture.capture.call_args
-        
+
         # Check that page was passed
         assert call_args[0][0] == mock_page
-        
+
         # Check that exception was passed
         assert isinstance(call_args[0][1], Exception)
         assert str(call_args[0][1]) == "Test login error"
-        
+
         # Check context
         context = call_args[1]["context"]
         assert context["step"] == "process_user"
@@ -126,15 +126,15 @@ class TestBookingWorkflowErrorCapture:
         """Test that error capture respects screenshot_on_error config."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
-        
+
         # Disable screenshot_on_error
         mock_dependencies["config"]["bot"]["screenshot_on_error"] = False
-        
+
         workflow = BookingWorkflow(
             **mock_dependencies,
             error_capture=mock_error_capture,
         )
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 456,
@@ -143,13 +143,13 @@ class TestBookingWorkflowErrorCapture:
             "country": "nld",
             "active": True,
         }
-        
+
         # Make auth_service.login raise an exception
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Test error"))
-        
+
         # Call process_user
         await workflow.process_user(mock_page, mock_user)
-        
+
         # Verify error_capture.capture was NOT called
         mock_error_capture.capture.assert_not_called()
 
@@ -158,19 +158,19 @@ class TestBookingWorkflowErrorCapture:
         """Test that process_waitlist_flow exception handler calls error_capture.capture."""
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
-        
+
         workflow = BookingWorkflow(
             **mock_dependencies,
             error_capture=mock_error_capture,
         )
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 789,
             "email": "waitlist@example.com",
             "country": "bel",
         }
-        
+
         # Setup mocks for the new form filling calls
         workflow.db.get_personal_details = AsyncMock(return_value={
             "first_name": "John",
@@ -178,26 +178,26 @@ class TestBookingWorkflowErrorCapture:
             "email": "waitlist@example.com",
         })
         workflow.booking_service.fill_all_applicants = AsyncMock()
-        
+
         # Make waitlist_handler.join_waitlist raise an exception
         workflow.waitlist_handler.join_waitlist = AsyncMock(
             side_effect=Exception("Test waitlist error")
         )
-        
+
         # Call process_waitlist_flow - it should catch the exception
         await workflow.process_waitlist_flow(mock_page, mock_user)
-        
+
         # Verify error_capture.capture was called
         mock_error_capture.capture.assert_called_once()
         call_args = mock_error_capture.capture.call_args
-        
+
         # Check that page was passed
         assert call_args[0][0] == mock_page
-        
+
         # Check that exception was passed
         assert isinstance(call_args[0][1], Exception)
         assert str(call_args[0][1]) == "Test waitlist error"
-        
+
         # Check context
         context = call_args[1]["context"]
         assert context["step"] == "waitlist_flow"
@@ -210,14 +210,14 @@ class TestBookingWorkflowErrorCapture:
     async def test_process_waitlist_flow_calls_form_filling(self, mock_dependencies):
         """Test that process_waitlist_flow calls the form filling methods."""
         workflow = BookingWorkflow(**mock_dependencies)
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 123,
             "email": "test@example.com",
             "country": "bel",
         }
-        
+
         mock_personal_details = {
             "first_name": "John",
             "last_name": "Doe",
@@ -229,7 +229,7 @@ class TestBookingWorkflowErrorCapture:
             "mobile_number": "1234567890",
             "email": "test@example.com",
         }
-        
+
         # Setup all mocks for successful flow
         workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
         workflow.db.get_personal_details = AsyncMock(return_value=mock_personal_details)
@@ -242,19 +242,19 @@ class TestBookingWorkflowErrorCapture:
             "screenshot_path": "/tmp/screenshot.png",
         })
         workflow.notifier.notify_waitlist_success = AsyncMock()
-        
+
         # Call process_waitlist_flow
         await workflow.process_waitlist_flow(mock_page, mock_user)
-        
+
         # Verify that form filling methods were called
         workflow.db.get_personal_details.assert_called_once_with(123)
         workflow.booking_service.fill_all_applicants.assert_called_once()
-        
+
         # Verify the reservation structure passed to fill_all_applicants
         call_args = workflow.booking_service.fill_all_applicants.call_args
         assert call_args[0][0] == mock_page  # page argument
         reservation = call_args[0][1]  # reservation argument
-        
+
         # Check reservation structure
         assert "preferred_dates" in reservation
         assert reservation["preferred_dates"] == [""]  # Empty date for waitlist
@@ -268,26 +268,26 @@ class TestBookingWorkflowErrorCapture:
     async def test_process_waitlist_flow_no_personal_details(self, mock_dependencies):
         """Test that process_waitlist_flow returns early if no personal details found."""
         workflow = BookingWorkflow(**mock_dependencies)
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 456,
             "email": "nodetails@example.com",
             "country": "bel",
         }
-        
+
         # Setup mocks
         workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
         workflow.db.get_personal_details = AsyncMock(return_value=None)  # No personal details
         workflow.booking_service.fill_all_applicants = AsyncMock()
         workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
-        
+
         # Call process_waitlist_flow
         await workflow.process_waitlist_flow(mock_page, mock_user)
-        
+
         # Verify form filling was NOT called
         workflow.booking_service.fill_all_applicants.assert_not_called()
-        
+
         # Verify that we returned early (checkboxes were NOT accepted)
         workflow.waitlist_handler.accept_review_checkboxes.assert_not_called()
 
@@ -298,12 +298,12 @@ class TestBookingWorkflowErrorCapture:
         mock_error_capture.capture = AsyncMock(
             side_effect=Exception("Error capture failed")
         )
-        
+
         workflow = BookingWorkflow(
             **mock_dependencies,
             error_capture=mock_error_capture,
         )
-        
+
         mock_page = AsyncMock()
         mock_user = {
             "id": 999,
@@ -312,15 +312,15 @@ class TestBookingWorkflowErrorCapture:
             "country": "deu",
             "active": True,
         }
-        
+
         # Make auth_service.login raise an exception
         workflow.auth_service.login = AsyncMock(side_effect=Exception("Login error"))
-        
+
         # Call process_user - should not raise even if error capture fails
         try:
             await workflow.process_user(mock_page, mock_user)
         except Exception as e:
             pytest.fail(f"process_user should not raise even if error capture fails: {e}")
-        
+
         # Verify error_capture.capture was called (and failed)
         mock_error_capture.capture.assert_called_once()

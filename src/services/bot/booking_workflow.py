@@ -238,6 +238,7 @@ class BookingWorkflow:
                 logger.error(f"No personal details found for user {user['id']}")
                 return
 
+            # Use empty slot for waitlist since no specific date/time is selected
             reservation = self._build_reservation(user, {"date": "", "time": ""}, details)
             await self.booking_service.fill_all_applicants(page, reservation)
             logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
