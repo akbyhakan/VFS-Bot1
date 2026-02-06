@@ -201,4 +201,3 @@ async def test_card_update_with_cvv(test_db):
     assert card["expiry_month"] == "01"
     assert card["expiry_year"] == "2026"
     assert card["cvv"] == "456"  # CVV should be updated
-

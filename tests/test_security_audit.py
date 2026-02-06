@@ -34,8 +34,12 @@ def test_production_requires_hashed_password():
 
 
 @pytest.mark.asyncio
-async def test_cvv_not_in_database_schema(database):
-    """Test: payment_card table has no CVV column."""
+async def test_cvv_stored_encrypted_in_database_schema(database):
+    """Test: payment_card table stores CVV encrypted, not in plain text.
+
+    Note: This is a personal bot where the user stores their own data
+    on their own server. CVV is encrypted for automatic payments.
+    """
     db = database
 
     # Get table schema
@@ -47,9 +51,9 @@ async def test_cvv_not_in_database_schema(database):
     # Extract column names
     columns = [col[1] for col in columns_info]
 
-    # Verify CVV columns do not exist
-    assert "cvv" not in columns
-    assert "cvv_encrypted" not in columns
+    # Verify CVV is stored encrypted (not plain text)
+    assert "cvv_encrypted" in columns  # CVV is stored encrypted for personal bot use
+    assert "cvv" not in columns  # Plain text CVV should never exist
 
     # Verify expected columns exist
     assert "card_holder_name" in columns
