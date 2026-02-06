@@ -300,10 +300,10 @@ class CountryAwareSelectorManager:
     def get_all(self, path: str) -> List[str]:
         """
         Get all selectors for a path (primary + fallbacks).
-        
+
         Args:
             path: Dot-separated path (e.g., "booking.first_name")
-        
+
         Returns:
             List of selector strings [primary, fallback1, fallback2, ...]
         """
@@ -311,12 +311,12 @@ class CountryAwareSelectorManager:
         country_value = self._get_country_selector(path)
         if country_value is not None:
             return self._extract_all_selectors(country_value)
-        
+
         # Fall back to defaults
         value = self._get_default_selector(path)
         if value is not None:
             return self._extract_all_selectors(value)
-        
+
         return []
 
     def _extract_all_selectors(self, value: Any) -> List[str]:

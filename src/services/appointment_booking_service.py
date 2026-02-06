@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
-from ..utils.selectors import CountryAwareSelectorManager, get_selector_manager
+from ..utils.selectors import get_selector_manager
 from .otp_webhook import get_otp_service
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,10 @@ TURKISH_MONTHS = {
 def get_selector_with_fallback(selector_name: str) -> List[str]:
     """
     Get selector(s) for a given name, ensuring it's always a list for fallback support.
-    
+
     Args:
         selector_name: Name of the selector (e.g., "first_name" or "booking.first_name")
-    
+
     Returns:
         List of selector strings to try in order
     """
@@ -109,25 +109,25 @@ async def try_selectors(
 def resolve_selector(selector_key: str) -> List[str]:
     """
     Resolve a selector key to a list of selectors via CountryAwareSelectorManager.
-    
+
     Args:
         selector_key: Dot-path like "booking.first_name" or flat key like "first_name"
-    
+
     Returns:
         List of selector strings (primary + fallbacks)
     """
     manager = get_selector_manager()
-    
+
     # Support both flat keys ("first_name") and dot-path ("booking.first_name")
     path = f"booking.{selector_key}" if "." not in selector_key else selector_key
-    
+
     try:
         all_selectors = manager.get_all(path)
         if all_selectors:
             return all_selectors
     except Exception:
         pass
-    
+
     # Fallback: try the key as-is (direct CSS/XPath selector)
     return [selector_key]
 
@@ -136,10 +136,10 @@ def get_selector(selector_key: str) -> str:
     """
     Get a single selector string.
     Returns the primary selector from CountryAwareSelectorManager.
-    
+
     Args:
         selector_key: Selector key (e.g., "first_name" or "booking.first_name")
-    
+
     Returns:
         First selector string
     """
@@ -347,7 +347,8 @@ class AppointmentBookingService:
             message = f"✅ Uygun randevu bulundu! {found_capacity} kişilik, {found_date}"
         elif not capacity_match and not date_match:
             message = (
-                f"❌ Kapasite ({found_capacity}<{required_capacity}) ve tarih ({found_date}) uyumsuz"
+                f"❌ Kapasite ({found_capacity}<{required_capacity}) ve "
+                f"tarih ({found_date}) uyumsuz"
             )
         elif not capacity_match:
             message = f"❌ Yetersiz kapasite: {found_capacity} < {required_capacity}"
@@ -646,14 +647,12 @@ class AppointmentBookingService:
 
             if self.captcha_solver:
                 # Extract sitekey and solve
-                sitekey = await page.evaluate(
-                    """
+                sitekey = await page.evaluate("""
                     () => {
                         const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
                         return widget ? widget.getAttribute('data-sitekey') : null;
                     }
-                """
-                )
+                """)
 
                 if sitekey:
                     token = await self.captcha_solver.solve_turnstile(page.url, sitekey)
