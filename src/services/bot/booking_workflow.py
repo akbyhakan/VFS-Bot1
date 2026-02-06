@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from playwright.async_api import Page
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
-from ...constants import Retries, Timeouts
+from ...constants import Retries
 from ...models.database import Database
 from ...utils.anti_detection.human_simulator import HumanSimulator
-from ...utils.helpers import smart_click, smart_fill, wait_for_selector_smart
+from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..appointment_booking_service import get_selector
 from ..notification import NotificationService
@@ -135,12 +135,17 @@ class BookingWorkflow:
                         # Get personal details
                         details = await self.db.get_personal_details(user["id"])
                         if details:
-                            # Fill details and book
-                            if await self.fill_personal_details(page, details):
-                                reference = await self.book_appointment(
-                                    page, slot["date"], slot["time"]
+                            # Build reservation data and run booking flow
+                            reservation = self._build_reservation(user, slot, details)
+                            success = await self.booking_service.run_booking_flow(page, reservation)
+
+                            if success:
+                                # Verify booking confirmation and extract reference
+                                confirmation = (
+                                    await self.booking_service.verify_booking_confirmation(page)
                                 )
-                                if reference:
+                                if confirmation.get("success"):
+                                    reference = confirmation.get("reference", "UNKNOWN")
                                     await self.db.add_appointment(
                                         user["id"],
                                         centre,
@@ -157,6 +162,12 @@ class BookingWorkflow:
                                     # Clear checkpoint after successful booking
                                     self.session_recovery.clear_checkpoint()
                                     logger.info("Booking completed - checkpoint cleared")
+                                else:
+                                    logger.error(
+                                        f"Booking verification failed: {confirmation.get('error')}"
+                                    )
+                            else:
+                                logger.error("Booking flow failed")
                         break
         except Exception as e:
             logger.error(f"Error processing user {masked_email}: {e}")
@@ -221,75 +232,45 @@ class BookingWorkflow:
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
 
-    async def fill_personal_details(self, page: Page, details: Dict[str, Any]) -> bool:
+    def _build_reservation(
+        self, user: Dict[str, Any], slot: Dict[str, Any], details: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
-        Fill personal details form.
+        Build reservation data structure from user, slot, and personal details.
 
         Args:
-            page: Playwright page object
-            details: Personal details dictionary
+            user: User dictionary from database
+            slot: Slot dictionary with date and time
+            details: Personal details dictionary from database
 
         Returns:
-            True if successful
+            Reservation dictionary compatible with AppointmentBookingService
         """
-        try:
-            # Wait for form to load
-            await wait_for_selector_smart(page, "input#first_name", timeout=Timeouts.SELECTOR_WAIT)
+        # Build person data structure
+        person = {
+            "first_name": details.get("first_name", ""),
+            "last_name": details.get("last_name", ""),
+            "gender": details.get("gender", "male"),
+            "birth_date": details.get("date_of_birth", ""),
+            "passport_number": details.get("passport_number", ""),
+            "passport_expiry_date": details.get("passport_expiry", ""),
+            "phone_code": details.get("mobile_code", "90"),
+            "phone_number": details.get("mobile_number", ""),
+            "email": details.get("email", ""),
+            "is_child_with_parent": False,  # Default to false, can be enhanced later
+        }
 
-            # Fill form fields with human simulation
-            await smart_fill(
-                page, "input#first_name", details.get("first_name", ""), self.human_sim
-            )
-            await smart_fill(page, "input#last_name", details.get("last_name", ""), self.human_sim)
-            await smart_fill(
-                page, "input#passport_number", details.get("passport_number", ""), self.human_sim
-            )
-            await smart_fill(page, "input#email", details.get("email", ""), self.human_sim)
+        # Build reservation structure
+        reservation = {
+            "person_count": 1,  # Currently handling single person, can be enhanced for multiple
+            "preferred_dates": [slot["date"]],  # Use the slot date found
+            "persons": [person],
+            # Payment card info would come from config or user data
+            # For now, we'll rely on the booking service to handle payment if needed
+        }
 
-            if details.get("mobile_number"):
-                await smart_fill(
-                    page, "input#mobile", details.get("mobile_number", ""), self.human_sim
-                )
+        # Add payment card info if available in config
+        if "payment" in self.config and "card" in self.config["payment"]:
+            reservation["payment_card"] = self.config["payment"]["card"]
 
-            if details.get("date_of_birth"):
-                await smart_fill(
-                    page, "input#dob", details.get("date_of_birth", ""), self.human_sim
-                )
-
-            logger.info("Personal details filled successfully")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error filling personal details: {e}")
-            return False
-
-    async def book_appointment(self, page: Page, date: str, time: str) -> Optional[str]:
-        """
-        Complete appointment booking.
-
-        Args:
-            page: Playwright page object
-            date: Appointment date
-            time: Appointment time
-
-        Returns:
-            Reference number if successful
-        """
-        try:
-            # Click continue/book button with human simulation
-            await smart_click(page, "button#book-appointment", self.human_sim)
-            await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
-
-            # Wait for confirmation page
-            await wait_for_selector_smart(page, ".confirmation", timeout=Timeouts.SELECTOR_WAIT)
-
-            # Extract reference number
-            reference_text = await page.locator(".reference-number").text_content()
-            reference: str = reference_text.strip() if reference_text else ""
-
-            logger.info(f"Appointment booked! Reference: {reference}")
-            return reference if reference else None
-
-        except Exception as e:
-            logger.error(f"Error booking appointment: {e}")
-            return None
+        return reservation

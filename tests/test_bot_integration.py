@@ -87,44 +87,55 @@ async def test_check_slots_not_available(mock_page, config, mock_db, mock_notifi
 
 
 @pytest.mark.asyncio
-async def test_fill_personal_details(mock_page, config, mock_db, mock_notifier):
-    """Test filling personal details form."""
+async def test_build_reservation(config, mock_db, mock_notifier):
+    """Test building reservation data structure from user, slot, and details."""
     bot = VFSBot(config, mock_db, mock_notifier)
+
+    user = {
+        "id": 1,
+        "email": "test@example.com",
+        "centre": "Istanbul",
+        "category": "Schengen Visa",
+    }
+
+    slot = {"date": "15/02/2024", "time": "10:00"}
 
     details = {
         "first_name": "John",
         "last_name": "Doe",
+        "gender": "male",
+        "date_of_birth": "01/01/1990",
         "passport_number": "AB123456",
+        "passport_expiry": "01/01/2030",
+        "mobile_code": "90",
+        "mobile_number": "5551234567",
         "email": "test@example.com",
-        "mobile_number": "+905551234567",
-        "date_of_birth": "1990-01-01",
     }
 
-    result = await bot.booking_workflow.fill_personal_details(mock_page, details)
+    # Build reservation
+    reservation = bot.booking_workflow._build_reservation(user, slot, details)
 
-    assert result is True
-    # Verify fields were filled
-    assert mock_page.fill.call_count >= 4  # At least 4 required fields
+    # Verify reservation structure
+    assert reservation["person_count"] == 1
+    assert reservation["preferred_dates"] == ["15/02/2024"]
+    assert len(reservation["persons"]) == 1
 
-
-@pytest.mark.asyncio
-async def test_book_appointment_success(mock_page, config, mock_db, mock_notifier):
-    """Test successful appointment booking."""
-    bot = VFSBot(config, mock_db, mock_notifier)
-
-    # Mock successful booking
-    mock_reference = MagicMock()
-    mock_reference.text_content = AsyncMock(return_value="REF-123456")
-    mock_page.locator.return_value = mock_reference
-
-    reference = await bot.booking_workflow.book_appointment(mock_page, "2024-02-15", "10:00")
-
-    assert reference == "REF-123456"
+    person = reservation["persons"][0]
+    assert person["first_name"] == "John"
+    assert person["last_name"] == "Doe"
+    assert person["gender"] == "male"
+    assert person["birth_date"] == "01/01/1990"
+    assert person["passport_number"] == "AB123456"
+    assert person["passport_expiry_date"] == "01/01/2030"
+    assert person["phone_code"] == "90"
+    assert person["phone_number"] == "5551234567"
+    assert person["email"] == "test@example.com"
+    assert person["is_child_with_parent"] is False
 
 
 @pytest.mark.asyncio
 async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
-    """Test processing user when slot is found."""
+    """Test processing user when slot is found and booking succeeds."""
     bot = VFSBot(config, mock_db, mock_notifier)
 
     user = {
@@ -144,15 +155,25 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
     with (
         patch.object(bot.auth_service, "login", return_value=True),
         patch.object(
-            bot.slot_checker, "check_slots", return_value={"date": "2024-02-15", "time": "10:00"}
+            bot.slot_checker, "check_slots", return_value={"date": "15/02/2024", "time": "10:00"}
         ),
-        patch.object(bot.booking_workflow, "fill_personal_details", return_value=True),
-        patch.object(bot.booking_workflow, "book_appointment", return_value="REF-123456"),
+        patch.object(bot.booking_service, "run_booking_flow", return_value=True),
+        patch.object(
+            bot.booking_service,
+            "verify_booking_confirmation",
+            return_value={"success": True, "reference": "REF-123456"},
+        ),
+        patch.object(bot.waitlist_handler, "detect_waitlist_mode", return_value=False),
     ):
         mock_db.get_personal_details.return_value = {
             "first_name": "John",
             "last_name": "Doe",
             "passport_number": "AB123456",
+            "passport_expiry": "01/01/2030",
+            "gender": "male",
+            "date_of_birth": "01/01/1990",
+            "mobile_code": "90",
+            "mobile_number": "5551234567",
             "email": "test@example.com",
         }
 
