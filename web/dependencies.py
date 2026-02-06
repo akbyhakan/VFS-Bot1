@@ -52,12 +52,13 @@ class TokenResponse(BaseModel):
 
 
 class PaymentCardRequest(BaseModel):
-    """Payment card request model - CVV removed for PCI-DSS compliance."""
+    """Payment card request model."""
 
     card_holder_name: str
     card_number: str
     expiry_month: str
     expiry_year: str
+    cvv: str  # Encrypted at storage, decrypted at payment time
 
 
 class PaymentCardResponse(BaseModel):
@@ -72,10 +73,9 @@ class PaymentCardResponse(BaseModel):
 
 
 class PaymentInitiateRequest(BaseModel):
-    """Payment initiation with runtime CVV."""
+    """Payment initiation request."""
 
     appointment_id: int
-    cvv: str  # Only in memory, never stored
 
 
 class WebhookUrlsResponse(BaseModel):

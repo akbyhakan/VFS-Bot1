@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.models.database import Database
-from src.utils.secure_memory import SecureCVV
 from web.dependencies import (
     PaymentCardRequest,
     PaymentCardResponse,
@@ -58,13 +57,13 @@ async def save_payment_card(
     card_data: PaymentCardRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
-    Save payment card WITHOUT CVV (PCI-DSS compliant).
+    Save payment card with CVV.
 
-    Security Note:
-        CVV is NEVER stored. It must be provided at payment time.
+    Note: This is a personal bot where the user stores their own data
+    on their own server. CVV is encrypted and stored for automatic payments.
 
     Args:
-        card_data: Payment card data
+        card_data: Payment card data including CVV
         token_data: Verified token data
 
     Returns:
@@ -81,6 +80,7 @@ async def save_payment_card(
                     "card_number": card_data.card_number,
                     "expiry_month": card_data.expiry_month,
                     "expiry_year": card_data.expiry_year,
+                    "cvv": card_data.cvv,
                 }
             )
 
@@ -136,53 +136,49 @@ async def initiate_payment(
     request: PaymentInitiateRequest, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ):
     """
-    Initiate payment with runtime CVV.
+    Initiate payment with CVV from database.
 
-    Security:
-    - CVV exists only in memory during this request
-    - Securely cleared using ctypes memory zeroing
-    - Never logged or persisted to disk
+    Note: CVV is retrieved from encrypted database storage for automatic payments.
 
     Args:
-        request: Payment initiation data with CVV
+        request: Payment initiation data with appointment_id
         token_data: JWT token data
 
     Returns:
         Payment result
     """
-    # Use secure context manager for CVV handling
-    with SecureCVV(request.cvv):
+    try:
+        db = Database()
+        await db.connect()
+
         try:
-            db = Database()
-            await db.connect()
+            # Get appointment
+            appointment = await db.get_appointment_request(request.appointment_id)
+            if not appointment:
+                raise HTTPException(404, "Appointment not found")
 
-            try:
-                # Get appointment
-                appointment = await db.get_appointment_request(request.appointment_id)
-                if not appointment:
-                    raise HTTPException(404, "Appointment not found")
+            # Get saved card with decrypted CVV
+            card = await db.get_payment_card()
+            if not card:
+                raise HTTPException(404, "No payment card saved")
 
-                # Get saved card (without CVV)
-                card = await db.get_payment_card()
-                if not card:
-                    raise HTTPException(404, "No payment card saved")
+            if not card.get("cvv"):
+                raise HTTPException(400, "CVV not found in saved card")
 
-                # Process payment with runtime CVV
-                # Note: secure_cvv is the decrypted CVV string available only in this context
-                # TODO: Implement actual payment processing
-                logger.info(f"Payment initiated for appointment {request.appointment_id}")
+            # Process payment with CVV from database
+            # TODO: Implement actual payment processing
+            logger.info(f"Payment initiated for appointment {request.appointment_id}")
 
-                return {
-                    "success": True,
-                    "message": "Payment completed",
-                    "appointment_id": request.appointment_id,
-                }
+            return {
+                "success": True,
+                "message": "Payment completed",
+                "appointment_id": request.appointment_id,
+            }
 
-            finally:
-                await db.close()
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Payment processing error: {e}")
-            raise HTTPException(500, "Payment processing failed")
-    # CVV is automatically and securely cleared when exiting the context
+        finally:
+            await db.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payment processing error: {e}")
+        raise HTTPException(500, "Payment processing failed")
