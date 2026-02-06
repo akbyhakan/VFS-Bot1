@@ -602,32 +602,60 @@ class AppointmentBookingService:
 
     async def select_preferred_time(self, page: Page) -> bool:
         """
-        Select first available time slot.
-
-        Note: Current implementation selects first available slot.
-        Future enhancement: Implement preference for 09:00+ slots.
+        Akıllı saat seçimi:
+        - Öncelik 1: 09:00 ve sonrası slot (tercih edilen)
+        - Öncelik 2: 08:00-08:59 arası slot (sadece 09:00+ yoksa)
+        - 08:00 öncesi slotlar → alınmaz
 
         Args:
             page: Playwright page
 
         Returns:
-            True if time selected
+            True if acceptable time selected
         """
         try:
-            # Wait for time slots
             await page.wait_for_selector(get_selector("time_slot_button"), timeout=10000)
-
-            # Get all time rows
             time_buttons = await page.locator(get_selector("time_slot_button")).all()
 
             if not time_buttons:
                 return False
 
-            # Try to find 09:00+ slot
-            # For now, just click the first available
-            await time_buttons[0].click()
-            logger.info("Time slot selected")
-            return True
+            preferred_slots = []   # 09:00+
+            fallback_slots = []    # 08:00-08:59
+
+            for button in time_buttons:
+                time_text = await button.text_content()
+                if not time_text:
+                    continue
+                time_text = time_text.strip()
+
+                try:
+                    hour = int(time_text.split(":")[0])
+                except (ValueError, IndexError):
+                    continue
+
+                if hour >= 9:
+                    preferred_slots.append((button, time_text))
+                elif hour >= 8:
+                    fallback_slots.append((button, time_text))
+                # hour < 8 → skip
+
+            # Öncelik 1: 09:00+ slot
+            if preferred_slots:
+                button, time_text = preferred_slots[0]
+                await button.click()
+                logger.info(f"✅ Preferred time slot selected: {time_text} (09:00+)")
+                return True
+
+            # Öncelik 2: 08:00-09:00 arası (sadece 09:00+ yoksa)
+            if fallback_slots:
+                button, time_text = fallback_slots[0]
+                await button.click()
+                logger.info(f"⚠️ Fallback time slot selected: {time_text} (08:00-09:00, no 09:00+ available)")
+                return True
+
+            logger.warning("No acceptable time slots found (all before 08:00)")
+            return False
 
         except Exception as e:
             logger.error(f"Error selecting time: {e}")
