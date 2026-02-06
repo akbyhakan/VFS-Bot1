@@ -13,6 +13,7 @@ from web.dependencies import (
     AppointmentRequestResponse,
     CountryResponse,
     WebhookUrlsResponse,
+    get_db,
     verify_jwt_token,
 )
 
@@ -80,7 +81,9 @@ async def get_country_centres(country_code: str):
 
 @router.post("/appointment-requests", status_code=201)
 async def create_appointment_request(
-    request_data: AppointmentRequestCreate, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request_data: AppointmentRequestCreate,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Create a new appointment request.
@@ -88,46 +91,41 @@ async def create_appointment_request(
     Args:
         request_data: Appointment request data
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Created appointment request info
     """
     try:
-        db = Database()
-        await db.connect()
-
-        try:
-            # Validate person count matches persons list
-            if request_data.person_count != len(request_data.persons):
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Person count ({request_data.person_count}) does not match "
-                        f"number of persons provided ({len(request_data.persons)})"
-                    ),
-                )
-
-            # Convert persons to dict
-            persons_data = [person.dict() for person in request_data.persons]
-
-            # Create request in database
-            request_id = await db.create_appointment_request(
-                country_code=request_data.country_code,
-                visa_category=request_data.visa_category,
-                visa_subcategory=request_data.visa_subcategory,
-                centres=request_data.centres,
-                preferred_dates=request_data.preferred_dates,
-                person_count=request_data.person_count,
-                persons=persons_data,
+        # Validate person count matches persons list
+        if request_data.person_count != len(request_data.persons):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Person count ({request_data.person_count}) does not match "
+                    f"number of persons provided ({len(request_data.persons)})"
+                ),
             )
 
-            logger.info(
-                f"Appointment request {request_id} created by {token_data.get('sub', 'unknown')}"
-            )
+        # Convert persons to dict
+        persons_data = [person.dict() for person in request_data.persons]
 
-            return {"id": request_id, "status": "pending", "message": "Talep oluşturuldu"}
-        finally:
-            await db.close()
+        # Create request in database
+        request_id = await db.create_appointment_request(
+            country_code=request_data.country_code,
+            visa_category=request_data.visa_category,
+            visa_subcategory=request_data.visa_subcategory,
+            centres=request_data.centres,
+            preferred_dates=request_data.preferred_dates,
+            person_count=request_data.person_count,
+            persons=persons_data,
+        )
+
+        logger.info(
+            f"Appointment request {request_id} created by {token_data.get('sub', 'unknown')}"
+        )
+
+        return {"id": request_id, "status": "pending", "message": "Talep oluşturuldu"}
     except HTTPException:
         raise
     except ValidationError as e:
@@ -140,7 +138,9 @@ async def create_appointment_request(
 
 @router.get("/appointment-requests", response_model=List[AppointmentRequestResponse])
 async def get_appointment_requests(
-    status: Optional[str] = None, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    status: Optional[str] = None,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Get all appointment requests.
@@ -148,45 +148,40 @@ async def get_appointment_requests(
     Args:
         status: Optional status filter
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         List of appointment requests
     """
     try:
-        db = Database()
-        await db.connect()
+        requests = await db.get_all_appointment_requests(status=status)
 
-        try:
-            requests = await db.get_all_appointment_requests(status=status)
+        # Convert to response model
+        response_requests = []
+        for req in requests:
+            # Remove internal fields from persons
+            persons = [
+                {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
+                for person in req["persons"]
+            ]
 
-            # Convert to response model
-            response_requests = []
-            for req in requests:
-                # Remove internal fields from persons
-                persons = [
-                    {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
-                    for person in req["persons"]
-                ]
-
-                response_requests.append(
-                    AppointmentRequestResponse(
-                        id=req["id"],
-                        country_code=req["country_code"],
-                        visa_category=req["visa_category"],
-                        visa_subcategory=req["visa_subcategory"],
-                        centres=req["centres"],
-                        preferred_dates=req["preferred_dates"],
-                        person_count=req["person_count"],
-                        status=req["status"],
-                        created_at=req["created_at"],
-                        completed_at=req.get("completed_at"),
-                        persons=persons,
-                    )
+            response_requests.append(
+                AppointmentRequestResponse(
+                    id=req["id"],
+                    country_code=req["country_code"],
+                    visa_category=req["visa_category"],
+                    visa_subcategory=req["visa_subcategory"],
+                    centres=req["centres"],
+                    preferred_dates=req["preferred_dates"],
+                    person_count=req["person_count"],
+                    status=req["status"],
+                    created_at=req["created_at"],
+                    completed_at=req.get("completed_at"),
+                    persons=persons,
                 )
+            )
 
-            return response_requests
-        finally:
-            await db.close()
+        return response_requests
     except Exception as e:
         logger.error(f"Failed to get appointment requests: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get appointment requests")
@@ -194,7 +189,9 @@ async def get_appointment_requests(
 
 @router.get("/appointment-requests/{request_id}", response_model=AppointmentRequestResponse)
 async def get_appointment_request(
-    request_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Get a specific appointment request.
@@ -202,41 +199,36 @@ async def get_appointment_request(
     Args:
         request_id: Request ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Appointment request details
     """
     try:
-        db = Database()
-        await db.connect()
+        req = await db.get_appointment_request(request_id)
 
-        try:
-            req = await db.get_appointment_request(request_id)
+        if not req:
+            raise HTTPException(status_code=404, detail="Appointment request not found")
 
-            if not req:
-                raise HTTPException(status_code=404, detail="Appointment request not found")
+        # Remove internal fields from persons
+        persons = [
+            {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
+            for person in req["persons"]
+        ]
 
-            # Remove internal fields from persons
-            persons = [
-                {k: v for k, v in person.items() if k != "request_id" and k != "created_at"}
-                for person in req["persons"]
-            ]
-
-            return AppointmentRequestResponse(
-                id=req["id"],
-                country_code=req["country_code"],
-                visa_category=req["visa_category"],
-                visa_subcategory=req["visa_subcategory"],
-                centres=req["centres"],
-                preferred_dates=req["preferred_dates"],
-                person_count=req["person_count"],
-                status=req["status"],
-                created_at=req["created_at"],
-                completed_at=req.get("completed_at"),
-                persons=persons,
-            )
-        finally:
-            await db.close()
+        return AppointmentRequestResponse(
+            id=req["id"],
+            country_code=req["country_code"],
+            visa_category=req["visa_category"],
+            visa_subcategory=req["visa_subcategory"],
+            centres=req["centres"],
+            preferred_dates=req["preferred_dates"],
+            person_count=req["person_count"],
+            status=req["status"],
+            created_at=req["created_at"],
+            completed_at=req.get("completed_at"),
+            persons=persons,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -246,7 +238,9 @@ async def get_appointment_request(
 
 @router.delete("/appointment-requests/{request_id}")
 async def delete_appointment_request(
-    request_id: int, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Delete an appointment request.
@@ -254,27 +248,22 @@ async def delete_appointment_request(
     Args:
         request_id: Request ID
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Success message
     """
     try:
-        db = Database()
-        await db.connect()
+        deleted = await db.delete_appointment_request(request_id)
 
-        try:
-            deleted = await db.delete_appointment_request(request_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Appointment request not found")
 
-            if not deleted:
-                raise HTTPException(status_code=404, detail="Appointment request not found")
+        logger.info(
+            f"Appointment request {request_id} deleted by {token_data.get('sub', 'unknown')}"
+        )
 
-            logger.info(
-                f"Appointment request {request_id} deleted by {token_data.get('sub', 'unknown')}"
-            )
-
-            return {"success": True, "message": "Appointment request deleted"}
-        finally:
-            await db.close()
+        return {"success": True, "message": "Appointment request deleted"}
     except HTTPException:
         raise
     except Exception as e:
@@ -287,6 +276,7 @@ async def update_appointment_request_status(
     request_id: int,
     status_update: Dict[str, str],
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    db: Database = Depends(get_db),
 ):
     """
     Update appointment request status.
@@ -295,6 +285,7 @@ async def update_appointment_request_status(
         request_id: Request ID
         status_update: Dict with 'status' key
         token_data: Verified token data
+        db: Database instance
 
     Returns:
         Success message
@@ -312,28 +303,22 @@ async def update_appointment_request_status(
         if status not in ["pending", "processing", "completed", "failed"]:
             raise HTTPException(status_code=400, detail="Invalid status value")
 
-        db = Database()
-        await db.connect()
+        # Set completed_at timestamp only when status becomes 'completed'
+        completed_at = datetime.now(timezone.utc) if status == "completed" else None
 
-        try:
-            # Set completed_at timestamp only when status becomes 'completed'
-            completed_at = datetime.now(timezone.utc) if status == "completed" else None
+        updated = await db.update_appointment_request_status(
+            request_id=request_id, status=status, completed_at=completed_at
+        )
 
-            updated = await db.update_appointment_request_status(
-                request_id=request_id, status=status, completed_at=completed_at
-            )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Appointment request not found")
 
-            if not updated:
-                raise HTTPException(status_code=404, detail="Appointment request not found")
+        logger.info(
+            f"Appointment request {request_id} status updated to {status} "
+            f"by {token_data.get('sub', 'unknown')}"
+        )
 
-            logger.info(
-                f"Appointment request {request_id} status updated to {status} "
-                f"by {token_data.get('sub', 'unknown')}"
-            )
-
-            return {"success": True, "message": f"Status updated to {status}"}
-        finally:
-            await db.close()
+        return {"success": True, "message": f"Status updated to {status}"}
     except HTTPException:
         raise
     except Exception as e:
