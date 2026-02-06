@@ -1,8 +1,10 @@
 """FastAPI web dashboard with WebSocket support for VFS-Bot."""
 
+import asyncio
 import ipaddress
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
@@ -35,6 +37,53 @@ from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan context manager for startup and shutdown.
+
+    Handles:
+    - Database connection on startup
+    - Database cleanup on shutdown
+    - OTP service cleanup on shutdown
+    """
+    # Startup
+    logger.info("FastAPI application starting up...")
+    try:
+        # Ensure database is connected
+        await DatabaseFactory.ensure_connected()
+        logger.info("Database connection established via DatabaseFactory")
+    except Exception as e:
+        logger.error(f"Failed to connect database during startup: {e}")
+        raise
+
+    yield
+
+    # Shutdown
+    logger.info("FastAPI application shutting down...")
+
+    # Stop OTP cleanup scheduler
+    try:
+        from src.services.otp_webhook import get_otp_service
+
+        otp_service = get_otp_service()
+        await asyncio.wait_for(otp_service.stop_cleanup_scheduler(), timeout=5)
+        logger.info("OTP service cleanup completed")
+    except asyncio.TimeoutError:
+        logger.warning("OTP service cleanup timed out after 5s")
+    except Exception as e:
+        logger.error(f"Error cleaning up OTP service: {e}")
+
+    # Close database with timeout protection
+    try:
+        await asyncio.wait_for(DatabaseFactory.close_instance(), timeout=10)
+        logger.info("DatabaseFactory instance closed successfully")
+    except asyncio.TimeoutError:
+        logger.error("DatabaseFactory close timed out after 10s")
+    except Exception as e:
+        logger.error(f"Error closing DatabaseFactory: {e}")
 
 
 # Valid environment names (whitelist for security)
@@ -152,10 +201,11 @@ def get_real_client_ip(request: Request) -> str:
     return client_host if is_valid_ip(client_host) else "unknown"
 
 
-# Create FastAPI app with enhanced OpenAPI documentation
+# Create FastAPI app with enhanced OpenAPI documentation and lifespan
 app = FastAPI(
     title="VFS-Bot Dashboard API",
     version="2.0.0",
+    lifespan=lifespan,
     description="""
 ## VFS Global Appointment Booking Bot API
 
@@ -311,14 +361,6 @@ app.include_router(proxy_router)  # /api/proxy/*
 app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
 app.include_router(health_router)  # /health, /ready, /metrics
 app.include_router(dashboard_router)  # /errors.html
-
-
-# Application lifecycle events
-@app.on_event("shutdown")
-async def shutdown_db():
-    """Shutdown database singleton instance."""
-    await DatabaseFactory.close_instance()
-    logger.info("Database singleton instance closed")
 
 
 # WebSocket endpoint (must be added directly, not via router)
