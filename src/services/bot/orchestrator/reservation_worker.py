@@ -287,6 +287,11 @@ class ReservationWorker:
         Process a single check iteration.
 
         Delegates to BookingWorkflow.process_user() for actual business logic.
+        BookingWorkflow handles slot detection, booking, and notifications internally.
+
+        Returns:
+            Dict with slot_found=False (BookingWorkflow handles its own notifications)
+            or error dict if check fails
         """
         if not self.current_account:
             return {"slot_found": False, "error": "No account available"}
@@ -294,7 +299,9 @@ class ReservationWorker:
         try:
             workflow = self._create_booking_workflow()
             await workflow.process_user(page, self.current_account)
-            return {"slot_found": True}
+            # BookingWorkflow handles all notifications internally
+            # Return False to avoid duplicate notifications in run_check_loop
+            return {"slot_found": False}
         except Exception as e:
             logger.error(f"[{self.country}] Error in _process_check: {e}", exc_info=True)
             return {"slot_found": False, "error": str(e)}

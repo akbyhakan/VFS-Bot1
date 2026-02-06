@@ -311,8 +311,10 @@ class TestReservationWorker:
                 mock_page, worker.current_account
             )
 
-            # Verify result indicates success
-            assert result["slot_found"] is True
+            # Verify result - slot_found is False because BookingWorkflow
+            # handles its own notifications internally
+            assert result["slot_found"] is False
+            assert "error" not in result
 
     @pytest.mark.asyncio
     async def test_process_check_handles_exception(
