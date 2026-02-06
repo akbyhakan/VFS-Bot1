@@ -232,11 +232,15 @@ class BookingWorkflow:
             await smart_click(page, get_selector("continue_button"), self.human_sim)
             await asyncio.sleep(2)
 
-            # TODO: Personal details form filling step would go here if needed
-            # The waitlist flow may or may not require filling forms depending on:
-            # - Whether forms are pre-filled from previous interactions
-            # - Whether the user has saved applicant data
-            # Currently assuming forms are already filled or handled by VFS system
+            # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
+            details = await self.db.get_personal_details(user["id"])
+            if not details:
+                logger.error(f"No personal details found for user {user['id']}")
+                return
+
+            reservation = self._build_reservation(user, {"date": "", "time": ""}, details)
+            await self.booking_service.fill_all_applicants(page, reservation)
+            logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
 
             # Step 2: Accept all checkboxes on Review and Pay screen
             if not await self.waitlist_handler.accept_review_checkboxes(page):

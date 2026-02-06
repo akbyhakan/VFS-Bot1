@@ -171,6 +171,14 @@ class TestBookingWorkflowErrorCapture:
             "country": "bel",
         }
         
+        # Setup mocks for the new form filling calls
+        workflow.db.get_personal_details = AsyncMock(return_value={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "waitlist@example.com",
+        })
+        workflow.booking_service.fill_all_applicants = AsyncMock()
+        
         # Make waitlist_handler.join_waitlist raise an exception
         workflow.waitlist_handler.join_waitlist = AsyncMock(
             side_effect=Exception("Test waitlist error")
@@ -197,6 +205,91 @@ class TestBookingWorkflowErrorCapture:
         # Email is masked, so check for masked format
         assert "@" in context["email"]
         assert "***" in context["email"]
+
+    @pytest.mark.asyncio
+    async def test_process_waitlist_flow_calls_form_filling(self, mock_dependencies):
+        """Test that process_waitlist_flow calls the form filling methods."""
+        workflow = BookingWorkflow(**mock_dependencies)
+        
+        mock_page = AsyncMock()
+        mock_user = {
+            "id": 123,
+            "email": "test@example.com",
+            "country": "bel",
+        }
+        
+        mock_personal_details = {
+            "first_name": "John",
+            "last_name": "Doe",
+            "gender": "male",
+            "date_of_birth": "1990-01-01",
+            "passport_number": "AB123456",
+            "passport_expiry": "2030-01-01",
+            "mobile_code": "32",
+            "mobile_number": "1234567890",
+            "email": "test@example.com",
+        }
+        
+        # Setup all mocks for successful flow
+        workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
+        workflow.db.get_personal_details = AsyncMock(return_value=mock_personal_details)
+        workflow.booking_service.fill_all_applicants = AsyncMock()
+        workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
+        workflow.waitlist_handler.click_confirm_button = AsyncMock(return_value=True)
+        workflow.waitlist_handler.handle_waitlist_success = AsyncMock(return_value={
+            "login_email": "test@example.com",
+            "reference_number": "REF123",
+            "screenshot_path": "/tmp/screenshot.png",
+        })
+        workflow.notifier.notify_waitlist_success = AsyncMock()
+        
+        # Call process_waitlist_flow
+        await workflow.process_waitlist_flow(mock_page, mock_user)
+        
+        # Verify that form filling methods were called
+        workflow.db.get_personal_details.assert_called_once_with(123)
+        workflow.booking_service.fill_all_applicants.assert_called_once()
+        
+        # Verify the reservation structure passed to fill_all_applicants
+        call_args = workflow.booking_service.fill_all_applicants.call_args
+        assert call_args[0][0] == mock_page  # page argument
+        reservation = call_args[0][1]  # reservation argument
+        
+        # Check reservation structure
+        assert "preferred_dates" in reservation
+        assert reservation["preferred_dates"] == [""]  # Empty date for waitlist
+        assert "person_count" in reservation
+        assert "persons" in reservation
+        assert len(reservation["persons"]) == 1
+        assert reservation["persons"][0]["first_name"] == "John"
+        assert reservation["persons"][0]["last_name"] == "Doe"
+
+    @pytest.mark.asyncio
+    async def test_process_waitlist_flow_no_personal_details(self, mock_dependencies):
+        """Test that process_waitlist_flow returns early if no personal details found."""
+        workflow = BookingWorkflow(**mock_dependencies)
+        
+        mock_page = AsyncMock()
+        mock_user = {
+            "id": 456,
+            "email": "nodetails@example.com",
+            "country": "bel",
+        }
+        
+        # Setup mocks
+        workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
+        workflow.db.get_personal_details = AsyncMock(return_value=None)  # No personal details
+        workflow.booking_service.fill_all_applicants = AsyncMock()
+        workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
+        
+        # Call process_waitlist_flow
+        await workflow.process_waitlist_flow(mock_page, mock_user)
+        
+        # Verify form filling was NOT called
+        workflow.booking_service.fill_all_applicants.assert_not_called()
+        
+        # Verify that we returned early (checkboxes were NOT accepted)
+        workflow.waitlist_handler.accept_review_checkboxes.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_error_capture_exception_is_caught(self, mock_dependencies):
