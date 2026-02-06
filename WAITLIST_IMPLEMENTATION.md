@@ -84,48 +84,47 @@ The bot handles the complete waitlist registration flow:
 - `tests/test_waitlist.py` - Comprehensive test suite
 
 ### Modified Files
-- `src/services/appointment_booking_service.py` - Added waitlist selectors to VFS_SELECTORS
+- `config/selectors.yaml` - Added waitlist selectors to booking section
 - `src/services/notification.py` - Added waitlist notification methods
 - `src/services/bot/vfs_bot.py` - Integrated waitlist detection and flow
 
 ## Selectors Added
 
-```python
-VFS_SELECTORS.update({
-    # Waitlist checkbox (Application Details)
-    "waitlist_checkbox": [
-        "//mat-checkbox[.//span[contains(text(), 'Waitlist')]]",
-        "//mat-checkbox[.//span[contains(text(), 'Bekleme Listesi')]]",
-        "mat-checkbox:has-text('Waitlist')",
-        "mat-checkbox:has-text('Bekleme Listesi')",
-    ],
-    
-    # Review and Pay checkboxes
-    "terms_consent_checkbox": [
-        'input[value="consent.checkbox_value.vas_term_condition"]',
-    ],
-    "marketing_consent_checkbox": [
-        'input[value="consent.checkbox_value.receive_mkt_info"]',
-    ],
-    "waitlist_consent_checkbox": [
-        "mat-checkbox:has-text('bekleme listesi') input",
-        "mat-checkbox:has-text('waitlist') input",
-    ],
-    
-    # Confirm button
-    "confirm_button": [
-        'button:has(span.mdc-button__label:text("Onayla"))',
-        'button:has-text("Onayla")',
-        'button:has-text("Confirm")',
-    ],
-    
-    # Success indicators
-    "waitlist_success_indicator": [
-        "text=Bekleme Listesinde",
-        "text=İşlem Özeti",
-        "text=Waitlist",
-    ],
-})
+All waitlist-related selectors have been added to `config/selectors.yaml` under the `defaults.booking` section:
+
+```yaml
+booking:
+  # Waitlist checkbox (Application Details)
+  waitlist_checkbox:
+    primary: "//mat-checkbox[.//span[contains(text(), 'Waitlist')]]"
+    fallbacks:
+      - "//mat-checkbox[.//span[contains(text(), 'Bekleme Listesi')]]"
+      - "mat-checkbox:has-text('Waitlist')"
+      - "mat-checkbox:has-text('Bekleme Listesi')"
+  
+  # Review and Pay checkboxes
+  terms_consent_checkbox:
+    primary: 'input[value="consent.checkbox_value.vas_term_condition"]'
+  marketing_consent_checkbox:
+    primary: 'input[value="consent.checkbox_value.receive_mkt_info"]'
+  waitlist_consent_checkbox:
+    primary: "mat-checkbox:has-text('bekleme listesi') input"
+    fallbacks:
+      - "mat-checkbox:has-text('waitlist') input"
+  
+  # Confirm button
+  confirm_button:
+    primary: 'button:has(span.mdc-button__label:text("Onayla"))'
+    fallbacks:
+      - 'button:has-text("Onayla")'
+      - 'button:has-text("Confirm")'
+  
+  # Success indicators
+  waitlist_success_indicator:
+    primary: "text=Bekleme Listesinde"
+    fallbacks:
+      - "text=İşlem Özeti"
+      - "text=Waitlist"
 ```
 
 ## Flow Diagram
@@ -213,10 +212,16 @@ Comprehensive test suite included in `tests/test_waitlist.py`:
 ## Maintenance
 
 When updating selectors:
-1. Add new selectors to `VFS_SELECTORS` in `appointment_booking_service.py`
-2. Use fallback arrays for robustness
+1. Add new selectors to `config/selectors.yaml` under the `defaults.booking` section
+2. Use `primary` and `fallbacks` structure for robustness
 3. Test with both Turkish and English VFS interfaces
 4. Update tests in `test_waitlist.py` accordingly
+
+The centralized selector system in `config/selectors.yaml` provides:
+- Country-specific selector overrides
+- AI-powered selector repair when elements change
+- Learning and auto-promotion of successful fallback selectors
+- Single source of truth for all selector definitions
 
 ## Future Enhancements
 

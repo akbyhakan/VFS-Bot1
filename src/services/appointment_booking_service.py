@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
+from ..utils.selectors import get_selector_manager
 from .otp_webhook import get_otp_service
 
 logger = logging.getLogger(__name__)
@@ -30,163 +31,25 @@ TURKISH_MONTHS = {
 }
 
 
-# VFS Form Selectors with Fallback Support
-# Each selector can be a string (single selector) or a list (fallback chain)
-#
-# TODO: Migrate to config/selectors.yaml for single source of truth
-# This inline dictionary should eventually be moved to config/selectors.yaml
-# under a 'booking' section to align with the centralized
-# CountryAwareSelectorManager (src/utils/selectors.py) architecture.
-# The centralized approach provides:
-#   - AI-powered selector repair when elements change
-#   - Learning and auto-promotion of successful fallback selectors
-#   - Country-specific selector overrides
-#   - Single source of truth for all selector definitions
-#
-# Migration steps:
-#   1. Add 'booking' section to config/selectors.yaml with all entries below
-#   2. Update get_selector() calls to use CountryAwareSelectorManager
-#   3. Remove this inline VFS_SELECTORS dictionary
-#
-VFS_SELECTORS = {
-    # Detaylar Formu - Başvuru Sahibi
-    "first_name": ["#mat-input-3", 'input[formcontrolname="firstName"]', 'input[name="firstName"]'],
-    "last_name": ["#mat-input-4", 'input[formcontrolname="lastName"]', 'input[name="lastName"]'],
-    "gender_dropdown": ["#mat-select-value-3", 'mat-select[formcontrolname="gender"]'],
-    "gender_female": '//mat-option[contains(., "Female")]',
-    "gender_male": '//mat-option[contains(., "Male")]',
-    "birth_date": [
-        "#dateOfBirth",
-        'input[formcontrolname="dateOfBirth"]',
-        'input[name="dateOfBirth"]',
-    ],
-    "nationality_dropdown": ["#mat-select-value-4", 'mat-select[formcontrolname="nationality"]'],
-    "nationality_turkey": (
-        '(//mat-option[contains(., "Turkey")])[1] | ' '(//mat-option[contains(., "Türkiye")])[1]'
-    ),
-    "passport_number": [
-        "#mat-input-5",
-        'input[formcontrolname="passportNumber"]',
-        'input[name="passportNumber"]',
-    ],
-    "passport_expiry": [
-        "#passportExpirtyDate",
-        'input[formcontrolname="passportExpiry"]',
-        'input[name="passportExpiry"]',
-    ],
-    "phone_code": ["#mat-input-6", 'input[formcontrolname="phoneCode"]', 'input[name="phoneCode"]'],
-    "phone_number": [
-        "#mat-input-7",
-        'input[formcontrolname="phoneNumber"]',
-        'input[name="phoneNumber"]',
-    ],
-    "email": [
-        "#mat-input-8",
-        'input[formcontrolname="email"]',
-        'input[name="email"]',
-        'input[type="email"]',
-    ],
-    "child_checkbox": ["#mat-mdc-checkbox-0-input", 'input[formcontrolname="childWithParent"]'],
-    # Butonlar
-    "save_button": ['//button[contains(., "Kaydet")]', 'button[type="submit"]'],
-    "add_another_button": [
-        '//button[contains(., "Başka Başvuru ekle")]',
-        '//button[contains(., "Add Another")]',
-    ],
-    "continue_button": [
-        '//button[contains(., "Devam et")]',
-        '//button[contains(., "Continue")]',
-        "button.continue-btn",
-    ],
-    "back_button": ['//button[contains(., "Geri Dön")]', '//button[contains(., "Back")]'],
-    "online_pay_button": ["#trigger", 'button[id*="pay"]', '//button[contains(., "Online")]'],
-    # Takvim
-    "available_date_cell": [".fc-daygrid-day.available", ".available-date"],
-    "time_slot_button": [
-        '//button[contains(., "Seç")]',
-        '//button[contains(., "Select")]',
-        ".time-slot-btn",
-    ],
-    "load_more_times": [
-        '//button[contains(., "Daha Fazla Yükle")]',
-        '//button[contains(., "Load More")]',
-    ],
-    "next_month_button": [
-        '//button[contains(@aria-label, "next")]',
-        ".next-month",
-        "button.fc-next-button",
-    ],
-    # Checkboxlar (Gözden Geçir ve Öde)
-    "terms_checkbox": ['input[type="checkbox"]', ".terms-checkbox"],
-    # Waitlist checkbox (Başvuru Detayları)
-    "waitlist_checkbox": [
-        "//mat-checkbox[.//span[contains(text(), 'Waitlist')]]",
-        "//mat-checkbox[.//span[contains(text(), 'Bekleme Listesi')]]",
-        "mat-checkbox:has-text('Waitlist')",
-        "mat-checkbox:has-text('Bekleme Listesi')",
-    ],
-    # Gözden Geçir - Checkboxlar (Waitlist Flow)
-    "terms_consent_checkbox": [
-        'input[value="consent.checkbox_value.vas_term_condition"]',
-    ],
-    "marketing_consent_checkbox": [
-        'input[value="consent.checkbox_value.receive_mkt_info"]',
-    ],
-    "waitlist_consent_checkbox": [
-        "mat-checkbox:has-text('bekleme listesi') input",
-        "mat-checkbox:has-text('waitlist') input",
-    ],
-    # Onayla butonu
-    "confirm_button": [
-        'button:has(span.mdc-button__label:text("Onayla"))',
-        'button:has-text("Onayla")',
-        'button:has-text("Confirm")',
-    ],
-    # Başarı ekranı tespiti
-    "waitlist_success_indicator": [
-        "text=Bekleme Listesinde",
-        "text=İşlem Özeti",
-        "text=Waitlist",
-    ],
-    # Ödeme Sayfası (Banka)
-    "card_number": ['input[name="pan"]', 'input[name="cardNumber"]', 'input[placeholder*="Card"]'],
-    "expiry_month": [
-        'select[name="Ecom_Payment_Card_ExpDate_Month"]',
-        'select[name="expiryMonth"]',
-    ],
-    "expiry_year": ['select[name="Ecom_Payment_Card_ExpDate_Year"]', 'select[name="expiryYear"]'],
-    "cvv": ['input[name="cv2"]', 'input[name="cvv"]', 'input[placeholder*="CVV"]'],
-    "payment_submit": ["#btnSbmt", 'button[type="submit"]', ".payment-submit"],
-    # 3D Secure OTP
-    "otp_input": ["#sifre3dinput", 'input[name="otp"]', 'input[placeholder*="OTP"]'],
-    "otp_submit": ["#DevamEt", 'button[type="submit"]', '//button[contains(., "Submit")]'],
-    # Overlay/Spinner
-    "overlay": [".ngx-overlay", ".loading-overlay", ".spinner-overlay"],
-    # Captcha Modal
-    "captcha_modal": ['//*[contains(text(), "Captcha")]', ".captcha-modal"],
-    "captcha_submit": ['//button[contains(., "Submit")]', "button.captcha-submit"],
-}
-
-
 def get_selector_with_fallback(selector_name: str) -> List[str]:
     """
     Get selector(s) for a given name, ensuring it's always a list for fallback support.
 
     Args:
-        selector_name: Name of the selector in VFS_SELECTORS
+        selector_name: Name of the selector (e.g., "first_name" or "booking.first_name")
 
     Returns:
         List of selector strings to try in order
     """
-    selector = VFS_SELECTORS.get(selector_name)
-    if selector is None:
-        raise ValueError(f"Unknown selector name: {selector_name}")
-
-    # Ensure we always return a list
-    if isinstance(selector, list):
-        return [str(s) for s in selector]
-    else:
-        return [str(selector)]
+    selectors = resolve_selector(selector_name)
+    if not selectors or selectors == [selector_name]:
+        # Check if this was a valid key
+        manager = get_selector_manager()
+        path = f"booking.{selector_name}" if "." not in selector_name else selector_name
+        result = manager.get(path)
+        if result is None:
+            raise ValueError(f"Unknown selector name: {selector_name}")
+    return selectors
 
 
 async def try_selectors(
@@ -245,28 +108,37 @@ async def try_selectors(
 
 def resolve_selector(selector_key: str) -> List[str]:
     """
-    Resolve a selector key to a list of selectors.
-    Always returns a list for consistent handling.
+    Resolve a selector key to a list of selectors via CountryAwareSelectorManager.
 
     Args:
-        selector_key: Key in VFS_SELECTORS or direct selector string
+        selector_key: Dot-path like "booking.first_name" or flat key like "first_name"
 
     Returns:
-        List of selector strings
+        List of selector strings (primary + fallbacks)
     """
-    if selector_key in VFS_SELECTORS:
-        value = VFS_SELECTORS[selector_key]
-        return [str(v) for v in value] if isinstance(value, list) else [str(value)]
+    manager = get_selector_manager()
+
+    # Support both flat keys ("first_name") and dot-path ("booking.first_name")
+    path = f"booking.{selector_key}" if "." not in selector_key else selector_key
+
+    try:
+        all_selectors = manager.get_all(path)
+        if all_selectors:
+            return all_selectors
+    except Exception:
+        pass
+
+    # Fallback: try the key as-is (direct CSS/XPath selector)
     return [selector_key]
 
 
 def get_selector(selector_key: str) -> str:
     """
-    Get a single selector string from VFS_SELECTORS.
-    Returns the first selector if multiple are available.
+    Get a single selector string.
+    Returns the primary selector from CountryAwareSelectorManager.
 
     Args:
-        selector_key: Key in VFS_SELECTORS
+        selector_key: Selector key (e.g., "first_name" or "booking.first_name")
 
     Returns:
         First selector string
@@ -475,7 +347,8 @@ class AppointmentBookingService:
             message = f"✅ Uygun randevu bulundu! {found_capacity} kişilik, {found_date}"
         elif not capacity_match and not date_match:
             message = (
-                f"❌ Kapasite ({found_capacity}<{required_capacity}) ve tarih ({found_date}) uyumsuz"
+                f"❌ Kapasite ({found_capacity}<{required_capacity}) ve "
+                f"tarih ({found_date}) uyumsuz"
             )
         elif not capacity_match:
             message = f"❌ Yetersiz kapasite: {found_capacity} < {required_capacity}"
@@ -774,14 +647,12 @@ class AppointmentBookingService:
 
             if self.captcha_solver:
                 # Extract sitekey and solve
-                sitekey = await page.evaluate(
-                    """
+                sitekey = await page.evaluate("""
                     () => {
                         const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
                         return widget ? widget.getAttribute('data-sitekey') : null;
                     }
-                """
-                )
+                """)
 
                 if sitekey:
                     token = await self.captcha_solver.solve_turnstile(page.url, sitekey)

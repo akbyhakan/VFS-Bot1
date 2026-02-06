@@ -89,6 +89,192 @@ defaults:
     loading_spinner: "div.mat-progress-spinner"
     error_toast: "div.mat-snack-bar-container"
     success_toast: "div.success-message"
+    
+  # Booking flow selectors (form filling, payment, OTP, waitlist)
+  booking:
+    # Detaylar Formu - Başvuru Sahibi
+    first_name:
+      primary: "#mat-input-3"
+      fallbacks:
+        - 'input[formcontrolname="firstName"]'
+        - 'input[name="firstName"]'
+    last_name:
+      primary: "#mat-input-4"
+      fallbacks:
+        - 'input[formcontrolname="lastName"]'
+        - 'input[name="lastName"]'
+    gender_dropdown:
+      primary: "#mat-select-value-3"
+      fallbacks:
+        - 'mat-select[formcontrolname="gender"]'
+    gender_female: '//mat-option[contains(., "Female")]'
+    gender_male: '//mat-option[contains(., "Male")]'
+    birth_date:
+      primary: "#dateOfBirth"
+      fallbacks:
+        - 'input[formcontrolname="dateOfBirth"]'
+        - 'input[name="dateOfBirth"]'
+    nationality_dropdown:
+      primary: "#mat-select-value-4"
+      fallbacks:
+        - 'mat-select[formcontrolname="nationality"]'
+    nationality_turkey: '(//mat-option[contains(., "Turkey")])[1] | (//mat-option[contains(., "Türkiye")])[1]'
+    passport_number:
+      primary: "#mat-input-5"
+      fallbacks:
+        - 'input[formcontrolname="passportNumber"]'
+        - 'input[name="passportNumber"]'
+    passport_expiry:
+      # Note: VFS website uses "passportExpirtyDate" (with typo) as the actual ID
+      primary: "#passportExpirtyDate"
+      fallbacks:
+        - 'input[formcontrolname="passportExpiry"]'
+        - 'input[name="passportExpiry"]'
+    phone_code:
+      primary: "#mat-input-6"
+      fallbacks:
+        - 'input[formcontrolname="phoneCode"]'
+        - 'input[name="phoneCode"]'
+    phone_number:
+      primary: "#mat-input-7"
+      fallbacks:
+        - 'input[formcontrolname="phoneNumber"]'
+        - 'input[name="phoneNumber"]'
+    email:
+      primary: "#mat-input-8"
+      fallbacks:
+        - 'input[formcontrolname="email"]'
+        - 'input[name="email"]'
+        - 'input[type="email"]'
+    child_checkbox:
+      primary: "#mat-mdc-checkbox-0-input"
+      fallbacks:
+        - 'input[formcontrolname="childWithParent"]'
+    # Butonlar
+    save_button:
+      primary: '//button[contains(., "Kaydet")]'
+      fallbacks:
+        - 'button[type="submit"]'
+    add_another_button:
+      primary: '//button[contains(., "Başka Başvuru ekle")]'
+      fallbacks:
+        - '//button[contains(., "Add Another")]'
+    continue_button:
+      primary: '//button[contains(., "Devam et")]'
+      fallbacks:
+        - '//button[contains(., "Continue")]'
+        - "button.continue-btn"
+    back_button:
+      primary: '//button[contains(., "Geri Dön")]'
+      fallbacks:
+        - '//button[contains(., "Back")]'
+    online_pay_button:
+      primary: "#trigger"
+      fallbacks:
+        - 'button[id*="pay"]'
+        - '//button[contains(., "Online")]'
+    # Takvim
+    available_date_cell:
+      primary: ".fc-daygrid-day.available"
+      fallbacks:
+        - ".available-date"
+    time_slot_button:
+      primary: '//button[contains(., "Seç")]'
+      fallbacks:
+        - '//button[contains(., "Select")]'
+        - ".time-slot-btn"
+    load_more_times:
+      primary: '//button[contains(., "Daha Fazla Yükle")]'
+      fallbacks:
+        - '//button[contains(., "Load More")]'
+    next_month_button:
+      primary: '//button[contains(@aria-label, "next")]'
+      fallbacks:
+        - ".next-month"
+        - "button.fc-next-button"
+    # Checkboxlar (Gözden Geçir ve Öde)
+    terms_checkbox:
+      primary: 'input[type="checkbox"]'
+      fallbacks:
+        - ".terms-checkbox"
+    # Waitlist checkbox (Başvuru Detayları)
+    waitlist_checkbox:
+      primary: "//mat-checkbox[.//span[contains(text(), 'Waitlist')]]"
+      fallbacks:
+        - "//mat-checkbox[.//span[contains(text(), 'Bekleme Listesi')]]"
+        - "mat-checkbox:has-text('Waitlist')"
+        - "mat-checkbox:has-text('Bekleme Listesi')"
+    # Gözden Geçir - Checkboxlar (Waitlist Flow)
+    terms_consent_checkbox:
+      primary: 'input[value="consent.checkbox_value.vas_term_condition"]'
+    marketing_consent_checkbox:
+      primary: 'input[value="consent.checkbox_value.receive_mkt_info"]'
+    waitlist_consent_checkbox:
+      primary: "mat-checkbox:has-text('bekleme listesi') input"
+      fallbacks:
+        - "mat-checkbox:has-text('waitlist') input"
+    # Onayla butonu
+    confirm_button:
+      primary: 'button:has(span.mdc-button__label:text("Onayla"))'
+      fallbacks:
+        - 'button:has-text("Onayla")'
+        - 'button:has-text("Confirm")'
+    # Başarı ekranı tespiti
+    waitlist_success_indicator:
+      primary: "text=Bekleme Listesinde"
+      fallbacks:
+        - "text=İşlem Özeti"
+        - "text=Waitlist"
+    # Ödeme Sayfası (Banka)
+    card_number:
+      primary: 'input[name="pan"]'
+      fallbacks:
+        - 'input[name="cardNumber"]'
+        - 'input[placeholder*="Card"]'
+    expiry_month:
+      primary: 'select[name="Ecom_Payment_Card_ExpDate_Month"]'
+      fallbacks:
+        - 'select[name="expiryMonth"]'
+    expiry_year:
+      primary: 'select[name="Ecom_Payment_Card_ExpDate_Year"]'
+      fallbacks:
+        - 'select[name="expiryYear"]'
+    cvv:
+      primary: 'input[name="cv2"]'
+      fallbacks:
+        - 'input[name="cvv"]'
+        - 'input[placeholder*="CVV"]'
+    payment_submit:
+      primary: "#btnSbmt"
+      fallbacks:
+        - 'button[type="submit"]'
+        - ".payment-submit"
+    # 3D Secure OTP
+    otp_input:
+      primary: "#sifre3dinput"
+      fallbacks:
+        - 'input[name="otp"]'
+        - 'input[placeholder*="OTP"]'
+    otp_submit:
+      primary: "#DevamEt"
+      fallbacks:
+        - 'button[type="submit"]'
+        - '//button[contains(., "Submit")]'
+    # Overlay/Spinner
+    overlay:
+      primary: ".ngx-overlay"
+      fallbacks:
+        - ".loading-overlay"
+        - ".spinner-overlay"
+    # Captcha Modal
+    captcha_modal:
+      primary: '//*[contains(text(), "Captcha")]'
+      fallbacks:
+        - ".captcha-modal"
+    captcha_submit:
+      primary: '//button[contains(., "Submit")]'
+      fallbacks:
+        - "button.captcha-submit"
 
 # Ülke bazlı override'lar (sadece farklı olan selector'lar)
 countries:
