@@ -131,11 +131,48 @@ def setup_signal_handlers():
             shutdown_event.set()
             logger.info("Shutdown event set, waiting for active operations to complete...")
         else:
-            logger.warning("Shutdown already in progress or no active event, forcing exit...")
-            sys.exit(0)
+            logger.warning("Second signal received, attempting fast cleanup before exit...")
+            # Attempt fast cleanup on second signal
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Schedule cleanup to run in the existing loop
+                    asyncio.ensure_future(_fast_emergency_cleanup())
+                else:
+                    # Run cleanup in a new loop if current one is not running
+                    asyncio.run(_fast_emergency_cleanup())
+            except Exception as e:
+                logger.error(f"Emergency cleanup failed: {e}")
+            finally:
+                logger.warning("Forcing exit after emergency cleanup attempt")
+                sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
+
+
+async def _fast_emergency_cleanup() -> None:
+    """
+    Fast emergency cleanup on second signal.
+
+    Only attempts to close database connection to prevent corruption.
+    Uses a very short timeout (5 seconds).
+    """
+    logger = logging.getLogger(__name__)
+    logger.warning("Executing fast emergency cleanup...")
+
+    # Try to close DatabaseFactory instance (used by web mode)
+    try:
+        from src.models.db_factory import DatabaseFactory
+
+        await asyncio.wait_for(DatabaseFactory.close_instance(), timeout=5)
+        logger.info("DatabaseFactory instance closed")
+    except asyncio.TimeoutError:
+        logger.error("DatabaseFactory close timed out after 5s")
+    except Exception as e:
+        logger.error(f"Error closing DatabaseFactory: {e}")
+
+    logger.info("Fast emergency cleanup complete")
 
 
 async def graceful_shutdown(
@@ -245,6 +282,76 @@ async def graceful_shutdown_with_timeout(
         )
 
 
+async def _safe_shutdown_cleanup(
+    db: Optional[Database] = None,
+    db_owned: bool = False,
+    cleanup_service=None,
+    cleanup_task=None,
+    shutdown_event: Optional[asyncio.Event] = None,
+) -> None:
+    """
+    Safely cleanup resources during shutdown with timeout protection.
+
+    This function wraps all cleanup operations in try/except blocks with timeouts
+    to prevent shutdown hangs or crashes.
+
+    Args:
+        db: Database instance to close
+        db_owned: Whether we own the database instance (only close if True)
+        cleanup_service: CleanupService instance to stop
+        cleanup_task: Cleanup task to cancel
+        shutdown_event: Shutdown event to clear
+    """
+    logger = logging.getLogger(__name__)
+
+    # Stop cleanup service
+    if cleanup_service is not None:
+        try:
+            cleanup_service.stop()
+            logger.info("Cleanup service stopped")
+        except Exception as e:
+            logger.error(f"Error stopping cleanup service: {e}")
+
+    # Cancel cleanup task
+    if cleanup_task:
+        try:
+            cleanup_task.cancel()
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error cancelling cleanup task: {e}")
+
+    # Cleanup OTP service
+    try:
+        from src.services.otp_webhook import get_otp_service
+
+        otp_service = get_otp_service()
+        await asyncio.wait_for(otp_service.stop_cleanup_scheduler(), timeout=5)
+        logger.info("OTP service cleanup completed")
+    except asyncio.TimeoutError:
+        logger.warning("OTP service cleanup timed out after 5s")
+    except Exception as e:
+        logger.error(f"Error cleaning up OTP service: {e}")
+
+    # Close database with timeout protection
+    if db_owned and db:
+        try:
+            await asyncio.wait_for(db.close(), timeout=10)
+            logger.info("Database closed successfully")
+        except asyncio.TimeoutError:
+            logger.error("Database close timed out after 10s")
+        except Exception as e:
+            logger.error(f"Error closing database: {e}")
+
+    # Clear global shutdown event
+    if shutdown_event is not None:
+        try:
+            set_shutdown_event(None)
+        except Exception as e:
+            logger.error(f"Error clearing shutdown event: {e}")
+
+
 async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
@@ -266,6 +373,8 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         db = Database()
         await db.connect()
 
+    # Initialize notifier to None so it's available in finally block if initialization fails
+    notifier = None
     try:
         # Initialize notification service
         notifier = NotificationService(config["notifications"])
@@ -295,29 +404,27 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
         shutdown_event.set()
-        # Wait for graceful shutdown with timeout
-        from src.constants import Timeouts
-
-        await asyncio.sleep(Timeouts.GRACEFUL_SHUTDOWN_SECONDS)
-
-        # Cleanup OTP service
-        try:
-            from src.services.otp_webhook import get_otp_service
-
-            otp_service = get_otp_service()
-            await otp_service.stop_cleanup_scheduler()
-            logger.info("OTP service cleanup completed")
-        except Exception as e:
-            logger.error(f"Error cleaning up OTP service: {e}")
     except Exception as e:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
     finally:
-        # Only close if we own the database instance
-        if db_owned and db:
-            await db.close()
-        # Clear global shutdown event
-        set_shutdown_event(None)
+        # Graceful shutdown with timeout protection
+        if shutdown_event and shutdown_event.is_set():
+            try:
+                loop = asyncio.get_running_loop()
+                await graceful_shutdown_with_timeout(loop, db, notifier)
+            except ShutdownTimeoutError as e:
+                logger.error(f"Shutdown timeout: {e}")
+                # Continue with cleanup anyway
+            except Exception as e:
+                logger.error(f"Error during graceful shutdown: {e}")
+
+        # Safe cleanup of all resources
+        await _safe_shutdown_cleanup(
+            db=db,
+            db_owned=db_owned,
+            shutdown_event=shutdown_event,
+        )
 
 
 async def run_web_mode(
@@ -361,18 +468,23 @@ async def run_web_mode(
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
-        # Stop cleanup service
-        if cleanup_service is not None:
-            cleanup_service.stop()
-        if cleanup_task:
-            cleanup_task.cancel()
-            try:
-                await cleanup_task
-            except asyncio.CancelledError:
-                pass
-        # Only close if we own the database instance
-        if db_owned and db:
-            await db.close()
+        # Graceful shutdown with timeout protection
+        try:
+            loop = asyncio.get_running_loop()
+            await graceful_shutdown_with_timeout(loop, db, None)
+        except ShutdownTimeoutError as e:
+            logger.error(f"Shutdown timeout: {e}")
+            # Continue with cleanup anyway
+        except Exception as e:
+            logger.error(f"Error during graceful shutdown: {e}")
+
+        # Safe cleanup of all resources
+        await _safe_shutdown_cleanup(
+            db=db,
+            db_owned=db_owned,
+            cleanup_service=cleanup_service,
+            cleanup_task=cleanup_task,
+        )
         logger.info("Web mode shutdown complete")
 
 
@@ -408,8 +520,18 @@ async def run_both_mode(config: dict) -> None:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
     finally:
-        # Close shared database
-        await db.close()
+        # Graceful shutdown with timeout protection
+        try:
+            loop = asyncio.get_running_loop()
+            await graceful_shutdown_with_timeout(loop, db, None)
+        except ShutdownTimeoutError as e:
+            logger.error(f"Shutdown timeout: {e}")
+            # Continue with cleanup anyway
+        except Exception as e:
+            logger.error(f"Error during graceful shutdown: {e}")
+
+        # Safe cleanup - close shared database
+        await _safe_shutdown_cleanup(db=db, db_owned=True)
         logger.info("Combined mode shutdown complete")
 
 
