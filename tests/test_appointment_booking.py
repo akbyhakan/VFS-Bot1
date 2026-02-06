@@ -50,12 +50,12 @@ class TestSelectPreferredTime:
             MockLocator("09:00"),
             MockLocator("10:30"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should select 09:00 (first 09:00+ slot)
         assert result is True
         # Verify that a 09:00+ slot was clicked (not the 08:30 slot)
@@ -71,12 +71,12 @@ class TestSelectPreferredTime:
             MockLocator("08:30"),
             MockLocator("08:45"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should select first 08:00 slot as fallback
         assert result is True
 
@@ -89,12 +89,12 @@ class TestSelectPreferredTime:
             MockLocator("07:00"),
             MockLocator("07:30"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should return False (no acceptable slots)
         assert result is False
 
@@ -108,12 +108,12 @@ class TestSelectPreferredTime:
             MockLocator("09:30"),  # Preferred (should be selected)
             MockLocator("11:00"),  # Preferred
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should select first 09:00+ slot (09:30)
         assert result is True
 
@@ -122,10 +122,10 @@ class TestSelectPreferredTime:
         """Test behavior when no time slots are available."""
         # Setup: Empty slots list
         mock_page.locator.return_value.all = AsyncMock(return_value=[])
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should return False
         assert result is False
 
@@ -138,12 +138,12 @@ class TestSelectPreferredTime:
             MockLocator("09:00"),
             MockLocator("not a time"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should still select valid 09:00 slot
         assert result is True
 
@@ -156,12 +156,12 @@ class TestSelectPreferredTime:
             MockLocator(""),
             MockLocator("09:00"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should find and select the valid 09:00 slot
         assert result is True
 
@@ -170,10 +170,10 @@ class TestSelectPreferredTime:
         """Test that exceptions are handled gracefully."""
         # Setup: Simulate an exception during selector wait
         mock_page.wait_for_selector.side_effect = Exception("Selector timeout")
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should return False on exception
         assert result is False
 
@@ -182,12 +182,12 @@ class TestSelectPreferredTime:
         """Test boundary condition: exactly 08:00."""
         # Setup: Exactly 08:00 slot
         slots = [MockLocator("08:00")]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: 08:00 should be accepted as fallback
         assert result is True
 
@@ -196,12 +196,12 @@ class TestSelectPreferredTime:
         """Test boundary condition: exactly 09:00."""
         # Setup: Exactly 09:00 slot
         slots = [MockLocator("09:00")]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: 09:00 should be accepted as preferred
         assert result is True
 
@@ -213,11 +213,11 @@ class TestSelectPreferredTime:
             MockLocator("  09:00  "),
             MockLocator("\t10:30\n"),
         ]
-        
+
         mock_page.locator.return_value.all = AsyncMock(return_value=slots)
-        
+
         # Execute
         result = await service.select_preferred_time(mock_page)
-        
+
         # Assert: Should strip whitespace and select correctly
         assert result is True

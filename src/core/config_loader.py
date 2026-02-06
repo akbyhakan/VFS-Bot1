@@ -141,7 +141,7 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
 def get_config_selector(group: str, name: str, default: str = "") -> str:
     """
     Get a specific selector by group and name from config/selectors.yaml.
-    
+
     Note: This function is for reading selectors from YAML config files.
     For runtime selector management with AI repair and learning, use
     CountryAwareSelectorManager from src/utils/selectors.py instead.

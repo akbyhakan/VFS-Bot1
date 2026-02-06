@@ -175,7 +175,8 @@ class APIKeyManager:
                 created_str = metadata.get("created")
                 if created_str:
                     try:
-                        # Support both timezone-aware and naive datetime strings for backward compatibility
+                        # Support both timezone-aware and naive datetime strings
+                        # for backward compatibility
                         created_time = datetime.fromisoformat(created_str)
                         # Make timezone-naive datetimes UTC-aware for comparison
                         if created_time.tzinfo is None:

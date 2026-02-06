@@ -238,7 +238,9 @@ async def safe_screenshot(page: Page, filepath: str, full_page: bool = True) -> 
 
 
 def format_local_datetime(
-    utc_dt: Optional[datetime] = None, tz_name: str = "Europe/Istanbul", fmt: str = "%d.%m.%Y %H:%M:%S"
+    utc_dt: Optional[datetime] = None,
+    tz_name: str = "Europe/Istanbul",
+    fmt: str = "%d.%m.%Y %H:%M:%S",
 ) -> str:
     """
     Convert UTC datetime to local timezone and format it for display.
@@ -253,11 +255,11 @@ def format_local_datetime(
     """
     if utc_dt is None:
         utc_dt = datetime.now(timezone.utc)
-    
+
     # Ensure UTC datetime is timezone-aware
     if utc_dt.tzinfo is None:
         utc_dt = utc_dt.replace(tzinfo=timezone.utc)
-    
+
     try:
         # Convert to local timezone
         local_tz = ZoneInfo(tz_name)

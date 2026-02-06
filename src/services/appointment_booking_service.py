@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 # Each selector can be a string (single selector) or a list (fallback chain)
 #
 # TODO: Migrate to config/selectors.yaml for single source of truth
-# This inline dictionary should eventually be moved to config/selectors.yaml under a 'booking' section
-# to align with the centralized CountryAwareSelectorManager (src/utils/selectors.py) architecture.
+# This inline dictionary should eventually be moved to config/selectors.yaml
+# under a 'booking' section to align with the centralized
+# CountryAwareSelectorManager (src/utils/selectors.py) architecture.
 # The centralized approach provides:
 #   - AI-powered selector repair when elements change
 #   - Learning and auto-promotion of successful fallback selectors
@@ -635,8 +636,8 @@ class AppointmentBookingService:
             if not time_buttons:
                 return False
 
-            preferred_slots = []   # 09:00+
-            fallback_slots = []    # 08:00-08:59
+            preferred_slots = []  # 09:00+
+            fallback_slots = []  # 08:00-08:59
 
             for button in time_buttons:
                 time_text = await button.text_content()
@@ -666,7 +667,10 @@ class AppointmentBookingService:
             if fallback_slots:
                 button, time_text = fallback_slots[0]
                 await button.click()
-                logger.info(f"⚠️ Fallback time slot selected: {time_text} (08:00-09:00, no 09:00+ available)")
+                logger.info(
+                    f"⚠️ Fallback time slot selected: {time_text} "
+                    f"(08:00-09:00, no 09:00+ available)"
+                )
                 return True
 
             logger.warning("No acceptable time slots found (all before 08:00)")
