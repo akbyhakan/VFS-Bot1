@@ -11,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 from ...constants import Retries
 from ...models.database import Database
 from ...utils.anti_detection.human_simulator import HumanSimulator
+from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..appointment_booking_service import get_selector
@@ -44,6 +45,7 @@ class BookingWorkflow:
         slot_analyzer: SlotPatternAnalyzer,
         session_recovery: SessionRecovery,
         human_sim: Optional[HumanSimulator] = None,
+        error_capture: Optional[ErrorCapture] = None,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -60,6 +62,7 @@ class BookingWorkflow:
             slot_analyzer: Slot pattern analyzer instance
             session_recovery: Session recovery instance
             human_sim: Optional human simulator for anti-detection
+            error_capture: Optional error capture instance for detailed error diagnostics
         """
         self.config = config
         self.db = db
@@ -72,6 +75,7 @@ class BookingWorkflow:
         self.slot_analyzer = slot_analyzer
         self.session_recovery = session_recovery
         self.human_sim = human_sim
+        self.error_capture = error_capture or ErrorCapture()
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
@@ -173,11 +177,17 @@ class BookingWorkflow:
             logger.error(f"Error processing user {masked_email}: {e}")
             if self.config["bot"].get("screenshot_on_error", True):
                 try:
-                    await self.error_handler.take_screenshot(
-                        page, f"error_{user['id']}_{datetime.now(timezone.utc).timestamp()}"
+                    await self.error_capture.capture(
+                        page,
+                        e,
+                        context={
+                            "step": "process_user",
+                            "user_id": f"user_{user['id']}",
+                            "email": masked_email,
+                        },
                     )
-                except Exception as screenshot_error:
-                    logger.error(f"Failed to take screenshot: {screenshot_error}")
+                except Exception as capture_error:
+                    logger.error(f"Failed to capture error: {capture_error}")
 
     async def process_waitlist_flow(self, page: Page, user: Dict[str, Any]) -> None:
         """
@@ -231,6 +241,18 @@ class BookingWorkflow:
 
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
+            try:
+                await self.error_capture.capture(
+                    page,
+                    e,
+                    context={
+                        "step": "waitlist_flow",
+                        "user_id": f"user_{user['id']}",
+                        "email": mask_email(user["email"]),
+                    },
+                )
+            except Exception as capture_error:
+                logger.error(f"Failed to capture error: {capture_error}")
 
     def _build_reservation(
         self, user: Dict[str, Any], slot: "SlotInfo", details: Dict[str, Any]

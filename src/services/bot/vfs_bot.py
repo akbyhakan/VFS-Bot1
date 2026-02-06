@@ -206,6 +206,7 @@ class VFSBot:
             slot_analyzer=self.slot_analyzer,
             session_recovery=self.session_recovery,
             human_sim=self.human_sim,
+            error_capture=self.error_capture,
         )
 
     def _init_automation_services(self) -> None:
