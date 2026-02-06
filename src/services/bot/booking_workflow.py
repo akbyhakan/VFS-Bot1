@@ -153,11 +153,15 @@ class BookingWorkflow:
                             )
                             continue  # Skip this slot and try next centre
 
-                        # Get personal details
-                        details = await self.db.get_personal_details(user["id"])
-                        if details:
-                            # Build reservation data and run booking flow
-                            reservation = self._build_reservation(user, slot, details)
+                        # Get appointment request for this user (with all persons)
+                        appointment_request = await self.db.get_pending_appointment_request_for_user(
+                            user["id"]
+                        )
+                        if appointment_request:
+                            # Build reservation from appointment request (supports N persons)
+                            reservation = self._build_reservation_from_request(
+                                appointment_request, slot
+                            )
                             success = await self.booking_service.run_booking_flow(page, reservation)
 
                             if success:
@@ -194,6 +198,53 @@ class BookingWorkflow:
                                     )
                             else:
                                 logger.error("Booking flow failed")
+                        else:
+                            # Fallback: legacy single-person flow using personal_details
+                            details = await self.db.get_personal_details(user["id"])
+                            if details:
+                                reservation = self._build_reservation(user, slot, details)
+                                success = await self.booking_service.run_booking_flow(
+                                    page, reservation
+                                )
+
+                                if success:
+                                    # Verify booking confirmation and extract reference
+                                    confirmation = (
+                                        await self.booking_service.verify_booking_confirmation(page)
+                                    )
+                                    if confirmation.get("success"):
+                                        reference = confirmation.get("reference", "UNKNOWN")
+                                        await self.db.add_appointment(
+                                            user["id"],
+                                            centre,
+                                            user["category"],
+                                            user["subcategory"],
+                                            slot["date"],
+                                            slot["time"],
+                                            reference,
+                                        )
+                                        await self.notifier.notify_booking_success(
+                                            centre, slot["date"], slot["time"], reference
+                                        )
+
+                                        # Mark booking in deduplication service
+                                        await dedup_service.mark_booked(
+                                            user["id"], centre, user["category"], slot["date"]
+                                        )
+
+                                        # Clear checkpoint after successful booking
+                                        self.session_recovery.clear_checkpoint()
+                                        logger.info("Booking completed - checkpoint cleared")
+                                    else:
+                                        logger.error(
+                                            f"Booking verification failed: {confirmation.get('error')}"
+                                        )
+                                else:
+                                    logger.error("Booking flow failed")
+                            else:
+                                logger.error(
+                                    f"No personal details or appointment request found for user {user['id']}"
+                                )
                         break
         except Exception as e:
             logger.error(f"Error processing user {masked_email}: {e}")
@@ -280,6 +331,47 @@ class BookingWorkflow:
                 )
             except Exception as capture_error:
                 logger.error(f"Failed to capture error: {capture_error}")
+
+    def _build_reservation_from_request(
+        self, request: Dict[str, Any], slot: "SlotInfo"
+    ) -> Dict[str, Any]:
+        """
+        Build reservation from appointment request (multi-person support).
+
+        Args:
+            request: Appointment request dict from DB (includes persons list)
+            slot: SlotInfo with date and time
+
+        Returns:
+            Reservation dict compatible with AppointmentBookingService
+        """
+        persons = []
+        for person_data in request["persons"]:
+            person = {
+                "first_name": person_data.get("first_name", ""),
+                "last_name": person_data.get("last_name", ""),
+                "gender": person_data.get("gender", "male"),
+                "birth_date": person_data.get("birth_date", ""),
+                "passport_number": person_data.get("passport_number", ""),
+                "passport_expiry_date": person_data.get("passport_expiry_date", ""),
+                "phone_code": person_data.get("phone_code", "90"),
+                "phone_number": person_data.get("phone_number", ""),
+                "email": person_data.get("email", ""),
+                "is_child_with_parent": person_data.get("is_child_with_parent", False),
+            }
+            persons.append(person)
+
+        reservation = {
+            "person_count": request.get("person_count", len(persons)),
+            "preferred_dates": request.get("preferred_dates", [slot["date"]]),
+            "persons": persons,
+        }
+
+        # Add payment card from config
+        if "payment" in self.config and "card" in self.config["payment"]:
+            reservation["payment_card"] = self.config["payment"]["card"]
+
+        return reservation
 
     def _build_reservation(
         self, user: Dict[str, Any], slot: "SlotInfo", details: Dict[str, Any]

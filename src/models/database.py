@@ -1906,6 +1906,49 @@ class Database:
                 return requests
 
     @require_connection
+    async def get_pending_appointment_request_for_user(
+        self, user_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the most recent pending appointment request associated with a user.
+
+        Matches by checking if any person in the request has the same email as the user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            Appointment request dict with persons list, or None
+        """
+        async with self.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Get user email
+                await cursor.execute("SELECT email FROM users WHERE id = ?", (user_id,))
+                user_row = await cursor.fetchone()
+                if not user_row:
+                    return None
+
+                user_email = user_row["email"]
+
+                # Find pending request where any person matches user email
+                await cursor.execute(
+                    """
+                    SELECT DISTINCT ar.id FROM appointment_requests ar
+                    JOIN appointment_persons ap ON ar.id = ap.request_id
+                    WHERE ap.email = ? AND ar.status = 'pending'
+                    ORDER BY ar.created_at DESC
+                    LIMIT 1
+                    """,
+                    (user_email,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
+
+                # Use existing method to get full request with persons
+                return await self.get_appointment_request(row["id"])
+
+    @require_connection
     async def update_appointment_request_status(
         self, request_id: int, status: str, completed_at: Optional[datetime] = None
     ) -> bool:
