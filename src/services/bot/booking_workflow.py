@@ -257,16 +257,17 @@ class BookingWorkflow:
             "phone_code": details.get("mobile_code", "90"),
             "phone_number": details.get("mobile_number", ""),
             "email": details.get("email", ""),
-            "is_child_with_parent": False,  # Default to false, can be enhanced later
+            "is_child_with_parent": False,
         }
 
         # Build reservation structure
+        # NOTE: Currently handles single person bookings only.
+        # For multi-person support, person_count should be len(persons)
+        # and persons list should contain all applicants' details.
         reservation = {
-            "person_count": 1,  # Currently handling single person, can be enhanced for multiple
-            "preferred_dates": [slot["date"]],  # Use the slot date found
+            "person_count": 1,
+            "preferred_dates": [slot["date"]],
             "persons": [person],
-            # Payment card info would come from config or user data
-            # For now, we'll rely on the booking service to handle payment if needed
         }
 
         # Add payment card info if available in config
