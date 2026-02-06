@@ -451,6 +451,188 @@ async def test_delete_appointment_request(test_db):
 
 
 @pytest.mark.asyncio
+async def test_get_pending_appointment_request_for_user(test_db):
+    """Test getting pending appointment request for a user by email."""
+    # Create a user
+    user_id = await test_db.add_user(
+        email="testuser@example.com",
+        password="password123",
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay",
+    )
+
+    # Create an appointment request with the user's email
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "gender": "male",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "testuser@example.com",
+            "is_child_with_parent": False,
+        },
+    ]
+
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+
+    # Get the request by user
+    request = await test_db.get_pending_appointment_request_for_user(user_id)
+
+    assert request is not None
+    assert request["id"] == request_id
+    assert request["status"] == "pending"
+    assert len(request["persons"]) == 1
+    assert request["persons"][0]["email"] == "testuser@example.com"
+
+
+@pytest.mark.asyncio
+async def test_get_pending_appointment_request_for_user_multi_person(test_db):
+    """Test getting pending appointment request with multiple persons."""
+    # Create a user
+    user_id = await test_db.add_user(
+        email="mainuser@example.com",
+        password="password123",
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay",
+    )
+
+    # Create an appointment request with multiple persons
+    persons = [
+        {
+            "first_name": "Main",
+            "last_name": "User",
+            "gender": "male",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "mainuser@example.com",
+            "is_child_with_parent": False,
+        },
+        {
+            "first_name": "Second",
+            "last_name": "Person",
+            "gender": "female",
+            "nationality": "Turkey",
+            "birth_date": "20/05/1992",
+            "passport_number": "U87654321",
+            "passport_issue_date": "01/01/2021",
+            "passport_expiry_date": "01/01/2031",
+            "phone_code": "90",
+            "phone_number": "5559876543",
+            "email": "second@example.com",
+            "is_child_with_parent": False,
+        },
+    ]
+
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul", "Ankara"],
+        preferred_dates=["15/02/2026", "16/02/2026"],
+        person_count=2,
+        persons=persons,
+    )
+
+    # Get the request by user
+    request = await test_db.get_pending_appointment_request_for_user(user_id)
+
+    assert request is not None
+    assert request["id"] == request_id
+    assert request["person_count"] == 2
+    assert len(request["persons"]) == 2
+    assert request["persons"][0]["email"] == "mainuser@example.com"
+    assert request["persons"][1]["email"] == "second@example.com"
+
+
+@pytest.mark.asyncio
+async def test_get_pending_appointment_request_for_user_no_request(test_db):
+    """Test getting pending appointment request when none exists."""
+    # Create a user
+    user_id = await test_db.add_user(
+        email="noappointment@example.com",
+        password="password123",
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay",
+    )
+
+    # No appointment request created
+    request = await test_db.get_pending_appointment_request_for_user(user_id)
+
+    assert request is None
+
+
+@pytest.mark.asyncio
+async def test_get_pending_appointment_request_for_user_completed_status(test_db):
+    """Test that completed requests are not returned."""
+    # Create a user
+    user_id = await test_db.add_user(
+        email="completed@example.com",
+        password="password123",
+        centre="Istanbul",
+        category="Tourism",
+        subcategory="Short Stay",
+    )
+
+    # Create an appointment request
+    persons = [
+        {
+            "first_name": "Test",
+            "last_name": "User",
+            "gender": "male",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "completed@example.com",
+            "is_child_with_parent": False,
+        },
+    ]
+
+    request_id = await test_db.create_appointment_request(
+        country_code="nld",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul"],
+        preferred_dates=["15/02/2026"],
+        person_count=1,
+        persons=persons,
+    )
+
+    # Mark as completed
+    await test_db.update_appointment_request_status(request_id, "completed")
+
+    # Should not return completed request
+    request = await test_db.get_pending_appointment_request_for_user(user_id)
+
+    assert request is None
+
+
+@pytest.mark.asyncio
 async def test_cleanup_completed_requests(test_db):
     """Test cleanup of old completed requests."""
     from datetime import datetime, timedelta, timezone
