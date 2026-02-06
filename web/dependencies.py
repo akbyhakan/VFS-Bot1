@@ -8,13 +8,15 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
 from fastapi import Depends, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from src.core.auth import verify_token
+from src.models.database import Database
+from src.models.db_factory import DatabaseFactory
 
 logger = logging.getLogger(__name__)
 
@@ -511,6 +513,22 @@ async def verify_jwt_token(
     """
     token = credentials.credentials
     return verify_token(token)
+
+
+async def get_db() -> AsyncIterator[Database]:
+    """
+    FastAPI dependency — singleton DB via DatabaseFactory.
+
+    Yields:
+        Connected database instance
+
+    Note:
+        This is a singleton pattern. Do NOT close the database connection
+        in route handlers. DatabaseFactory.close_instance() handles shutdown.
+    """
+    db = await DatabaseFactory.ensure_connected()
+    yield db
+    # Do NOT close — DatabaseFactory.close_instance() handles shutdown
 
 
 async def broadcast_message(message: Dict[str, Any]) -> None:

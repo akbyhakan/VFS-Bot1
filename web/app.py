@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
+from src.models.db_factory import DatabaseFactory
 from src.services.otp_webhook_routes import router as otp_router
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
@@ -310,6 +311,14 @@ app.include_router(proxy_router)  # /api/proxy/*
 app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
 app.include_router(health_router)  # /health, /ready, /metrics
 app.include_router(dashboard_router)  # /errors.html
+
+
+# Application lifecycle events
+@app.on_event("shutdown")
+async def shutdown_db():
+    """Shutdown database singleton instance."""
+    await DatabaseFactory.close_instance()
+    logger.info("Database singleton instance closed")
 
 
 # WebSocket endpoint (must be added directly, not via router)

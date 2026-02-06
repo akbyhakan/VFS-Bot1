@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from src.models.database import Database
 from src.utils.security.netnut_proxy import NetNutProxyManager
-from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, verify_jwt_token
+from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/proxy", tags=["proxy"])
@@ -18,37 +18,6 @@ router = APIRouter(prefix="/api/proxy", tags=["proxy"])
 # independently. For production use with multiple worker processes,
 # consider using a shared cache (Redis) or database backend.
 proxy_manager = NetNutProxyManager()
-
-# Global database instance (singleton pattern)
-_db_instance = None
-_db_lock = None
-
-
-async def _get_or_create_db_lock():
-    """Get or create the database lock."""
-    global _db_lock
-    if _db_lock is None:
-        import asyncio
-
-        _db_lock = asyncio.Lock()
-    return _db_lock
-
-
-# Helper to get database instance
-async def get_db() -> Database:
-    """Get database instance for dependency injection (singleton pattern)."""
-    global _db_instance
-
-    lock = await _get_or_create_db_lock()
-    async with lock:
-        if _db_instance is None:
-            _db_instance = Database()
-            await _db_instance.connect()
-            logger.info("Database singleton instance created")
-
-    yield _db_instance
-    # Note: Do not close the database connection here - it's a singleton
-    # The connection will be closed when the application shuts down
 
 
 # Response models
