@@ -13,6 +13,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
+from src.utils.webhook_utils import verify_webhook_signature
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +102,6 @@ async def receive_sms(token: str, request: Request):
             body_bytes = await request.body()
 
             # Verify signature
-            from src.utils.webhook_utils import verify_webhook_signature
-
             if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
                 logger.warning("Invalid webhook signature")
                 raise HTTPException(status_code=401, detail="Invalid webhook signature")
@@ -112,8 +111,6 @@ async def receive_sms(token: str, request: Request):
         elif signature_header and sms_webhook_secret:
             # Development mode with signature provided - verify it
             body_bytes = await request.body()
-
-            from src.utils.webhook_utils import verify_webhook_signature
 
             if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
                 logger.warning("Invalid webhook signature (development mode)")

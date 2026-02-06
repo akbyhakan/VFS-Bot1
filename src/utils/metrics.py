@@ -67,13 +67,14 @@ class BotMetrics:
 
         logger.info(f"Metrics tracking initialized (retention: {retention_minutes}m)")
 
-    async def record_check(self, user_id: int, duration_ms: float) -> None:
+    async def record_check(self, user_id: int, duration_ms: float, centre: str = "unknown") -> None:
         """
         Record a slot check operation.
 
         Args:
             user_id: User ID
             duration_ms: Duration in milliseconds
+            centre: VFS centre name (default: "unknown")
         """
         async with self._lock:
             self.total_checks += 1
@@ -81,11 +82,9 @@ class BotMetrics:
             self.check_timestamps.append(time.time())
 
         # Update Prometheus metrics
-        from .prometheus_metrics import MetricsHelper
+        from .prometheus_metrics import RESPONSE_TIME, MetricsHelper
 
-        MetricsHelper.record_slot_check(centre="unknown", found=False)
-        from .prometheus_metrics import RESPONSE_TIME
-
+        MetricsHelper.record_slot_check(centre=centre, found=False)
         RESPONSE_TIME.labels(operation="slot_check").observe(duration_ms / 1000.0)
 
     async def record_slot_found(self, user_id: int, centre: str) -> None:

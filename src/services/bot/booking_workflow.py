@@ -116,6 +116,11 @@ class BookingWorkflow:
                 await self.process_waitlist_flow(page, user)
             else:
                 # Normal appointment flow
+                # Get deduplication service once (outside loop)
+                from ..appointment_deduplication import get_deduplication_service
+
+                dedup_service = await get_deduplication_service()
+
                 # Check slots
                 centres = user["centre"].split(",")
                 for centre in centres:
@@ -137,9 +142,6 @@ class BookingWorkflow:
                         )
 
                         # Check for duplicate booking attempt
-                        from ..appointment_deduplication import get_deduplication_service
-
-                        dedup_service = await get_deduplication_service()
                         is_duplicate = await dedup_service.is_duplicate(
                             user["id"], centre, user["category"], slot["date"]
                         )
