@@ -185,3 +185,63 @@ class TestSessionRecovery:
         assert steps.index("logged_in") < steps.index("personal_info_filled")
         assert steps.index("personal_info_filled") < steps.index("payment_completed")
         assert steps.index("payment_completed") < steps.index("completed")
+
+    def test_checkpoint_timezone_aware(self, temp_checkpoint_file):
+        """Test that checkpoints are saved with timezone-aware UTC timestamps."""
+        from datetime import timezone
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={"test": "data"}
+        )
+        
+        # Load and verify timestamp is timezone-aware
+        checkpoint = recovery.load_checkpoint()
+        assert checkpoint is not None
+        
+        timestamp_str = checkpoint["timestamp"]
+        parsed_dt = datetime.fromisoformat(timestamp_str)
+        
+        # Check if timestamp includes timezone info (ends with +00:00 or has timezone)
+        # ISO format with timezone should either have +HH:MM or Z suffix
+        assert parsed_dt.tzinfo is not None or "+00:00" in timestamp_str or timestamp_str.endswith("Z")
+
+    def test_checkpoint_age_calculation_utc(self, temp_checkpoint_file):
+        """Test that checkpoint age is calculated correctly using UTC."""
+        from datetime import timezone
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Save a checkpoint
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={}
+        )
+        
+        # Should load successfully (not expired yet)
+        checkpoint = recovery.load_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint["step"] == "logged_in"
+
+    def test_backward_compat_naive_checkpoint(self, temp_checkpoint_file):
+        """Test backward compatibility with old timezone-naive checkpoints."""
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        
+        # Manually create an old-style naive checkpoint (without timezone)
+        old_checkpoint = {
+            "step": "logged_in",
+            "step_index": 1,
+            "user_id": 123,
+            "timestamp": "2024-01-01T12:00:00",  # No timezone info
+            "context": {"test": "old_data"}
+        }
+        
+        with open(temp_checkpoint_file, "w") as f:
+            json.dump(old_checkpoint, f)
+        
+        # Should still be able to load (will be very old and likely ignored)
+        # This tests that the code doesn't crash on old naive timestamps
+        checkpoint = recovery.load_checkpoint()
+        # Will be None because it's > 1 hour old, but shouldn't raise exception
+        assert checkpoint is None or checkpoint["step"] == "logged_in"
+

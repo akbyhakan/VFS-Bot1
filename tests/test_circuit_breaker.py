@@ -367,3 +367,44 @@ async def test_circuit_breaker_service_manual_reset():
     assert cb.state == CircuitState.CLOSED
     assert cb.failure_count == 0
     assert await cb.can_execute() is True
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_timeout_utc():
+    """Test that circuit breaker timeout calculation uses UTC correctly."""
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+    
+    cb = CircuitBreaker(failure_threshold=1, timeout_seconds=1.0, name="TestUTCTimeout")
+    
+    # Open the circuit with a failure
+    await cb.record_failure()
+    assert cb.state == CircuitState.OPEN
+    
+    # Verify failure time is timezone-aware
+    assert cb._last_failure_time is not None
+    assert cb._last_failure_time.tzinfo is not None
+    
+    # Should not be able to execute immediately
+    assert await cb.can_execute() is False
+    
+    # Wait for timeout to pass
+    await asyncio.sleep(1.1)
+    
+    # Should be able to attempt reset now
+    assert await cb._should_attempt_reset() is True
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_failure_time_utc():
+    """Test that failure timestamps are stored in UTC."""
+    from datetime import timezone
+    
+    cb = CircuitBreaker(failure_threshold=3, timeout_seconds=60.0, name="TestUTCFailure")
+    
+    # Record a failure
+    await cb.record_failure()
+    
+    # Verify the last failure time is timezone-aware (UTC)
+    assert cb._last_failure_time is not None
+    assert cb._last_failure_time.tzinfo == timezone.utc
