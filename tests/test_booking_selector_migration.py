@@ -71,8 +71,7 @@ class TestBookingSelectorMigration:
         # Test each selector can be retrieved
         for key in selector_keys:
             result = manager.get_all(f"booking.{key}")
-            assert result, f"Selector booking.{key} should exist"
-            assert len(result) > 0, f"Selector booking.{key} should have at least one value"
+            assert result, f"Selector booking.{key} should exist and have at least one value"
 
     def test_resolve_selector_with_flat_keys(self):
         """Test resolve_selector works with flat keys (backward compatibility)."""

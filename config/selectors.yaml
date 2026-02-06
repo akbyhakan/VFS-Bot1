@@ -125,6 +125,7 @@ defaults:
         - 'input[formcontrolname="passportNumber"]'
         - 'input[name="passportNumber"]'
     passport_expiry:
+      # Note: VFS website uses "passportExpirtyDate" (with typo) as the actual ID
       primary: "#passportExpirtyDate"
       fallbacks:
         - 'input[formcontrolname="passportExpiry"]'
