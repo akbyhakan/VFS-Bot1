@@ -658,12 +658,169 @@ class Database:
             """
             )
 
+            # Schema migrations table for versioned migrations
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    description TEXT NOT NULL,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+
             await self.conn.commit()
 
-            # Migration: Add new columns if they don't exist
-            await self._migrate_schema()
+            # Migration: Add new columns if they don't exist (versioned)
+            await self._run_versioned_migrations()
 
             logger.info("Database tables created/verified")
+
+    async def _run_versioned_migrations(self) -> None:
+        """
+        Run versioned database migrations.
+
+        This method implements a versioning system for database migrations.
+        Each migration is tracked in the schema_migrations table to ensure
+        it only runs once. Provides backward compatibility with existing
+        databases by detecting already-applied changes.
+        """
+        if self.conn is None:
+            raise RuntimeError("Database connection is not established.")
+
+        # Whitelist of valid table names for security
+        VALID_TABLES = frozenset({
+            "appointment_requests",
+            "appointment_persons",
+            "payment_card",
+            "users",
+            "personal_details",
+            "appointments",
+            "logs",
+            "audit_log",
+            "appointment_history",
+            "user_webhooks",
+            "proxy_endpoints",
+            "token_blacklist",
+        })
+
+        # Define migrations in order
+        migrations = [
+            {
+                "version": 1,
+                "description": "Add visa_category to appointment_requests",
+                "table": "appointment_requests",
+                "column": "visa_category",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT",
+                "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
+            },
+            {
+                "version": 2,
+                "description": "Add visa_subcategory to appointment_requests",
+                "table": "appointment_requests",
+                "column": "visa_subcategory",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT",
+                "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
+            },
+            {
+                "version": 3,
+                "description": "Add gender to appointment_persons",
+                "table": "appointment_persons",
+                "column": "gender",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN gender TEXT",
+                "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
+            },
+            {
+                "version": 4,
+                "description": "Add is_child_with_parent to appointment_persons",
+                "table": "appointment_persons",
+                "column": "is_child_with_parent",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN",
+                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL",
+            },
+            {
+                "version": 5,
+                "description": "Add cvv_encrypted to payment_card",
+                "table": "payment_card",
+                "column": "cvv_encrypted",
+                "sql": "ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT",
+                # No default value needed - existing cards can have NULL cvv_encrypted,
+                # and new cards will set this value when created
+                "default_sql": None,
+            },
+        ]
+
+        # Validate all migration table names against whitelist
+        for migration in migrations:
+            if migration["table"] not in VALID_TABLES:
+                raise ValueError(
+                    f"Invalid table name in migration v{migration['version']}: "
+                    f"{migration['table']}"
+                )
+
+        async with self.conn.cursor() as cursor:
+            # Get applied migrations
+            await cursor.execute("SELECT version FROM schema_migrations ORDER BY version")
+            applied_versions = {row[0] for row in await cursor.fetchall()}
+
+            # Backward compatibility: Check if migrations already applied
+            # If schema_migrations is empty but columns exist, mark as applied
+            if not applied_versions:
+                for migration in migrations:
+                    # Table name already validated above
+                    await cursor.execute(f"PRAGMA table_info({migration['table']})")
+                    columns = await cursor.fetchall()
+                    column_names = [col[1] for col in columns]
+
+                    if migration["column"] in column_names:
+                        # Column exists, mark migration as applied
+                        await cursor.execute(
+                            """INSERT INTO schema_migrations (version, description)
+                               VALUES (?, ?)""",
+                            (migration["version"], migration["description"]),
+                        )
+                        applied_versions.add(migration["version"])
+                        logger.info(
+                            f"Migration v{migration['version']} already applied "
+                            f"(backward compatibility): {migration['description']}"
+                        )
+
+                await self.conn.commit()
+
+            # Apply pending migrations
+            for migration in migrations:
+                if migration["version"] in applied_versions:
+                    continue
+
+                # Run migration in its own transaction
+                try:
+                    logger.info(f"Applying migration v{migration['version']}: {migration['description']}")
+
+                    # Execute the migration SQL
+                    await cursor.execute(migration["sql"])
+
+                    # Execute default value update if provided
+                    if migration.get("default_sql"):
+                        await cursor.execute(migration["default_sql"])
+
+                    # Record migration
+                    await cursor.execute(
+                        """INSERT INTO schema_migrations (version, description)
+                           VALUES (?, ?)""",
+                        (migration["version"], migration["description"]),
+                    )
+
+                    await self.conn.commit()
+                    logger.info(f"Migration v{migration['version']} completed successfully")
+
+                except Exception as e:
+                    # Rollback this migration
+                    await self.conn.rollback()
+                    logger.error(f"Migration v{migration['version']} failed: {e}")
+                    # Re-raise to prevent partial migration state
+                    raise
+
+            logger.info("All schema migrations completed")
 
     async def _migrate_schema(self) -> None:
         """Migrate database schema for new columns."""

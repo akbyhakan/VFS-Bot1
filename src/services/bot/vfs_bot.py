@@ -67,6 +67,9 @@ class VFSBot:
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
 
+        # Track active booking tasks for graceful shutdown
+        self._active_booking_tasks: set = set()
+
         # Declare anti-detection components with Optional types
         self.human_sim: Optional[HumanSimulator] = None
         self.header_manager: Optional[HeaderManager] = None
@@ -302,8 +305,29 @@ class VFSBot:
             await self.stop()
 
     async def stop(self) -> None:
-        """Stop the bot."""
+        """
+        Stop the bot with graceful shutdown of active bookings.
+
+        This method waits for active booking tasks to complete gracefully
+        before shutting down, with a 120-second timeout. If bookings don't
+        complete within the grace period, they are forcefully cancelled.
+        """
         self.running = False
+
+        # Wait for active booking tasks to complete gracefully
+        if self._active_booking_tasks:
+            logger.info(f"Waiting for {len(self._active_booking_tasks)} active booking(s) to complete...")
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
+                    timeout=120  # 2 minutes grace period for bookings
+                )
+                logger.info("All active bookings completed")
+            except asyncio.TimeoutError:
+                logger.warning("Booking grace period expired, forcing shutdown")
+                for task in self._active_booking_tasks:
+                    task.cancel()
+
         await self.browser_manager.close()
         await self.notifier.notify_bot_stopped()
         logger.info("VFS-Bot stopped")
@@ -357,7 +381,17 @@ class VFSBot:
                     continue
 
                 # Process users in parallel with semaphore limit
-                tasks = [self._process_user_with_semaphore(user) for user in users]
+                # Create named tasks for tracking
+                tasks = []
+                for user in users:
+                    task = asyncio.create_task(
+                        self._process_user_with_semaphore(user),
+                        name=f"vfs_booking_user_{user.get('id', 'unknown')}"
+                    )
+                    self._active_booking_tasks.add(task)
+                    task.add_done_callback(self._active_booking_tasks.discard)
+                    tasks.append(task)
+
                 results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Check results and update circuit breaker
