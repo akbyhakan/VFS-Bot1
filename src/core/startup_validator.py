@@ -35,7 +35,7 @@ def validate_production_security() -> List[str]:
 
     # Check admin username
     admin_user = os.getenv("ADMIN_USERNAME", "")
-    if admin_user.lower() in ("admin", "administrator", "root", ""):
+    if admin_user and admin_user.lower() in ("admin", "administrator", "root"):
         warnings.append(
             f"ADMIN_USERNAME='{admin_user}' is a common default. "
             "Change to a unique username to prevent brute-force attacks."
