@@ -29,7 +29,6 @@ from src.core.shutdown import graceful_shutdown_with_timeout  # noqa: F401
 from src.core.shutdown import (  # noqa: F401
     safe_shutdown_cleanup as _safe_shutdown_cleanup,
 )
-from src.core.startup import validate_environment  # noqa: F401
 
 
 def main() -> None:
