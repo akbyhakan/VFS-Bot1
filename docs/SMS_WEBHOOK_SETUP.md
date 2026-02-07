@@ -17,7 +17,7 @@ SIM Cards (150+)  ──► Android Phone (SMS Forwarder)  ──► Webhook URL
 1. Android phone with all SIM cards
 2. SMS Forwarder app installed
 3. VFS-Bot running and accessible from the internet
-4. Base webhook URL configured (e.g., `https://api.vizecep.com`)
+4. Base webhook URL configured (e.g., `https://your-api-domain.example.com`)
 
 ## Setup Steps
 
@@ -30,7 +30,7 @@ from src.services.otp_manager import OTPManager
 
 # Initialize OTP Manager
 manager = OTPManager(
-    email="akby.hakan@vizecep.com",
+    email="admin@example.com",
     app_password="xxxx-xxxx-xxxx-xxxx"
 )
 manager.start()
@@ -40,12 +40,12 @@ account = manager.register_account(
     vfs_email="user@email.com",
     vfs_password="password123",
     phone_number="+905551234567",
-    target_email="bot1@vizecep.com",
+    target_email="bot@example.com",
     country="Netherlands"
 )
 
 print(f"Webhook URL: {account.webhook_url}")
-# Output: https://api.vizecep.com/webhook/sms/tk_a1b2c3d4e5f6g7h8i9j0k1l2
+# Output: https://your-api-domain.example.com/webhook/sms/tk_a1b2c3d4e5f6g7h8i9j0k1l2
 ```
 
 ### 2. Configure SMS Forwarder
@@ -98,7 +98,7 @@ Before going live, test the webhook:
 
 ```bash
 # Test endpoint (doesn't process OTP)
-curl -X POST "https://api.vizecep.com/webhook/sms/tk_a1b2c3d4e5f6g7h8i9j0k1l2/test" \
+curl -X POST "https://your-api-domain.example.com/webhook/sms/tk_a1b2c3d4e5f6g7h8i9j0k1l2/test" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Your VFS OTP is 123456",
@@ -193,7 +193,7 @@ Check webhook token status.
   "status": "active",
   "account_id": "acc_...",
   "phone_number": "+905551234567",
-  "webhook_url": "https://api.vizecep.com/webhook/sms/tk_...",
+  "webhook_url": "https://your-api-domain.example.com/webhook/sms/tk_...",
   "created_at": "2026-01-29T15:00:00Z",
   "last_used_at": "2026-01-29T15:30:00Z",
   "session_linked": true,
@@ -274,7 +274,7 @@ Add to `.env` file:
 
 ```bash
 # Base URL for webhook endpoints
-WEBHOOK_BASE_URL=https://api.vizecep.com
+WEBHOOK_BASE_URL=https://your-api-domain.example.com
 
 # Token prefix (default: tk_)
 WEBHOOK_TOKEN_PREFIX=tk_
@@ -298,7 +298,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Initialize manager
 manager = OTPManager(
-    email="akby.hakan@vizecep.com",
+    email="admin@example.com",
     app_password="xxxx-xxxx-xxxx-xxxx"
 )
 manager.start()
@@ -309,7 +309,7 @@ try:
         vfs_email="user@email.com",
         vfs_password="secure_password",
         phone_number="+905551234567",
-        target_email="bot1@vizecep.com",
+        target_email="bot@example.com",
         country="Netherlands",
         visa_type="Tourist"
     )

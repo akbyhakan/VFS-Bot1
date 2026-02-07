@@ -288,7 +288,7 @@ class VFSBot:
         Returns:
             Self instance
         """
-        await self.browser_manager.start()
+        await self.start()
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
@@ -381,18 +381,16 @@ class VFSBot:
                     logger.info("Shutdown requested, stopping bot loop...")
                     break
 
-                # E5: Check and refresh session token if needed (SessionManager integration)
-                # Note: Token refresh callback needs VFS API-specific implementation
+                # Check session token status
                 if self.session_manager:
                     try:
                         if self.session_manager.is_token_expired():
-                            logger.info("Session token expired or expiring soon")
-                            # TODO: Implement VFS-specific token refresh callback
-                            # For now, we just detect expiry - actual refresh requires VFS API endpoint
-                            logger.warning("Token refresh not yet implemented for VFS Global API")
+                            logger.debug(
+                                "SessionManager token expired. "
+                                "Note: VFS API client handles its own token refresh via _ensure_authenticated()."
+                            )
                     except Exception as token_error:
                         logger.warning(f"Session token check error: {token_error}")
-                        # Continue - don't stop bot for token issues
 
                 # Check circuit breaker
                 if not await self.circuit_breaker.is_available():

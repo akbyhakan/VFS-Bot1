@@ -937,7 +937,9 @@ class OTPManager:
 
             from src.services.webhook_token_manager import WebhookTokenManager
 
-            base_url = os.getenv("WEBHOOK_BASE_URL", "https://api.vizecep.com")
+            base_url = os.getenv("WEBHOOK_BASE_URL")
+            if not base_url:
+                raise ValueError("WEBHOOK_BASE_URL environment variable must be set")
             webhook_manager = WebhookTokenManager(base_url=base_url)
             self._account_manager = VFSAccountManager(webhook_token_manager=webhook_manager)
 
