@@ -48,6 +48,7 @@ class BookingWorkflow:
         session_recovery: SessionRecovery,
         human_sim: Optional[HumanSimulator] = None,
         error_capture: Optional[ErrorCapture] = None,
+        alert_service: Optional[Any] = None,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -65,6 +66,7 @@ class BookingWorkflow:
             session_recovery: Session recovery instance
             human_sim: Optional human simulator for anti-detection
             error_capture: Optional error capture instance for detailed error diagnostics
+            alert_service: Optional AlertService for critical notifications
         """
         self.config = config
         self.db = db
@@ -78,6 +80,7 @@ class BookingWorkflow:
         self.session_recovery = session_recovery
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
+        self.alert_service = alert_service
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
