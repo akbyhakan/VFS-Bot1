@@ -8,6 +8,7 @@ WORKDIR /build
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install to /install
@@ -46,6 +47,7 @@ RUN apt-get update && \
     libgtk-3-0 \
     libpango-1.0-0 \
     libcairo2 \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python dependencies from builder
