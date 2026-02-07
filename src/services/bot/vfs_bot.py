@@ -95,6 +95,118 @@ class VFSBot:
 
         logger.info("VFSBot initialized with modular components")
 
+    # Backward compatibility properties for legacy code accessing old attributes
+    @property
+    def auth_service(self):
+        """Backward compatibility property for auth_service."""
+        return self.services.workflow.auth_service
+
+    @property
+    def slot_checker(self):
+        """Backward compatibility property for slot_checker."""
+        return self.services.workflow.slot_checker
+
+    @property
+    def booking_service(self):
+        """Backward compatibility property for booking_service."""
+        return self.services.workflow.booking_service
+
+    @property
+    def error_handler(self):
+        """Backward compatibility property for error_handler."""
+        return self.services.workflow.error_handler
+
+    @property
+    def alert_service(self):
+        """Backward compatibility property for alert_service."""
+        return self.services.workflow.alert_service
+
+    @property
+    def captcha_solver(self):
+        """Backward compatibility property for captcha_solver."""
+        return self.services.core.captcha_solver
+
+    @property
+    def centre_fetcher(self):
+        """Backward compatibility property for centre_fetcher."""
+        return self.services.core.centre_fetcher
+
+    @property
+    def otp_service(self):
+        """Backward compatibility property for otp_service."""
+        return self.services.core.otp_service
+
+    @property
+    def rate_limiter(self):
+        """Backward compatibility property for rate_limiter."""
+        return self.services.core.rate_limiter
+
+    @property
+    def error_capture(self):
+        """Backward compatibility property for error_capture."""
+        return self.services.core.error_capture
+
+    @property
+    def user_semaphore(self):
+        """Backward compatibility property for user_semaphore."""
+        return self.services.core.user_semaphore
+
+    @property
+    def human_sim(self):
+        """Backward compatibility property for human_sim."""
+        return self.services.anti_detection.human_sim
+
+    @property
+    def header_manager(self):
+        """Backward compatibility property for header_manager."""
+        return self.services.anti_detection.header_manager
+
+    @property
+    def session_manager(self):
+        """Backward compatibility property for session_manager."""
+        return self.services.anti_detection.session_manager
+
+    @property
+    def cloudflare_handler(self):
+        """Backward compatibility property for cloudflare_handler."""
+        return self.services.anti_detection.cloudflare_handler
+
+    @property
+    def proxy_manager(self):
+        """Backward compatibility property for proxy_manager."""
+        return self.services.anti_detection.proxy_manager
+
+    @property
+    def anti_detection_enabled(self):
+        """Backward compatibility property for anti_detection_enabled."""
+        return self.services.anti_detection.enabled
+
+    @property
+    def scheduler(self):
+        """Backward compatibility property for scheduler."""
+        return self.services.automation.scheduler
+
+    @property
+    def slot_analyzer(self):
+        """Backward compatibility property for slot_analyzer."""
+        return self.services.automation.slot_analyzer
+
+    @property
+    def self_healing(self):
+        """Backward compatibility property for self_healing."""
+        return self.services.automation.self_healing
+
+    @property
+    def session_recovery(self):
+        """Backward compatibility property for session_recovery."""
+        return self.services.automation.session_recovery
+
+    @property
+    def country_profiles(self):
+        """Backward compatibility property for country_profiles."""
+        return self.services.automation.country_profiles
+
+
     async def __aenter__(self) -> "VFSBot":
         """
         Async context manager entry.
