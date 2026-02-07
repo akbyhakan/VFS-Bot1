@@ -117,9 +117,19 @@ class VFSBot:
         return self.services.workflow.error_handler
 
     @property
+    def waitlist_handler(self):
+        """Backward compatibility property for waitlist_handler."""
+        return self.services.workflow.waitlist_handler
+
+    @property
     def alert_service(self):
         """Backward compatibility property for alert_service."""
         return self.services.workflow.alert_service
+
+    @property
+    def payment_service(self):
+        """Backward compatibility property for payment_service."""
+        return self.services.workflow.payment_service
 
     @property
     def captcha_solver(self):
