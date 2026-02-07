@@ -307,7 +307,9 @@ class TestBotServiceFactoryCoreServices:
     def test_create_core_services_with_injected_captcha(self, minimal_config):
         """Test creating core services with injected CaptchaSolver."""
         mock_captcha = MagicMock(spec=CaptchaSolver)
-        context = BotServiceFactory.create_core_services(minimal_config, captcha_solver=mock_captcha)
+        context = BotServiceFactory.create_core_services(
+            minimal_config, captcha_solver=mock_captcha
+        )
 
         assert context.captcha_solver is mock_captcha
 

@@ -206,7 +206,6 @@ class VFSBot:
         """Backward compatibility property for country_profiles."""
         return self.services.automation.country_profiles
 
-
     async def __aenter__(self) -> "VFSBot":
         """
         Async context manager entry.
@@ -282,29 +281,35 @@ class VFSBot:
             active_count = len(self._active_booking_tasks)
             grace_period_seconds = 120  # 2 minutes grace period for bookings
             grace_period_display = f"{grace_period_seconds // 60} min"
-            
+
             logger.info(f"Waiting for {active_count} active booking(s) to complete...")
 
             # Notify about pending shutdown
             await self._send_alert_safe(
-                message=f"⏳ Bot shutting down - waiting for {active_count} active booking(s) to complete ({grace_period_display} grace period)",
+                message=(
+                    f"⏳ Bot shutting down - waiting for {active_count} "
+                    f"active booking(s) to complete ({grace_period_display} grace period)"
+                ),
                 severity=AlertSeverity.WARNING,
-                metadata={"active_bookings": active_count}
+                metadata={"active_bookings": active_count},
             )
 
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
-                    timeout=grace_period_seconds
+                    timeout=grace_period_seconds,
                 )
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
                 # Notify about forced cancellation
                 await self._send_alert_safe(
-                    message=f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} booking(s) cancelled after {grace_period_display} timeout",
+                    message=(
+                        f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
+                        f"booking(s) cancelled after {grace_period_display} timeout"
+                    ),
                     severity=AlertSeverity.ERROR,
-                    metadata={"cancelled_bookings": len(self._active_booking_tasks)}
+                    metadata={"cancelled_bookings": len(self._active_booking_tasks)},
                 )
                 for task in self._active_booking_tasks:
                     task.cancel()
@@ -350,10 +355,12 @@ class VFSBot:
                 # Check session token status
                 if self.services.anti_detection.session_manager:
                     try:
-                        if self.services.anti_detection.session_manager.is_token_expired():
+                        session_mgr = self.services.anti_detection.session_manager
+                        if session_mgr.is_token_expired():
                             logger.debug(
                                 "SessionManager token expired. "
-                                "Note: VFS API client handles its own token refresh via _ensure_authenticated()."
+                                "Note: VFS API client handles its own token "
+                                "refresh via _ensure_authenticated()."
                             )
                     except Exception as token_error:
                         logger.warning(f"Session token check error: {token_error}")
@@ -366,14 +373,17 @@ class VFSBot:
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
                         f"(consecutive errors: {stats['consecutive_errors']})"
                     )
-                    
+
                     # Send alert for circuit breaker open (WARNING severity)
                     await self._send_alert_safe(
-                        message=f"Circuit breaker OPEN - consecutive errors: {stats['consecutive_errors']}, waiting {wait_time}s",
+                        message=(
+                            f"Circuit breaker OPEN - consecutive errors: "
+                            f"{stats['consecutive_errors']}, waiting {wait_time}s"
+                        ),
                         severity=AlertSeverity.WARNING,
-                        metadata={"stats": stats, "wait_time": wait_time}
+                        metadata={"stats": stats, "wait_time": wait_time},
                     )
-                    
+
                     await asyncio.sleep(wait_time)
                     # Don't unconditionally reset - let the next successful iteration close it
                     # Unconditional reset could cause premature recovery if underlying
@@ -415,7 +425,7 @@ class VFSBot:
                 for user in users:
                     task = asyncio.create_task(
                         self._process_user_with_semaphore(user),
-                        name=f"vfs_booking_user_{user.get('id', 'unknown')}"
+                        name=f"vfs_booking_user_{user.get('id', 'unknown')}",
                     )
                     self._active_booking_tasks.add(task)
                     task.add_done_callback(self._active_booking_tasks.discard)
@@ -428,12 +438,15 @@ class VFSBot:
                 if errors_in_batch > 0:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self.circuit_breaker.record_failure()
-                    
+
                     # Send alert for batch errors (ERROR severity)
                     await self._send_alert_safe(
-                        message=f"Batch processing errors: {errors_in_batch}/{len(users)} users failed",
+                        message=(
+                            f"Batch processing errors: {errors_in_batch}/"
+                            f"{len(users)} users failed"
+                        ),
                         severity=AlertSeverity.ERROR,
-                        metadata={"errors": errors_in_batch, "total_users": len(users)}
+                        metadata={"errors": errors_in_batch, "total_users": len(users)},
                     )
                 else:
                     # Successful batch - reset consecutive errors
@@ -453,12 +466,12 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self.circuit_breaker.record_failure()
-                
+
                 # Send alert for bot loop error (ERROR severity)
                 await self._send_alert_safe(
                     message=f"Bot loop error: {str(e)}",
                     severity=AlertSeverity.ERROR,
-                    metadata={"error": str(e), "type": type(e).__name__}
+                    metadata={"error": str(e), "type": type(e).__name__},
                 )
 
                 # If circuit breaker open, wait longer
