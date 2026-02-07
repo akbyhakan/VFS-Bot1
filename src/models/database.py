@@ -787,6 +787,22 @@ class Database:
 
                 await self.conn.commit()
 
+            # Determine pending migrations
+            pending_migrations = [m for m in migrations if m["version"] not in applied_versions]
+
+            if pending_migrations:
+                # Create automatic backup before applying migrations
+                try:
+                    from src.utils.db_backup_util import DatabaseBackup
+                    backup_util = DatabaseBackup(self.db_path)
+                    backup_path = backup_util.create_backup(suffix="pre_migration")
+                    if backup_path:
+                        logger.info(f"Pre-migration backup created: {backup_path}")
+                    else:
+                        logger.warning("Failed to create pre-migration backup - proceeding anyway")
+                except Exception as backup_error:
+                    logger.warning(f"Could not create pre-migration backup: {backup_error}")
+
             # Apply pending migrations
             for migration in migrations:
                 if migration["version"] in applied_versions:

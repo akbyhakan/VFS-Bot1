@@ -327,10 +327,10 @@ allowed_origins = validate_cors_origins(allowed_origins_str)
 if not allowed_origins:
     env = os.getenv("ENV", "production").lower()
     if env not in ("development", "dev", "local", "testing", "test"):
-        logger.warning(
-            "No valid CORS origins configured for production. "
-            "Set CORS_ALLOWED_ORIGINS in .env. "
-            "Frontend cross-origin requests will be blocked."
+        raise RuntimeError(
+            "CRITICAL: No valid CORS origins configured for production. "
+            "Set CORS_ALLOWED_ORIGINS in .env (e.g., 'https://yourdomain.com'). "
+            "Application cannot start without valid CORS configuration in production."
         )
 
 app.add_middleware(

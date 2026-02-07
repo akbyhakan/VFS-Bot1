@@ -37,6 +37,10 @@ class BrowserManager:
         self.context: Optional[BrowserContext] = None
         self.playwright: Optional[Playwright] = None
         self._anti_detection_enabled = config.get("anti_detection", {}).get("enabled", True)
+        self._page_count: int = 0
+        self._max_pages_before_restart: int = config.get("bot", {}).get(
+            "browser_restart_after_pages", 100
+        )
 
     async def start(self) -> None:
         """Launch browser and create context with anti-detection features."""
@@ -195,6 +199,25 @@ class BrowserManager:
         # Start fresh
         await self.start()
         logger.info("Browser restarted with new proxy")
+
+    async def should_restart(self) -> bool:
+        """Check if browser should be restarted for memory management."""
+        self._page_count += 1
+        if self._page_count >= self._max_pages_before_restart:
+            logger.info(
+                f"Browser restart threshold reached ({self._page_count} pages created). "
+                "Restarting to prevent memory leaks."
+            )
+            return True
+        return False
+
+    async def restart_fresh(self) -> None:
+        """Restart browser with clean state for memory management."""
+        logger.info("Restarting browser for memory management...")
+        await self.close()
+        await self.start()
+        self._page_count = 0
+        logger.info("Browser restarted successfully for memory management")
 
     async def __aenter__(self) -> "BrowserManager":
         """Async context manager entry."""
