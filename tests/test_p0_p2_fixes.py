@@ -194,8 +194,8 @@ class TestGracefulShutdownTimeout:
 
     @pytest.mark.asyncio
     async def test_safe_shutdown_cleanup_with_db(self):
-        """Test _safe_shutdown_cleanup with database."""
-        from main import _safe_shutdown_cleanup
+        """Test safe_shutdown_cleanup with database."""
+        from src.core.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
@@ -207,15 +207,15 @@ class TestGracefulShutdownTimeout:
         assert original_pool_size > 0  # Should have connections in pool
 
         # Cleanup should close the database
-        await _safe_shutdown_cleanup(db=db, db_owned=True)
+        await safe_shutdown_cleanup(db=db, db_owned=True)
 
         # Pool should be empty after close
         assert len(db._pool) == 0
 
     @pytest.mark.asyncio
     async def test_safe_shutdown_cleanup_without_db_ownership(self):
-        """Test _safe_shutdown_cleanup respects db_owned flag."""
-        from main import _safe_shutdown_cleanup
+        """Test safe_shutdown_cleanup respects db_owned flag."""
+        from src.core.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
@@ -226,7 +226,7 @@ class TestGracefulShutdownTimeout:
         assert original_pool_size > 0  # Should have connections in pool
 
         # Cleanup should NOT close the database if db_owned is False
-        await _safe_shutdown_cleanup(db=db, db_owned=False)
+        await safe_shutdown_cleanup(db=db, db_owned=False)
 
         # Pool should still have connections
         assert len(db._pool) == original_pool_size
@@ -236,20 +236,20 @@ class TestGracefulShutdownTimeout:
 
     @pytest.mark.asyncio
     async def test_safe_shutdown_cleanup_handles_errors(self):
-        """Test _safe_shutdown_cleanup handles errors gracefully."""
-        from main import _safe_shutdown_cleanup
+        """Test safe_shutdown_cleanup handles errors gracefully."""
+        from src.core.shutdown import safe_shutdown_cleanup
 
         # Create a mock database that raises an error on close
         mock_db = AsyncMock()
         mock_db.close = AsyncMock(side_effect=Exception("Close failed"))
 
         # Should not raise, just log the error
-        await _safe_shutdown_cleanup(db=mock_db, db_owned=True)
+        await safe_shutdown_cleanup(db=mock_db, db_owned=True)
 
     @pytest.mark.asyncio
     async def test_graceful_shutdown_with_timeout_success(self):
         """Test graceful_shutdown_with_timeout completes successfully."""
-        from main import graceful_shutdown_with_timeout
+        from src.core.shutdown import graceful_shutdown_with_timeout
 
         loop = asyncio.get_running_loop()
 
@@ -261,12 +261,12 @@ class TestGracefulShutdownTimeout:
         """Test graceful_shutdown_with_timeout raises ShutdownTimeoutError on timeout."""
         from unittest.mock import patch
 
-        from main import graceful_shutdown_with_timeout
+        from src.core.shutdown import graceful_shutdown_with_timeout
 
         loop = asyncio.get_running_loop()
 
         # Mock graceful_shutdown to timeout
-        with patch("main.graceful_shutdown") as mock_shutdown:
+        with patch("src.core.shutdown.graceful_shutdown") as mock_shutdown:
             # Make it hang indefinitely
             mock_shutdown.side_effect = asyncio.TimeoutError()
 
@@ -337,21 +337,21 @@ class TestEmergencyCleanup:
 
     @pytest.mark.asyncio
     async def test_fast_emergency_cleanup(self):
-        """Test _fast_emergency_cleanup closes DatabaseFactory."""
+        """Test fast_emergency_cleanup closes DatabaseFactory."""
         from unittest.mock import AsyncMock, patch
 
-        from main import _fast_emergency_cleanup
+        from src.core.shutdown import fast_emergency_cleanup
 
         with patch("src.models.db_factory.DatabaseFactory.close_instance", new_callable=AsyncMock) as mock_close:
-            await _fast_emergency_cleanup()
+            await fast_emergency_cleanup()
             mock_close.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_fast_emergency_cleanup_handles_timeout(self):
-        """Test _fast_emergency_cleanup handles timeout gracefully."""
+        """Test fast_emergency_cleanup handles timeout gracefully."""
         from unittest.mock import AsyncMock, patch
 
-        from main import _fast_emergency_cleanup
+        from src.core.shutdown import fast_emergency_cleanup
 
         # Mock close_instance to timeout
         with patch(
@@ -360,7 +360,7 @@ class TestEmergencyCleanup:
             side_effect=asyncio.TimeoutError(),
         ):
             # Should not raise
-            await _fast_emergency_cleanup()
+            await fast_emergency_cleanup()
 
 
 # P1-5: Environment validation
