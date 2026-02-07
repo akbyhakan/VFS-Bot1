@@ -206,7 +206,9 @@ async def run_both_mode(config: dict) -> None:
         start_result = await controller.start_bot()
         if start_result["status"] != "success":
             logger.error(f"Failed to start bot: {start_result['message']}")
-            raise RuntimeError(f"Bot startup failed: {start_result['message']}")
+            raise RuntimeError(
+                f"Critical: Unable to start bot in both mode - {start_result['message']}"
+            )
 
         # Run web mode (with cleanup service enabled)
         web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))

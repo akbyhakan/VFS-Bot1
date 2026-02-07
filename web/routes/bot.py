@@ -74,7 +74,7 @@ async def start_bot(
     except HTTPException:
         return {
             "status": "error",
-            "message": "Bot controller not available. Restart in 'both' mode.",
+            "message": "Bot controller not configured. Please restart in 'both' mode.",
         }
 
     # Start the bot via controller
@@ -121,7 +121,7 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     except HTTPException:
         return {
             "status": "error",
-            "message": "Bot controller not available. Restart in 'both' mode.",
+            "message": "Bot controller not configured. Please restart in 'both' mode.",
         }
 
     # Stop the bot via controller
@@ -168,7 +168,7 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
     except HTTPException:
         return {
             "status": "error",
-            "message": "Bot controller not available. Restart in 'both' mode.",
+            "message": "Bot controller not configured. Please restart in 'both' mode.",
         }
 
     # Broadcast restarting status
@@ -223,7 +223,7 @@ async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -
     except HTTPException:
         return {
             "status": "error",
-            "message": "Bot controller not available. Restart in 'both' mode.",
+            "message": "Bot controller not configured. Please restart in 'both' mode.",
         }
 
     # Trigger manual check via controller

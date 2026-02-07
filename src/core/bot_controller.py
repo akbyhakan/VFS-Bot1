@@ -246,7 +246,10 @@ class BotController:
         """
         Trigger an immediate slot check.
         
-        This interrupts the current sleep in the bot loop to force an immediate check.
+        Note: The current implementation logs the trigger request but does not
+        interrupt the bot's sleep cycle. A full implementation would require
+        adding a trigger event to VFSBot's main loop to immediately wake up
+        and perform a check.
         
         Returns:
             Status dictionary with result
@@ -255,8 +258,8 @@ class BotController:
             logger.warning("Cannot trigger check: bot is not running")
             return {"status": "error", "message": "Bot is not running"}
 
-        # For now, we log the trigger request
-        # The actual implementation would require adding a trigger event to VFSBot
+        # Log the trigger request - a full implementation would set an event
+        # that the bot loop monitors to immediately perform a check
         logger.info("Manual check triggered via BotController")
         return {"status": "success", "message": "Manual check triggered"}
 
