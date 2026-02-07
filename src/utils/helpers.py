@@ -85,7 +85,7 @@ async def smart_fill(
             await human_sim.human_type(page, selector, text)
         else:
             await page.fill(selector, text)
-    except (TimeoutError, Exception) as e:
+    except Exception as e:
         # Try self-healing if available
         if self_healing and selector_path and element_description:
             logger.info(f"Selector failed: {selector}, attempting self-healing...")
@@ -142,7 +142,7 @@ async def smart_click(
             await human_sim.human_click(page, selector)
         else:
             await page.click(selector)
-    except (TimeoutError, Exception) as e:
+    except Exception as e:
         # Try self-healing if available
         if self_healing and selector_path and element_description:
             logger.info(f"Selector failed: {selector}, attempting self-healing...")

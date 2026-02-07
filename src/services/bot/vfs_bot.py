@@ -169,7 +169,7 @@ class VFSBot:
         # Initialize PaymentService with PCI-DSS security controls
         payment_config = self.config.get("payment", {})
         try:
-            from ..services.payment_service import PaymentService
+            from ..payment_service import PaymentService
             self.payment_service = PaymentService(payment_config)
             logger.info("PaymentService initialized with PCI-DSS security controls")
         except (ImportError, ValueError) as e:
@@ -382,23 +382,16 @@ class VFSBot:
                     break
 
                 # E5: Check and refresh session token if needed (SessionManager integration)
+                # Note: Token refresh callback needs VFS API-specific implementation
                 if self.session_manager:
                     try:
                         if self.session_manager.is_token_expired():
-                            logger.info("Session token expired or expiring soon, attempting refresh...")
-                            # Define refresh callback (would need to be implemented in auth_service)
-                            # For now, just log - actual refresh logic depends on VFS API
-                            async def refresh_callback(refresh_token):
-                                # This would call VFS API to refresh the token
-                                # Implementation depends on VFS Global's token refresh endpoint
-                                logger.warning("Token refresh callback not implemented - would call VFS API")
-                                return None
-                            
-                            refresh_success = await self.session_manager.refresh_token_if_needed(refresh_callback)
-                            if not refresh_success:
-                                logger.warning("Token refresh failed, continuing with existing session")
+                            logger.info("Session token expired or expiring soon")
+                            # TODO: Implement VFS-specific token refresh callback
+                            # For now, we just detect expiry - actual refresh requires VFS API endpoint
+                            logger.warning("Token refresh not yet implemented for VFS Global API")
                     except Exception as token_error:
-                        logger.warning(f"Session token check/refresh error: {token_error}")
+                        logger.warning(f"Session token check error: {token_error}")
                         # Continue - don't stop bot for token issues
 
                 # Check circuit breaker
