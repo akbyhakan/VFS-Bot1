@@ -126,6 +126,29 @@ POSTGRESQL_RESERVED_WORDS = frozenset(
 )
 
 
+def _parse_command_tag(command_tag: str) -> int:
+    """
+    Parse PostgreSQL command tag to extract affected row count.
+
+    PostgreSQL command tags follow the format 'COMMAND N' where N is the count.
+    Examples: 'UPDATE 5', 'DELETE 3', 'INSERT 0 1'
+
+    Args:
+        command_tag: PostgreSQL command tag string
+
+    Returns:
+        Number of affected rows, or 0 if parsing fails
+    """
+    try:
+        parts = command_tag.split()
+        if len(parts) >= 2:
+            return int(parts[-1])
+        return 0
+    except (ValueError, IndexError):
+        logger.warning(f"Failed to parse command tag: {command_tag}")
+        return 0
+
+
 def validate_sql_identifier(identifier: str) -> bool:
     """
     Validate SQL identifier (table or column name) to prevent SQL injection.
@@ -306,7 +329,7 @@ async def batch_update(
                     query = f"UPDATE {table} SET {set_clause} WHERE {id_column} = ${param_num}"
 
                     result = await conn.execute(query, *values)
-                    total_updated += int(result.split()[-1])
+                    total_updated += _parse_command_tag(result)
 
             logger.debug(f"Updated batch of {len(batch)} rows in {table}")
 
@@ -368,7 +391,7 @@ async def batch_delete(
             async with conn.transaction():
                 result = await conn.execute(query, batch)
 
-            batch_deleted = int(result.split()[-1])
+            batch_deleted = _parse_command_tag(result)
             total_deleted += batch_deleted
 
             logger.debug(f"Deleted batch of {batch_deleted} rows from {table}")
