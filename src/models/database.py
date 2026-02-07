@@ -688,6 +688,22 @@ class Database:
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
 
+        # Whitelist of valid table names for security
+        VALID_TABLES = frozenset({
+            "appointment_requests",
+            "appointment_persons",
+            "payment_card",
+            "users",
+            "personal_details",
+            "appointments",
+            "logs",
+            "audit_log",
+            "appointment_history",
+            "user_webhooks",
+            "proxy_endpoints",
+            "token_blacklist",
+        })
+
         # Define migrations in order
         migrations = [
             {
@@ -728,9 +744,19 @@ class Database:
                 "table": "payment_card",
                 "column": "cvv_encrypted",
                 "sql": "ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT",
-                "default_sql": None,  # No default needed
+                # No default value needed - existing cards can have NULL cvv_encrypted,
+                # and new cards will set this value when created
+                "default_sql": None,
             },
         ]
+
+        # Validate all migration table names against whitelist
+        for migration in migrations:
+            if migration["table"] not in VALID_TABLES:
+                raise ValueError(
+                    f"Invalid table name in migration v{migration['version']}: "
+                    f"{migration['table']}"
+                )
 
         async with self.conn.cursor() as cursor:
             # Get applied migrations
@@ -741,6 +767,7 @@ class Database:
             # If schema_migrations is empty but columns exist, mark as applied
             if not applied_versions:
                 for migration in migrations:
+                    # Table name already validated above
                     await cursor.execute(f"PRAGMA table_info({migration['table']})")
                     columns = await cursor.fetchall()
                     column_names = [col[1] for col in columns]

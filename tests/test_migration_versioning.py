@@ -1,4 +1,11 @@
-"""Tests for database migration versioning system."""
+"""Tests for database migration versioning system.
+
+This test suite validates the migration versioning system in the Database class:
+- Fresh database setup: Verifies that all migrations are properly applied to new databases
+- Backward compatibility: Ensures existing databases with columns are properly detected
+- Idempotency: Confirms migrations can run multiple times without errors or duplicates
+- Column verification: Validates that all migrated columns exist in their target tables
+"""
 
 import pytest
 from cryptography.fernet import Fernet
