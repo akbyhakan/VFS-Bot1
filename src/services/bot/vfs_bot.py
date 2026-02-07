@@ -9,31 +9,14 @@ from playwright.async_api import Page
 
 from ...constants import Intervals, RateLimits
 from ...models.database import Database
-from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
-from ...utils.anti_detection.human_simulator import HumanSimulator
-from ...utils.error_capture import ErrorCapture
-from ...utils.security.header_manager import HeaderManager
-from ...utils.security.proxy_manager import ProxyManager
-from ...utils.security.rate_limiter import get_rate_limiter
-from ...utils.security.session_manager import SessionManager
-from ..adaptive_scheduler import AdaptiveScheduler
 from ..alert_service import AlertSeverity
-from ..appointment_booking_service import AppointmentBookingService
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
-from ..country_profile_loader import CountryProfileLoader
 from ..notification import NotificationService
-from ..otp_webhook import get_otp_service
-from ..selector_self_healing import SelectorSelfHealing
-from ..session_recovery import SessionRecovery
-from ..slot_analyzer import SlotPatternAnalyzer
-from .auth_service import AuthService
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .circuit_breaker_service import CircuitBreakerService
-from .error_handler import ErrorHandler
-from .slot_checker import SlotChecker
-from .waitlist_handler import WaitlistHandler
+from .service_context import BotServiceContext, BotServiceFactory
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +32,7 @@ class VFSBot:
         shutdown_event: Optional[asyncio.Event] = None,
         captcha_solver: Optional[CaptchaSolver] = None,
         centre_fetcher: Optional[CentreFetcher] = None,
+        services: Optional[BotServiceContext] = None,
     ):
         """
         Initialize VFS bot with dependency injection.
@@ -59,7 +43,10 @@ class VFSBot:
             notifier: Notification service instance
             shutdown_event: Optional event to signal graceful shutdown
             captcha_solver: Optional CaptchaSolver instance (created if not provided)
+                DEPRECATED: Use services parameter instead for better testability
             centre_fetcher: Optional CentreFetcher instance (created if not provided)
+                DEPRECATED: Use services parameter instead for better testability
+            services: Optional pre-created BotServiceContext (created if not provided)
         """
         # Core initialization
         self.config = config
@@ -72,216 +59,162 @@ class VFSBot:
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
 
-        # Declare anti-detection components with Optional types
-        self.human_sim: Optional[HumanSimulator] = None
-        self.header_manager: Optional[HeaderManager] = None
-        self.session_manager: Optional[SessionManager] = None
-        self.cloudflare_handler: Optional[CloudflareHandler] = None
-        self.proxy_manager: Optional[ProxyManager] = None
-
-        # Initialize core services
-        self._init_core_services(captcha_solver, centre_fetcher)
-
-        # Initialize anti-detection (extracted to method)
-        self._init_anti_detection()
-
-        # Initialize modular components
-        self._init_bot_components()
-
-        logger.info("VFSBot initialized with modular components")
-
-    def _init_core_services(
-        self,
-        captcha_solver: Optional[CaptchaSolver],
-        centre_fetcher: Optional[CentreFetcher],
-    ) -> None:
-        """Initialize core services with dependency injection.
-
-        Args:
-            captcha_solver: Optional CaptchaSolver instance. If None, creates a new
-                instance using configuration from self.config["captcha"].
-            centre_fetcher: Optional CentreFetcher instance. If None, creates a new
-                instance using configuration from self.config["vfs"].
-
-        This method follows the dependency injection pattern, allowing external
-        instances to be provided for testing or reuse, while creating defaults
-        when not provided.
-        """
-        self.user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
-        self.rate_limiter = get_rate_limiter()
-        self.error_capture = ErrorCapture()
-
-        self.otp_service = get_otp_service()
-
-        captcha_config = self.config.get("captcha", {})
-        self.captcha_solver = captcha_solver or CaptchaSolver(
-            api_key=captcha_config.get("api_key", ""),
-            manual_timeout=captcha_config.get("manual_timeout", 120),
-        )
-
-        vfs_config = self.config.get("vfs", {})
-        # Validate required VFS configuration fields
-        if not centre_fetcher:
-            required_fields = ["base_url", "country", "mission"]
-            missing_fields = [f for f in required_fields if not vfs_config.get(f)]
-            if missing_fields:
-                raise ValueError(
-                    f"Missing required VFS configuration fields: "
-                    f"{', '.join(missing_fields)}. "
-                    f"Please ensure config is validated with ConfigValidator "
-                    f"before initializing VFSBot."
-                )
-
-        self.centre_fetcher = centre_fetcher or CentreFetcher(
-            base_url=vfs_config["base_url"],
-            country=vfs_config["country"],
-            mission=vfs_config["mission"],
-            language=vfs_config.get("language", "tr"),
-        )
-
-    def _init_anti_detection(self) -> None:
-        """Initialize anti-detection components based on configuration."""
-        anti_detection_config = self.config.get("anti_detection", {})
-        self.anti_detection_enabled = anti_detection_config.get("enabled", True)
-
-        if self.anti_detection_enabled:
-            self.human_sim = HumanSimulator(self.config.get("human_behavior", {}))
-            self.header_manager = HeaderManager()
-
-            session_config = self.config.get("session", {})
-            self.session_manager = SessionManager(
-                session_file=session_config.get("save_file", "data/session.json"),
-                token_refresh_buffer=session_config.get("token_refresh_buffer", 5),
-            )
-
-            self.cloudflare_handler = CloudflareHandler(self.config.get("cloudflare", {}))
-            self.proxy_manager = ProxyManager(self.config.get("proxy", {}))
-
-            logger.info("Anti-detection features initialized")
+        # Initialize services context (either provided or created from config)
+        if services is None:
+            # Backward compatibility: use deprecated parameters if provided
+            self.services = BotServiceFactory.create(config, captcha_solver, centre_fetcher)
         else:
-            self.human_sim = None
-            self.header_manager = None
-            self.session_manager = None
-            self.cloudflare_handler = None
-            self.proxy_manager = None
-            logger.info("Anti-detection features disabled")
+            self.services = services
 
-    def _init_bot_components(self) -> None:
-        """Initialize modular bot components."""
-        # Initialize PaymentService with PCI-DSS security controls
-        payment_config = self.config.get("payment", {})
-        try:
-            from ..payment_service import PaymentService
-            self.payment_service = PaymentService(payment_config)
-            logger.info("PaymentService initialized with PCI-DSS security controls")
-        except (ImportError, ValueError) as e:
-            # PaymentService is optional - bot can work without it (manual payment mode)
-            logger.warning(f"PaymentService not available: {e}")
-            self.payment_service = None
-        
-        # Initialize AlertService for critical notifications
-        alert_config_dict = self.config.get("alerts", {})
-        try:
-            from ..alert_service import AlertChannel, AlertConfig, AlertService
-            # Parse enabled channels from config
-            enabled_channels_str = alert_config_dict.get("enabled_channels", ["log"])
-            enabled_channels = [
-                AlertChannel(ch) if isinstance(ch, str) else ch 
-                for ch in enabled_channels_str
-            ]
-            
-            alert_config = AlertConfig(
-                enabled_channels=enabled_channels,
-                telegram_bot_token=alert_config_dict.get("telegram_bot_token"),
-                telegram_chat_id=alert_config_dict.get("telegram_chat_id"),
-                email_from=alert_config_dict.get("email_from"),
-                email_to=alert_config_dict.get("email_to"),
-                smtp_host=alert_config_dict.get("smtp_host"),
-                smtp_port=alert_config_dict.get("smtp_port"),
-                webhook_url=alert_config_dict.get("webhook_url"),
-            )
-            self.alert_service = AlertService(alert_config)
-            logger.info(f"AlertService initialized with channels: {enabled_channels}")
-        except (ImportError, ValueError) as e:
-            # AlertService is optional - bot can work without it (logs only)
-            logger.warning(f"AlertService not available: {e}")
-            self.alert_service = None
-        
-        self.booking_service = AppointmentBookingService(
-            self.config, self.captcha_solver, self.human_sim, self.payment_service
+        # Initialize browser manager (needs anti-detection services)
+        self.browser_manager = BrowserManager(
+            self.config,
+            self.services.anti_detection.header_manager,
+            self.services.anti_detection.proxy_manager,
         )
 
-        self.waitlist_handler = WaitlistHandler(self.config, self.human_sim)
-
-        self.browser_manager = BrowserManager(self.config, self.header_manager, self.proxy_manager)
+        # Initialize circuit breaker
         self.circuit_breaker = CircuitBreakerService()
-        self.error_handler = ErrorHandler()
-
-        self.auth_service = AuthService(
-            self.config,
-            self.captcha_solver,
-            self.human_sim,
-            self.cloudflare_handler,
-            self.error_capture,
-            self.otp_service,
-        )
-
-        self.slot_checker = SlotChecker(
-            self.config,
-            self.rate_limiter,
-            self.human_sim,
-            self.cloudflare_handler,
-            self.error_capture,
-        )
-
-        # Initialize new maintenance-free automation services
-        self._init_automation_services()
 
         # Initialize booking workflow after all dependencies are ready
         self.booking_workflow = BookingWorkflow(
             config=self.config,
             db=self.db,
             notifier=self.notifier,
-            auth_service=self.auth_service,
-            slot_checker=self.slot_checker,
-            booking_service=self.booking_service,
-            waitlist_handler=self.waitlist_handler,
-            error_handler=self.error_handler,
-            slot_analyzer=self.slot_analyzer,
-            session_recovery=self.session_recovery,
-            human_sim=self.human_sim,
-            error_capture=self.error_capture,
-            alert_service=self.alert_service,
+            auth_service=self.services.workflow.auth_service,
+            slot_checker=self.services.workflow.slot_checker,
+            booking_service=self.services.workflow.booking_service,
+            waitlist_handler=self.services.workflow.waitlist_handler,
+            error_handler=self.services.workflow.error_handler,
+            slot_analyzer=self.services.automation.slot_analyzer,
+            session_recovery=self.services.automation.session_recovery,
+            human_sim=self.services.anti_detection.human_sim,
+            error_capture=self.services.core.error_capture,
+            alert_service=self.services.workflow.alert_service,
         )
 
-    def _init_automation_services(self) -> None:
-        """Initialize maintenance-free automation services."""
-        # Country profile loader
-        self.country_profiles = CountryProfileLoader()
+        logger.info("VFSBot initialized with modular components")
 
-        # Get country from config
-        vfs_config = self.config.get("vfs", {})
-        country_code = vfs_config.get("country", "tur")
+    # Backward compatibility properties for legacy code accessing old attributes
+    @property
+    def auth_service(self):
+        """Backward compatibility property for auth_service."""
+        return self.services.workflow.auth_service
 
-        # Adaptive scheduler with country-specific multiplier
-        country_multiplier = self.country_profiles.get_retry_multiplier(country_code)
-        timezone = self.country_profiles.get_timezone(country_code)
-        self.scheduler = AdaptiveScheduler(timezone=timezone, country_multiplier=country_multiplier)
+    @property
+    def slot_checker(self):
+        """Backward compatibility property for slot_checker."""
+        return self.services.workflow.slot_checker
 
-        # Slot pattern analyzer
-        self.slot_analyzer = SlotPatternAnalyzer()
+    @property
+    def booking_service(self):
+        """Backward compatibility property for booking_service."""
+        return self.services.workflow.booking_service
 
-        # Selector self-healing
-        self.self_healing = SelectorSelfHealing()
+    @property
+    def error_handler(self):
+        """Backward compatibility property for error_handler."""
+        return self.services.workflow.error_handler
 
-        # Session recovery
-        self.session_recovery = SessionRecovery()
+    @property
+    def waitlist_handler(self):
+        """Backward compatibility property for waitlist_handler."""
+        return self.services.workflow.waitlist_handler
 
-        logger.info(
-            f"Automation services initialized - "
-            f"Country: {country_code}, Timezone: {timezone}, "
-            f"Multiplier: {country_multiplier}"
-        )
+    @property
+    def alert_service(self):
+        """Backward compatibility property for alert_service."""
+        return self.services.workflow.alert_service
+
+    @property
+    def payment_service(self):
+        """Backward compatibility property for payment_service."""
+        return self.services.workflow.payment_service
+
+    @property
+    def captcha_solver(self):
+        """Backward compatibility property for captcha_solver."""
+        return self.services.core.captcha_solver
+
+    @property
+    def centre_fetcher(self):
+        """Backward compatibility property for centre_fetcher."""
+        return self.services.core.centre_fetcher
+
+    @property
+    def otp_service(self):
+        """Backward compatibility property for otp_service."""
+        return self.services.core.otp_service
+
+    @property
+    def rate_limiter(self):
+        """Backward compatibility property for rate_limiter."""
+        return self.services.core.rate_limiter
+
+    @property
+    def error_capture(self):
+        """Backward compatibility property for error_capture."""
+        return self.services.core.error_capture
+
+    @property
+    def user_semaphore(self):
+        """Backward compatibility property for user_semaphore."""
+        return self.services.core.user_semaphore
+
+    @property
+    def human_sim(self):
+        """Backward compatibility property for human_sim."""
+        return self.services.anti_detection.human_sim
+
+    @property
+    def header_manager(self):
+        """Backward compatibility property for header_manager."""
+        return self.services.anti_detection.header_manager
+
+    @property
+    def session_manager(self):
+        """Backward compatibility property for session_manager."""
+        return self.services.anti_detection.session_manager
+
+    @property
+    def cloudflare_handler(self):
+        """Backward compatibility property for cloudflare_handler."""
+        return self.services.anti_detection.cloudflare_handler
+
+    @property
+    def proxy_manager(self):
+        """Backward compatibility property for proxy_manager."""
+        return self.services.anti_detection.proxy_manager
+
+    @property
+    def anti_detection_enabled(self):
+        """Backward compatibility property for anti_detection_enabled."""
+        return self.services.anti_detection.enabled
+
+    @property
+    def scheduler(self):
+        """Backward compatibility property for scheduler."""
+        return self.services.automation.scheduler
+
+    @property
+    def slot_analyzer(self):
+        """Backward compatibility property for slot_analyzer."""
+        return self.services.automation.slot_analyzer
+
+    @property
+    def self_healing(self):
+        """Backward compatibility property for self_healing."""
+        return self.services.automation.self_healing
+
+    @property
+    def session_recovery(self):
+        """Backward compatibility property for session_recovery."""
+        return self.services.automation.session_recovery
+
+    @property
+    def country_profiles(self):
+        """Backward compatibility property for country_profiles."""
+        return self.services.automation.country_profiles
 
     async def __aenter__(self) -> "VFSBot":
         """
@@ -308,7 +241,7 @@ class VFSBot:
         # Save checkpoint if there was an error
         if exc_type is not None:
             stats = await self.circuit_breaker.get_stats()
-            await self.error_handler.save_checkpoint(
+            await self.services.workflow.error_handler.save_checkpoint(
                 {
                     "running": self.running,
                     "circuit_breaker_open": stats["is_open"],
@@ -358,29 +291,35 @@ class VFSBot:
             active_count = len(self._active_booking_tasks)
             grace_period_seconds = 120  # 2 minutes grace period for bookings
             grace_period_display = f"{grace_period_seconds // 60} min"
-            
+
             logger.info(f"Waiting for {active_count} active booking(s) to complete...")
 
             # Notify about pending shutdown
             await self._send_alert_safe(
-                message=f"⏳ Bot shutting down - waiting for {active_count} active booking(s) to complete ({grace_period_display} grace period)",
+                message=(
+                    f"⏳ Bot shutting down - waiting for {active_count} "
+                    f"active booking(s) to complete ({grace_period_display} grace period)"
+                ),
                 severity=AlertSeverity.WARNING,
-                metadata={"active_bookings": active_count}
+                metadata={"active_bookings": active_count},
             )
 
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
-                    timeout=grace_period_seconds
+                    timeout=grace_period_seconds,
                 )
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
                 # Notify about forced cancellation
                 await self._send_alert_safe(
-                    message=f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} booking(s) cancelled after {grace_period_display} timeout",
+                    message=(
+                        f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
+                        f"booking(s) cancelled after {grace_period_display} timeout"
+                    ),
                     severity=AlertSeverity.ERROR,
-                    metadata={"cancelled_bookings": len(self._active_booking_tasks)}
+                    metadata={"cancelled_bookings": len(self._active_booking_tasks)},
                 )
                 for task in self._active_booking_tasks:
                     task.cancel()
@@ -403,10 +342,10 @@ class VFSBot:
             severity: Alert severity level
             metadata: Optional metadata dictionary
         """
-        if not self.alert_service:
+        if not self.services.workflow.alert_service:
             return
         try:
-            await self.alert_service.send_alert(
+            await self.services.workflow.alert_service.send_alert(
                 message=message,
                 severity=severity,
                 metadata=metadata or {},
@@ -424,12 +363,14 @@ class VFSBot:
                     break
 
                 # Check session token status
-                if self.session_manager:
+                if self.services.anti_detection.session_manager:
                     try:
-                        if self.session_manager.is_token_expired():
+                        session_mgr = self.services.anti_detection.session_manager
+                        if session_mgr.is_token_expired():
                             logger.debug(
                                 "SessionManager token expired. "
-                                "Note: VFS API client handles its own token refresh via _ensure_authenticated()."
+                                "Note: VFS API client handles its own token "
+                                "refresh via _ensure_authenticated()."
                             )
                     except Exception as token_error:
                         logger.warning(f"Session token check error: {token_error}")
@@ -442,14 +383,17 @@ class VFSBot:
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
                         f"(consecutive errors: {stats['consecutive_errors']})"
                     )
-                    
+
                     # Send alert for circuit breaker open (WARNING severity)
                     await self._send_alert_safe(
-                        message=f"Circuit breaker OPEN - consecutive errors: {stats['consecutive_errors']}, waiting {wait_time}s",
+                        message=(
+                            f"Circuit breaker OPEN - consecutive errors: "
+                            f"{stats['consecutive_errors']}, waiting {wait_time}s"
+                        ),
                         severity=AlertSeverity.WARNING,
-                        metadata={"stats": stats, "wait_time": wait_time}
+                        metadata={"stats": stats, "wait_time": wait_time},
                     )
-                    
+
                     await asyncio.sleep(wait_time)
                     # Don't unconditionally reset - let the next successful iteration close it
                     # Unconditional reset could cause premature recovery if underlying
@@ -475,8 +419,8 @@ class VFSBot:
                 if not users:
                     logger.info("No active users to process")
                     # Use adaptive scheduler for intelligent interval
-                    check_interval = self.scheduler.get_optimal_interval()
-                    mode_info = self.scheduler.get_mode_info()
+                    check_interval = self.services.automation.scheduler.get_optimal_interval()
+                    mode_info = self.services.automation.scheduler.get_mode_info()
                     logger.info(
                         f"Adaptive mode: {mode_info['mode']} "
                         f"({mode_info['description']}), "
@@ -491,7 +435,7 @@ class VFSBot:
                 for user in users:
                     task = asyncio.create_task(
                         self._process_user_with_semaphore(user),
-                        name=f"vfs_booking_user_{user.get('id', 'unknown')}"
+                        name=f"vfs_booking_user_{user.get('id', 'unknown')}",
                     )
                     self._active_booking_tasks.add(task)
                     task.add_done_callback(self._active_booking_tasks.discard)
@@ -504,20 +448,23 @@ class VFSBot:
                 if errors_in_batch > 0:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self.circuit_breaker.record_failure()
-                    
+
                     # Send alert for batch errors (ERROR severity)
                     await self._send_alert_safe(
-                        message=f"Batch processing errors: {errors_in_batch}/{len(users)} users failed",
+                        message=(
+                            f"Batch processing errors: {errors_in_batch}/"
+                            f"{len(users)} users failed"
+                        ),
                         severity=AlertSeverity.ERROR,
-                        metadata={"errors": errors_in_batch, "total_users": len(users)}
+                        metadata={"errors": errors_in_batch, "total_users": len(users)},
                     )
                 else:
                     # Successful batch - reset consecutive errors
                     await self.circuit_breaker.record_success()
 
                 # Wait before next check - use adaptive scheduler
-                check_interval = self.scheduler.get_optimal_interval()
-                mode_info = self.scheduler.get_mode_info()
+                check_interval = self.services.automation.scheduler.get_optimal_interval()
+                mode_info = self.services.automation.scheduler.get_mode_info()
                 logger.info(
                     f"Adaptive mode: {mode_info['mode']} "
                     f"({mode_info['description']}), "
@@ -529,12 +476,12 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self.circuit_breaker.record_failure()
-                
+
                 # Send alert for bot loop error (ERROR severity)
                 await self._send_alert_safe(
                     message=f"Bot loop error: {str(e)}",
                     severity=AlertSeverity.ERROR,
-                    metadata={"error": str(e), "type": type(e).__name__}
+                    metadata={"error": str(e), "type": type(e).__name__},
                 )
 
                 # If circuit breaker open, wait longer
@@ -553,7 +500,7 @@ class VFSBot:
         Args:
             user: User dictionary from database
         """
-        async with self.user_semaphore:
+        async with self.services.core.user_semaphore:
             page = await self.browser_manager.new_page()
             try:
                 await self.booking_workflow.process_user(page, user)
@@ -575,4 +522,4 @@ class VFSBot:
         Returns:
             True if booking successful
         """
-        return await self.booking_service.run_booking_flow(page, reservation)
+        return await self.services.workflow.booking_service.run_booking_flow(page, reservation)
