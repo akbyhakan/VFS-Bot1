@@ -140,6 +140,7 @@ class Database:
         async with self._pool_lock:
             try:
                 # Calculate minimum pool size (at least 2, at most ceiling of half max)
+                # Examples: pool=5 → min=3, pool=4 → min=2, pool=10 → min=5
                 min_pool = max(2, (self.pool_size + 1) // 2)
                 
                 # Create connection pool
@@ -556,6 +557,8 @@ class Database:
         Each migration is tracked in the schema_migrations table to ensure
         it only runs once. Provides backward compatibility with existing
         databases by detecting already-applied changes.
+        
+        Note: Requires PostgreSQL 9.6+ for ADD COLUMN IF NOT EXISTS syntax.
         """
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
@@ -576,7 +579,7 @@ class Database:
             "token_blacklist",
         })
 
-        # Define migrations in order
+        # Define migrations in order (uses ADD COLUMN IF NOT EXISTS - PostgreSQL 9.6+)
         migrations = [
             {
                 "version": 1,
@@ -1048,7 +1051,7 @@ class Database:
         if not updates:
             return True  # Nothing to update
 
-        updates.append("updated_at = CURRENT_TIMESTAMP")
+        updates.append("updated_at = NOW()")
         params.append(user_id)
 
         async with self.get_connection() as conn:
@@ -1320,7 +1323,7 @@ class Database:
                         if not fields:
                             continue
 
-                        fields.append("updated_at = CURRENT_TIMESTAMP")
+                        fields.append("updated_at = NOW()")
                         params.append(user_id)
 
                         query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${param_num}"
@@ -1558,7 +1561,7 @@ class Database:
                         expiry_month = $3,
                         expiry_year = $4,
                         cvv_encrypted = $5,
-                        updated_at = CURRENT_TIMESTAMP
+                        updated_at = NOW()
                     WHERE id = $6
                     """,
                     card_data["card_holder_name"],
@@ -1918,7 +1921,7 @@ class Database:
                 result = await conn.execute(
                     """
                     UPDATE appointment_requests
-                    SET status = $1, completed_at = $2, updated_at = CURRENT_TIMESTAMP
+                    SET status = $1, completed_at = $2, updated_at = NOW()
                     WHERE id = $3
                     """,
                     status, completed_at, request_id,
@@ -1927,7 +1930,7 @@ class Database:
                 result = await conn.execute(
                     """
                     UPDATE appointment_requests
-                    SET status = $1, updated_at = CURRENT_TIMESTAMP
+                    SET status = $1, updated_at = NOW()
                     WHERE id = $2
                     """,
                     status, request_id,
@@ -2276,7 +2279,7 @@ class Database:
                     """
                     INSERT INTO proxy_endpoints
                     (server, port, username, password_encrypted, updated_at)
-                    VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+                    VALUES ($1, $2, $3, $4, NOW())
                     RETURNING id
                     """,
                     server, port, username, encrypted_password,
@@ -2423,7 +2426,7 @@ class Database:
             return False  # Nothing to update
 
         # Always update the updated_at timestamp
-        updates.append("updated_at = CURRENT_TIMESTAMP")
+        updates.append("updated_at = NOW()")
         params.append(proxy_id)
 
         query = f"UPDATE proxy_endpoints SET {', '.join(updates)} WHERE id = ${param_num}"
@@ -2482,8 +2485,8 @@ class Database:
                 """
                 UPDATE proxy_endpoints
                 SET failure_count = failure_count + 1,
-                    last_used = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP
+                    last_used = NOW(),
+                    updated_at = NOW()
                 WHERE id = $1
                 """,
                 proxy_id,
@@ -2508,7 +2511,7 @@ class Database:
                 """
                 UPDATE proxy_endpoints
                 SET failure_count = 0,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = NOW()
                 WHERE failure_count > 0
                 """
             )
