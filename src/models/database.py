@@ -109,12 +109,38 @@ class Database:
         # Clamp between 5 and 20
         return min(max(optimal_size, 5), 20)
 
+    @staticmethod
+    def _parse_command_tag(command_tag: str) -> int:
+        """
+        Parse PostgreSQL command tag to extract affected row count.
+
+        PostgreSQL command tags follow the format 'COMMAND N' where N is the count.
+        Examples: 'UPDATE 5', 'DELETE 3', 'INSERT 0 1'
+
+        Args:
+            command_tag: PostgreSQL command tag string
+
+        Returns:
+            Number of affected rows, or 0 if parsing fails
+        """
+        try:
+            # Command tags format: 'COMMAND N' or 'INSERT oid N'
+            parts = command_tag.split()
+            if len(parts) >= 2:
+                # For INSERT: 'INSERT 0 N' - return last part
+                # For UPDATE/DELETE: 'UPDATE N' - return last part
+                return int(parts[-1])
+            return 0
+        except (ValueError, IndexError):
+            logger.warning(f"Failed to parse command tag: {command_tag}")
+            return 0
+
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
             try:
-                # Calculate minimum pool size (at least 2, at most half of max)
-                min_pool = max(2, self.pool_size // 2)
+                # Calculate minimum pool size (at least 2, at most ceiling of half max)
+                min_pool = max(2, (self.pool_size + 1) // 2)
                 
                 # Create connection pool
                 self.conn = await asyncpg.create_pool(
@@ -1488,7 +1514,7 @@ class Database:
                 """,
                 now,
             )
-            count = int(result.split()[-1]) if result else 0
+            count = self._parse_command_tag(result)
             return count
 
     @require_connection
@@ -1954,7 +1980,7 @@ class Database:
                 """,
                 cutoff_date,
             )
-            deleted_count = int(result.split()[-1]) if result else 0
+            deleted_count = self._parse_command_tag(result)
 
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} old appointment requests")
@@ -2486,7 +2512,7 @@ class Database:
                 WHERE failure_count > 0
                 """
             )
-            count = int(result.split()[-1]) if result else 0
+            count = self._parse_command_tag(result)
 
         logger.info(f"Reset failure count for {count} proxies")
         result_count: int = count
@@ -2529,7 +2555,7 @@ class Database:
         """
         async with self.get_connection() as conn:
             result = await conn.execute("DELETE FROM proxy_endpoints")
-            count = int(result.split()[-1]) if result else 0
+            count = self._parse_command_tag(result)
 
         logger.info(f"Cleared all {count} proxies")
         result_count: int = count
