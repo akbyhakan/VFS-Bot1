@@ -154,7 +154,7 @@ class AppointmentBookingService:
     Form doldurma, tarih/saat seçimi, ödeme ve 3D Secure işlemleri.
     """
 
-    def __init__(self, config: Dict[str, Any], captcha_solver: Any = None, human_sim: Any = None):
+    def __init__(self, config: Dict[str, Any], captcha_solver: Any = None, human_sim: Any = None, payment_service: Optional[Any] = None):
         """
         Initialize booking service.
 
@@ -162,10 +162,12 @@ class AppointmentBookingService:
             config: Bot configuration
             captcha_solver: Captcha solver instance
             human_sim: Human simulator instance
+            payment_service: Optional PaymentService instance for PCI-DSS compliant payment processing
         """
         self.config = config
         self.captcha_solver = captcha_solver
         self.human_sim = human_sim
+        self.payment_service = payment_service
         self.otp_service = get_otp_service()
 
         logger.info("AppointmentBookingService initialized")
@@ -920,18 +922,37 @@ class AppointmentBookingService:
             # Step 5: Review and pay
             await self.handle_review_and_pay(page)
 
-            # Step 6: Fill payment form
-            if "payment_card" in reservation:
-                await self.fill_payment_form(page, reservation["payment_card"])
+            # Step 6: Process payment with PaymentService (PCI-DSS compliant)
+            if self.payment_service:
+                # Use PaymentService for secure payment processing
+                user_id = reservation.get("user_id", 0)
+                card_details = reservation.get("payment_card")
+                
+                # PaymentService will enforce PCI-DSS security controls
+                # It will reject automated payments in production
+                payment_success = await self.payment_service.process_payment(
+                    page=page,
+                    user_id=user_id,
+                    card_details=card_details
+                )
+                
+                if not payment_success:
+                    logger.error("Payment processing failed")
+                    return False
             else:
-                logger.error("No payment card info in reservation")
-                return False
+                # Fallback: Use inline payment (legacy mode without security controls)
+                logger.warning("PaymentService not available, using legacy payment mode")
+                if "payment_card" in reservation:
+                    await self.fill_payment_form(page, reservation["payment_card"])
+                else:
+                    logger.error("No payment card info in reservation")
+                    return False
 
-            # Step 7: Handle 3D Secure
-            phone = reservation["persons"][0]["phone_number"]
-            if not await self.handle_3d_secure(page, phone):
-                logger.error("3D Secure verification failed")
-                return False
+                # Step 7: Handle 3D Secure (only for legacy mode)
+                phone = reservation["persons"][0]["phone_number"]
+                if not await self.handle_3d_secure(page, phone):
+                    logger.error("3D Secure verification failed")
+                    return False
 
             logger.info("=" * 50)
             logger.info("✅ BOOKING FLOW COMPLETED SUCCESSFULLY")

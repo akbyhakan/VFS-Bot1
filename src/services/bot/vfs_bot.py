@@ -166,8 +166,47 @@ class VFSBot:
 
     def _init_bot_components(self) -> None:
         """Initialize modular bot components."""
+        # Initialize PaymentService with PCI-DSS security controls
+        payment_config = self.config.get("payment", {})
+        try:
+            from ..payment_service import PaymentService
+            self.payment_service = PaymentService(payment_config)
+            logger.info("PaymentService initialized with PCI-DSS security controls")
+        except (ImportError, ValueError) as e:
+            # PaymentService is optional - bot can work without it (manual payment mode)
+            logger.warning(f"PaymentService not available: {e}")
+            self.payment_service = None
+        
+        # Initialize AlertService for critical notifications
+        alert_config_dict = self.config.get("alerts", {})
+        try:
+            from ..alert_service import AlertChannel, AlertConfig, AlertService
+            # Parse enabled channels from config
+            enabled_channels_str = alert_config_dict.get("enabled_channels", ["log"])
+            enabled_channels = [
+                AlertChannel(ch) if isinstance(ch, str) else ch 
+                for ch in enabled_channels_str
+            ]
+            
+            alert_config = AlertConfig(
+                enabled_channels=enabled_channels,
+                telegram_bot_token=alert_config_dict.get("telegram_bot_token"),
+                telegram_chat_id=alert_config_dict.get("telegram_chat_id"),
+                email_from=alert_config_dict.get("email_from"),
+                email_to=alert_config_dict.get("email_to"),
+                smtp_host=alert_config_dict.get("smtp_host"),
+                smtp_port=alert_config_dict.get("smtp_port"),
+                webhook_url=alert_config_dict.get("webhook_url"),
+            )
+            self.alert_service = AlertService(alert_config)
+            logger.info(f"AlertService initialized with channels: {enabled_channels}")
+        except (ImportError, ValueError) as e:
+            # AlertService is optional - bot can work without it (logs only)
+            logger.warning(f"AlertService not available: {e}")
+            self.alert_service = None
+        
         self.booking_service = AppointmentBookingService(
-            self.config, self.captcha_solver, self.human_sim
+            self.config, self.captcha_solver, self.human_sim, self.payment_service
         )
 
         self.waitlist_handler = WaitlistHandler(self.config, self.human_sim)
@@ -210,6 +249,7 @@ class VFSBot:
             session_recovery=self.session_recovery,
             human_sim=self.human_sim,
             error_capture=self.error_capture,
+            alert_service=self.alert_service,
         )
 
     def _init_automation_services(self) -> None:
@@ -341,6 +381,19 @@ class VFSBot:
                     logger.info("Shutdown requested, stopping bot loop...")
                     break
 
+                # E5: Check and refresh session token if needed (SessionManager integration)
+                # Note: Token refresh callback needs VFS API-specific implementation
+                if self.session_manager:
+                    try:
+                        if self.session_manager.is_token_expired():
+                            logger.info("Session token expired or expiring soon")
+                            # TODO: Implement VFS-specific token refresh callback
+                            # For now, we just detect expiry - actual refresh requires VFS API endpoint
+                            logger.warning("Token refresh not yet implemented for VFS Global API")
+                    except Exception as token_error:
+                        logger.warning(f"Session token check error: {token_error}")
+                        # Continue - don't stop bot for token issues
+
                 # Check circuit breaker
                 if not await self.circuit_breaker.is_available():
                     wait_time = await self.circuit_breaker.get_wait_time()
@@ -349,6 +402,19 @@ class VFSBot:
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
                         f"(consecutive errors: {stats['consecutive_errors']})"
                     )
+                    
+                    # Send alert for circuit breaker open (WARNING severity)
+                    if self.alert_service:
+                        try:
+                            from ..alert_service import AlertSeverity
+                            await self.alert_service.send_alert(
+                                message=f"Circuit breaker OPEN - consecutive errors: {stats['consecutive_errors']}, waiting {wait_time}s",
+                                severity=AlertSeverity.WARNING,
+                                metadata={"stats": stats, "wait_time": wait_time}
+                            )
+                        except Exception as alert_error:
+                            logger.debug(f"Failed to send circuit breaker alert: {alert_error}")
+                    
                     await asyncio.sleep(wait_time)
                     # Don't unconditionally reset - let the next successful iteration close it
                     # Unconditional reset could cause premature recovery if underlying
@@ -399,6 +465,18 @@ class VFSBot:
                 if errors_in_batch > 0:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self.circuit_breaker.record_failure()
+                    
+                    # Send alert for batch errors (ERROR severity)
+                    if self.alert_service:
+                        try:
+                            from ..alert_service import AlertSeverity
+                            await self.alert_service.send_alert(
+                                message=f"Batch processing errors: {errors_in_batch}/{len(users)} users failed",
+                                severity=AlertSeverity.ERROR,
+                                metadata={"errors": errors_in_batch, "total_users": len(users)}
+                            )
+                        except Exception as alert_error:
+                            logger.debug(f"Failed to send batch error alert: {alert_error}")
                 else:
                     # Successful batch - reset consecutive errors
                     await self.circuit_breaker.record_success()
@@ -417,6 +495,18 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self.circuit_breaker.record_failure()
+                
+                # Send alert for bot loop error (ERROR severity)
+                if self.alert_service:
+                    try:
+                        from ..alert_service import AlertSeverity
+                        await self.alert_service.send_alert(
+                            message=f"Bot loop error: {str(e)}",
+                            severity=AlertSeverity.ERROR,
+                            metadata={"error": str(e), "type": type(e).__name__}
+                        )
+                    except Exception as alert_error:
+                        logger.debug(f"Failed to send bot loop error alert: {alert_error}")
 
                 # If circuit breaker open, wait longer
                 if not await self.circuit_breaker.is_available():
