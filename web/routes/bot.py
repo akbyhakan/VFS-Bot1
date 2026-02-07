@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
 
+# Error message constants
+BOT_NOT_CONFIGURED_ERROR = {
+    "status": "error",
+    "message": "Bot controller not configured. Please restart in 'both' mode.",
+}
+
 
 async def _get_controller() -> BotController:
     """
@@ -72,10 +78,7 @@ async def start_bot(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return {
-            "status": "error",
-            "message": "Bot controller not configured. Please restart in 'both' mode.",
-        }
+        return BOT_NOT_CONFIGURED_ERROR
 
     # Start the bot via controller
     result = await controller.start_bot()
@@ -119,10 +122,7 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     try:
         controller = await _get_controller()
     except HTTPException:
-        return {
-            "status": "error",
-            "message": "Bot controller not configured. Please restart in 'both' mode.",
-        }
+        return BOT_NOT_CONFIGURED_ERROR
 
     # Stop the bot via controller
     result = await controller.stop_bot()
@@ -166,10 +166,7 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
     try:
         controller = await _get_controller()
     except HTTPException:
-        return {
-            "status": "error",
-            "message": "Bot controller not configured. Please restart in 'both' mode.",
-        }
+        return BOT_NOT_CONFIGURED_ERROR
 
     # Broadcast restarting status
     await broadcast_message(
@@ -221,10 +218,7 @@ async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -
     try:
         controller = await _get_controller()
     except HTTPException:
-        return {
-            "status": "error",
-            "message": "Bot controller not configured. Please restart in 'both' mode.",
-        }
+        return BOT_NOT_CONFIGURED_ERROR
 
     # Trigger manual check via controller
     result = await controller.trigger_check_now()
