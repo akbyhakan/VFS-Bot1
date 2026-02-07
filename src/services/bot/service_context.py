@@ -28,6 +28,7 @@ from ..otp_webhook import get_otp_service
 from ..selector_self_healing import SelectorSelfHealing
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
+from ..token_sync_service import TokenSyncService
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .slot_checker import SlotChecker
@@ -49,6 +50,7 @@ class AntiDetectionContext:
         human_sim: Human behavior simulator for realistic interactions
         header_manager: HTTP header randomization and management
         session_manager: Session token and cookie management
+        token_sync: Token synchronization between VFSApiClient and SessionManager
         cloudflare_handler: Cloudflare challenge bypass handler
         proxy_manager: Proxy rotation and management
     """
@@ -57,6 +59,7 @@ class AntiDetectionContext:
     human_sim: Optional[HumanSimulator]
     header_manager: Optional[HeaderManager]
     session_manager: Optional[SessionManager]
+    token_sync: Optional[TokenSyncService]
     cloudflare_handler: Optional[CloudflareHandler]
     proxy_manager: Optional[ProxyManager]
 
@@ -189,6 +192,12 @@ class BotServiceFactory:
                 token_refresh_buffer=session_config.get("token_refresh_buffer", 5),
             )
 
+            # Initialize TokenSyncService with SessionManager
+            token_sync = TokenSyncService(
+                session_manager=session_manager,
+                token_refresh_buffer_minutes=session_config.get("token_refresh_buffer", 5),
+            )
+
             cloudflare_handler = CloudflareHandler(config.get("cloudflare", {}))
             proxy_manager = ProxyManager(config.get("proxy", {}))
 
@@ -197,6 +206,7 @@ class BotServiceFactory:
             human_sim = None
             header_manager = None
             session_manager = None
+            token_sync = None
             cloudflare_handler = None
             proxy_manager = None
             logger.info("Anti-detection features disabled")
@@ -206,6 +216,7 @@ class BotServiceFactory:
             human_sim=human_sim,
             header_manager=header_manager,
             session_manager=session_manager,
+            token_sync=token_sync,
             cloudflare_handler=cloudflare_handler,
             proxy_manager=proxy_manager,
         )

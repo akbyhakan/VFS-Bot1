@@ -9,7 +9,7 @@ import tempfile
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 try:
     import jwt as jwt_module
@@ -381,3 +381,33 @@ class SessionManager:
             True if session is valid
         """
         return self.access_token is not None and not self.is_token_expired()
+
+    def sync_from_api_client(self, vfs_session: Any) -> None:
+        """
+        Convenience method to sync tokens from VFSApiClient.VFSSession.
+
+        This is a helper method that extracts tokens from a VFSSession object
+        and calls set_tokens(). Use TokenSyncService for more advanced sync
+        features including proactive refresh.
+
+        Args:
+            vfs_session: VFSSession object with access_token and refresh_token
+
+        Raises:
+            AttributeError: If vfs_session doesn't have required attributes
+        """
+        if vfs_session is None:
+            logger.warning("Cannot sync: vfs_session is None")
+            return
+
+        if not hasattr(vfs_session, "access_token"):
+            raise AttributeError("vfs_session must have 'access_token' attribute")
+
+        access_token = vfs_session.access_token
+        refresh_token = getattr(vfs_session, "refresh_token", None)
+
+        if access_token:
+            self.set_tokens(access_token, refresh_token)
+            logger.info("Tokens synced from VFS API client session")
+        else:
+            logger.warning("Cannot sync: access_token is None or empty")

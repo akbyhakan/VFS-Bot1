@@ -79,6 +79,7 @@ class TestAntiDetectionContext:
             human_sim=None,
             header_manager=None,
             session_manager=None,
+            token_sync=None,
             cloudflare_handler=None,
             proxy_manager=None,
         )
@@ -87,6 +88,7 @@ class TestAntiDetectionContext:
         assert context.human_sim is None
         assert context.header_manager is None
         assert context.session_manager is None
+        assert context.token_sync is None
         assert context.cloudflare_handler is None
         assert context.proxy_manager is None
 
@@ -97,6 +99,7 @@ class TestAntiDetectionContext:
             human_sim=None,
             header_manager=None,
             session_manager=None,
+            token_sync=None,
             cloudflare_handler=None,
             proxy_manager=None,
         )
@@ -219,6 +222,7 @@ class TestBotServiceContext:
             human_sim=None,
             header_manager=None,
             session_manager=None,
+            token_sync=None,
             cloudflare_handler=None,
             proxy_manager=None,
         )
