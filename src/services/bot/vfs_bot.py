@@ -177,6 +177,11 @@ class VFSBot:
         return self.services.anti_detection.session_manager
 
     @property
+    def token_sync(self):
+        """Backward compatibility property for token_sync."""
+        return self.services.anti_detection.token_sync
+
+    @property
     def cloudflare_handler(self):
         """Backward compatibility property for cloudflare_handler."""
         return self.services.anti_detection.cloudflare_handler
@@ -362,18 +367,9 @@ class VFSBot:
                     logger.info("Shutdown requested, stopping bot loop...")
                     break
 
-                # Check session token status
-                if self.services.anti_detection.session_manager:
-                    try:
-                        session_mgr = self.services.anti_detection.session_manager
-                        if session_mgr.is_token_expired():
-                            logger.debug(
-                                "SessionManager token expired. "
-                                "Note: VFS API client handles its own token "
-                                "refresh via _ensure_authenticated()."
-                            )
-                    except Exception as token_error:
-                        logger.warning(f"Session token check error: {token_error}")
+                # Note: Token synchronization between VFSApiClient and SessionManager
+                # is handled by TokenSyncService when VFSApiClient is integrated.
+                # The TokenSyncService ensures proactive token refresh before expiry.
 
                 # Check circuit breaker
                 if not await self.circuit_breaker.is_available():
