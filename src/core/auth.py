@@ -258,6 +258,45 @@ class PersistentTokenBlacklist(TokenBlacklist):
             logger.error(f"Failed to load blacklist from database: {e}")
             return 0
 
+    async def start_cleanup_task(self, interval: int = 300) -> None:
+        """
+        Start background cleanup task for both memory and database.
+
+        This method completely overrides the parent's implementation to add
+        database cleanup capability while maintaining in-memory cleanup.
+        
+        The parent's logic is reimplemented here to avoid complexity from
+        coordination between parent's task and database cleanup scheduling.
+
+        Args:
+            interval: Cleanup interval in seconds (default: 5 minutes)
+        """
+        self._running = True
+        db_cleanup_counter = 0
+
+        while self._running:
+            await asyncio.sleep(interval)
+
+            # In-memory cleanup (every interval)
+            with self._lock:
+                self._cleanup_expired()
+                logger.debug(
+                    f"Token blacklist cleanup: {len(self._blacklist)} tokens remaining"
+                )
+
+            # Database cleanup (every 6th interval ≈ 30 minutes)
+            db_cleanup_counter += 1
+            if db_cleanup_counter >= 6 and self._use_db and self._db:
+                db_cleanup_counter = 0
+                try:
+                    deleted = await self._db.cleanup_expired_tokens()
+                    if deleted > 0:
+                        logger.info(
+                            f"Database token cleanup: removed {deleted} expired tokens"
+                        )
+                except Exception as e:
+                    logger.warning(f"Database token cleanup failed: {e}")
+
 
 # Global token blacklist instance
 _token_blacklist: Optional[TokenBlacklist] = None

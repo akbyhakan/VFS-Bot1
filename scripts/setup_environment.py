@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Interactive environment setup with enhanced security."""
 
+import getpass
 import os
 import secrets
 
@@ -25,9 +26,9 @@ def main():
 
     # Get user input
     vfs_email = input("VFS Email: ")
-    vfs_password = input("VFS Password: ")
+    vfs_password = getpass.getpass("VFS Password: ")
     admin_username = input("Admin Username [admin]: ") or "admin"
-    admin_password = input("Admin Password: ")
+    admin_password = getpass.getpass("Admin Password: ")
 
     # Hash admin password for secure storage
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

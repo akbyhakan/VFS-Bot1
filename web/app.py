@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from src.core.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
@@ -296,6 +297,9 @@ API endpoints are rate-limited to prevent abuse:
     ],
 )
 
+# Run startup security validation
+log_security_warnings()
+
 
 # Configure middleware (order matters!)
 # 1. Error handling middleware first (catches all errors)
@@ -312,6 +316,15 @@ allowed_origins_str = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
 )
 allowed_origins = validate_cors_origins(allowed_origins_str)
+
+if not allowed_origins:
+    env = os.getenv("ENV", "production").lower()
+    if env not in ("development", "dev", "local", "testing", "test"):
+        logger.warning(
+            "No valid CORS origins configured for production. "
+            "Set CORS_ALLOWED_ORIGINS in .env. "
+            "Frontend cross-origin requests will be blocked."
+        )
 
 app.add_middleware(
     CORSMiddleware,
