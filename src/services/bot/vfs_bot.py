@@ -16,6 +16,7 @@ from ...utils.security.proxy_manager import ProxyManager
 from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
 from ..adaptive_scheduler import AdaptiveScheduler
+from ..alert_service import AlertSeverity
 from ..appointment_booking_service import AppointmentBookingService
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
@@ -372,6 +373,31 @@ class VFSBot:
         await self.notifier.notify_bot_stopped()
         logger.info("VFS-Bot stopped")
 
+    async def _send_alert_safe(
+        self,
+        message: str,
+        severity: AlertSeverity = AlertSeverity.ERROR,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Send alert through alert service, silently failing on errors.
+
+        Args:
+            message: Alert message to send
+            severity: Alert severity level
+            metadata: Optional metadata dictionary
+        """
+        if not self.alert_service:
+            return
+        try:
+            await self.alert_service.send_alert(
+                message=message,
+                severity=severity,
+                metadata=metadata or {},
+            )
+        except Exception as e:
+            logger.debug(f"Alert delivery failed: {e}")
+
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
         while self.running and not self.shutdown_event.is_set():
@@ -402,16 +428,11 @@ class VFSBot:
                     )
                     
                     # Send alert for circuit breaker open (WARNING severity)
-                    if self.alert_service:
-                        try:
-                            from ..alert_service import AlertSeverity
-                            await self.alert_service.send_alert(
-                                message=f"Circuit breaker OPEN - consecutive errors: {stats['consecutive_errors']}, waiting {wait_time}s",
-                                severity=AlertSeverity.WARNING,
-                                metadata={"stats": stats, "wait_time": wait_time}
-                            )
-                        except Exception as alert_error:
-                            logger.debug(f"Failed to send circuit breaker alert: {alert_error}")
+                    await self._send_alert_safe(
+                        message=f"Circuit breaker OPEN - consecutive errors: {stats['consecutive_errors']}, waiting {wait_time}s",
+                        severity=AlertSeverity.WARNING,
+                        metadata={"stats": stats, "wait_time": wait_time}
+                    )
                     
                     await asyncio.sleep(wait_time)
                     # Don't unconditionally reset - let the next successful iteration close it
@@ -465,16 +486,11 @@ class VFSBot:
                     await self.circuit_breaker.record_failure()
                     
                     # Send alert for batch errors (ERROR severity)
-                    if self.alert_service:
-                        try:
-                            from ..alert_service import AlertSeverity
-                            await self.alert_service.send_alert(
-                                message=f"Batch processing errors: {errors_in_batch}/{len(users)} users failed",
-                                severity=AlertSeverity.ERROR,
-                                metadata={"errors": errors_in_batch, "total_users": len(users)}
-                            )
-                        except Exception as alert_error:
-                            logger.debug(f"Failed to send batch error alert: {alert_error}")
+                    await self._send_alert_safe(
+                        message=f"Batch processing errors: {errors_in_batch}/{len(users)} users failed",
+                        severity=AlertSeverity.ERROR,
+                        metadata={"errors": errors_in_batch, "total_users": len(users)}
+                    )
                 else:
                     # Successful batch - reset consecutive errors
                     await self.circuit_breaker.record_success()
@@ -495,16 +511,11 @@ class VFSBot:
                 await self.circuit_breaker.record_failure()
                 
                 # Send alert for bot loop error (ERROR severity)
-                if self.alert_service:
-                    try:
-                        from ..alert_service import AlertSeverity
-                        await self.alert_service.send_alert(
-                            message=f"Bot loop error: {str(e)}",
-                            severity=AlertSeverity.ERROR,
-                            metadata={"error": str(e), "type": type(e).__name__}
-                        )
-                    except Exception as alert_error:
-                        logger.debug(f"Failed to send bot loop error alert: {alert_error}")
+                await self._send_alert_safe(
+                    message=f"Bot loop error: {str(e)}",
+                    severity=AlertSeverity.ERROR,
+                    metadata={"error": str(e), "type": type(e).__name__}
+                )
 
                 # If circuit breaker open, wait longer
                 if not await self.circuit_breaker.is_available():
