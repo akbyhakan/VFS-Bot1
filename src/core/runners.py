@@ -6,8 +6,10 @@ Handles different run modes: bot-only, web-only, and both.
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
+from src.core.bot_controller import BotController
 from src.core.exceptions import ShutdownTimeoutError
 from src.models.database import Database
 from src.services.bot import VFSBot
@@ -150,8 +152,10 @@ async def run_web_mode(
             )
             logger.info("Cleanup service started (runs every 24 hours)")
 
-        # Run uvicorn server
-        config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        # Run uvicorn server with configurable host and port
+        host = os.getenv("UVICORN_HOST", "127.0.0.1")
+        port = int(os.getenv("UVICORN_PORT", "8000"))
+        config_uvicorn = uvicorn.Config(app, host=host, port=port, log_level="info")
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
@@ -189,28 +193,42 @@ async def run_both_mode(config: dict) -> None:
     db = Database()
     await db.connect()
 
+    # Initialize notification service
+    notifier = NotificationService(config["notifications"])
+
+    # Get and configure BotController singleton
+    controller = await BotController.get_instance()
+    await controller.configure(config, db, notifier)
+
     try:
-        # Create tasks for both modes with shared database
-        # (disable cleanup in web task to avoid duplication)
+        # Start the bot via controller
+        logger.info("Starting bot via BotController...")
+        start_result = await controller.start_bot()
+        if start_result["status"] != "success":
+            logger.error(f"Failed to start bot: {start_result['message']}")
+            raise RuntimeError(f"Bot startup failed: {start_result['message']}")
+
+        # Run web mode (with cleanup service enabled)
         web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
-        bot_task = asyncio.create_task(run_bot_mode(config, db=db))
 
-        # Run both concurrently and handle exceptions
-        results = await asyncio.gather(web_task, bot_task, return_exceptions=True)
+        # Wait for web task to complete
+        await web_task
 
-        # Check for exceptions in results
-        for i, result in enumerate(results):
-            task_name = "web" if i == 0 else "bot"
-            if isinstance(result, Exception):
-                logger.error(f"Task '{task_name}' failed with exception: {result}", exc_info=result)
     except Exception as e:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
     finally:
+        # Stop the bot via controller
+        logger.info("Stopping bot via BotController...")
+        try:
+            await controller.stop_bot()
+        except Exception as e:
+            logger.error(f"Error stopping bot: {e}")
+
         # Graceful shutdown with timeout protection
         try:
             loop = asyncio.get_running_loop()
-            await graceful_shutdown_with_timeout(loop, db, None)
+            await graceful_shutdown_with_timeout(loop, db, notifier)
         except ShutdownTimeoutError as e:
             logger.error(f"Shutdown timeout: {e}")
             # Continue with cleanup anyway

@@ -1,6 +1,7 @@
 """Core infrastructure module."""
 
 from .auth import create_access_token, hash_password, verify_password, verify_token
+from .bot_controller import BotController
 from .config_loader import load_config
 from .config_validator import ConfigValidator
 from .env_validator import EnvValidator
@@ -41,6 +42,7 @@ __all__ = [
     "load_config",
     "ConfigValidator",
     "EnvValidator",
+    "BotController",
     "setup_structured_logging",
     "JSONFormatter",
     "generate_api_key",
