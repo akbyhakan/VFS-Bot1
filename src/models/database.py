@@ -4,10 +4,12 @@ import asyncio
 import logging
 import os
 import secrets
+import stat
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, TypeVar
 
 import aiosqlite
@@ -109,6 +111,50 @@ class Database:
         # Clamp between 5 and 20
         return min(max(optimal_size, 5), 20)
 
+    def _set_secure_db_permissions(self) -> None:
+        """Set restrictive file permissions on database files (Unix/Linux only)."""
+        if os.name == "nt":  # Skip on Windows
+            return
+
+        db_path = Path(self.db_path)
+        secure_mode = stat.S_IRUSR | stat.S_IWUSR  # 0o600 = owner read/write only
+
+        try:
+            if db_path.exists():
+                current_mode = db_path.stat().st_mode & 0o777
+                if current_mode != 0o600:
+                    os.chmod(str(db_path), secure_mode)
+                    logger.info(
+                        f"Database file permissions set to 600: {db_path} "
+                        f"(was {oct(current_mode)})"
+                    )
+
+            # Also secure WAL and SHM files if they exist
+            for suffix in ("-wal", "-shm"):
+                wal_path = Path(str(db_path) + suffix)
+                if wal_path.exists():
+                    os.chmod(str(wal_path), secure_mode)
+        except OSError as e:
+            logger.warning(f"Could not set database file permissions: {e}")
+
+    def _verify_db_permissions(self) -> None:
+        """Warn if database file has overly permissive permissions."""
+        if os.name == "nt":
+            return
+
+        db_path = Path(self.db_path)
+        try:
+            if db_path.exists():
+                current_mode = db_path.stat().st_mode
+                if current_mode & (stat.S_IRGRP | stat.S_IROTH):
+                    logger.warning(
+                        f"Database file {db_path} has permissive permissions "
+                        f"(mode: {oct(current_mode & 0o777)}). "
+                        f"Recommended: chmod 600 {db_path}"
+                    )
+        except OSError:
+            pass
+
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
@@ -145,6 +191,9 @@ class Database:
 
                     self._pool.append(conn)
                     await self._available_connections.put(conn)
+
+                # Set secure file permissions on database files (Unix/Linux only)
+                self._set_secure_db_permissions()
 
                 logger.info(
                     f"Database connected with pool size {self.pool_size} "
