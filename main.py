@@ -373,6 +373,17 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         db = Database()
         await db.connect()
 
+    # Start database backup service
+    backup_service = None
+    try:
+        from src.utils.db_backup import get_backup_service
+        db_path = config.get("database", {}).get("path", "data/vfs_bot.db")
+        backup_service = get_backup_service(db_path=db_path)
+        await backup_service.start_scheduled_backups()
+        logger.info("Database backup service started")
+    except Exception as e:
+        logger.warning(f"Failed to start backup service (non-critical): {e}")
+
     # Initialize notifier to None so it's available in finally block if initialization fails
     notifier = None
     try:
@@ -408,6 +419,14 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         logger.error(f"Bot error: {e}", exc_info=True)
         shutdown_event.set()
     finally:
+        # Stop backup service
+        if backup_service:
+            try:
+                await backup_service.stop_scheduled_backups()
+                logger.info("Database backup service stopped")
+            except Exception as e:
+                logger.error(f"Error stopping backup service: {e}")
+
         # Graceful shutdown with timeout protection
         if shutdown_event and shutdown_event.is_set():
             try:

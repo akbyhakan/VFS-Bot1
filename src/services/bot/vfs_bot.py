@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
@@ -348,24 +349,39 @@ class VFSBot:
     async def stop(self) -> None:
         """
         Stop the bot with graceful shutdown of active bookings.
-
-        This method waits for active booking tasks to complete gracefully
-        before shutting down, with a 120-second timeout. If bookings don't
-        complete within the grace period, they are forcefully cancelled.
+        Sends notifications about shutdown status to keep users informed.
         """
         self.running = False
 
         # Wait for active booking tasks to complete gracefully
         if self._active_booking_tasks:
-            logger.info(f"Waiting for {len(self._active_booking_tasks)} active booking(s) to complete...")
+            active_count = len(self._active_booking_tasks)
+            grace_period_seconds = 120  # 2 minutes grace period for bookings
+            grace_period_display = f"{grace_period_seconds // 60} min"
+            
+            logger.info(f"Waiting for {active_count} active booking(s) to complete...")
+
+            # Notify about pending shutdown
+            await self._send_alert_safe(
+                message=f"⏳ Bot shutting down - waiting for {active_count} active booking(s) to complete ({grace_period_display} grace period)",
+                severity=AlertSeverity.WARNING,
+                metadata={"active_bookings": active_count}
+            )
+
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
-                    timeout=120  # 2 minutes grace period for bookings
+                    timeout=grace_period_seconds
                 )
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
+                # Notify about forced cancellation
+                await self._send_alert_safe(
+                    message=f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} booking(s) cancelled after {grace_period_display} timeout",
+                    severity=AlertSeverity.ERROR,
+                    metadata={"cancelled_bookings": len(self._active_booking_tasks)}
+                )
                 for task in self._active_booking_tasks:
                     task.cancel()
 
@@ -445,6 +461,10 @@ class VFSBot:
                     )
                     continue
 
+                # Check if browser needs restart for memory management
+                if await self.browser_manager.should_restart():
+                    await self.browser_manager.restart_fresh()
+
                 # Get active users with decrypted passwords
                 users = await self.db.get_active_users_with_decrypted_passwords()
                 logger.info(
@@ -522,7 +542,9 @@ class VFSBot:
                     wait_time = await self.circuit_breaker.get_wait_time()
                     await asyncio.sleep(wait_time)
                 else:
-                    await asyncio.sleep(Intervals.ERROR_RECOVERY)
+                    # Add jitter to prevent thundering herd on recovery
+                    jitter = random.uniform(0.8, 1.2)
+                    await asyncio.sleep(Intervals.ERROR_RECOVERY * jitter)
 
     async def _process_user_with_semaphore(self, user: Dict[str, Any]) -> None:
         """
