@@ -6,6 +6,7 @@ Handles different run modes: bot-only, web-only, and both.
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
 from src.core.exceptions import ShutdownTimeoutError
@@ -13,6 +14,7 @@ from src.models.database import Database
 from src.services.bot import VFSBot
 from src.services.notification import NotificationService
 
+from .bot_controller import BotController
 from .shutdown import (
     graceful_shutdown_with_timeout,
     safe_shutdown_cleanup,
@@ -60,6 +62,11 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
 
         # Initialize and start bot with shutdown event
         bot = VFSBot(config, db, notifier, shutdown_event)
+
+        # Register bot with BotController for web dashboard control
+        bot_controller = BotController()
+        bot_controller.register_bot(bot, shutdown_event=shutdown_event)
+        logger.info("Bot registered with BotController")
 
         # Initialize selector health monitoring (if enabled)
         # Note: The health checker will be started within the bot's browser context
@@ -151,7 +158,10 @@ async def run_web_mode(
             logger.info("Cleanup service started (runs every 24 hours)")
 
         # Run uvicorn server
-        config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        # Get host from environment variable, default to 127.0.0.1 for security
+        uvicorn_host = os.getenv("UVICORN_HOST", "127.0.0.1")
+        uvicorn_port = int(os.getenv("UVICORN_PORT", "8000"))
+        config_uvicorn = uvicorn.Config(app, host=uvicorn_host, port=uvicorn_port, log_level="info")
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
@@ -192,7 +202,7 @@ async def run_both_mode(config: dict) -> None:
     try:
         # Create tasks for both modes with shared database
         # (disable cleanup in web task to avoid duplication)
-        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
+        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=False, db=db))
         bot_task = asyncio.create_task(run_bot_mode(config, db=db))
 
         # Run both concurrently and handle exceptions

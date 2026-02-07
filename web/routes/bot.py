@@ -12,6 +12,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import verify_token
+from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
 from web.dependencies import BotCommand, bot_state, broadcast_message, manager, verify_jwt_token
 
@@ -36,21 +37,16 @@ async def start_bot(
     Returns:
         Response dictionary
     """
-    if bot_state["running"]:
-        return {"status": "error", "message": "Bot is already running"}
-
-    bot_state["running"] = True
-    bot_state["status"] = "running"
-
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": True, "status": "running", "message": "Bot started successfully"},
-        }
-    )
-
-    logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot started"}
+    # Use BotController to actually start the bot
+    bot_controller = BotController()
+    result = await bot_controller.start_bot()
+    
+    if result["status"] == "success":
+        logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        logger.warning(f"Failed to start bot via dashboard by {api_key.get('name', 'unknown')}: {result['message']}")
+    
+    return result
 
 
 @router.post("/bot/stop")
@@ -66,21 +62,16 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     Returns:
         Response dictionary
     """
-    if not bot_state["running"]:
-        return {"status": "error", "message": "Bot is not running"}
-
-    bot_state["running"] = False
-    bot_state["status"] = "stopped"
-
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": False, "status": "stopped", "message": "Bot stopped successfully"},
-        }
-    )
-
-    logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot stopped"}
+    # Use BotController to actually stop the bot
+    bot_controller = BotController()
+    result = await bot_controller.stop_bot()
+    
+    if result["status"] == "success":
+        logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        logger.warning(f"Failed to stop bot via dashboard by {api_key.get('name', 'unknown')}: {result['message']}")
+    
+    return result
 
 
 @router.post("/bot/restart")
@@ -96,33 +87,16 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
     Returns:
         Response dictionary
     """
-    # Stop the bot first
-    bot_state["running"] = False
-    bot_state["status"] = "restarting"
-
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": False, "status": "restarting", "message": "Bot restarting..."},
-        }
-    )
-
-    # Small delay before starting again
-    await asyncio.sleep(1)
-
-    # Start the bot again
-    bot_state["running"] = True
-    bot_state["status"] = "running"
-
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": True, "status": "running", "message": "Bot restarted successfully"},
-        }
-    )
-
-    logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot restarted"}
+    # Use BotController to actually restart the bot
+    bot_controller = BotController()
+    result = await bot_controller.restart_bot()
+    
+    if result["status"] == "success":
+        logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        logger.warning(f"Failed to restart bot via dashboard by {api_key.get('name', 'unknown')}: {result['message']}")
+    
+    return result
 
 
 @router.post("/bot/check-now")
