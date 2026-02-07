@@ -179,14 +179,15 @@ class TestDatabaseBackupAutoStart:
     @pytest.mark.asyncio
     async def test_backup_service_creation(self):
         """Test backup service creation."""
-        from src.utils.db_backup import get_backup_service
+        from src.utils.db_backup import DatabaseBackup
 
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = str(Path(tmpdir) / "test.db")
             # Create empty db file
             Path(db_path).touch()
 
-            backup_service = get_backup_service(db_path=db_path)
+            # Create service directly (not using singleton getter)
+            backup_service = DatabaseBackup(db_path=db_path)
             assert backup_service is not None
             assert backup_service._db_path == Path(db_path)
 
