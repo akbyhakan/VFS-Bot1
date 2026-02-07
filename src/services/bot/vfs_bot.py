@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
-from ...constants import Intervals
+from ...constants import Intervals, RateLimits
 from ...models.database import Database
 from ..alert_service import AlertSeverity
 from ..captcha_solver import CaptchaSolver
@@ -403,7 +403,7 @@ class VFSBot:
                 users = await self.db.get_active_users_with_decrypted_passwords()
                 logger.info(
                     f"Processing {len(users)} active users "
-                    f"(max {self.services.core.user_semaphore._value} concurrent)"
+                    f"(max {RateLimits.CONCURRENT_USERS} concurrent)"
                 )
 
                 if not users:

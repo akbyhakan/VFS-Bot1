@@ -19,7 +19,12 @@ from src.services.centre_fetcher import CentreFetcher
 
 @pytest.fixture
 def minimal_config():
-    """Minimal valid configuration for testing."""
+    """
+    Minimal valid configuration for testing.
+
+    Note: 'tur' (Turkey) country with 'deu' (Germany) mission represents a real-world
+    scenario where Turkish citizens apply for German visas at VFS centers in Turkey.
+    """
     return {
         "vfs": {
             "base_url": "https://visa.vfsglobal.com",
