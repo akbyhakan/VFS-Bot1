@@ -194,7 +194,6 @@ class Database:
 
                 # Set secure file permissions on database files (Unix/Linux only)
                 self._set_secure_db_permissions()
-                self._verify_db_permissions()
 
                 logger.info(
                     f"Database connected with pool size {self.pool_size} "

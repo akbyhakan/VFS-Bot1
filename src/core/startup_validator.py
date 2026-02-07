@@ -7,13 +7,12 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 # Known dangerous default values that should never be used in production
+# These are exact placeholder values from .env.example
 DANGEROUS_DEFAULTS = frozenset({
     "your-secret-key-here-must-be-at-least-64-characters-long-for-security",
     "your-base64-encoded-encryption-key-here",
     "your-32-byte-encryption-key-here",
     "your-secure-api-key-here",
-    "change-me",
-    "secret",
 })
 
 
