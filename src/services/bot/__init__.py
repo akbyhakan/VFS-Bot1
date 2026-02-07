@@ -11,6 +11,8 @@ Public API:
 - CircuitBreakerService: Fault tolerance and error tracking
 - ErrorHandler: Error capture and screenshot handling
 - SlotInfo: Type definition for slot information
+- Service contexts: AntiDetectionContext, CoreServicesContext, WorkflowServicesContext,
+  AutomationServicesContext, BotServiceContext, BotServiceFactory
 """
 
 from .auth_service import AuthService
@@ -18,6 +20,14 @@ from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .circuit_breaker_service import CircuitBreakerService, CircuitBreakerStats
 from .error_handler import ErrorHandler
+from .service_context import (
+    AntiDetectionContext,
+    AutomationServicesContext,
+    BotServiceContext,
+    BotServiceFactory,
+    CoreServicesContext,
+    WorkflowServicesContext,
+)
 from .slot_checker import SlotChecker, SlotInfo
 from .vfs_bot import VFSBot
 
@@ -31,4 +41,10 @@ __all__ = [
     "CircuitBreakerService",
     "CircuitBreakerStats",
     "ErrorHandler",
+    "AntiDetectionContext",
+    "CoreServicesContext",
+    "WorkflowServicesContext",
+    "AutomationServicesContext",
+    "BotServiceContext",
+    "BotServiceFactory",
 ]
