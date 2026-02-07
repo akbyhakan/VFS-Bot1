@@ -18,7 +18,7 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - 🔔 **Multi-Channel Notifications** - Telegram and Email alerts
 - 🧩 **Multiple Captcha Solvers** - Support for 2captcha, anticaptcha, nopecha, and manual solving
 - 👥 **Multi-User Support** - Handle multiple users and centres simultaneously
-- 🗄️ **SQLite Database** - Track users, appointments, and logs
+- 🗄️ **PostgreSQL Database** - Track users, appointments, and logs
 - 🐳 **Docker Support** - Easy deployment with Docker and Docker Compose
 - ⚙️ **YAML Configuration** - Simple configuration with environment variable support
 - 🔒 **Secure** - Credentials stored in environment variables
@@ -484,7 +484,7 @@ VFS-Bot1/
 │   │   ├── monitoring.py     # Sentry integration
 │   │   └── exceptions.py
 │   ├── models/               # Data models
-│   │   └── database.py       # SQLite operations
+│   │   └── database.py       # PostgreSQL operations
 │   ├── services/             # Business logic
 │   │   ├── bot/              # Main bot logic (modular)
 │   │   ├── captcha_solver.py # Captcha solving
