@@ -1,37 +1,37 @@
-"""Database backup utility for SQLite databases."""
+"""Database backup utility for PostgreSQL databases."""
 
 import logging
-import shutil
+import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseBackup:
     """
-    Utility for creating and managing SQLite database backups.
+    Utility for creating and managing PostgreSQL database backups.
 
     Features:
-    - Timestamped backup copies
+    - Timestamped backup copies using pg_dump
     - Configurable retention (keep last N backups)
-    - Safe backup operations (atomic copy)
+    - Safe backup operations (pg_dump)
     """
 
-    def __init__(self, db_path: str, backup_dir: Optional[str] = None, max_backups: int = 5):
+    def __init__(self, database_url: str = None, backup_dir: Optional[str] = None, max_backups: int = 5):
         """
         Initialize database backup manager.
 
         Args:
-            db_path: Path to the SQLite database file
-            backup_dir: Directory to store backups (defaults to {db_path}_backups)
+            database_url: PostgreSQL database URL
+            backup_dir: Directory to store backups (defaults to data/backups)
             max_backups: Maximum number of backups to retain (default: 5)
         """
-        self.db_path = Path(db_path)
-        self.backup_dir = (
-            Path(backup_dir) if backup_dir else self.db_path.parent / f"{self.db_path.stem}_backups"
-        )
+        self.database_url = database_url or os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+        self.backup_dir = Path(backup_dir) if backup_dir else Path("data/backups")
         self.max_backups = max_backups
 
         # Create backup directory if it doesn't exist
@@ -39,7 +39,7 @@ class DatabaseBackup:
 
     def create_backup(self, suffix: Optional[str] = None) -> Optional[Path]:
         """
-        Create a timestamped backup of the database.
+        Create a timestamped backup of the database using pg_dump.
 
         Args:
             suffix: Optional suffix to add to backup filename (e.g., "pre_migration")
@@ -48,21 +48,32 @@ class DatabaseBackup:
             Path to the created backup file, or None if backup failed
         """
         try:
-            if not self.db_path.exists():
-                logger.error(f"Database file not found: {self.db_path}")
-                return None
-
             # Generate backup filename with timestamp
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             if suffix:
-                backup_name = f"{self.db_path.stem}_{timestamp}_{suffix}{self.db_path.suffix}"
+                backup_name = f"vfs_bot_{timestamp}_{suffix}.sql"
             else:
-                backup_name = f"{self.db_path.stem}_{timestamp}{self.db_path.suffix}"
+                backup_name = f"vfs_bot_{timestamp}.sql"
 
             backup_path = self.backup_dir / backup_name
 
-            # Perform atomic copy
-            shutil.copy2(self.db_path, backup_path)
+            # Set up environment with password if present
+            env = os.environ.copy()
+            parsed = urlparse(self.database_url)
+            if parsed.password:
+                env['PGPASSWORD'] = parsed.password
+
+            # Perform backup using pg_dump
+            result = subprocess.run(
+                ['pg_dump', self.database_url, '-f', str(backup_path), '--no-password'],
+                env=env,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode != 0:
+                logger.error(f"pg_dump failed: {result.stderr}")
+                return None
 
             logger.info(f"Database backup created: {backup_path}")
 
@@ -80,7 +91,7 @@ class DatabaseBackup:
         try:
             # Get all backup files sorted by creation time (newest first)
             backups = sorted(
-                self.backup_dir.glob(f"{self.db_path.stem}_*{self.db_path.suffix}"),
+                self.backup_dir.glob("vfs_bot_*.sql"),
                 key=lambda p: p.stat().st_mtime,
                 reverse=True,
             )
@@ -101,7 +112,7 @@ class DatabaseBackup:
             List of backup file paths
         """
         backups = sorted(
-            self.backup_dir.glob(f"{self.db_path.stem}_*{self.db_path.suffix}"),
+            self.backup_dir.glob("vfs_bot_*.sql"),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
@@ -109,7 +120,7 @@ class DatabaseBackup:
 
     def restore_backup(self, backup_path: Path) -> bool:
         """
-        Restore database from a backup file.
+        Restore database from a backup file using psql.
 
         Args:
             backup_path: Path to the backup file to restore
@@ -127,8 +138,23 @@ class DatabaseBackup:
             if current_backup:
                 logger.info(f"Created pre-restore backup: {current_backup}")
 
-            # Restore from backup
-            shutil.copy2(backup_path, self.db_path)
+            # Set up environment with password if present
+            env = os.environ.copy()
+            parsed = urlparse(self.database_url)
+            if parsed.password:
+                env['PGPASSWORD'] = parsed.password
+
+            # Restore from backup using psql
+            result = subprocess.run(
+                ['psql', self.database_url, '-f', str(backup_path), '--no-password'],
+                env=env,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode != 0:
+                logger.error(f"psql restore failed: {result.stderr}")
+                return False
 
             logger.info(f"Database restored from backup: {backup_path}")
             return True
@@ -149,18 +175,18 @@ class DatabaseBackup:
 
 
 def create_backup(
-    db_path: str, suffix: Optional[str] = None, max_backups: int = 5
+    database_url: str = None, suffix: Optional[str] = None, max_backups: int = 5
 ) -> Optional[Path]:
     """
     Convenience function to create a database backup.
 
     Args:
-        db_path: Path to the SQLite database file
+        database_url: PostgreSQL database URL
         suffix: Optional suffix to add to backup filename
         max_backups: Maximum number of backups to retain
 
     Returns:
         Path to the created backup file, or None if backup failed
     """
-    backup_manager = DatabaseBackup(db_path, max_backups=max_backups)
+    backup_manager = DatabaseBackup(database_url, max_backups=max_backups)
     return backup_manager.create_backup(suffix=suffix)

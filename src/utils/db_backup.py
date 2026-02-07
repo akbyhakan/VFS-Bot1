@@ -1,30 +1,32 @@
-"""SQLite database backup and restore utilities.
+"""PostgreSQL database backup and restore utilities.
 
-This module provides automated backup functionality for SQLite databases
-using the native backup API for online (hot) backups.
+This module provides automated backup functionality for PostgreSQL databases
+using pg_dump and pg_restore for online (hot) backups.
 """
 
 import asyncio
 import logging
-import sqlite3
+import os
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseBackup:
     """
-    Handles automated SQLite database backups with retention management.
+    Handles automated PostgreSQL database backups with retention management.
 
-    Uses SQLite's backup API for online backups without blocking the database.
+    Uses pg_dump for online backups without blocking the database.
     Automatically cleans up old backups based on retention policy.
     """
 
     def __init__(
         self,
-        db_path: str = "data/vfs_bot.db",
+        database_url: str = None,
         backup_dir: str = "data/backups",
         retention_days: int = 7,
         interval_hours: int = 6,
@@ -33,12 +35,12 @@ class DatabaseBackup:
         Initialize database backup service.
 
         Args:
-            db_path: Path to SQLite database file
+            database_url: PostgreSQL database URL
             backup_dir: Directory to store backup files
             retention_days: Number of days to keep backups (default: 7)
             interval_hours: Hours between scheduled backups (default: 6)
         """
-        self._db_path = Path(db_path)
+        self._database_url = database_url or os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
         self._backup_dir = Path(backup_dir)
         self._retention_days = retention_days
         self._interval_hours = interval_hours
@@ -49,7 +51,7 @@ class DatabaseBackup:
         self._backup_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            f"Database backup initialized: {db_path} -> {backup_dir} "
+            f"Database backup initialized: {self._database_url} -> {backup_dir} "
             f"(retention: {retention_days}d, interval: {interval_hours}h)"
         )
 
@@ -61,32 +63,28 @@ class DatabaseBackup:
             Path object for new backup file
         """
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"vfs_bot_backup_{timestamp}.db"
+        filename = f"vfs_bot_backup_{timestamp}.sql"
         return self._backup_dir / filename
 
     async def create_backup(self) -> str:
         """
         Create a backup of the database.
 
-        Uses SQLite's backup API for online backup without locking the database.
+        Uses pg_dump for online backup without locking the database.
 
         Returns:
             Path to created backup file
 
         Raises:
-            FileNotFoundError: If source database doesn't exist
             Exception: On backup failure
         """
-        if not self._db_path.exists():
-            raise FileNotFoundError(f"Database file not found: {self._db_path}")
-
         backup_path = self._generate_backup_path()
 
         logger.info(f"Creating database backup: {backup_path}")
 
         try:
-            # Run backup in thread pool to avoid blocking asyncio
-            await asyncio.to_thread(self._perform_backup, str(self._db_path), str(backup_path))
+            # Run pg_dump asynchronously
+            await self._perform_backup(self._database_url, str(backup_path))
 
             # Verify backup was created
             if not backup_path.exists():
@@ -104,29 +102,40 @@ class DatabaseBackup:
                 backup_path.unlink()
             raise
 
-    @staticmethod
-    def _perform_backup(source_path: str, backup_path: str) -> None:
+    async def _perform_backup(self, database_url: str, backup_path: str) -> None:
         """
-        Perform SQLite backup using backup API (blocking operation).
+        Perform PostgreSQL backup using pg_dump (async operation).
 
         Args:
-            source_path: Source database path
+            database_url: PostgreSQL database URL
             backup_path: Backup destination path
         """
-        # Connect to source and destination databases
-        source_conn = sqlite3.connect(source_path)
-        backup_conn = sqlite3.connect(backup_path)
-
-        try:
-            # Perform online backup
-            with source_conn:
-                source_conn.backup(backup_conn)
-
-            logger.debug("SQLite backup completed")
-
-        finally:
-            source_conn.close()
-            backup_conn.close()
+        # Set up environment with password if present
+        env = os.environ.copy()
+        
+        # Parse database URL to extract password
+        parsed = urlparse(database_url)
+        if parsed.password:
+            env['PGPASSWORD'] = parsed.password
+        
+        # Run pg_dump
+        process = await asyncio.create_subprocess_exec(
+            'pg_dump',
+            database_url,
+            '-f', backup_path,
+            '--no-password',
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise Exception(f"pg_dump failed with return code {process.returncode}: {error_msg}")
+        
+        logger.debug("PostgreSQL backup completed")
 
     async def cleanup_old_backups(self) -> int:
         """
@@ -144,7 +153,7 @@ class DatabaseBackup:
         logger.debug(f"Cleaning up backups older than {self._retention_days} days")
 
         try:
-            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.db"):
+            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.sql"):
                 # Get file modification time
                 mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc)
 
@@ -237,13 +246,11 @@ class DatabaseBackup:
 
         try:
             # Create a backup of current database before restoring
-            if self._db_path.exists():
-                current_backup = self._db_path.with_suffix(".db.pre-restore")
-                logger.info(f"Creating safety backup of current DB: {current_backup}")
-                await asyncio.to_thread(self._db_path.rename, current_backup)
+            logger.info("Creating safety backup of current DB before restore")
+            await self.create_backup()
 
-            # Copy backup to main database location
-            await asyncio.to_thread(self._perform_restore, str(backup_file), str(self._db_path))
+            # Restore from backup using psql
+            await self._perform_restore(str(backup_file), self._database_url)
 
             logger.info("Database restore completed successfully")
             return True
@@ -252,19 +259,40 @@ class DatabaseBackup:
             logger.error(f"Database restore failed: {e}", exc_info=True)
             return False
 
-    @staticmethod
-    def _perform_restore(backup_path: str, target_path: str) -> None:
+    async def _perform_restore(self, backup_path: str, database_url: str) -> None:
         """
-        Perform database restore (blocking operation).
+        Perform database restore using psql (async operation).
 
         Args:
             backup_path: Source backup file
-            target_path: Target database path
+            database_url: Target database URL
         """
-        import shutil
-
-        shutil.copy2(backup_path, target_path)
-        logger.debug(f"Copied backup to {target_path}")
+        # Set up environment with password if present
+        env = os.environ.copy()
+        
+        # Parse database URL to extract password
+        parsed = urlparse(database_url)
+        if parsed.password:
+            env['PGPASSWORD'] = parsed.password
+        
+        # Run psql to restore
+        process = await asyncio.create_subprocess_exec(
+            'psql',
+            database_url,
+            '-f', backup_path,
+            '--no-password',
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            raise Exception(f"psql restore failed with return code {process.returncode}: {error_msg}")
+        
+        logger.debug(f"Restored backup to database")
 
     async def list_backups(self) -> List[Dict[str, Any]]:
         """
@@ -280,7 +308,7 @@ class DatabaseBackup:
 
         try:
             for backup_file in sorted(
-                self._backup_dir.glob("vfs_bot_backup_*.db"), key=lambda p: p.stat().st_mtime, reverse=True
+                self._backup_dir.glob("vfs_bot_backup_*.sql"), key=lambda p: p.stat().st_mtime, reverse=True
             ):
                 stat = backup_file.stat()
                 backups.append(
@@ -313,13 +341,13 @@ class DatabaseBackup:
         total_size = 0
 
         if self._backup_dir.exists():
-            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.db"):
+            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.sql"):
                 size = backup_file.stat().st_size
                 backups.append(backup_file.name)
                 total_size += size
 
         return {
-            "db_path": str(self._db_path),
+            "database_url": self._database_url,
             "backup_dir": str(self._backup_dir),
             "retention_days": self._retention_days,
             "interval_hours": self._interval_hours,
@@ -335,7 +363,7 @@ _backup_service: Optional[DatabaseBackup] = None
 
 
 def get_backup_service(
-    db_path: str = "data/vfs_bot.db",
+    database_url: str = None,
     backup_dir: str = "data/backups",
     retention_days: int = 7,
     interval_hours: int = 6,
@@ -344,7 +372,7 @@ def get_backup_service(
     Get or create the global database backup service.
 
     Args:
-        db_path: Database path (only used on first call)
+        database_url: Database URL (only used on first call)
         backup_dir: Backup directory (only used on first call)
         retention_days: Retention period (only used on first call)
         interval_hours: Backup interval (only used on first call)
@@ -356,7 +384,7 @@ def get_backup_service(
 
     if _backup_service is None:
         _backup_service = DatabaseBackup(
-            db_path=db_path,
+            database_url=database_url,
             backup_dir=backup_dir,
             retention_days=retention_days,
             interval_hours=interval_hours,
