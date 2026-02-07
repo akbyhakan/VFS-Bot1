@@ -156,7 +156,7 @@ def validate_cors_origins(origins_str: str) -> List[str]:
 
 
 @lru_cache(maxsize=1)
-def _get_trusted_proxies() -> frozenset:
+def _get_trusted_proxies() -> frozenset[str]:
     """Parse trusted proxies once and cache."""
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
     return frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
@@ -398,6 +398,8 @@ async def serve_frontend(request, full_path: str = ""):
 if __name__ == "__main__":
     import uvicorn
 
+    # Security: Default to localhost only. Set UVICORN_HOST=0.0.0.0 to bind to all interfaces.
+    # Note: This is more secure by default. For production, use a proper WSGI server.
     host = os.getenv("UVICORN_HOST", "127.0.0.1")
     port = int(os.getenv("UVICORN_PORT", "8000"))
     uvicorn.run(app, host=host, port=port)

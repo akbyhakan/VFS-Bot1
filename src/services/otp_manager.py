@@ -939,7 +939,11 @@ class OTPManager:
 
             base_url = os.getenv("WEBHOOK_BASE_URL")
             if not base_url:
-                raise ValueError("WEBHOOK_BASE_URL environment variable must be set")
+                raise ValueError(
+                    "WEBHOOK_BASE_URL environment variable must be set "
+                    "(e.g., https://your-api-domain.example.com). "
+                    "Configure it in your .env file."
+                )
             webhook_manager = WebhookTokenManager(base_url=base_url)
             self._account_manager = VFSAccountManager(webhook_token_manager=webhook_manager)
 
