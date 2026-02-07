@@ -162,7 +162,7 @@ class TestEnvironmentValidation:
 
     def test_validate_environment_missing_encryption_key(self, monkeypatch):
         """Test that ENCRYPTION_KEY is always required."""
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
 
@@ -173,7 +173,7 @@ class TestEnvironmentValidation:
         """Test that production requires all security variables."""
         from cryptography.fernet import Fernet
 
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.setenv("ENV", "production")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -188,7 +188,7 @@ class TestEnvironmentValidation:
 
         from cryptography.fernet import Fernet
 
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -201,7 +201,7 @@ class TestEnvironmentValidation:
         """Test that API_KEY_SALT must be at least 32 characters."""
         from cryptography.fernet import Fernet
 
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -217,7 +217,7 @@ class TestEnvironmentValidation:
 
         from cryptography.fernet import Fernet
 
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.setenv("ENV", "development")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -233,7 +233,7 @@ class TestEnvironmentValidation:
 
         from cryptography.fernet import Fernet
 
-        from main import validate_environment
+        from src.core.startup import validate_environment
 
         monkeypatch.setenv("ENV", "production")
         monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
