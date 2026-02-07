@@ -356,11 +356,14 @@ class VFSBot:
         # Wait for active booking tasks to complete gracefully
         if self._active_booking_tasks:
             active_count = len(self._active_booking_tasks)
+            grace_period_seconds = 120  # 2 minutes grace period for bookings
+            grace_period_display = f"{grace_period_seconds // 60} min"
+            
             logger.info(f"Waiting for {active_count} active booking(s) to complete...")
 
             # Notify about pending shutdown
             await self._send_alert_safe(
-                message=f"⏳ Bot shutting down - waiting for {active_count} active booking(s) to complete (2 min grace period)",
+                message=f"⏳ Bot shutting down - waiting for {active_count} active booking(s) to complete ({grace_period_display} grace period)",
                 severity=AlertSeverity.WARNING,
                 metadata={"active_bookings": active_count}
             )
@@ -368,14 +371,14 @@ class VFSBot:
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
-                    timeout=120  # 2 minutes grace period for bookings
+                    timeout=grace_period_seconds
                 )
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
                 # Notify about forced cancellation
                 await self._send_alert_safe(
-                    message=f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} booking(s) cancelled after 2 min timeout",
+                    message=f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} booking(s) cancelled after {grace_period_display} timeout",
                     severity=AlertSeverity.ERROR,
                     metadata={"cancelled_bookings": len(self._active_booking_tasks)}
                 )

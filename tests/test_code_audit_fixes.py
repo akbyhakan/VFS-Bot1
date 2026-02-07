@@ -78,11 +78,11 @@ class TestBrowserMemoryLeakPrevention:
         browser_manager = BrowserManager(config)
 
         # First 2 pages should not trigger restart
-        assert await browser_manager.should_restart() == False  # 1
-        assert await browser_manager.should_restart() == False  # 2
+        assert not await browser_manager.should_restart()  # 1
+        assert not await browser_manager.should_restart()  # 2
 
         # 3rd page should trigger restart
-        assert await browser_manager.should_restart() == True  # 3
+        assert await browser_manager.should_restart()  # 3
 
     @pytest.mark.asyncio
     async def test_browser_manager_default_restart_threshold(self):
