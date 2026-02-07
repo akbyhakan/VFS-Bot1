@@ -262,8 +262,11 @@ class PersistentTokenBlacklist(TokenBlacklist):
         """
         Start background cleanup task for both memory and database.
 
-        Overrides parent to also clean up expired tokens from the database
-        periodically (every 6th interval, approximately 30 minutes by default).
+        This method completely overrides the parent's implementation to add
+        database cleanup capability while maintaining in-memory cleanup.
+        
+        The parent's logic is reimplemented here to avoid complexity from
+        coordination between parent's task and database cleanup scheduling.
 
         Args:
             interval: Cleanup interval in seconds (default: 5 minutes)

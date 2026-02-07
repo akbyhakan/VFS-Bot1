@@ -8,12 +8,9 @@ logger = logging.getLogger(__name__)
 
 # Known dangerous default values that should never be used in production
 DANGEROUS_DEFAULTS = frozenset({
-    "admin",
-    "password",
-    "123456",
-    "admin123",
-    "YOUR_SECURE_HASHED_PASSWORD_HERE",
     "your-secret-key-here-must-be-at-least-64-characters-long-for-security",
+    "your-base64-encoded-encryption-key-here",
+    "your-32-byte-encryption-key-here",
     "your-secure-api-key-here",
     "change-me",
     "secret",
