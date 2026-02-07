@@ -3,7 +3,7 @@
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class TokenSyncService:
 
     def __init__(
         self,
-        session_manager: Optional[any] = None,
+        session_manager: Optional[Any] = None,
         token_refresh_buffer_minutes: Optional[int] = None,
     ):
         """
@@ -47,7 +47,7 @@ class TokenSyncService:
             f" (SessionManager: {'enabled' if session_manager else 'disabled'})"
         )
 
-    def sync_from_vfs_session(self, vfs_session: any) -> None:
+    def sync_from_vfs_session(self, vfs_session: Any) -> None:
         """
         Sync token state from VFSApiClient.VFSSession to SessionManager.
 
@@ -85,7 +85,7 @@ class TokenSyncService:
         except Exception as e:
             logger.error(f"Failed to sync tokens to SessionManager: {e}", exc_info=True)
 
-    def should_proactive_refresh(self, vfs_session: any) -> bool:
+    def should_proactive_refresh(self, vfs_session: Any) -> bool:
         """
         Check if token should be proactively refreshed.
 
@@ -135,7 +135,7 @@ class TokenSyncService:
             # Default to not refreshing on error
             return False
 
-    async def ensure_fresh_token(self, vfs_api_client: any) -> bool:
+    async def ensure_fresh_token(self, vfs_api_client: Any) -> bool:
         """
         Ensure token is fresh by proactively refreshing if needed.
 
