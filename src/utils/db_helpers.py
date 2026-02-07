@@ -4,14 +4,14 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Dict, List, TypeVar
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# SQLite reserved words - prevent SQL injection via identifier names
-SQLITE_RESERVED_WORDS = frozenset(
+# PostgreSQL reserved words - prevent SQL injection via identifier names
+POSTGRESQL_RESERVED_WORDS = frozenset(
     [
         "ABORT",
         "ACTION",
@@ -144,14 +144,14 @@ def validate_sql_identifier(identifier: str) -> bool:
         return False
 
     # Check if it's a reserved word
-    if identifier.upper() in SQLITE_RESERVED_WORDS:
+    if identifier.upper() in POSTGRESQL_RESERVED_WORDS:
         return False
 
     return True
 
 
 async def batch_insert(
-    conn: aiosqlite.Connection,
+    conn: asyncpg.Connection,
     table: str,
     columns: List[str],
     rows: List[tuple],
@@ -199,7 +199,7 @@ async def batch_insert(
         if not validate_sql_identifier(col):
             raise ValueError(f"Invalid column name: {col}")
 
-    placeholders = ", ".join(["?"] * len(columns))
+    placeholders = ", ".join([f"${i+1}" for i in range(len(columns))])
     column_list = ", ".join(columns)
     query = f"INSERT INTO {table} ({column_list}) VALUES ({placeholders})"
 
@@ -210,14 +210,13 @@ async def batch_insert(
         batch = rows[i : i + batch_size]
 
         try:
-            await conn.executemany(query, batch)
-            await conn.commit()
+            async with conn.transaction():
+                await conn.executemany(query, batch)
             total_inserted += len(batch)
 
             logger.debug(f"Inserted batch of {len(batch)} rows into {table}")
         except Exception as e:
             logger.error(f"Failed to insert batch into {table}: {e}")
-            await conn.rollback()
             raise
 
     logger.info(f"Batch inserted {total_inserted} rows into {table}")
@@ -225,7 +224,7 @@ async def batch_insert(
 
 
 async def batch_update(
-    conn: aiosqlite.Connection,
+    conn: asyncpg.Connection,
     table: str,
     updates: List[Dict[str, Any]],
     id_column: str = "id",
@@ -276,39 +275,43 @@ async def batch_update(
         batch = updates[i : i + batch_size]
 
         try:
-            for update_data in batch:
-                if id_column not in update_data:
-                    logger.warning(f"Skipping update without {id_column}: {update_data}")
-                    continue
-
-                # Make a copy to avoid modifying the original
-                update_dict = update_data.copy()
-                row_id = update_dict.pop(id_column)
-
-                if not update_dict:
-                    continue
-
-                # Validate column names
-                for col in update_dict.keys():
-                    if not validate_sql_identifier(col):
-                        logger.warning(f"Skipping invalid column name: {col}")
+            async with conn.transaction():
+                for update_data in batch:
+                    if id_column not in update_data:
+                        logger.warning(f"Skipping update without {id_column}: {update_data}")
                         continue
 
-                # Build SET clause
-                set_clause = ", ".join([f"{k} = ?" for k in update_dict.keys()])
-                values = list(update_dict.values()) + [row_id]
+                    # Make a copy to avoid modifying the original
+                    update_dict = update_data.copy()
+                    row_id = update_dict.pop(id_column)
 
-                query = f"UPDATE {table} SET {set_clause} WHERE {id_column} = ?"
+                    if not update_dict:
+                        continue
 
-                cursor = await conn.execute(query, values)
-                total_updated += cursor.rowcount
+                    # Validate column names
+                    for col in update_dict.keys():
+                        if not validate_sql_identifier(col):
+                            logger.warning(f"Skipping invalid column name: {col}")
+                            continue
 
-            await conn.commit()
+                    # Build SET clause with numbered placeholders
+                    param_num = 1
+                    set_parts = []
+                    for k in update_dict.keys():
+                        set_parts.append(f"{k} = ${param_num}")
+                        param_num += 1
+                    set_clause = ", ".join(set_parts)
+                    values = list(update_dict.values()) + [row_id]
+
+                    query = f"UPDATE {table} SET {set_clause} WHERE {id_column} = ${param_num}"
+
+                    result = await conn.execute(query, *values)
+                    total_updated += int(result.split()[-1])
+
             logger.debug(f"Updated batch of {len(batch)} rows in {table}")
 
         except Exception as e:
             logger.error(f"Failed to update batch in {table}: {e}")
-            await conn.rollback()
             raise
 
     logger.info(f"Batch updated {total_updated} rows in {table}")
@@ -316,7 +319,7 @@ async def batch_update(
 
 
 async def batch_delete(
-    conn: aiosqlite.Connection,
+    conn: asyncpg.Connection,
     table: str,
     ids: List[int],
     id_column: str = "id",
@@ -360,20 +363,18 @@ async def batch_delete(
         batch = ids[i : i + batch_size]
 
         try:
-            placeholders = ", ".join(["?"] * len(batch))
-            query = f"DELETE FROM {table} WHERE {id_column} IN ({placeholders})"
+            query = f"DELETE FROM {table} WHERE {id_column} = ANY($1::bigint[])"
 
-            cursor = await conn.execute(query, batch)
-            await conn.commit()
+            async with conn.transaction():
+                result = await conn.execute(query, batch)
 
-            batch_deleted = cursor.rowcount
+            batch_deleted = int(result.split()[-1])
             total_deleted += batch_deleted
 
             logger.debug(f"Deleted batch of {batch_deleted} rows from {table}")
 
         except Exception as e:
             logger.error(f"Failed to delete batch from {table}: {e}")
-            await conn.rollback()
             raise
 
     logger.info(f"Batch deleted {total_deleted} rows from {table}")
@@ -442,8 +443,8 @@ async def batch_process(
 
 
 async def execute_in_transaction(
-    conn: aiosqlite.Connection,
-    operations: List[Callable[[aiosqlite.Connection], Awaitable[Any]]],
+    conn: asyncpg.Connection,
+    operations: List[Callable[[asyncpg.Connection], Awaitable[Any]]],
 ) -> List[Any]:
     """
     Execute multiple database operations in a transaction.
@@ -476,19 +477,16 @@ async def execute_in_transaction(
     results = []
 
     try:
-        # Execute all operations
-        for operation in operations:
-            result = await operation(conn)
-            results.append(result)
+        async with conn.transaction():
+            # Execute all operations
+            for operation in operations:
+                result = await operation(conn)
+                results.append(result)
 
-        # Commit transaction
-        await conn.commit()
         logger.info(f"Transaction completed successfully with {len(operations)} operations")
 
         return results
 
     except Exception as e:
-        # Rollback on any error
-        await conn.rollback()
         logger.error(f"Transaction failed, rolled back: {e}")
         raise
