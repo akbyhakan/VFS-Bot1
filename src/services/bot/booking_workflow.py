@@ -15,6 +15,7 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
+from ..alert_service import AlertSeverity
 from ..appointment_booking_service import get_selector
 from ..appointment_deduplication import get_deduplication_service
 from ..notification import NotificationService
@@ -190,36 +191,51 @@ class BookingWorkflow:
                 logger.info(f"Waitlist registration successful for {masked_email}")
                 
                 # Send alert for waitlist success (INFO severity)
-                if self.alert_service:
-                    try:
-                        from ..alert_service import AlertSeverity
-                        await self.alert_service.send_alert(
-                            message=f"✅ Waitlist registration successful for {masked_email}",
-                            severity=AlertSeverity.INFO,
-                            metadata={"user_email": masked_email, "details": waitlist_details}
-                        )
-                    except Exception as alert_error:
-                        logger.debug(f"Failed to send waitlist success alert: {alert_error}")
+                await self._send_alert_safe(
+                    message=f"✅ Waitlist registration successful for {masked_email}",
+                    severity=AlertSeverity.INFO,
+                    metadata={"user_email": masked_email, "details": waitlist_details}
+                )
             else:
                 logger.error("Failed to handle waitlist success screen")
                 
                 # Send alert for waitlist failure (ERROR severity)
-                if self.alert_service:
-                    try:
-                        from ..alert_service import AlertSeverity
-                        await self.alert_service.send_alert(
-                            message=f"❌ Failed to handle waitlist success for {masked_email}",
-                            severity=AlertSeverity.ERROR,
-                            metadata={"user_email": masked_email}
-                        )
-                    except Exception as alert_error:
-                        logger.debug(f"Failed to send waitlist failure alert: {alert_error}")
+                await self._send_alert_safe(
+                    message=f"❌ Failed to handle waitlist success for {masked_email}",
+                    severity=AlertSeverity.ERROR,
+                    metadata={"user_email": masked_email}
+                )
 
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
             await self._capture_error_safe(
                 page, e, "waitlist_flow", user["id"], mask_email(user["email"])
             )
+
+    async def _send_alert_safe(
+        self,
+        message: str,
+        severity: AlertSeverity = AlertSeverity.ERROR,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Send alert through alert service, silently failing on errors.
+
+        Args:
+            message: Alert message to send
+            severity: Alert severity level
+            metadata: Optional metadata dictionary
+        """
+        if not self.alert_service:
+            return
+        try:
+            await self.alert_service.send_alert(
+                message=message,
+                severity=severity,
+                metadata=metadata or {},
+            )
+        except Exception as e:
+            logger.debug(f"Alert delivery failed: {e}")
 
     async def _capture_error_safe(
         self, page: Page, error: Exception, step: str, user_id: int, masked_email: str
@@ -321,22 +337,17 @@ class BookingWorkflow:
                 )
                 
                 # Send alert for booking success (INFO severity)
-                if self.alert_service:
-                    try:
-                        from ..alert_service import AlertSeverity
-                        await self.alert_service.send_alert(
-                            message=f"✅ Booking successful: {centre} - {slot['date']} {slot['time']} (Ref: {reference})",
-                            severity=AlertSeverity.INFO,
-                            metadata={
-                                "user_id": user["id"],
-                                "centre": centre,
-                                "date": slot["date"],
-                                "time": slot["time"],
-                                "reference": reference,
-                            }
-                        )
-                    except Exception as alert_error:
-                        logger.debug(f"Failed to send booking success alert: {alert_error}")
+                await self._send_alert_safe(
+                    message=f"✅ Booking successful: {centre} - {slot['date']} {slot['time']} (Ref: {reference})",
+                    severity=AlertSeverity.INFO,
+                    metadata={
+                        "user_id": user["id"],
+                        "centre": centre,
+                        "date": slot["date"],
+                        "time": slot["time"],
+                        "reference": reference,
+                    }
+                )
 
                 # Mark booking in deduplication service
                 await dedup_service.mark_booked(user["id"], centre, user["category"], slot["date"])
@@ -348,37 +359,27 @@ class BookingWorkflow:
                 logger.error(f"Booking verification failed: {confirmation.get('error')}")
                 
                 # Send alert for booking verification failure (ERROR severity)
-                if self.alert_service:
-                    try:
-                        from ..alert_service import AlertSeverity
-                        await self.alert_service.send_alert(
-                            message=f"❌ Booking verification failed: {confirmation.get('error')}",
-                            severity=AlertSeverity.ERROR,
-                            metadata={
-                                "user_id": user["id"],
-                                "centre": centre,
-                                "error": confirmation.get("error"),
-                            }
-                        )
-                    except Exception as alert_error:
-                        logger.debug(f"Failed to send verification failure alert: {alert_error}")
+                await self._send_alert_safe(
+                    message=f"❌ Booking verification failed: {confirmation.get('error')}",
+                    severity=AlertSeverity.ERROR,
+                    metadata={
+                        "user_id": user["id"],
+                        "centre": centre,
+                        "error": confirmation.get("error"),
+                    }
+                )
         else:
             logger.error("Booking flow failed")
             
             # Send alert for booking flow failure (ERROR severity)
-            if self.alert_service:
-                try:
-                    from ..alert_service import AlertSeverity
-                    await self.alert_service.send_alert(
-                        message=f"❌ Booking flow failed for {centre}",
-                        severity=AlertSeverity.ERROR,
-                        metadata={
-                            "user_id": user["id"],
-                            "centre": centre,
-                        }
-                    )
-                except Exception as alert_error:
-                    logger.debug(f"Failed to send booking failure alert: {alert_error}")
+            await self._send_alert_safe(
+                message=f"❌ Booking flow failed for {centre}",
+                severity=AlertSeverity.ERROR,
+                metadata={
+                    "user_id": user["id"],
+                    "centre": centre,
+                }
+            )
 
     async def _process_normal_flow(
         self, page: Page, user: Dict[str, Any], dedup_service: Any

@@ -5,6 +5,7 @@ import ipaddress
 import logging
 import os
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import List
 
@@ -154,6 +155,13 @@ def validate_cors_origins(origins_str: str) -> List[str]:
     return origins
 
 
+@lru_cache(maxsize=1)
+def _get_trusted_proxies() -> frozenset[str]:
+    """Parse trusted proxies once and cache."""
+    trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
+    return frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+
+
 def get_real_client_ip(request: Request) -> str:
     """
     Get real client IP with trusted proxy validation and IP format verification.
@@ -167,8 +175,7 @@ def get_real_client_ip(request: Request) -> str:
     Returns:
         Client IP address
     """
-    trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
-    trusted_proxies = set(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+    trusted_proxies = _get_trusted_proxies()
 
     client_host = request.client.host if request.client else "unknown"
 
@@ -391,4 +398,8 @@ async def serve_frontend(request, full_path: str = ""):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Security: Default to localhost only. Set UVICORN_HOST=0.0.0.0 to bind to all interfaces.
+    # Note: This is more secure by default. For production, use a proper WSGI server.
+    host = os.getenv("UVICORN_HOST", "127.0.0.1")
+    port = int(os.getenv("UVICORN_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

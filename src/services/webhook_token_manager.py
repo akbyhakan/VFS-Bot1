@@ -5,6 +5,7 @@ to have a unique webhook URL for SMS OTP delivery via SMS Forwarder app.
 """
 
 import logging
+import os
 import re
 import secrets
 import threading
@@ -140,13 +141,23 @@ class WebhookTokenManager:
         r"\b(\d{4})\b(?!\d)",  # Generic 4-digit (with word boundary, not followed by more digits)
     ]
 
-    def __init__(self, base_url: str = "https://api.vizecep.com"):
+    def __init__(self, base_url: Optional[str] = None):
         """
         Initialize webhook token manager.
 
         Args:
-            base_url: Base URL for webhook endpoints
+            base_url: Base URL for webhook endpoints. If None, reads from WEBHOOK_BASE_URL env var.
+        
+        Raises:
+            ValueError: If base_url is not provided and WEBHOOK_BASE_URL is not set
         """
+        if base_url is None:
+            base_url = os.getenv("WEBHOOK_BASE_URL")
+            if not base_url:
+                raise ValueError(
+                    "WEBHOOK_BASE_URL must be configured (e.g., https://your-api-domain.example.com). "
+                    "Set it via environment variable or pass base_url parameter."
+                )
         self.base_url = base_url.rstrip("/")
         self._tokens: Dict[str, WebhookToken] = {}
         self._account_tokens: Dict[str, str] = {}  # account_id -> token
