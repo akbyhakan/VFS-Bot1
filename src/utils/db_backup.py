@@ -113,17 +113,30 @@ class DatabaseBackup:
         # Set up environment with password if present
         env = os.environ.copy()
         
-        # Parse database URL to extract password
+        # Parse database URL to extract connection parameters
         parsed = urlparse(database_url)
+        
+        # Build pg_dump command with separate parameters for security
+        cmd = ['pg_dump']
+        
+        if parsed.hostname:
+            cmd.extend(['-h', parsed.hostname])
+        if parsed.port:
+            cmd.extend(['-p', str(parsed.port)])
+        if parsed.username:
+            cmd.extend(['-U', parsed.username])
+        if parsed.path and len(parsed.path) > 1:
+            cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
+        
+        cmd.extend(['-f', backup_path])
+        
+        # Set password in environment for security
         if parsed.password:
             env['PGPASSWORD'] = parsed.password
         
         # Run pg_dump
         process = await asyncio.create_subprocess_exec(
-            'pg_dump',
-            database_url,
-            '-f', backup_path,
-            '--no-password',
+            *cmd,
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
@@ -270,17 +283,30 @@ class DatabaseBackup:
         # Set up environment with password if present
         env = os.environ.copy()
         
-        # Parse database URL to extract password
+        # Parse database URL to extract connection parameters
         parsed = urlparse(database_url)
+        
+        # Build psql command with separate parameters for security
+        cmd = ['psql']
+        
+        if parsed.hostname:
+            cmd.extend(['-h', parsed.hostname])
+        if parsed.port:
+            cmd.extend(['-p', str(parsed.port)])
+        if parsed.username:
+            cmd.extend(['-U', parsed.username])
+        if parsed.path and len(parsed.path) > 1:
+            cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
+        
+        cmd.extend(['-f', backup_path])
+        
+        # Set password in environment for security
         if parsed.password:
             env['PGPASSWORD'] = parsed.password
         
         # Run psql to restore
         process = await asyncio.create_subprocess_exec(
-            'psql',
-            database_url,
-            '-f', backup_path,
-            '--no-password',
+            *cmd,
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE

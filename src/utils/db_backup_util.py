@@ -60,12 +60,28 @@ class DatabaseBackup:
             # Set up environment with password if present
             env = os.environ.copy()
             parsed = urlparse(self.database_url)
+            
+            # Build pg_dump command with separate parameters for security
+            cmd = ['pg_dump']
+            
+            if parsed.hostname:
+                cmd.extend(['-h', parsed.hostname])
+            if parsed.port:
+                cmd.extend(['-p', str(parsed.port)])
+            if parsed.username:
+                cmd.extend(['-U', parsed.username])
+            if parsed.path and len(parsed.path) > 1:
+                cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
+            
+            cmd.extend(['-f', str(backup_path)])
+            
+            # Set password in environment for security
             if parsed.password:
                 env['PGPASSWORD'] = parsed.password
 
             # Perform backup using pg_dump
             result = subprocess.run(
-                ['pg_dump', self.database_url, '-f', str(backup_path), '--no-password'],
+                cmd,
                 env=env,
                 capture_output=True,
                 text=True
@@ -141,12 +157,28 @@ class DatabaseBackup:
             # Set up environment with password if present
             env = os.environ.copy()
             parsed = urlparse(self.database_url)
+            
+            # Build psql command with separate parameters for security
+            cmd = ['psql']
+            
+            if parsed.hostname:
+                cmd.extend(['-h', parsed.hostname])
+            if parsed.port:
+                cmd.extend(['-p', str(parsed.port)])
+            if parsed.username:
+                cmd.extend(['-U', parsed.username])
+            if parsed.path and len(parsed.path) > 1:
+                cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
+            
+            cmd.extend(['-f', str(backup_path)])
+            
+            # Set password in environment for security
             if parsed.password:
                 env['PGPASSWORD'] = parsed.password
 
             # Restore from backup using psql
             result = subprocess.run(
-                ['psql', self.database_url, '-f', str(backup_path), '--no-password'],
+                cmd,
                 env=env,
                 capture_output=True,
                 text=True
