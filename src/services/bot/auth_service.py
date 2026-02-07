@@ -50,7 +50,11 @@ class AuthService:
 
     async def login(self, page: Page, email: str, password: str) -> bool:
         """
-        Login to VFS website.
+        Login to VFS website with automatic OTP verification handling.
+
+        This method performs the login flow including filling credentials, solving
+        captcha if present, submitting the form, and handling OTP verification if
+        required by the VFS system.
 
         Args:
             page: Playwright page object
@@ -58,7 +62,8 @@ class AuthService:
             password: User password (plaintext - decrypted from database)
 
         Returns:
-            True if login successful, False otherwise
+            True if login successful (including OTP verification if required),
+            False otherwise
         """
         try:
             base = self.config["vfs"]["base_url"]
@@ -110,6 +115,15 @@ class AuthService:
 
             # Submit login with human click
             await smart_click(page, 'button[type="submit"]', self.human_sim)
+            await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
+
+            # Check for OTP verification
+            logger.info("Checking for OTP verification...")
+            if not await self.handle_otp_verification(page):
+                logger.error("OTP verification failed")
+                return False
+
+            # Wait for page to reload after OTP (if OTP was required)
             await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
 
             # Check if login successful
