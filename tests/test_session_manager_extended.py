@@ -406,3 +406,64 @@ def test_session_file_permissions(tmp_path):
     # Check that owner has read and write
     assert mode & stat.S_IRUSR != 0  # Owner can read
     assert mode & stat.S_IWUSR != 0  # Owner can write
+
+
+def test_sync_from_api_client_success():
+    """Test syncing tokens from VFS API client session."""
+    manager = SessionManager("test.json")
+
+    # Create a mock VFSSession
+    vfs_session = MagicMock()
+    vfs_session.access_token = "api_access_token"
+    vfs_session.refresh_token = "api_refresh_token"
+
+    with patch.object(manager, "set_tokens") as mock_set:
+        manager.sync_from_api_client(vfs_session)
+        mock_set.assert_called_once_with("api_access_token", "api_refresh_token")
+
+
+def test_sync_from_api_client_with_none():
+    """Test sync_from_api_client with None session."""
+    manager = SessionManager("test.json")
+
+    # Should not raise exception, just log warning
+    manager.sync_from_api_client(None)
+
+
+def test_sync_from_api_client_missing_attribute():
+    """Test sync_from_api_client with session missing access_token."""
+    manager = SessionManager("test.json")
+
+    vfs_session = MagicMock(spec=[])  # No attributes
+
+    # Should raise AttributeError
+    with pytest.raises(AttributeError):
+        manager.sync_from_api_client(vfs_session)
+
+
+def test_sync_from_api_client_none_access_token():
+    """Test sync_from_api_client with None access_token."""
+    manager = SessionManager("test.json")
+
+    vfs_session = MagicMock()
+    vfs_session.access_token = None
+    vfs_session.refresh_token = "api_refresh_token"
+
+    with patch.object(manager, "set_tokens") as mock_set:
+        manager.sync_from_api_client(vfs_session)
+        # Should not call set_tokens when access_token is None
+        mock_set.assert_not_called()
+
+
+def test_sync_from_api_client_no_refresh_token():
+    """Test sync_from_api_client with missing refresh_token."""
+    manager = SessionManager("test.json")
+
+    # Create a mock with only access_token attribute
+    vfs_session = MagicMock(spec=["access_token"])
+    vfs_session.access_token = "api_access_token"
+
+    with patch.object(manager, "set_tokens") as mock_set:
+        manager.sync_from_api_client(vfs_session)
+        # Should call set_tokens with None for refresh_token
+        mock_set.assert_called_once_with("api_access_token", None)
