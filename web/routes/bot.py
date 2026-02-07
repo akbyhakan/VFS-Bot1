@@ -12,12 +12,51 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import verify_token
+from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
 from web.dependencies import BotCommand, bot_state, broadcast_message, manager, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
+
+# Error message constants
+BOT_NOT_CONFIGURED_ERROR = {
+    "status": "error",
+    "message": "Bot controller not configured. Please restart in 'both' mode.",
+}
+
+
+async def _get_controller() -> BotController:
+    """
+    Get the BotController instance.
+    
+    Returns:
+        BotController instance
+        
+    Raises:
+        HTTPException: If controller is not configured
+    """
+    controller = await BotController.get_instance()
+    status = controller.get_status()
+    if status["status"] == "not_configured":
+        raise HTTPException(
+            status_code=503,
+            detail="Bot controller not configured. Please restart the application in 'both' mode.",
+        )
+    return controller
+
+
+async def _sync_bot_state(controller: BotController) -> None:
+    """
+    Sync real bot status to bot_state dict for WebSocket broadcast compatibility.
+    
+    Args:
+        controller: BotController instance
+    """
+    status = controller.get_status()
+    bot_state["running"] = status["running"]
+    bot_state["status"] = status["status"]
 
 
 @router.post("/bot/start")
@@ -36,21 +75,35 @@ async def start_bot(
     Returns:
         Response dictionary
     """
-    if bot_state["running"]:
-        return {"status": "error", "message": "Bot is already running"}
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        return BOT_NOT_CONFIGURED_ERROR
 
-    bot_state["running"] = True
-    bot_state["status"] = "running"
+    # Start the bot via controller
+    result = await controller.start_bot()
 
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": True, "status": "running", "message": "Bot started successfully"},
-        }
-    )
+    # Sync status to bot_state for WebSocket broadcast
+    await _sync_bot_state(controller)
 
-    logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot started"}
+    # Broadcast status update
+    if result["status"] == "success":
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": True, "status": "running", "message": result["message"]},
+            }
+        )
+        logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": False, "status": "error", "message": result["message"]},
+            }
+        )
+
+    return result
 
 
 @router.post("/bot/stop")
@@ -66,21 +119,35 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     Returns:
         Response dictionary
     """
-    if not bot_state["running"]:
-        return {"status": "error", "message": "Bot is not running"}
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        return BOT_NOT_CONFIGURED_ERROR
 
-    bot_state["running"] = False
-    bot_state["status"] = "stopped"
+    # Stop the bot via controller
+    result = await controller.stop_bot()
 
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": False, "status": "stopped", "message": "Bot stopped successfully"},
-        }
-    )
+    # Sync status to bot_state for WebSocket broadcast
+    await _sync_bot_state(controller)
 
-    logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot stopped"}
+    # Broadcast status update
+    if result["status"] == "success":
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": False, "status": "stopped", "message": result["message"]},
+            }
+        )
+        logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": False, "status": "error", "message": result["message"]},
+            }
+        )
+
+    return result
 
 
 @router.post("/bot/restart")
@@ -96,10 +163,12 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
     Returns:
         Response dictionary
     """
-    # Stop the bot first
-    bot_state["running"] = False
-    bot_state["status"] = "restarting"
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        return BOT_NOT_CONFIGURED_ERROR
 
+    # Broadcast restarting status
     await broadcast_message(
         {
             "type": "status",
@@ -107,22 +176,30 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
         }
     )
 
-    # Small delay before starting again
-    await asyncio.sleep(1)
+    # Restart the bot via controller
+    result = await controller.restart_bot()
 
-    # Start the bot again
-    bot_state["running"] = True
-    bot_state["status"] = "running"
+    # Sync status to bot_state for WebSocket broadcast
+    await _sync_bot_state(controller)
 
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"running": True, "status": "running", "message": "Bot restarted successfully"},
-        }
-    )
+    # Broadcast final status
+    if result["status"] == "success":
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": True, "status": "running", "message": result["message"]},
+            }
+        )
+        logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
+    else:
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"running": False, "status": "error", "message": result["message"]},
+            }
+        )
 
-    logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Bot restarted"}
+    return result
 
 
 @router.post("/bot/check-now")
@@ -138,21 +215,28 @@ async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -
     Returns:
         Response dictionary
     """
-    if not bot_state["running"]:
-        return {"status": "error", "message": "Bot is not running"}
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        return BOT_NOT_CONFIGURED_ERROR
 
-    # Update last check timestamp
-    bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
+    # Trigger manual check via controller
+    result = await controller.trigger_check_now()
 
-    await broadcast_message(
-        {
-            "type": "status",
-            "data": {"message": "Manual check triggered", "last_check": bot_state["last_check"]},
-        }
-    )
+    if result["status"] == "success":
+        # Update last check timestamp
+        bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
 
-    logger.info(f"Manual check triggered via dashboard by {api_key.get('name', 'unknown')}")
-    return {"status": "success", "message": "Manual check triggered"}
+        await broadcast_message(
+            {
+                "type": "status",
+                "data": {"message": result["message"], "last_check": bot_state["last_check"]},
+            }
+        )
+
+        logger.info(f"Manual check triggered via dashboard by {api_key.get('name', 'unknown')}")
+
+    return result
 
 
 @router.get("/logs")
