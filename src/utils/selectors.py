@@ -406,8 +406,8 @@ class CountryAwareSelectorManager:
                     await locator.wait_for(state="visible", timeout=timeout)
                     logger.debug(f"Found element with semantic role: {role}, name: {name}")
                     return locator
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Role-based locator failed (role={role}, name={name}): {e}")
 
             # Try label-based locator (for form inputs)
             for label_key in ["label", "label_en"]:
@@ -418,8 +418,8 @@ class CountryAwareSelectorManager:
                         await locator.wait_for(state="visible", timeout=timeout)
                         logger.debug(f"Found element with label: {label}")
                         return locator
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Label-based locator failed (label={label}): {e}")
 
             # Try text-based locator
             for text_key in ["text", "text_en"]:
@@ -430,8 +430,8 @@ class CountryAwareSelectorManager:
                         await locator.wait_for(state="visible", timeout=timeout)
                         logger.debug(f"Found element with text: {text}")
                         return locator
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Text-based locator failed (text={text}): {e}")
 
             # Try placeholder-based locator
             if "placeholder" in semantic:
@@ -441,8 +441,8 @@ class CountryAwareSelectorManager:
                     await locator.wait_for(state="visible", timeout=timeout)
                     logger.debug(f"Found element with placeholder: {placeholder}")
                     return locator
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Placeholder-based locator failed (placeholder={placeholder}): {e}")
 
         except Exception as e:
             logger.debug(f"Semantic locator failed: {e}")

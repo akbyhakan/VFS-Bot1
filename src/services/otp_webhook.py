@@ -402,8 +402,8 @@ class OTPWebhookService:
                 for entry in expired_entries:
                     try:
                         queue.remove(entry)
-                    except ValueError:
-                        pass  # Entry already removed
+                    except ValueError as e:
+                        logger.debug(f"Entry already removed from queue: {e}")
 
                 removed = initial_count - len(queue)
                 total_removed += removed

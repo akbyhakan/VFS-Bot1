@@ -237,10 +237,11 @@ class AppointmentBookingService:
                         await overlay.wait_for(state="hidden", timeout=timeout)
                         logger.debug(f"Overlay disappeared: {selector}")
                         return
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Overlay selector '{selector}' not found: {e}")
                     continue
-        except Exception:
-            pass  # Overlay might not exist, continue
+        except Exception as e:
+            logger.debug(f"Overlay not present or already hidden: {e}")
 
     async def human_type(self, page: Page, selector_key: str, text: str) -> None:
         """
@@ -450,7 +451,8 @@ class AppointmentBookingService:
             try:
                 await page.fill(selector, person.get("phone_code", "90"))
                 break
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Phone code selector failed: {e}")
                 continue
 
         # Phone number
