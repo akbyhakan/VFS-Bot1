@@ -20,7 +20,7 @@ class DatabaseFactory:
         ```python
         # Get database instance
         db = DatabaseFactory.get_instance()
-        await db.connect()
+        await db.poolect()
 
         # Use in different modules
         db = DatabaseFactory.get_instance()  # Same instance
@@ -73,7 +73,7 @@ class DatabaseFactory:
             Connected database instance
         """
         db = cls.get_instance()
-        if db.conn is None:
+        if db.pool is None:
             await db.connect()
             logger.info("Database connection established")
         return db

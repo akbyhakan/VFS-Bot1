@@ -63,7 +63,7 @@ def require_connection(func: F) -> F:
 
     @wraps(func)
     async def wrapper(self: "Database", *args: Any, **kwargs: Any) -> Any:
-        if self.conn is None:
+        if self.pool is None:
             raise DatabaseNotConnectedError()
         return await func(self, *args, **kwargs)
 
@@ -85,7 +85,7 @@ class Database:
         self.database_url = database_url or os.getenv(
             "DATABASE_URL", "postgresql://localhost:5432/vfs_bot"
         )
-        self.conn: Optional[asyncpg.Pool] = None
+        self.pool: Optional[asyncpg.Pool] = None
         # Get pool size from parameter, env var, or calculate optimal size
         if pool_size is None:
             env_pool_size = os.getenv("DB_POOL_SIZE")
@@ -144,11 +144,14 @@ class Database:
                 min_pool = max(2, (self.pool_size + 1) // 2)
                 
                 # Create connection pool
-                self.conn = await asyncpg.create_pool(
+                self.pool = await asyncpg.create_pool(
                     self.database_url,
                     min_size=min_pool,
                     max_size=self.pool_size,
                     timeout=30.0,
+                    command_timeout=60.0,
+                    statement_cache_size=100,
+                    max_inactive_connection_lifetime=300.0,
                 )
 
                 await self._create_tables()
@@ -159,22 +162,22 @@ class Database:
                 )
             except Exception:
                 # Clean up on error
-                if self.conn:
-                    await self.conn.close()
-                    self.conn = None
+                if self.pool:
+                    await self.pool.close()
+                    self.pool = None
                 raise
 
     async def close(self) -> None:
         """Close database connection pool."""
         async with self._pool_lock:
             # Close connection pool
-            if self.conn:
-                await self.conn.close()
+            if self.pool:
+                await self.pool.close()
             logger.info("Database connection pool closed")
 
     async def __aenter__(self) -> "Database":
         """Async context manager entry."""
-        await self.connect()
+        await self.poolect()
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -195,10 +198,10 @@ class Database:
         Raises:
             DatabasePoolTimeoutError: If connection cannot be acquired within timeout
         """
-        if self.conn is None:
+        if self.pool is None:
             raise DatabaseNotConnectedError()
         try:
-            async with self.conn.acquire() as conn:
+            async with self.pool.acquire() as conn:
                 yield conn
         except asyncio.TimeoutError:
             logger.error(
@@ -260,292 +263,322 @@ class Database:
 
     async def _create_tables(self) -> None:
         """Create database tables if they don't exist."""
-        if self.conn is None:
+        if self.pool is None:
             raise RuntimeError("Database connection is not established.")
-        async with self.conn.acquire() as conn:
-            # Users table
-            await conn.execute(
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                # Users table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS users (
+                        id BIGSERIAL PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        password TEXT NOT NULL,
+                        centre TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        subcategory TEXT NOT NULL,
+                        active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS users (
-                    id BIGSERIAL PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    centre TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    subcategory TEXT NOT NULL,
-                    active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
-            """
-            )
 
-            # Personal details table
-            await conn.execute(
+                # Personal details table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS personal_details (
+                        id BIGSERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        first_name TEXT NOT NULL,
+                        last_name TEXT NOT NULL,
+                        passport_number TEXT NOT NULL,
+                        passport_expiry TEXT,
+                        gender TEXT,
+                        mobile_code TEXT,
+                        mobile_number TEXT,
+                        email TEXT NOT NULL,
+                        nationality TEXT,
+                        date_of_birth TEXT,
+                        address_line1 TEXT,
+                        address_line2 TEXT,
+                        state TEXT,
+                        city TEXT,
+                        postcode TEXT,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS personal_details (
-                    id BIGSERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT NOT NULL,
-                    passport_number TEXT NOT NULL,
-                    passport_expiry TEXT,
-                    gender TEXT,
-                    mobile_code TEXT,
-                    mobile_number TEXT,
-                    email TEXT NOT NULL,
-                    nationality TEXT,
-                    date_of_birth TEXT,
-                    address_line1 TEXT,
-                    address_line2 TEXT,
-                    state TEXT,
-                    city TEXT,
-                    postcode TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """
-            )
 
-            # Appointments table
-            await conn.execute(
+                # Appointments table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS appointments (
+                        id BIGSERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        centre TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        subcategory TEXT NOT NULL,
+                        appointment_date TEXT,
+                        appointment_time TEXT,
+                        status TEXT DEFAULT 'pending',
+                        reference_number TEXT,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS appointments (
-                    id BIGSERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    centre TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    subcategory TEXT NOT NULL,
-                    appointment_date TEXT,
-                    appointment_time TEXT,
-                    status TEXT DEFAULT 'pending',
-                    reference_number TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
-            """
-            )
 
-            # Logs table
-            await conn.execute(
+                # Logs table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS logs (
+                        id BIGSERIAL PRIMARY KEY,
+                        level TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        user_id BIGINT,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS logs (
-                    id BIGSERIAL PRIMARY KEY,
-                    level TEXT NOT NULL,
-                    message TEXT NOT NULL,
-                    user_id BIGINT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """
-            )
 
-            # Payment card table (single card for all payments)
-            await conn.execute(
+                # Payment card table (single card for all payments)
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS payment_card (
+                        id BIGSERIAL PRIMARY KEY,
+                        card_holder_name TEXT NOT NULL,
+                        card_number_encrypted TEXT NOT NULL,
+                        expiry_month TEXT NOT NULL,
+                        expiry_year TEXT NOT NULL,
+                        cvv_encrypted TEXT,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS payment_card (
-                    id BIGSERIAL PRIMARY KEY,
-                    card_holder_name TEXT NOT NULL,
-                    card_number_encrypted TEXT NOT NULL,
-                    expiry_month TEXT NOT NULL,
-                    expiry_year TEXT NOT NULL,
-                    cvv_encrypted TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
-            """
-            )
 
-            # Appointment requests table
-            await conn.execute(
+                # Appointment requests table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS appointment_requests (
+                        id BIGSERIAL PRIMARY KEY,
+                        country_code TEXT NOT NULL,
+                        visa_category TEXT NOT NULL,
+                        visa_subcategory TEXT NOT NULL,
+                        centres TEXT NOT NULL,
+                        preferred_dates TEXT NOT NULL,
+                        person_count INTEGER NOT NULL CHECK(person_count >= 1 AND person_count <= 6),
+                        status TEXT DEFAULT 'pending',
+                        completed_at TIMESTAMPTZ,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS appointment_requests (
-                    id BIGSERIAL PRIMARY KEY,
-                    country_code TEXT NOT NULL,
-                    visa_category TEXT NOT NULL,
-                    visa_subcategory TEXT NOT NULL,
-                    centres TEXT NOT NULL,
-                    preferred_dates TEXT NOT NULL,
-                    person_count INTEGER NOT NULL CHECK(person_count >= 1 AND person_count <= 6),
-                    status TEXT DEFAULT 'pending',
-                    completed_at TIMESTAMPTZ,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
-            """
-            )
 
-            # Appointment persons table
-            await conn.execute(
+                # Appointment persons table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS appointment_persons (
+                        id BIGSERIAL PRIMARY KEY,
+                        request_id BIGINT NOT NULL,
+                        first_name TEXT NOT NULL,
+                        last_name TEXT NOT NULL,
+                        gender TEXT NOT NULL,
+                        nationality TEXT NOT NULL DEFAULT 'Turkey',
+                        birth_date TEXT NOT NULL,
+                        passport_number TEXT NOT NULL,
+                        passport_issue_date TEXT NOT NULL,
+                        passport_expiry_date TEXT NOT NULL,
+                        phone_code TEXT NOT NULL DEFAULT '90',
+                        phone_number TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        is_child_with_parent BOOLEAN NOT NULL DEFAULT FALSE,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS appointment_persons (
-                    id BIGSERIAL PRIMARY KEY,
-                    request_id BIGINT NOT NULL,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT NOT NULL,
-                    gender TEXT NOT NULL,
-                    nationality TEXT NOT NULL DEFAULT 'Turkey',
-                    birth_date TEXT NOT NULL,
-                    passport_number TEXT NOT NULL,
-                    passport_issue_date TEXT NOT NULL,
-                    passport_expiry_date TEXT NOT NULL,
-                    phone_code TEXT NOT NULL DEFAULT '90',
-                    phone_number TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    is_child_with_parent BOOLEAN NOT NULL DEFAULT FALSE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
-            """
-            )
 
-            # Audit log table
-            await conn.execute(
+                # Audit log table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS audit_log (
+                        id BIGSERIAL PRIMARY KEY,
+                        action TEXT NOT NULL,
+                        user_id BIGINT,
+                        username TEXT,
+                        ip_address TEXT,
+                        user_agent TEXT,
+                        details TEXT,
+                        timestamp TEXT NOT NULL,
+                        success BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS audit_log (
-                    id BIGSERIAL PRIMARY KEY,
-                    action TEXT NOT NULL,
-                    user_id BIGINT,
-                    username TEXT,
-                    ip_address TEXT,
-                    user_agent TEXT,
-                    details TEXT,
-                    timestamp TEXT NOT NULL,
-                    success BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
-            """
-            )
 
-            # Audit log indexes
-            await conn.execute(
+                # Audit log indexes
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
                 """
-                CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
-            """
-            )
-            await conn.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
-            """
-            )
-            await conn.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
-            """
-            )
-
-            # Appointment history table
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS appointment_history (
-                    id BIGSERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    centre TEXT NOT NULL,
-                    mission TEXT NOT NULL,
-                    category TEXT,
-                    slot_date TEXT,
-                    slot_time TEXT,
-                    status TEXT NOT NULL DEFAULT 'pending',
-                    attempt_count INTEGER DEFAULT 1,
-                    error_message TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-            )
-
-            # Index for faster queries
-            await conn.execute(
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
                 """
-                CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
-                ON appointment_history(user_id, status)
-            """
-            )
-
-            # User webhooks table - per-user OTP webhook tokens
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_webhooks (
-                    id BIGSERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL UNIQUE,
-                    webhook_token VARCHAR(64) UNIQUE NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-            )
-
-            # Index for faster webhook token lookups
-            await conn.execute(
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
                 """
-                CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
-                ON user_webhooks(webhook_token)
-            """
-            )
-
-            # Proxy endpoints table
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS proxy_endpoints (
-                    id BIGSERIAL PRIMARY KEY,
-                    server TEXT NOT NULL,
-                    port INTEGER NOT NULL,
-                    username TEXT NOT NULL,
-                    password_encrypted TEXT NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    last_used TIMESTAMPTZ,
-                    failure_count INTEGER DEFAULT 0,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW(),
-                    UNIQUE(server, port, username)
                 )
-            """
-            )
 
-            # Index for active proxies lookup
-            await conn.execute(
+                # Appointment history table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS appointment_history (
+                        id BIGSERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        centre TEXT NOT NULL,
+                        mission TEXT NOT NULL,
+                        category TEXT,
+                        slot_date TEXT,
+                        slot_time TEXT,
+                        status TEXT NOT NULL DEFAULT 'pending',
+                        attempt_count INTEGER DEFAULT 1,
+                        error_message TEXT,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
                 """
-                CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
-                ON proxy_endpoints(is_active)
-            """
-            )
-
-            # Token blacklist table
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS token_blacklist (
-                    jti VARCHAR(64) PRIMARY KEY,
-                    exp TIMESTAMPTZ NOT NULL,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
                 )
-            """
-            )
 
-            # Index for cleanup
-            await conn.execute(
+                # Index for faster queries
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
+                    ON appointment_history(user_id, status)
                 """
-                CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
-                ON token_blacklist(exp)
-            """
-            )
-
-            # Schema migrations table for versioned migrations
-            await conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    version INTEGER PRIMARY KEY,
-                    description TEXT NOT NULL,
-                    applied_at TIMESTAMPTZ DEFAULT NOW()
                 )
-            """
-            )
+
+                # User webhooks table - per-user OTP webhook tokens
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS user_webhooks (
+                        id BIGSERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL UNIQUE,
+                        webhook_token VARCHAR(64) UNIQUE NOT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                """
+                )
+
+                # Index for faster webhook token lookups
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
+                    ON user_webhooks(webhook_token)
+                """
+                )
+
+                # Proxy endpoints table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS proxy_endpoints (
+                        id BIGSERIAL PRIMARY KEY,
+                        server TEXT NOT NULL,
+                        port INTEGER NOT NULL,
+                        username TEXT NOT NULL,
+                        password_encrypted TEXT NOT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        last_used TIMESTAMPTZ,
+                        failure_count INTEGER DEFAULT 0,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW(),
+                        UNIQUE(server, port, username)
+                    )
+                """
+                )
+
+                # Index for active proxies lookup
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
+                    ON proxy_endpoints(is_active)
+                """
+                )
+
+                # Token blacklist table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS token_blacklist (
+                        jti VARCHAR(64) PRIMARY KEY,
+                        exp TIMESTAMPTZ NOT NULL,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """
+                )
+
+                # Index for cleanup
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
+                    ON token_blacklist(exp)
+                """
+                )
+
+                # Schema migrations table for versioned migrations
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS schema_migrations (
+                        version INTEGER PRIMARY KEY,
+                        description TEXT NOT NULL,
+                        applied_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """
+                )
 
             # Migration: Add new columns if they don't exist (versioned)
             await self._run_versioned_migrations()
+
+            # Auto-update updated_at trigger function
+            await conn.execute("""
+                CREATE OR REPLACE FUNCTION update_updated_at_column()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    NEW.updated_at = NOW();
+                    RETURN NEW;
+                END;
+                $$ language 'plpgsql';
+            """)
+
+            # Create triggers for tables with updated_at column
+            for table in ['users', 'personal_details', 'payment_card', 'appointment_requests', 'appointment_history', 'proxy_endpoints']:
+                await conn.execute(f"""
+                    DROP TRIGGER IF EXISTS update_{table}_updated_at ON {table};
+                    CREATE TRIGGER update_{table}_updated_at
+                        BEFORE UPDATE ON {table}
+                        FOR EACH ROW
+                        EXECUTE FUNCTION update_updated_at_column();
+                """)
+
+            # Add missing critical indexes
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_personal_details_user_id ON personal_details(user_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
 
             logger.info("Database tables created/verified")
 
@@ -560,7 +593,7 @@ class Database:
         
         Note: Requires PostgreSQL 9.6+ for ADD COLUMN IF NOT EXISTS syntax.
         """
-        if self.conn is None:
+        if self.pool is None:
             raise RuntimeError("Database connection is not established.")
 
         # Whitelist of valid table names for security
@@ -633,7 +666,7 @@ class Database:
                     f"{migration['table']}"
                 )
 
-        async with self.conn.acquire() as conn:
+        async with self.pool.acquire() as conn:
             # Get applied migrations
             applied_versions = {
                 row["version"]
@@ -674,9 +707,7 @@ class Database:
             pending_migrations = [m for m in migrations if m["version"] not in applied_versions]
 
             # Apply pending migrations
-            for migration in migrations:
-                if migration["version"] in applied_versions:
-                    continue
+            for migration in pending_migrations:
 
                 # Run migration in its own transaction
                 try:

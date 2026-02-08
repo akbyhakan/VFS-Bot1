@@ -19,7 +19,7 @@ async def integration_db() -> AsyncGenerator[Database, None]:
         Database instance for testing
     """
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.connect()
+    await db.poolect()
     yield db
     await db.close()
 
@@ -234,7 +234,7 @@ class TestDatabaseContextManager:
         from src.models.database import Database
 
         async with Database(database_url=DatabaseConfig.TEST_URL) as db:
-            assert db.conn is not None
+            assert db.pool is not None
 
             # Should be able to use the database
             user_id = await db.add_user(
@@ -256,7 +256,7 @@ class TestDatabaseContextManager:
 
         with pytest.raises(RuntimeError):
             async with Database(database_url=DatabaseConfig.TEST_URL) as db:
-                assert db.conn is not None
+                assert db.pool is not None
                 # Force an exception
                 raise RuntimeError("Test exception")
 
@@ -334,7 +334,7 @@ class TestDatabaseIdleConnectionCleanup:
         from src.models.database import Database
 
         db = Database(database_url=DatabaseConfig.TEST_URL, pool_size=3)
-        await db.connect()
+        await db.poolect()
 
         try:
             # Get a connection and mark it with last_used time
