@@ -104,6 +104,7 @@ class NotificationService:
                     logger.error("Telegram bot_token missing")
                     return False
                 bot = Bot(token=bot_token)
+                self._telegram_bot = bot  # Cache for future calls
 
             full_message = f"🤖 *{title}*\n\n{message}"
 
@@ -338,6 +339,7 @@ The bot will retry automatically.
                     logger.error("Telegram bot_token missing")
                     return False
                 bot = Bot(token=bot_token)
+                self._telegram_bot = bot  # Cache for future calls
 
             full_message = f"🤖 *{title}*\n\n{message}"
 

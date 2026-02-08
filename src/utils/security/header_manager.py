@@ -18,57 +18,57 @@ class UserAgentConfig(TypedDict):
 class HeaderManager:
     """Dynamic header management with UA rotation."""
 
-    # Updated user agents (Jan 2024)
+    # Updated user agents (Feb 2026)
     USER_AGENTS: List[UserAgentConfig] = [
         {
             "ua": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
+                "Chrome/132.0.0.0 Safari/537.36"
             ),
-            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
             "platform": "Windows",
         },
         {
             "ua": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/121.0.0.0 Safari/537.36"
+                "Chrome/133.0.0.0 Safari/537.36"
             ),
-            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="121", "Google Chrome";v="121"',
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="133", "Google Chrome";v="133"',
             "platform": "Windows",
         },
         {
             "ua": (
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
+                "Chrome/132.0.0.0 Safari/537.36"
             ),
-            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
             "platform": "macOS",
         },
         {
             "ua": (
                 "Mozilla/5.0 (X11; Linux x86_64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
+                "Chrome/132.0.0.0 Safari/537.36"
             ),
-            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
             "platform": "Linux",
         },
         {
             "ua": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
+                "Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0.0"
             ),
-            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
+            "sec_ch_ua": '"Not_A Brand";v="8", "Chromium";v="132", "Microsoft Edge";v="132"',
             "platform": "Windows",
         },
         {
             "ua": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) "
-                "Gecko/20100101 Firefox/121.0"
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) "
+                "Gecko/20100101 Firefox/133.0"
             ),
             "sec_ch_ua": None,  # Firefox doesn't use sec-ch-ua
             "platform": "Windows",

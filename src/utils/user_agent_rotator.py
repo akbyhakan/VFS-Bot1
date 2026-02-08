@@ -7,7 +7,7 @@ from typing import List
 class UserAgentRotator:
     """Dinamik User-Agent rotasyonu için sınıf."""
 
-    CHROME_VERSIONS = ["120.0.0.0", "121.0.0.0", "122.0.0.0", "123.0.0.0", "124.0.0.0"]
+    CHROME_VERSIONS = ["131.0.0.0", "132.0.0.0", "133.0.0.0", "134.0.0.0", "135.0.0.0"]
     PLATFORMS = [
         "Windows NT 10.0; Win64; x64",
         "Windows NT 11.0; Win64; x64",
