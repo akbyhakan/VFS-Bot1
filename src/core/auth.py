@@ -73,6 +73,45 @@ class AuthRateLimiter:
         """
         with self._lock:
             self._attempts[identifier].append(datetime.now(timezone.utc))
+            
+            # Trigger cleanup when dict grows beyond a threshold
+            if len(self._attempts) > 10000:
+                now = datetime.now(timezone.utc)
+                cutoff = now - timedelta(seconds=self.window_seconds)
+                stale_keys = [
+                    k for k, v in self._attempts.items()
+                    if not any(t > cutoff for t in v)
+                ]
+                for key in stale_keys:
+                    del self._attempts[key]
+
+    def cleanup_stale_entries(self) -> int:
+        """
+        Remove all stale entries that have no attempts within the current window.
+        
+        Should be called periodically to prevent unbounded memory growth
+        from identifiers that recorded attempts but never called is_rate_limited again.
+        
+        Returns:
+            Number of identifiers cleaned up
+        """
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(seconds=self.window_seconds)
+            
+            stale_keys = []
+            for identifier, attempts in self._attempts.items():
+                # Filter to only recent attempts
+                recent = [t for t in attempts if t > cutoff]
+                if not recent:
+                    stale_keys.append(identifier)
+                else:
+                    self._attempts[identifier] = recent
+            
+            for key in stale_keys:
+                del self._attempts[key]
+            
+            return len(stale_keys)
 
     def clear_attempts(self, identifier: str) -> None:
         """

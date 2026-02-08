@@ -36,14 +36,16 @@ class OTPPatternMatcher:
 
     # Common OTP patterns - order matters (most specific first)
     DEFAULT_PATTERNS: List[str] = [
-        r"\b(\d{6})\b",  # 6-digit code (most common)
+        # --- Keyword-based patterns (most specific, checked first) ---
+        r"(?:verification|doğrulama)\s*(?:code|kodu?)?[:\s]+(\d{4,6})",
+        r"(?:OTP|one.time)\s*(?:code|password)?[:\s]+(\d{4,6})",
+        r"(?:code|kod|şifre)[:\s]+(\d{4,6})",
+        r"VFS[^0-9]{0,20}(\d{4,6})",  # VFS-specific context
+        # --- Bare digit fallbacks (least specific, checked last) ---
+        r"\b(\d{6})\b",  # 6-digit code
         r"\b(\d{5})\b",  # 5-digit code
-        r"\b(\d{4})\b",  # 4-digit code
-        r"code[:\s]+(\d{4,6})",  # "code: 123456" or "code 123456"
-        r"OTP[:\s]+(\d{4,6})",  # "OTP: 123456"
-        r"verification[:\s]+(\d{4,6})",  # "verification: 123456"
-        r"doğrulama[:\s]+(\d{4,6})",  # Turkish: "doğrulama: 123456"
-        r"kod[:\s]+(\d{4,6})",  # Turkish: "kod: 123456"
+        # NOTE: 4-digit bare pattern removed — too many false positives
+        # (years, PINs, prices). Use keyword patterns above for 4-digit OTPs.
     ]
 
     def __init__(self, custom_patterns: Optional[List[str]] = None):
