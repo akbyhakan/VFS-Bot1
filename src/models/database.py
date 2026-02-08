@@ -81,10 +81,16 @@ class Database:
             database_url: PostgreSQL connection URL (defaults to DATABASE_URL env var)
             pool_size: Maximum number of concurrent connections (defaults to
                 DB_POOL_SIZE env var or calculated optimal size)
+        
+        Raises:
+            RuntimeError: If DATABASE_URL is not set and no database_url is provided
         """
-        self.database_url = database_url or os.getenv(
-            "DATABASE_URL", "postgresql://localhost:5432/vfs_bot"
-        )
+        self.database_url = database_url or os.getenv("DATABASE_URL")
+        if not self.database_url:
+            raise RuntimeError(
+                "DATABASE_URL environment variable must be set. "
+                "Example: postgresql://user:password@localhost:5432/vfs_bot"
+            )
         self.pool: Optional[asyncpg.Pool] = None
         # Get pool size from parameter, env var, or calculate optimal size
         if pool_size is None:

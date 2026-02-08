@@ -142,7 +142,7 @@ class ErrorCapture:
 class Database:
     """Database configuration."""
 
-    DEFAULT_URL: Final[str] = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+    DEFAULT_URL: Final[str] = os.getenv("DATABASE_URL") or ""
     TEST_URL: Final[str] = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
     # Pool size: Default is 10, can be overridden via DB_POOL_SIZE env var
     POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
