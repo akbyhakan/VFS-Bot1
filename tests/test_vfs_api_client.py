@@ -10,7 +10,7 @@ from Crypto.Util.Padding import unpad
 
 from src.core.exceptions import VFSAuthenticationError, VFSSessionExpiredError
 from src.services.vfs_api_client import (
-    VFS_API_BASE,
+    get_vfs_api_base,
     SlotAvailability,
     VFSApiClient,
     VFSPasswordEncryption,
