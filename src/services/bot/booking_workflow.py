@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from playwright.async_api import Page
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from ...constants import Retries
+from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
 from ...models.database import Database
 from ...utils.anti_detection.human_simulator import HumanSimulator
@@ -156,7 +156,7 @@ class BookingWorkflow:
 
             # Click Continue button to proceed to next step
             await smart_click(page, get_selector("continue_button"), self.human_sim)
-            await asyncio.sleep(2)
+            await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
 
             # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
             details = await self.db.get_personal_details(user["id"])

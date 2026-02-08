@@ -175,6 +175,10 @@ class Delays:
     AFTER_LOGIN_FIELD: Final[tuple] = (0.3, 0.7)
     AFTER_SELECT_OPTION: Final[tuple] = (1.5, 3.0)
     AFTER_CLICK_CHECK: Final[tuple] = (2.5, 4.0)
+    AFTER_CONTINUE_CLICK: Final[float] = 2.0  # Wait after clicking continue button
+    RESTART_DELAY: Final[float] = 2.0  # Delay between stop and start during restart
+    TIME_SLOTS_LOAD_WAIT: Final[float] = 2.0  # Wait for time slots to load after date selection
+    CHALLENGE_POLL_INTERVAL: Final[float] = 2.0  # Polling interval for Cloudflare challenges
 
 
 class BookingTimeouts:
