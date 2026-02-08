@@ -300,3 +300,133 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
     bot = VFSBot(config, mock_db, mock_notifier)
 
     assert bot.session_manager is not None
+
+
+# Tests for Issue 3.3: Graceful Degradation with User Cache
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_uses_cache_on_db_failure(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback returns cached users when DB fails."""
+    import time
+    from src.models.database import DatabaseState
+
+    # Create mock database that simulates failure
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=None)  # Simulate DB failure
+    mock_db.state = DatabaseState.DEGRADED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Pre-populate cache with test data
+    test_users = [
+        {"id": 1, "email": "user1@test.com", "password": "pass1"},
+        {"id": 2, "email": "user2@test.com", "password": "pass2"},
+    ]
+    bot._cached_users = test_users
+    bot._cached_users_time = time.time()  # Recent timestamp
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert cached users are returned
+    assert users == test_users
+    assert len(users) == 2
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
+    bot_config, mock_notifier
+):
+    """Test that _get_users_with_fallback returns empty list when cache is expired."""
+    import time
+    from src.models.database import DatabaseState
+
+    # Create mock database that simulates failure
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=None)  # Simulate DB failure
+    mock_db.state = DatabaseState.DEGRADED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Pre-populate cache with old timestamp (expired)
+    test_users = [{"id": 1, "email": "user1@test.com", "password": "pass1"}]
+    bot._cached_users = test_users
+    bot._cached_users_time = time.time() - 400  # 400 seconds ago (> 300s TTL)
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert empty list is returned due to expired cache
+    assert users == []
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_updates_cache_on_success(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback updates cache on successful DB query."""
+    import time
+    from src.models.database import DatabaseState
+
+    # Create mock database that succeeds
+    test_users = [
+        {"id": 1, "email": "user1@test.com", "password": "pass1"},
+        {"id": 2, "email": "user2@test.com", "password": "pass2"},
+    ]
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=test_users)
+    mock_db.state = DatabaseState.CONNECTED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Ensure cache is initially empty
+    assert bot._cached_users == []
+    assert bot._cached_users_time == 0
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert users are returned and cache is updated
+    assert users == test_users
+    assert bot._cached_users == test_users
+    assert bot._cached_users_time > 0
+
+
+@pytest.mark.asyncio
+async def test_bot_ensure_db_connection_attempts_reconnect_on_degraded(
+    bot_config, mock_notifier
+):
+    """Test that _ensure_db_connection attempts reconnection when DB is degraded."""
+    from src.models.database import DatabaseState
+
+    # Create mock database in degraded state
+    mock_db = AsyncMock(spec=Database)
+    mock_db.state = DatabaseState.DEGRADED
+    mock_db.reconnect = AsyncMock(return_value=True)
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Call the method
+    await bot._ensure_db_connection()
+
+    # Assert reconnect was called
+    mock_db.reconnect.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_bot_ensure_db_connection_does_nothing_when_connected(bot_config, mock_notifier):
+    """Test that _ensure_db_connection does nothing when DB is already connected."""
+    from src.models.database import DatabaseState
+
+    # Create mock database in connected state
+    mock_db = AsyncMock(spec=Database)
+    mock_db.state = DatabaseState.CONNECTED
+    mock_db.reconnect = AsyncMock(return_value=True)
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Call the method
+    await bot._ensure_db_connection()
+
+    # Assert reconnect was NOT called
+    mock_db.reconnect.assert_not_called()
+
