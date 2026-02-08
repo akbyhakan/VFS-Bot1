@@ -58,20 +58,19 @@ async def save_payment_card(
     db: Database = Depends(get_db),
 ):
     """
-    Save payment card with CVV.
+    Save payment card.
 
-    Note: This is a personal bot where the user stores their own data
-    on their own server. CVV is encrypted and stored for automatic payments.
+    Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
+    Card holder must enter CVV at payment time.
     
     Validation is automatically handled by Pydantic PaymentCardRequest model:
     - Card number: 13-19 digits, Luhn algorithm validated
     - Cardholder name: 2-100 characters, letters and spaces only
     - Expiry month: 01-12 format
     - Expiry year: YY or YYYY format
-    - CVV: 3-4 digits only
 
     Args:
-        card_data: Payment card data including CVV
+        card_data: Payment card data (no CVV)
         token_data: Verified token data
         db: Database instance
 
@@ -85,7 +84,6 @@ async def save_payment_card(
                 "card_number": card_data.card_number,
                 "expiry_month": card_data.expiry_month,
                 "expiry_year": card_data.expiry_year,
-                "cvv": card_data.cvv,
             }
         )
 
@@ -139,9 +137,10 @@ async def initiate_payment(
     db: Database = Depends(get_db),
 ):
     """
-    Initiate payment with CVV from database.
+    Initiate payment.
 
-    Note: CVV is retrieved from encrypted database storage for automatic payments.
+    Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
+    Payment processing requires CVV to be collected at payment time.
 
     Args:
         request: Payment initiation data with appointment_id
@@ -157,15 +156,12 @@ async def initiate_payment(
         if not appointment:
             raise HTTPException(404, "Appointment not found")
 
-        # Get saved card with decrypted CVV
+        # Get saved card
         card = await db.get_payment_card()
         if not card:
             raise HTTPException(404, "No payment card saved")
 
-        if not card.get("cvv"):
-            raise HTTPException(400, "CVV not found in saved card")
-
-        # Process payment with CVV from database
+        # Process payment (CVV must be collected at payment time)
         # TODO: Implement actual payment processing
         logger.info(f"Payment initiated for appointment {request.appointment_id}")
 
