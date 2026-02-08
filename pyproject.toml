@@ -48,7 +48,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 70
+# Coverage threshold aligned with pytest.ini
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
