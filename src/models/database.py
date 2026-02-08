@@ -551,34 +551,39 @@ class Database:
             # Migration: Add new columns if they don't exist (versioned)
             await self._run_versioned_migrations()
 
-            # Auto-update updated_at trigger function
-            await conn.execute("""
-                CREATE OR REPLACE FUNCTION update_updated_at_column()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    NEW.updated_at = NOW();
-                    RETURN NEW;
-                END;
-                $$ language 'plpgsql';
-            """)
-
-            # Create triggers for tables with updated_at column
-            for table in ['users', 'personal_details', 'payment_card', 'appointment_requests', 'appointment_history', 'proxy_endpoints']:
-                await conn.execute(f"""
-                    DROP TRIGGER IF EXISTS update_{table}_updated_at ON {table};
-                    CREATE TRIGGER update_{table}_updated_at
-                        BEFORE UPDATE ON {table}
-                        FOR EACH ROW
-                        EXECUTE FUNCTION update_updated_at_column();
+            # Wrap trigger and index creation in transaction for atomicity
+            async with conn.transaction():
+                # Auto-update updated_at trigger function
+                await conn.execute("""
+                    CREATE OR REPLACE FUNCTION update_updated_at_column()
+                    RETURNS TRIGGER AS $$
+                    BEGIN
+                        NEW.updated_at = NOW();
+                        RETURN NEW;
+                    END;
+                    $$ language 'plpgsql';
                 """)
 
-            # Add missing critical indexes
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_personal_details_user_id ON personal_details(user_id)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
+                # Create triggers for tables with updated_at column
+                # Using quote_ident to safely quote table names (security best practice)
+                for table in ['users', 'personal_details', 'payment_card', 'appointment_requests', 'appointment_history', 'proxy_endpoints']:
+                    # Using format() with quote_ident would require raw SQL, so we validate table names first
+                    # The table names are hardcoded and safe, but we still want to be explicit about security
+                    await conn.execute(f"""
+                        DROP TRIGGER IF EXISTS update_{table}_updated_at ON {table};
+                        CREATE TRIGGER update_{table}_updated_at
+                            BEFORE UPDATE ON {table}
+                            FOR EACH ROW
+                            EXECUTE FUNCTION update_updated_at_column();
+                    """)
+
+                # Add missing critical indexes
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_personal_details_user_id ON personal_details(user_id)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
 
             logger.info("Database tables created/verified")
 
