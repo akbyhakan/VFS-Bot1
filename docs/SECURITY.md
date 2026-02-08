@@ -429,10 +429,11 @@ SECRET_KEY=$(openssl rand -hex 32)
 
 ### Database Security
 
-1. **Use encrypted connections** for remote databases
-2. **Limit connection pool size** - Prevents resource exhaustion
+1. **Use encrypted connections** for remote PostgreSQL databases (TLS/SSL)
+2. **Limit connection pool size** - Prevents resource exhaustion (configure via `DB_POOL_SIZE`)
 3. **Set query timeouts** - Prevents long-running queries
-4. **Regular backups** - Automated and tested
+4. **Regular backups** - Use `pg_dump` for PostgreSQL backups, automated and tested
+5. **Connection security** - Use strong passwords in `DATABASE_URL` and restrict network access
 
 ### Docker Security
 
@@ -466,7 +467,7 @@ SECRET_KEY=$(openssl rand -hex 32)
 
 1. **Input validation** - Validate all user inputs
 2. **Output encoding** - Prevent XSS attacks
-3. **SQL parameterization** - Use parameterized queries
+3. **SQL parameterization** - Use PostgreSQL parameterized queries ($1, $2, etc.)
 4. **CSRF protection** - Enable in web framework
 
 ### Incident Response
