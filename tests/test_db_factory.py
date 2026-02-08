@@ -75,7 +75,7 @@ class TestDatabaseFactory:
         """Test ensure_connected when database is already connected."""
         db = DatabaseFactory.get_instance()
         # Simulate already connected
-        db.conn = MagicMock()
+        db.pool = MagicMock()
 
         with patch.object(Database, "connect", new_callable=AsyncMock) as mock_connect:
             result = await DatabaseFactory.ensure_connected()
@@ -131,6 +131,6 @@ class TestDatabaseFactory:
         """Test ensure_connected calls connect when conn is None."""
         with patch.object(Database, "connect", new_callable=AsyncMock) as mock_connect:
             db = DatabaseFactory.get_instance()
-            db.conn = None
+            db.pool = None
             await DatabaseFactory.ensure_connected()
             mock_connect.assert_called_once()
