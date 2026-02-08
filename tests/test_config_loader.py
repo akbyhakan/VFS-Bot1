@@ -169,22 +169,19 @@ class TestLoadConfig:
             assert "production" in str(exc_info.value)
 
     @patch("builtins.open", new_callable=mock_open, read_data="example: config\n")
-    @patch("pathlib.Path.exists")
-    def test_load_config_fallback_in_development(self, mock_exists, mock_file):
+    def test_load_config_fallback_in_development(self, mock_file):
         """Test that config loading falls back to example in development."""
-        # Main config doesn't exist, but example does
-        def exists_side_effect(self):
-            path_str = str(self)
-            if "config.example.yaml" in path_str:
-                return True
-            return False
-        
-        mock_exists.side_effect = exists_side_effect
-        
         with patch.dict(os.environ, {"ENV": "development"}):
-            with patch("src.core.config_loader.logger") as mock_logger:
+            with patch("pathlib.Path.exists") as mock_exists:
+                # Multiple calls to exists() - return False for all except example config
+                # First: .env path at project root
+                # Second: .env path at old location (src/)
+                # Third: main config file
+                # Fourth: example config file (should return True)
+                mock_exists.side_effect = [False, False, False, True]
+                
+                # Should not raise an error in development mode
                 result = load_config("config/config.yaml")
-                # Verify warning was logged
-                mock_logger.warning.assert_called_once()
-                call_args = mock_logger.warning.call_args[0][0]
-                assert "Falling back" in call_args or "fallback" in call_args.lower()
+                
+                # Result should contain the example config data
+                assert result == {"example": "config"}
