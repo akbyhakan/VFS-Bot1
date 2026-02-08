@@ -71,9 +71,9 @@ def validate_production_security() -> List[str]:
 
     # Check DATABASE_URL
     database_url = os.getenv("DATABASE_URL", "")
-    if "CHANGE_ME" in database_url or not database_url:
+    if not database_url or database_url in DANGEROUS_DEFAULTS:
         warnings.append(
-            "DATABASE_URL contains placeholder or is empty. "
+            "DATABASE_URL is empty or contains placeholder value. "
             "Set a valid database connection string."
         )
 

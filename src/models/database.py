@@ -1805,10 +1805,11 @@ class Database:
         # Validate expiry_month: must be 01-12
         try:
             month = int(expiry_month)
-            if not (1 <= month <= 12):
-                raise ValueError("Expiry month must be between 01 and 12")
         except ValueError:
             raise ValueError("Invalid expiry month format")
+        
+        if not (1 <= month <= 12):
+            raise ValueError("Expiry month must be between 01 and 12")
 
         # Validate CVV: only digits, length 3-4
         if not cvv.isdigit() or not (3 <= len(cvv) <= 4):

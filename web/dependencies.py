@@ -66,15 +66,12 @@ class PaymentCardRequest(BaseModel):
     @classmethod
     def validate_luhn(cls, v: str) -> str:
         """Validate card number using Luhn algorithm."""
-        # Remove any spaces or dashes (should already be digits only due to pattern)
-        clean_number = v.replace(" ", "").replace("-", "")
-        
         # Luhn algorithm implementation
         total = 0
         is_even = False
         
-        for i in range(len(clean_number) - 1, -1, -1):
-            digit = int(clean_number[i])
+        for i in range(len(v) - 1, -1, -1):
+            digit = int(v[i])
             
             if is_even:
                 digit *= 2
