@@ -24,6 +24,9 @@ def setup_logging(level=None, json_format=None):
 
     Delegates to :func:`src.core.logger.setup_structured_logging`.
     New code should import ``setup_structured_logging`` directly.
+    
+    Note: The deprecation warning is emitted once per unique call site
+    by Python's default warning filters.
     """
     warnings.warn(
         "setup_logging() is deprecated — use setup_structured_logging() from "

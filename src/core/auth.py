@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 class AuthRateLimiter:
     """Rate limiter for authentication endpoints to prevent brute-force attacks."""
 
+    # Maximum number of identifiers to track before triggering cleanup
+    MAX_IDENTIFIERS_BEFORE_CLEANUP = 10000
+
     def __init__(self, max_attempts: int = 5, window_seconds: int = 60):
         """
         Initialize rate limiter.
@@ -75,7 +78,7 @@ class AuthRateLimiter:
             self._attempts[identifier].append(datetime.now(timezone.utc))
             
             # Trigger cleanup when dict grows beyond a threshold
-            if len(self._attempts) > 10000:
+            if len(self._attempts) > self.MAX_IDENTIFIERS_BEFORE_CLEANUP:
                 now = datetime.now(timezone.utc)
                 cutoff = now - timedelta(seconds=self.window_seconds)
                 stale_keys = [
