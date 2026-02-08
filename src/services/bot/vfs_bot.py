@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
-from ...constants import Intervals, RateLimits
+from ...constants import Intervals, RateLimits, Timeouts
 from ...models.database import Database
 from ..alert_service import AlertSeverity
 from ..captcha_solver import CaptchaSolver
@@ -56,6 +56,9 @@ class VFSBot:
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
+        
+        # Track if stop() has been called to make it idempotent
+        self._stopped: bool = False
 
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
@@ -265,27 +268,35 @@ class VFSBot:
         """
         # Save checkpoint if there was an error
         if exc_type is not None:
-            stats = await self.circuit_breaker.get_stats()
-            await self.services.workflow.error_handler.save_checkpoint(
-                {
-                    "running": self.running,
-                    "circuit_breaker_open": stats["is_open"],
-                    "consecutive_errors": stats["consecutive_errors"],
-                    "total_errors_count": stats["total_errors_in_window"],
-                }
-            )
+            try:
+                stats = await self.circuit_breaker.get_stats()
+                await self.services.workflow.error_handler.save_checkpoint(
+                    {
+                        "running": self.running,
+                        "circuit_breaker_open": stats["is_open"],
+                        "consecutive_errors": stats["consecutive_errors"],
+                        "total_errors_count": stats["total_errors_in_window"],
+                    }
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save checkpoint on exit: {e}")
 
-        await self.cleanup()
+        # Call stop() which is idempotent
+        await self.stop()
         return False
 
     async def cleanup(self) -> None:
         """Clean up browser resources."""
-        await self.browser_manager.close()
-        logger.info("Bot cleanup completed")
+        try:
+            await self.browser_manager.close()
+            logger.info("Bot cleanup completed")
+        except Exception as e:
+            logger.warning(f"Error during browser cleanup: {e}")
 
     async def start(self) -> None:
         """Start the bot."""
         self.running = True
+        self._stopped = False  # Reset stopped flag when starting
         logger.info("Starting VFS-Bot...")
         await self.notifier.notify_bot_started()
 
@@ -308,13 +319,20 @@ class VFSBot:
         """
         Stop the bot with graceful shutdown of active bookings.
         Sends notifications about shutdown status to keep users informed.
+        This method is idempotent and can be called multiple times safely.
         """
+        # Make stop() idempotent - return early if already stopped
+        if self._stopped:
+            logger.debug("stop() called but bot is already stopped")
+            return
+        
+        self._stopped = True
         self.running = False
 
         # Wait for active booking tasks to complete gracefully
         if self._active_booking_tasks:
             active_count = len(self._active_booking_tasks)
-            grace_period_seconds = 120  # 2 minutes grace period for bookings
+            grace_period_seconds = Timeouts.GRACEFUL_SHUTDOWN_GRACE_PERIOD
             grace_period_display = f"{grace_period_seconds // 60} min"
 
             logger.info(f"Waiting for {active_count} active booking(s) to complete...")
@@ -349,8 +367,15 @@ class VFSBot:
                 for task in self._active_booking_tasks:
                     task.cancel()
 
-        await self.browser_manager.close()
-        await self.notifier.notify_bot_stopped()
+        # Clean up browser resources
+        await self.cleanup()
+        
+        # Notify bot stopped with error handling
+        try:
+            await self.notifier.notify_bot_stopped()
+        except Exception as e:
+            logger.warning(f"Failed to send bot stopped notification: {e}")
+        
         logger.info("VFS-Bot stopped")
 
     async def _send_alert_safe(
@@ -377,16 +402,29 @@ class VFSBot:
             )
         except Exception as e:
             logger.debug(f"Alert delivery failed: {e}")
+    
+    async def _wait_or_shutdown(self, seconds: float) -> bool:
+        """
+        Wait for the specified duration or until shutdown is requested.
+        
+        Args:
+            seconds: Number of seconds to wait
+            
+        Returns:
+            True if shutdown was requested during wait, False on normal timeout
+        """
+        try:
+            await asyncio.wait_for(self.shutdown_event.wait(), timeout=seconds)
+            # If we get here, shutdown was requested
+            return True
+        except asyncio.TimeoutError:
+            # Normal timeout - no shutdown requested
+            return False
 
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
         while self.running and not self.shutdown_event.is_set():
             try:
-                # Check for shutdown request
-                if self.shutdown_event.is_set():
-                    logger.info("Shutdown requested, stopping bot loop...")
-                    break
-
                 # Note: Token synchronization between VFSApiClient and SessionManager
                 # is handled by TokenSyncService when VFSApiClient is integrated.
                 # The TokenSyncService ensures proactive token refresh before expiry.
@@ -410,7 +448,9 @@ class VFSBot:
                         metadata={"stats": stats, "wait_time": wait_time},
                     )
 
-                    await asyncio.sleep(wait_time)
+                    if await self._wait_or_shutdown(wait_time):
+                        logger.info("Shutdown requested during circuit breaker wait")
+                        break
                     # Don't unconditionally reset - let the next successful iteration close it
                     # Unconditional reset could cause premature recovery if underlying
                     # issues persist
@@ -442,7 +482,9 @@ class VFSBot:
                         f"({mode_info['description']}), "
                         f"Interval: {check_interval}s"
                     )
-                    await asyncio.sleep(check_interval)
+                    if await self._wait_or_shutdown(check_interval):
+                        logger.info("Shutdown requested during interval wait")
+                        break
                     continue
 
                 # Process users in parallel with semaphore limit
@@ -486,7 +528,9 @@ class VFSBot:
                     f"({mode_info['description']}), "
                     f"Waiting {check_interval}s before next check..."
                 )
-                await asyncio.sleep(check_interval)
+                if await self._wait_or_shutdown(check_interval):
+                    logger.info("Shutdown requested during interval wait")
+                    break
 
             except Exception as e:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
@@ -503,11 +547,15 @@ class VFSBot:
                 # If circuit breaker open, wait longer
                 if not await self.circuit_breaker.is_available():
                     wait_time = await self.circuit_breaker.get_wait_time()
-                    await asyncio.sleep(wait_time)
+                    if await self._wait_or_shutdown(wait_time):
+                        logger.info("Shutdown requested during error recovery wait")
+                        break
                 else:
                     # Add jitter to prevent thundering herd on recovery
                     jitter = random.uniform(0.8, 1.2)
-                    await asyncio.sleep(Intervals.ERROR_RECOVERY * jitter)
+                    if await self._wait_or_shutdown(Intervals.ERROR_RECOVERY * jitter):
+                        logger.info("Shutdown requested during error recovery wait")
+                        break
 
     async def _process_user_with_semaphore(self, user: Dict[str, Any]) -> None:
         """

@@ -98,45 +98,72 @@ class TestBrowserMemoryLeakPrevention:
 
 class TestGracefulShutdownNotifications:
     """Test graceful shutdown notification features."""
-
-    @pytest.mark.asyncio
-    async def test_stop_sends_notification_when_waiting(self):
-        """Test that stop() sends notification when waiting for bookings."""
+    
+    @pytest.fixture
+    def mock_vfs_bot(self):
+        """Create a mock VFSBot instance for testing."""
         from src.services.bot.vfs_bot import VFSBot
-
-        # Create minimal mocks
-        config = {"bot": {}, "anti_detection": {"enabled": False}}
-        db = MagicMock()
-        notifier = MagicMock()
-        notifier.notify_bot_stopped = AsyncMock()
-
+        
         # Mock browser manager
         browser_manager = MagicMock()
         browser_manager.close = AsyncMock()
-
+        
+        # Mock notifier
+        notifier = MagicMock()
+        notifier.notify_bot_stopped = AsyncMock()
+        
         # Create VFSBot instance with mocks
         with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
             bot = VFSBot.__new__(VFSBot)
             bot.running = True
+            bot._stopped = False
             bot.browser_manager = browser_manager
             bot.notifier = notifier
             bot._active_booking_tasks = []
-            bot.alert_service = MagicMock()
-            bot.alert_service.send_alert = AsyncMock()
+            
+            # Mock services.workflow.alert_service
+            bot.services = MagicMock()
+            bot.services.workflow = MagicMock()
+            bot.services.workflow.alert_service = MagicMock()
+            bot.services.workflow.alert_service.send_alert = AsyncMock()
+            
+            return bot
 
-            # Simulate active tasks
-            async def mock_task():
-                await asyncio.sleep(0.1)
+    @pytest.mark.asyncio
+    async def test_stop_sends_notification_when_waiting(self, mock_vfs_bot):
+        """Test that stop() sends notification when waiting for bookings."""
+        bot = mock_vfs_bot
 
-            bot._active_booking_tasks = [asyncio.create_task(mock_task())]
+        # Simulate active tasks
+        async def mock_task():
+            await asyncio.sleep(0.1)
 
-            # Call stop
-            await bot.stop()
+        bot._active_booking_tasks = [asyncio.create_task(mock_task())]
 
-            # Verify notification was sent
-            assert bot.alert_service.send_alert.called
-            call_args = bot.alert_service.send_alert.call_args_list[0][1]
-            assert "waiting" in call_args["message"].lower()
+        # Call stop
+        await bot.stop()
+
+        # Verify notification was sent
+        assert bot.services.workflow.alert_service.send_alert.called
+        call_args = bot.services.workflow.alert_service.send_alert.call_args_list[0][1]
+        assert "waiting" in call_args["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_stop_idempotent(self, mock_vfs_bot):
+        """Test that stop() can be called multiple times safely."""
+        bot = mock_vfs_bot
+        
+        # Set alert service to None to simplify test
+        bot.services.workflow.alert_service = None
+
+        # Call stop twice
+        await bot.stop()
+        await bot.stop()
+
+        # Browser manager close should only be called once
+        assert bot.browser_manager.close.call_count == 1
+        # Notifier should only be called once
+        assert bot.notifier.notify_bot_stopped.call_count == 1
 
 
 class TestBotLoopErrorRecoveryJitter:

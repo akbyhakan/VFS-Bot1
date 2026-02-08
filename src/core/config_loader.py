@@ -12,12 +12,56 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+# Critical environment variables that must be set in production
+CRITICAL_ENV_VARS: frozenset[str] = frozenset({
+    "ENCRYPTION_KEY",
+    "API_SECRET_KEY",
+    "VFS_ENCRYPTION_KEY",
+    "DATABASE_URL",
+})
+
+
+def _get_environment() -> str:
+    """
+    Get the current environment.
+    
+    Returns:
+        Environment name in lowercase
+    """
+    return os.getenv("ENV", "production").lower()
+
+
+def _is_production_environment(env: str) -> bool:
+    """
+    Check if the environment is production.
+    
+    Args:
+        env: Environment name
+        
+    Returns:
+        True if production environment, False otherwise
+    """
+    return env not in ("development", "dev", "local", "testing", "test")
+
 
 def load_env_variables() -> None:
     """Load environment variables from .env file."""
-    env_path = Path(__file__).parent.parent / ".env"
+    # Try project root first (correct location)
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    
+    # Fallback to old location for backward compatibility
+    if not env_path.exists():
+        old_env_path = Path(__file__).parent.parent / ".env"
+        if old_env_path.exists():
+            env_path = old_env_path
+            logger.warning(
+                f"Using .env from deprecated location: {old_env_path}. "
+                "Please move it to project root."
+            )
+    
     if env_path.exists():
         load_dotenv(env_path)
+        logger.debug(f"Loaded environment variables from {env_path}")
 
 
 def substitute_env_vars(value: Any) -> Any:
@@ -29,13 +73,39 @@ def substitute_env_vars(value: Any) -> Any:
 
     Returns:
         Value with environment variables substituted
+        
+    Raises:
+        ValueError: If a critical env var is missing in production
     """
     if isinstance(value, str):
         # Find ${VAR_NAME} patterns and replace with environment variable
         pattern = r"\$\{([^}]+)\}"
         matches = re.findall(pattern, value)
+        env = _get_environment()
+        is_production = _is_production_environment(env)
+        
         for match in matches:
-            env_value = os.getenv(match, "")
+            env_value = os.getenv(match)
+            
+            # Check if this is a critical environment variable
+            if env_value is None and match in CRITICAL_ENV_VARS:
+                if is_production:
+                    raise ValueError(
+                        f"CRITICAL: Environment variable '{match}' is required in production "
+                        f"but not set. This is a security risk. Please set {match} in your "
+                        f".env file or environment."
+                    )
+                else:
+                    logger.warning(
+                        f"Critical environment variable '{match}' is not set in development mode. "
+                        f"Using empty string. Set {match} for full functionality."
+                    )
+                    env_value = ""
+            elif env_value is None:
+                # Non-critical variable
+                logger.debug(f"Environment variable '{match}' not set, using empty string")
+                env_value = ""
+            
             value = value.replace(f"${{{match}}}", env_value)
         return value
     elif isinstance(value, dict):
@@ -57,20 +127,41 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
         Configuration dictionary
 
     Raises:
-        FileNotFoundError: If config file doesn't exist
+        FileNotFoundError: If config file doesn't exist (production mode)
         yaml.YAMLError: If YAML is invalid
     """
     # Load environment variables first
     load_env_variables()
+    
+    env = _get_environment()
+    is_production = _is_production_environment(env)
 
     # Check if config exists, otherwise use example
     config_file = Path(config_path)
     if not config_file.exists():
-        example_config = Path("config/config.example.yaml")
-        if example_config.exists():
-            config_file = example_config
+        if is_production:
+            # In production, never fall back to example config - fail fast
+            raise FileNotFoundError(
+                f"CRITICAL: Configuration file not found: {config_path}. "
+                f"Running in {env} environment. Example config fallback is disabled "
+                f"in production for security. Please create a proper config file."
+            )
         else:
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+            # In development, allow fallback with warning
+            example_config = Path("config/config.example.yaml")
+            if example_config.exists():
+                logger.warning(
+                    f"Config file not found: {config_path}. Falling back to example config "
+                    f"in {env} environment. This is allowed in development but would fail "
+                    f"in production."
+                )
+                config_file = example_config
+            else:
+                raise FileNotFoundError(
+                    f"Config file not found: {config_path} and no example config available"
+                )
+    
+    logger.info(f"Loading config from {config_file} in {env} environment")
 
     # Load YAML
     with open(config_file, "r", encoding="utf-8") as f:
