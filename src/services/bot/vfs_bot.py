@@ -58,6 +58,12 @@ class VFSBot:
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
         
+        # Trigger event for immediate slot checks
+        self._trigger_event = asyncio.Event()
+        
+        # Health checker task reference
+        self._health_task: Optional[asyncio.Task] = None
+        
         # Track if stop() has been called to make it idempotent
         self._stopped: bool = False
 
@@ -254,9 +260,10 @@ class VFSBot:
         try:
             # Start health checker if configured
             if self.health_checker and self.browser_manager.browser:
-                asyncio.create_task(
+                self._health_task = asyncio.create_task(
                     self.health_checker.run_continuous(self.browser_manager.browser)
                 )
+                self._health_task.add_done_callback(self._handle_task_exception)
                 logger.info("Selector health monitoring started")
 
             await self.run_bot_loop()
@@ -276,6 +283,17 @@ class VFSBot:
         
         self._stopped = True
         self.running = False
+
+        # Cancel health checker task if running
+        if self._health_task and not self._health_task.done():
+            logger.info("Cancelling health checker task...")
+            self._health_task.cancel()
+            try:
+                await self._health_task
+            except asyncio.CancelledError:
+                logger.debug("Health checker task cancelled successfully")
+            except Exception as e:
+                logger.warning(f"Error cancelling health checker task: {e}")
 
         # Wait for active booking tasks to complete gracefully
         if self._active_booking_tasks:
@@ -351,20 +369,65 @@ class VFSBot:
         except Exception as e:
             logger.debug(f"Alert delivery failed: {e}")
     
+    def _handle_task_exception(self, task: asyncio.Task) -> None:
+        """
+        Handle exceptions from background tasks.
+        
+        Args:
+            task: The completed task to check for exceptions
+        """
+        try:
+            # Check if task raised an exception
+            exception = task.exception()
+            if exception:
+                logger.error(f"Background task failed with exception: {exception}", exc_info=exception)
+        except asyncio.CancelledError:
+            # Task was cancelled, this is normal during shutdown
+            logger.debug("Background task was cancelled")
+        except Exception as e:
+            # Error getting exception from task
+            logger.error(f"Error handling task exception: {e}")
+    
     async def _wait_or_shutdown(self, seconds: float) -> bool:
         """
-        Wait for the specified duration or until shutdown is requested.
+        Wait for the specified duration or until shutdown/trigger is requested.
         
         Args:
             seconds: Number of seconds to wait
             
         Returns:
-            True if shutdown was requested during wait, False on normal timeout
+            True if shutdown was requested during wait, False on normal timeout or trigger
         """
         try:
-            await asyncio.wait_for(self.shutdown_event.wait(), timeout=seconds)
-            # If we get here, shutdown was requested
-            return True
+            # Wait for either shutdown or trigger event
+            shutdown_task = asyncio.create_task(self.shutdown_event.wait())
+            trigger_task = asyncio.create_task(self._trigger_event.wait())
+            
+            done, pending = await asyncio.wait(
+                [shutdown_task, trigger_task],
+                timeout=seconds,
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel pending tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Check which event was triggered
+            if shutdown_task in done:
+                # Shutdown was requested
+                return True
+            elif trigger_task in done:
+                # Trigger event - clear it and continue loop
+                self._trigger_event.clear()
+                return False
+            else:
+                # Timeout - normal sleep completion
+                return False
         except asyncio.TimeoutError:
             # Normal timeout - no shutdown requested
             return False

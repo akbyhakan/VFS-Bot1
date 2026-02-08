@@ -5,6 +5,7 @@ import hashlib
 import logging
 import os
 import threading
+import time
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -244,6 +245,10 @@ _encryption_lock = threading.Lock()
 _encryption_lock_async: Optional[asyncio.Lock] = None
 _async_lock_creation_lock = threading.Lock()  # Protects async lock creation
 
+# TTL cache for os.getenv() optimization
+_last_key_check_time: float = 0.0
+_KEY_CHECK_INTERVAL: float = 60.0  # Check env key every 60 seconds
+
 
 def reset_encryption() -> None:
     """
@@ -258,10 +263,11 @@ def reset_encryption() -> None:
 
 def get_encryption() -> PasswordEncryption:
     """
-    Get global encryption instance (singleton) with double-checked locking.
+    Get global encryption instance (singleton) with double-checked locking and TTL cache.
 
     Optimized implementation that only acquires lock when instance doesn't exist,
-    improving performance under high load.
+    improving performance under high load. Uses TTL-based caching to minimize
+    expensive os.getenv() calls on the hotpath.
 
     Returns:
         PasswordEncryption instance
@@ -270,23 +276,39 @@ def get_encryption() -> PasswordEncryption:
         Uses double-checked locking pattern to minimize lock contention.
         First check without lock (fast path), then recheck after acquiring lock.
     """
-    global _encryption_instance
+    global _encryption_instance, _last_key_check_time
 
     # First check without lock (fast path for existing instance)
     if _encryption_instance is not None:
+        current_time = time.monotonic()
+        
+        # Only check env key if TTL has expired
+        if current_time - _last_key_check_time < _KEY_CHECK_INTERVAL:
+            # Fast path: instance exists and TTL not expired - no env check needed
+            return _encryption_instance
+        
+        # TTL expired - check if key changed
         current_key = os.getenv("ENCRYPTION_KEY")
-        # Quick check if key hasn't changed
         if current_key and _normalize_key(current_key) == _encryption_instance._key:
+            # Key unchanged - update check time and return
+            _last_key_check_time = current_time
             return _encryption_instance
 
     # Acquire lock only if instance doesn't exist or key changed
     with _encryption_lock:
+        current_time = time.monotonic()
         current_key = os.getenv("ENCRYPTION_KEY")
+        
         # Double-check after acquiring lock
         if _encryption_instance is None or (
             current_key and _normalize_key(current_key) != _encryption_instance._key
         ):
             _encryption_instance = PasswordEncryption()
+            _last_key_check_time = current_time
+        else:
+            # Instance exists and key matches - update check time
+            _last_key_check_time = current_time
+            
         # Ensure _encryption_instance is not None before returning
         if _encryption_instance is None:
             raise RuntimeError("Failed to initialize PasswordEncryption instance")

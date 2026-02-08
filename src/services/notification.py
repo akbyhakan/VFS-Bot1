@@ -48,6 +48,32 @@ class NotificationService:
             f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
         )
 
+    def _get_or_create_telegram_bot(self) -> Optional[Any]:
+        """
+        Get cached Telegram bot instance or create a new one.
+        
+        Returns:
+            Telegram Bot instance or None if bot_token is missing
+        """
+        if self._telegram_bot is not None:
+            return self._telegram_bot
+        
+        telegram_config = self.config.get("telegram", {})
+        bot_token = telegram_config.get("bot_token")
+        
+        if not bot_token:
+            logger.error("Telegram bot_token missing")
+            return None
+        
+        try:
+            from telegram import Bot
+            
+            self._telegram_bot = Bot(token=bot_token)
+            return self._telegram_bot
+        except Exception as e:
+            logger.error(f"Failed to create Telegram bot: {e}")
+            return None
+
     async def send_notification(
         self, title: str, message: str, priority: NotificationPriority = "normal"
     ) -> None:
@@ -94,17 +120,10 @@ class NotificationService:
                 logger.error("Telegram chat_id missing")
                 return False
 
-            # Use cached bot instance or create new one
-            bot = self._telegram_bot
+            # Use helper to get or create bot instance
+            bot = self._get_or_create_telegram_bot()
             if bot is None:
-                from telegram import Bot
-
-                bot_token = telegram_config.get("bot_token")
-                if not bot_token:
-                    logger.error("Telegram bot_token missing")
-                    return False
-                bot = Bot(token=bot_token)
-                self._telegram_bot = bot  # Cache for future calls
+                return False
 
             full_message = f"🤖 *{title}*\n\n{message}"
 
@@ -329,17 +348,10 @@ The bot will retry automatically.
                 # Fall back to text-only message
                 return await self.send_telegram(title, message)
 
-            # Use cached bot instance or create new one
-            bot = self._telegram_bot
+            # Use helper to get or create bot instance
+            bot = self._get_or_create_telegram_bot()
             if bot is None:
-                from telegram import Bot
-
-                bot_token = telegram_config.get("bot_token")
-                if not bot_token:
-                    logger.error("Telegram bot_token missing")
-                    return False
-                bot = Bot(token=bot_token)
-                self._telegram_bot = bot  # Cache for future calls
+                return False
 
             full_message = f"🤖 *{title}*\n\n{message}"
 

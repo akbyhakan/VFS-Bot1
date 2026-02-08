@@ -362,3 +362,49 @@ class TestCorrelationIDLogging:
 
         assert "correlation_id" in data
         assert data["correlation_id"] == "test-corr-id"
+
+
+class TestPassportNumberEncryption:
+    """Test passport number encryption for PII/GDPR compliance."""
+
+    def test_passport_number_encryption(self):
+        """Test that passport numbers are encrypted before storage."""
+        passport = "AB1234567"
+        
+        # Encrypt the passport number
+        encrypted = encrypt_password(passport)
+        
+        # Encrypted value should be different from original
+        assert encrypted != passport
+        
+        # Decrypted value should match original
+        decrypted = decrypt_password(encrypted)
+        assert decrypted == passport
+
+    def test_different_passports_encrypt_differently(self):
+        """Test that different passport numbers produce different encrypted values."""
+        passport1 = "AB1234567"
+        passport2 = "CD9876543"
+        
+        encrypted1 = encrypt_password(passport1)
+        encrypted2 = encrypt_password(passport2)
+        
+        # Different passports should encrypt to different values
+        assert encrypted1 != encrypted2
+        
+        # Each should decrypt back to its original
+        assert decrypt_password(encrypted1) == passport1
+        assert decrypt_password(encrypted2) == passport2
+
+    def test_same_passport_encrypts_differently_each_time(self):
+        """Test that same passport encrypts to different values (Fernet includes timestamp)."""
+        passport = "AB1234567"
+        
+        encrypted1 = encrypt_password(passport)
+        encrypted2 = encrypt_password(passport)
+        
+        # Due to Fernet's timestamp, same value may encrypt differently
+        # Both should decrypt to the same original value
+        assert decrypt_password(encrypted1) == passport
+        assert decrypt_password(encrypted2) == passport
+

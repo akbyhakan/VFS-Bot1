@@ -736,3 +736,68 @@ class TestOpenAPISecurityConfig:
             import web.app
 
             importlib.reload(web.app)
+
+
+class TestEncryptionHotpathOptimization:
+    """Test encryption os.getenv() TTL cache optimization."""
+
+    def test_encryption_ttl_cache(self):
+        """Test that encryption instance uses TTL cache to avoid repeated os.getenv() calls."""
+        import time
+        from unittest.mock import patch
+        
+        from src.utils.encryption import get_encryption, reset_encryption, _KEY_CHECK_INTERVAL
+        
+        # Reset to start fresh
+        reset_encryption()
+        
+        from cryptography.fernet import Fernet
+        
+        old_key = os.getenv("ENCRYPTION_KEY")
+        
+        try:
+            # Set valid test key
+            test_key = Fernet.generate_key().decode()
+            os.environ["ENCRYPTION_KEY"] = test_key
+            
+            # Get encryption instance - this will call os.getenv()
+            enc1 = get_encryption()
+            assert enc1 is not None
+            
+            # Mock os.getenv to track calls
+            with patch('src.utils.encryption.os.getenv') as mock_getenv:
+                mock_getenv.return_value = test_key
+                
+                # Get encryption again immediately - should use cache, not call getenv
+                enc2 = get_encryption()
+                assert enc2 is enc1
+                
+                # getenv should NOT be called due to TTL cache
+                mock_getenv.assert_not_called()
+            
+            # Now test after TTL expiration
+            # Need to mock time.monotonic to simulate time passing
+            from src.utils import encryption as enc_module
+            
+            # Force TTL to expire by setting last check time to far past
+            enc_module._last_key_check_time = 0.0
+            
+            with patch('src.utils.encryption.os.getenv') as mock_getenv:
+                mock_getenv.return_value = test_key
+                
+                # Get encryption - TTL expired, should check env
+                enc3 = get_encryption()
+                assert enc3 is enc1
+                
+                # getenv SHOULD be called because TTL expired
+                mock_getenv.assert_called()
+        
+        finally:
+            # Restore original key
+            if old_key:
+                os.environ["ENCRYPTION_KEY"] = old_key
+            elif "ENCRYPTION_KEY" in os.environ:
+                del os.environ["ENCRYPTION_KEY"]
+            
+            reset_encryption()
+

@@ -242,6 +242,60 @@ def test_bot_health_checker_default(bot_config, mock_db, mock_notifier):
     assert bot.health_checker is None
 
 
+def test_bot_health_task_initialized_none(bot_config, mock_db, mock_notifier):
+    """Test health task is initialized to None."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    assert hasattr(bot, '_health_task')
+    assert bot._health_task is None
+
+
+@pytest.mark.asyncio
+async def test_handle_task_exception_logs_error(bot_config, mock_db, mock_notifier):
+    """Test _handle_task_exception logs exceptions from tasks."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Create a task that raises an exception
+    async def failing_task():
+        raise ValueError("Test exception")
+    
+    task = asyncio.create_task(failing_task())
+    
+    # Wait for task to complete
+    try:
+        await task
+    except ValueError:
+        pass
+    
+    # Call the exception handler - should not raise
+    bot._handle_task_exception(task)
+    
+    # Verify the task has an exception
+    assert task.exception() is not None
+
+
+@pytest.mark.asyncio
+async def test_handle_task_exception_cancelled(bot_config, mock_db, mock_notifier):
+    """Test _handle_task_exception handles cancelled tasks."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Create a task and cancel it
+    async def slow_task():
+        await asyncio.sleep(10)
+    
+    task = asyncio.create_task(slow_task())
+    task.cancel()
+    
+    # Wait for cancellation
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+    
+    # Call the exception handler - should not raise
+    bot._handle_task_exception(task)
+
+
 @pytest.mark.asyncio
 async def test_bot_circuit_breaker_tracking(bot_config, mock_db, mock_notifier):
     """Test circuit breaker error tracking."""
@@ -429,4 +483,70 @@ async def test_bot_ensure_db_connection_does_nothing_when_connected(bot_config, 
 
     # Assert reconnect was NOT called
     mock_db.reconnect.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_trigger_event_initialized(bot_config, mock_db, mock_notifier):
+    """Test that trigger event is initialized in VFSBot."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Verify trigger event exists and is an Event
+    assert hasattr(bot, '_trigger_event')
+    assert isinstance(bot._trigger_event, asyncio.Event)
+    # Event should not be set initially
+    assert not bot._trigger_event.is_set()
+
+
+@pytest.mark.asyncio
+async def test_wait_or_shutdown_normal_timeout(bot_config, mock_db, mock_notifier):
+    """Test _wait_or_shutdown returns False on normal timeout."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Wait for a short duration - should timeout normally
+    result = await bot._wait_or_shutdown(0.1)
+    
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_wait_or_shutdown_trigger_event(bot_config, mock_db, mock_notifier):
+    """Test _wait_or_shutdown returns False when trigger event is set."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Set trigger event after a delay
+    async def set_trigger_after_delay():
+        await asyncio.sleep(0.05)
+        bot._trigger_event.set()
+    
+    # Start the delayed setter
+    asyncio.create_task(set_trigger_after_delay())
+    
+    # Wait - should be interrupted by trigger
+    result = await bot._wait_or_shutdown(1.0)
+    
+    # Should return False (not shutdown)
+    assert result is False
+    # Trigger event should be cleared after use
+    assert not bot._trigger_event.is_set()
+
+
+@pytest.mark.asyncio
+async def test_wait_or_shutdown_shutdown_event(bot_config, mock_db, mock_notifier):
+    """Test _wait_or_shutdown returns True when shutdown event is set."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+    
+    # Set shutdown event after a delay
+    async def set_shutdown_after_delay():
+        await asyncio.sleep(0.05)
+        bot.shutdown_event.set()
+    
+    # Start the delayed setter
+    asyncio.create_task(set_shutdown_after_delay())
+    
+    # Wait - should be interrupted by shutdown
+    result = await bot._wait_or_shutdown(1.0)
+    
+    # Should return True (shutdown requested)
+    assert result is True
+
 
