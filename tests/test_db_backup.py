@@ -46,7 +46,7 @@ class TestDatabaseBackup:
                     if f_index + 1 < len(args):
                         backup_path = args[f_index + 1]
                         Path(backup_path).touch()
-                
+
                 mock_process = AsyncMock()
                 mock_process.communicate = AsyncMock(return_value=(b"", b""))
                 mock_process.returncode = 0
@@ -56,7 +56,7 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Create backup
@@ -67,7 +67,7 @@ class TestDatabaseBackup:
             call_args = mock_subprocess.call_args
             # args are after unpacking
             cmd_args = call_args[0]
-            
+
             # Should contain pg_dump and appropriate flags
             assert "pg_dump" in cmd_args
             assert "-h" in cmd_args and "localhost" in cmd_args
@@ -75,7 +75,7 @@ class TestDatabaseBackup:
             assert "-U" in cmd_args and "user" in cmd_args
             assert "-d" in cmd_args and "testdb" in cmd_args
             assert "-f" in cmd_args
-            
+
             assert Path(backup_path).exists()
             assert "vfs_bot_backup_" in backup_path
             assert backup_path.endswith(".sql")
@@ -94,7 +94,7 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://testuser:testpass@testhost:5433/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Create backup
@@ -107,7 +107,7 @@ class TestDatabaseBackup:
             assert mock_subprocess.called
             call_args = mock_subprocess.call_args
             cmd_args = call_args[0]
-            
+
             assert cmd_args[0] == "pg_dump"
             # Verify connection parameters
             assert "-h" in cmd_args
@@ -118,7 +118,7 @@ class TestDatabaseBackup:
             assert "testuser" in cmd_args
             assert "-d" in cmd_args
             assert "testdb" in cmd_args
-            
+
             # Verify password is in environment, not command line (security)
             kwargs = call_args[1]
             assert "env" in kwargs
@@ -140,13 +140,13 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Should raise exception on failure
             with pytest.raises(Exception) as exc_info:
                 await service.create_backup()
-            
+
             assert "pg_dump failed" in str(exc_info.value)
 
     async def test_cleanup_old_backups(self):
@@ -158,7 +158,7 @@ class TestDatabaseBackup:
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
                 backup_dir=str(backup_dir),
-                retention_days=0
+                retention_days=0,
             )
 
             # Create a fake old backup file
@@ -182,15 +182,15 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Create multiple fake backup files
             backup1 = backup_dir / "vfs_bot_backup_20240101_120000.sql"
             backup1.write_text("backup 1")
-            
+
             await asyncio.sleep(0.1)
-            
+
             backup2 = backup_dir / "vfs_bot_backup_20240102_120000.sql"
             backup2.write_text("backup 2")
 
@@ -226,7 +226,7 @@ class TestDatabaseBackup:
                     if f_index + 1 < len(args):
                         file_path = args[f_index + 1]
                         Path(file_path).touch()
-                
+
                 mock_process = AsyncMock()
                 mock_process.communicate = AsyncMock(return_value=(b"", b""))
                 mock_process.returncode = 0
@@ -236,7 +236,7 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Restore from backup
@@ -253,7 +253,7 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             with pytest.raises(FileNotFoundError):
@@ -278,7 +278,7 @@ class TestDatabaseBackup:
                     if f_index + 1 < len(args):
                         file_path = args[f_index + 1]
                         Path(file_path).touch()
-                
+
                 mock_process = AsyncMock()
                 mock_process.communicate = AsyncMock(return_value=(b"", b""))
                 mock_process.returncode = 0
@@ -288,7 +288,7 @@ class TestDatabaseBackup:
 
             service = DatabaseBackup(
                 database_url="postgresql://testuser:testpass@testhost:5433/testdb",
-                backup_dir=str(backup_dir)
+                backup_dir=str(backup_dir),
             )
 
             # Restore from backup
@@ -298,7 +298,7 @@ class TestDatabaseBackup:
             last_call_args = mock_subprocess.call_args_list[-1]
             # args are unpacked elements
             cmd_args = last_call_args[0]
-            
+
             # Should use psql for restore
             assert cmd_args[0] == "psql"
             assert "-h" in cmd_args
@@ -353,7 +353,7 @@ class TestDatabaseBackup:
                     if f_index + 1 < len(args):
                         file_path = args[f_index + 1]
                         Path(file_path).touch()
-                
+
                 mock_process = AsyncMock()
                 mock_process.communicate = AsyncMock(return_value=(b"", b""))
                 mock_process.returncode = 0
@@ -365,7 +365,7 @@ class TestDatabaseBackup:
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
                 backup_dir=str(backup_dir),
-                interval_hours=0.001  # ~3.6 seconds
+                interval_hours=0.001,  # ~3.6 seconds
             )
 
             # Start scheduled backups
@@ -394,12 +394,10 @@ class TestDatabaseBackupGlobal:
         db_backup._backup_service = None
 
         service1 = get_backup_service(
-            database_url="postgresql://user:pass@localhost:5432/db1",
-            retention_days=5
+            database_url="postgresql://user:pass@localhost:5432/db1", retention_days=5
         )
         service2 = get_backup_service(
-            database_url="postgresql://user:pass@localhost:5432/db2",
-            retention_days=10
+            database_url="postgresql://user:pass@localhost:5432/db2", retention_days=10
         )
 
         # Should return the same instance
