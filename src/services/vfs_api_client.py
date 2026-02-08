@@ -22,27 +22,43 @@ from ..utils.token_utils import calculate_effective_expiry
 logger = logging.getLogger(__name__)
 
 
-# VFS Global API Base URLs - MUST be configured via environment variables
-VFS_API_BASE = os.getenv("VFS_API_BASE")
-if not VFS_API_BASE:
-    raise ConfigurationError(
-        "VFS_API_BASE environment variable must be set. "
-        "Check your .env file configuration."
-    )
+# VFS Global API Base URLs - Lazy loaded to prevent module-level crashes
 
-VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE")
-if not VFS_ASSETS_BASE:
-    raise ConfigurationError(
-        "VFS_ASSETS_BASE environment variable must be set. "
-        "Check your .env file configuration."
-    )
 
-CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE")
-if not CONTENTFUL_BASE:
-    raise ConfigurationError(
-        "CONTENTFUL_BASE environment variable must be set. "
-        "Check your .env file configuration."
-    )
+def _get_required_env(name: str) -> str:
+    """Get required environment variable with lazy validation.
+    
+    Args:
+        name: Environment variable name
+        
+    Returns:
+        Environment variable value
+        
+    Raises:
+        ConfigurationError: If environment variable is not set
+    """
+    value = os.getenv(name)
+    if not value:
+        raise ConfigurationError(
+            f"{name} environment variable must be set. "
+            "Check your .env file configuration."
+        )
+    return value
+
+
+def get_vfs_api_base() -> str:
+    """Get VFS API base URL (lazy loaded)."""
+    return _get_required_env("VFS_API_BASE")
+
+
+def get_vfs_assets_base() -> str:
+    """Get VFS Assets base URL (lazy loaded)."""
+    return _get_required_env("VFS_ASSETS_BASE")
+
+
+def get_contentful_base() -> str:
+    """Get Contentful base URL (lazy loaded)."""
+    return _get_required_env("CONTENTFUL_BASE")
 
 
 class CentreInfo(TypedDict):
@@ -310,7 +326,7 @@ class VFSApiClient:
         logger.info(f"Logging in to VFS for mission: {self.mission_code}")
 
         async with self._session.post(
-            f"{VFS_API_BASE}/user/login",
+            f"{get_vfs_api_base()}/user/login",
             data=payload,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         ) as response:
@@ -352,7 +368,7 @@ class VFSApiClient:
         """
         await self._ensure_authenticated()
 
-        async with self._session.get(f"{VFS_API_BASE}/master/center") as response:
+        async with self._session.get(f"{get_vfs_api_base()}/master/center") as response:
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
             result: List[CentreInfo] = data
@@ -371,7 +387,7 @@ class VFSApiClient:
         await self._ensure_authenticated()
 
         async with self._session.get(
-            f"{VFS_API_BASE}/master/visacategory", params={"centerId": centre_id}
+            f"{get_vfs_api_base()}/master/visacategory", params={"centerId": centre_id}
         ) as response:
             data = await response.json()
             result: List[VisaCategoryInfo] = data
@@ -393,7 +409,7 @@ class VFSApiClient:
         await self._ensure_authenticated()
 
         async with self._session.get(
-            f"{VFS_API_BASE}/master/subvisacategory",
+            f"{get_vfs_api_base()}/master/subvisacategory",
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
             data = await response.json()
@@ -423,7 +439,7 @@ class VFSApiClient:
         }
 
         async with self._session.get(
-            f"{VFS_API_BASE}/appointment/slots", params=params
+            f"{get_vfs_api_base()}/appointment/slots", params=params
         ) as response:
             if response.status != 200:
                 return SlotAvailability(
@@ -465,7 +481,7 @@ class VFSApiClient:
         payload = {"appointmentDate": slot_date, "appointmentTime": slot_time, **applicant_data}
 
         async with self._session.post(
-            f"{VFS_API_BASE}/appointment/applicants", json=payload
+            f"{get_vfs_api_base()}/appointment/applicants", json=payload
         ) as response:
             data = await response.json()
 
@@ -526,7 +542,7 @@ class VFSApiClient:
                 )
 
             async with self._session.post(
-                f"{VFS_API_BASE}/user/refresh", json={"refreshToken": self.session.refresh_token}
+                f"{get_vfs_api_base()}/user/refresh", json={"refreshToken": self.session.refresh_token}
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()

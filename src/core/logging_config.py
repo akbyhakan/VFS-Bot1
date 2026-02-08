@@ -1,88 +1,44 @@
-"""Structured logging configuration - Standard library based."""
+"""Structured logging configuration — delegates to src.core.logger.
 
-import json
-import logging
-import os
-import sys
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+This module is kept for backward compatibility.  All real logging setup
+lives in ``src.core.logger`` which uses Loguru.  Importing from here
+still works so existing code does not break.
 
+Migration guide:
+    # Old (still works)
+    from src.core.logging_config import setup_logging, JSONFormatter
 
-class JSONFormatter(logging.Formatter):
-    """JSON log formatter for structured logging."""
+    # Preferred
+    from src.core.logger import setup_structured_logging, JSONFormatter
+"""
 
-    def format(self, record: logging.LogRecord) -> str:
-        """
-        Format log record as JSON string.
+import warnings
 
-        Args:
-            record: Log record to format
+from src.core.logger import JSONFormatter, setup_structured_logging
 
-        Returns:
-            JSON formatted log string
-        """
-        log_data: Dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
-        }
-
-        # Add extra fields
-        if hasattr(record, "request_id"):
-            log_data["request_id"] = record.request_id
-
-        # Add exception info
-        if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
-
-        return json.dumps(log_data)
+__all__ = ["JSONFormatter", "setup_logging"]
 
 
-def setup_logging(
-    level: Optional[str] = None,
-    json_format: Optional[bool] = None,
-) -> None:
+def setup_logging(level=None, json_format=None):
+    """Thin wrapper kept for backward compatibility.
+
+    Delegates to :func:`src.core.logger.setup_structured_logging`.
+    New code should import ``setup_structured_logging`` directly.
+    
+    Note: The deprecation warning is emitted once per unique call site
+    by Python's default warning filters.
     """
-    Setup logging configuration.
+    warnings.warn(
+        "setup_logging() is deprecated — use setup_structured_logging() from "
+        "src.core.logger instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    import os
 
-    Args:
-        level: Log level (DEBUG, INFO, WARNING, ERROR)
-        json_format: Use JSON format for logs
-    """
     level = level or os.getenv("LOG_LEVEL", "INFO")
     json_format = (
-        json_format if json_format is not None else os.getenv("LOG_FORMAT", "text") == "json"
+        json_format if json_format is not None
+        else os.getenv("LOG_FORMAT", "text") == "json"
     )
-
-    # Root logger configuration
-    root_logger = logging.getLogger()
-    # Ensure level is a string (mypy type guard)
-    log_level = level.upper() if level else "INFO"
-    root_logger.setLevel(getattr(logging, log_level))
-
-    # Remove existing handlers
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
-
-    # Create handler
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(getattr(logging, log_level))
-
-    # Set formatter
-    if json_format:
-        handler.setFormatter(JSONFormatter())
-    else:
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-
-    root_logger.addHandler(handler)
-
-    # Reduce noise from third-party libraries
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("aiohttp").setLevel(logging.WARNING)
-    logging.getLogger("playwright").setLevel(logging.WARNING)
+    setup_structured_logging(level=level, json_format=json_format)
