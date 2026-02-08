@@ -26,6 +26,7 @@ class BotConfig(TypedDict, total=False):
     headless: bool
     screenshot_on_error: bool
     max_retries: int
+    browser_restart_after_pages: int
 
 
 class CaptchaConfig(TypedDict, total=False):
@@ -43,13 +44,97 @@ class AntiDetectionConfig(TypedDict, total=False):
     tls_bypass: Optional[bool]
     fingerprint_bypass: Optional[bool]
     human_simulation: Optional[bool]
+    stealth_mode: Optional[bool]
+
+
+class TelegramConfig(TypedDict, total=False):
+    """Telegram notification configuration."""
+
+    bot_token: str
+    chat_id: str
+
+
+class EmailConfig(TypedDict, total=False):
+    """Email notification configuration."""
+
+    smtp_host: str
+    smtp_port: int
+    from_addr: str
+    to_addr: str
 
 
 class NotificationConfig(TypedDict, total=False):
     """Notification services configuration."""
 
-    telegram: Dict[str, Any]
-    email: Dict[str, Any]
+    telegram: TelegramConfig
+    email: EmailConfig
+
+
+class CredentialsConfig(TypedDict, total=False):
+    """Admin credentials configuration."""
+
+    admin_username: str
+    admin_password: str
+
+
+class ProxyConfig(TypedDict, total=False):
+    """Proxy configuration."""
+
+    enabled: bool
+    rotation_interval: int
+
+
+class SessionConfig(TypedDict, total=False):
+    """Session configuration."""
+
+    timeout: int
+    max_retries: int
+
+
+class CloudflareConfig(TypedDict, total=False):
+    """Cloudflare handling configuration."""
+
+    enabled: bool
+    solver: str
+    timeout: int
+
+
+class HumanBehaviorConfig(TypedDict, total=False):
+    """Human behavior simulation configuration."""
+
+    enabled: bool
+    min_delay: float
+    max_delay: float
+
+
+class PaymentConfig(TypedDict, total=False):
+    """Payment configuration."""
+
+    method: str
+    timeout: int
+
+
+class AlertsConfig(TypedDict, total=False):
+    """Alert service configuration."""
+
+    enabled_channels: List[str]
+    telegram_bot_token: Optional[str]
+    telegram_chat_id: Optional[str]
+    webhook_url: Optional[str]
+
+
+class SelectorHealthCheckConfig(TypedDict, total=False):
+    """Selector health check configuration."""
+
+    enabled: bool
+    interval: int
+
+
+class AppointmentsConfig(TypedDict, total=False):
+    """Appointments configuration."""
+
+    max_concurrent: int
+    retry_delay: int
 
 
 class AppConfig(TypedDict, total=False):
@@ -73,11 +158,12 @@ class AppConfig(TypedDict, total=False):
     captcha: CaptchaConfig
     anti_detection: AntiDetectionConfig
     notifications: NotificationConfig
-    # Additional sections
-    credentials: Dict[str, Any]
-    appointments: Dict[str, Any]
-    human_behavior: Dict[str, Any]
-    session: Dict[str, Any]
-    cloudflare: Dict[str, Any]
-    proxy: Dict[str, Any]
-    selector_health_check: Dict[str, Any]
+    credentials: CredentialsConfig
+    appointments: AppointmentsConfig
+    human_behavior: HumanBehaviorConfig
+    session: SessionConfig
+    cloudflare: CloudflareConfig
+    proxy: ProxyConfig
+    selector_health_check: SelectorHealthCheckConfig
+    payment: PaymentConfig
+    alerts: AlertsConfig

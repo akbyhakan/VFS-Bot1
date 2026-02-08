@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import random
+import warnings
 from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
@@ -58,6 +59,25 @@ class VFSBot:
 
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
+
+        # Emit deprecation warnings for legacy parameters
+        if captcha_solver is not None:
+            warnings.warn(
+                "VFSBot(captcha_solver=...) is deprecated since v2.0. "
+                "Use services=BotServiceContext(...) instead. "
+                "This parameter will be removed in v3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if centre_fetcher is not None:
+            warnings.warn(
+                "VFSBot(centre_fetcher=...) is deprecated since v2.0. "
+                "Use services=BotServiceContext(...) instead. "
+                "This parameter will be removed in v3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Initialize services context (either provided or created from config)
         if services is None:

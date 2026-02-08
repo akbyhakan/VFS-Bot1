@@ -1,4 +1,4 @@
-"""Gelişmiş session recovery sistemi."""
+"""Advanced session recovery system for crash resilience."""
 import asyncio
 import json
 import logging
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class SessionRecovery:
-    """Bot çökerse kaldığı yerden devam etmesini sağla."""
+    """Enable bot to resume from last checkpoint after a crash."""
 
     CHECKPOINT_STEPS = [
         "initialized",
@@ -53,9 +53,9 @@ class SessionRecovery:
             return None
 
     def save_checkpoint(self, step: str, user_id: int, context: Dict[str, Any]) -> None:
-        """Checkpoint kaydet."""
+        """Save a checkpoint for crash recovery."""
         if step not in self.CHECKPOINT_STEPS:
-            logger.warning(f"Bilinmeyen checkpoint step: {step}")
+            logger.warning(f"Unknown checkpoint step: {step}")
 
         checkpoint = {
             "step": step,
@@ -76,17 +76,17 @@ class SessionRecovery:
                 encrypted_data = self._fernet.encrypt(json_data.encode("utf-8"))
                 with open(self.checkpoint_file, "wb") as f:
                     f.write(encrypted_data)
-                logger.debug(f"Checkpoint kaydedildi (encrypted): {step}")
+                logger.debug(f"Checkpoint saved (encrypted): {step}")
             else:
                 # Fallback to unencrypted if no encryption key
                 with open(self.checkpoint_file, "w", encoding="utf-8") as f:
                     f.write(json_data)
-                logger.debug(f"Checkpoint kaydedildi (unencrypted): {step}")
+                logger.debug(f"Checkpoint saved (unencrypted): {step}")
         except Exception as e:
-            logger.error(f"Checkpoint kaydetme hatası: {e}")
+            logger.error(f"Failed to save checkpoint: {e}")
 
     def load_checkpoint(self) -> Optional[Dict[str, Any]]:
-        """Son checkpoint'i yükle."""
+        """Load the last saved checkpoint."""
         try:
             if not self.checkpoint_file.exists():
                 return None
@@ -108,7 +108,7 @@ class SessionRecovery:
                 checkpoint = json.loads(raw_data.decode("utf-8"))
                 logger.debug("Checkpoint loaded (unencrypted)")
 
-            # 1 saatten eski checkpoint'leri ignore et
+            # Ignore checkpoints older than 1 hour
             # Support both timezone-aware and naive datetime strings for backward compatibility
             checkpoint_time = datetime.fromisoformat(checkpoint["timestamp"])
             # Make timezone-naive datetimes UTC-aware for comparison
@@ -117,31 +117,31 @@ class SessionRecovery:
             age_hours = (datetime.now(timezone.utc) - checkpoint_time).total_seconds() / 3600
 
             if age_hours > 1:
-                logger.info("Checkpoint 1 saatten eski, ignore ediliyor")
+                logger.info("Checkpoint is older than 1 hour, ignoring")
                 self.clear_checkpoint()
                 return None
 
             logger.info(
-                f"Checkpoint yüklendi: {checkpoint['step']} (user_id: {checkpoint['user_id']})"
+                f"Checkpoint loaded: {checkpoint['step']} (user_id: {checkpoint['user_id']})"
             )
             return checkpoint
 
         except Exception as e:
-            logger.error(f"Checkpoint yükleme hatası: {e}")
+            logger.error(f"Failed to load checkpoint: {e}")
             return None
 
     def clear_checkpoint(self) -> None:
-        """Checkpoint'i temizle (başarılı tamamlama sonrası)."""
+        """Clear checkpoint (after successful completion)."""
         try:
             if self.checkpoint_file.exists():
                 self.checkpoint_file.unlink()
             self._current_checkpoint = None
-            logger.debug("Checkpoint temizlendi")
+            logger.debug("Checkpoint cleared")
         except Exception as e:
-            logger.error(f"Checkpoint temizleme hatası: {e}")
+            logger.error(f"Failed to clear checkpoint: {e}")
 
     def can_resume_from(self, step: str) -> bool:
-        """Bu step'ten devam edilebilir mi?"""
+        """Check if resumption is possible from the given step."""
         checkpoint = self.load_checkpoint()
         if not checkpoint:
             return False
@@ -149,11 +149,11 @@ class SessionRecovery:
         checkpoint_index: int = checkpoint.get("step_index", -1)
         step_index = self.CHECKPOINT_STEPS.index(step) if step in self.CHECKPOINT_STEPS else -1
 
-        # Checkpoint, istenen step'ten sonra olmalı
+        # Checkpoint must be at or after the requested step
         return checkpoint_index >= step_index
 
     def get_resume_step(self) -> Optional[str]:
-        """Devam edilecek step'i getir."""
+        """Get the step to resume from."""
         checkpoint = self.load_checkpoint()
         if checkpoint:
             step: Optional[str] = checkpoint.get("step")
@@ -161,7 +161,7 @@ class SessionRecovery:
         return None
 
     def get_resume_context(self) -> Dict[str, Any]:
-        """Devam edilecek context'i getir."""
+        """Get the context to resume with."""
         checkpoint = self.load_checkpoint()
         if checkpoint:
             context: Dict[str, Any] = checkpoint.get("context", {})

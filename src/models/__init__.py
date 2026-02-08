@@ -1,6 +1,17 @@
 """Database models module."""
 
-# Lazy imports to avoid missing dependencies
+import importlib as _importlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .database import Database as Database
+    from .schemas import AppointmentCreate as AppointmentCreate
+    from .schemas import AppointmentResponse as AppointmentResponse
+    from .schemas import BotConfig as BotConfig
+    from .schemas import NotificationConfig as NotificationConfig
+    from .schemas import UserCreate as UserCreate
+    from .schemas import UserResponse as UserResponse
+
 __all__ = [
     "Database",
     "UserCreate",
@@ -11,30 +22,23 @@ __all__ = [
     "NotificationConfig",
 ]
 
+_LAZY_MODULE_MAP = {
+    "Database": ("src.models.database", "Database"),
+    "UserCreate": ("src.models.schemas", "UserCreate"),
+    "UserResponse": ("src.models.schemas", "UserResponse"),
+    "AppointmentCreate": ("src.models.schemas", "AppointmentCreate"),
+    "AppointmentResponse": ("src.models.schemas", "AppointmentResponse"),
+    "BotConfig": ("src.models.schemas", "BotConfig"),
+    "NotificationConfig": ("src.models.schemas", "NotificationConfig"),
+}
 
-def __getattr__(name):
-    """Lazy import of models."""
-    if name == "Database":
-        from .database import Database
 
-        return Database
-    elif name in [
-        "UserCreate",
-        "UserResponse",
-        "AppointmentCreate",
-        "AppointmentResponse",
-        "BotConfig",
-        "NotificationConfig",
-    ]:
-        from .schemas import (
-            AppointmentCreate,
-            AppointmentResponse,
-            BotConfig,
-            NotificationConfig,
-            UserCreate,
-            UserResponse,
-        )
-
-        return locals()[name]
-
+def __getattr__(name: str):
+    """Lazy import with explicit mapping - importlib based."""
+    if name in _LAZY_MODULE_MAP:
+        module_path, attr_name = _LAZY_MODULE_MAP[name]
+        module = _importlib.import_module(module_path)
+        attr = getattr(module, attr_name)
+        globals()[name] = attr
+        return attr
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
