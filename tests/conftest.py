@@ -60,6 +60,18 @@ def pytest_configure(config):
     if not os.getenv("API_KEY_SALT"):
         os.environ["API_KEY_SALT"] = secrets.token_urlsafe(32)
 
+    # Set VFS API Base URLs for tests (required after security fix)
+    if not os.getenv("VFS_API_BASE"):
+        os.environ["VFS_API_BASE"] = "https://test-api.vfsglobal.com"
+    if not os.getenv("VFS_ASSETS_BASE"):
+        os.environ["VFS_ASSETS_BASE"] = "https://test-assets.vfsglobal.com"
+    if not os.getenv("CONTENTFUL_BASE"):
+        os.environ["CONTENTFUL_BASE"] = "https://test-contentful.cloudfront.net"
+
+    # Set DATABASE_URL for tests (required after security fix)
+    if not os.getenv("DATABASE_URL"):
+        os.environ["DATABASE_URL"] = "postgresql://localhost:5432/vfs_bot_test"
+
     # Suppress async mock warnings
     warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
