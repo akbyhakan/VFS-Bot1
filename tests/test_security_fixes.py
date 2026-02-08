@@ -33,11 +33,18 @@ def unique_encryption_key(monkeypatch):
 
 
 @pytest.fixture
-async def test_db(tmp_path, unique_encryption_key):
+async def test_db(unique_encryption_key):
     """Create a test database."""
-    db_path = tmp_path / "test_security.db"
-    db = Database(str(db_path))
-    await db.connect()
+    from src.constants import Database as DatabaseConfig
+    
+    test_db_url = DatabaseConfig.TEST_URL
+    db = Database(database_url=test_db_url)
+    
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+    
     yield db
     await db.close()
 

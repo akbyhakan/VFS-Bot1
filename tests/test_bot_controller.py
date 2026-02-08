@@ -19,12 +19,18 @@ from src.services.notification import NotificationService
 @pytest_asyncio.fixture
 async def database():
     """Create a test database."""
-    db = Database("test_bot_controller.db")
-    await db.connect()
+    from src.constants import Database as DatabaseConfig
+    
+    test_db_url = DatabaseConfig.TEST_URL
+    db = Database(database_url=test_db_url)
+    
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+    
     yield db
     await db.close()
-    # Cleanup
-    Path("test_bot_controller.db").unlink(missing_ok=True)
 
 
 @pytest.fixture

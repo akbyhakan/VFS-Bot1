@@ -18,12 +18,18 @@ from src.services.notification import NotificationService
 @pytest_asyncio.fixture
 async def database():
     """Create a test database."""
-    db = Database("test.db")
-    await db.connect()
+    from src.constants import Database as DatabaseConfig
+    
+    test_db_url = DatabaseConfig.TEST_URL
+    db = Database(database_url=test_db_url)
+    
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+    
     yield db
     await db.close()
-    # Cleanup
-    Path("test.db").unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -141,7 +147,9 @@ async def test_add_appointment(database):
 
 def test_bot_initialization(config):
     """Test bot initialization."""
-    db = Database("test.db")
+    from src.constants import Database as DatabaseConfig
+    
+    db = Database(database_url=DatabaseConfig.TEST_URL)
     notifier = NotificationService(config["notifications"])
     bot = VFSBot(config, db, notifier)
 

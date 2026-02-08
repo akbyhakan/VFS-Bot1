@@ -43,18 +43,15 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         from src.models.db_factory import DatabaseFactory
         db = await DatabaseFactory.ensure_connected()
 
-    # Start database backup service (SQLite only - PostgreSQL should use pg_dump)
+    # Database backup service (PostgreSQL)
     backup_service = None
-    # Note: The backup service is designed for SQLite. For PostgreSQL, use pg_dump
-    # separately via cron/systemd timer. We skip it here to avoid errors.
-    # try:
-    #     from src.utils.db_backup import get_backup_service
-    #     db_path = config.get("database", {}).get("path", "data/vfs_bot.db")
-    #     backup_service = get_backup_service(db_path=db_path)
-    #     await backup_service.start_scheduled_backups()
-    #     logger.info("Database backup service started")
-    # except Exception as e:
-    #     logger.warning(f"Failed to start backup service (non-critical): {e}")
+    try:
+        from src.utils.db_backup import get_backup_service
+        backup_service = get_backup_service()
+        await backup_service.start_scheduled_backups()
+        logger.info("Database backup service started (pg_dump)")
+    except Exception as e:
+        logger.warning(f"Failed to start backup service (non-critical): {e}")
 
     # Initialize notifier to None so it's available in finally block if initialization fails
     notifier = None

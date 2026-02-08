@@ -193,43 +193,67 @@ class TestGracefulShutdownTimeout:
         assert error.details["timeout"] == 30
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_safe_shutdown_cleanup_with_db(self):
         """Test safe_shutdown_cleanup with database."""
+        from src.constants import Database as DatabaseConfig
         from src.core.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
-        db = Database(db_path=":memory:")
-        await db.connect()
+        test_db_url = DatabaseConfig.TEST_URL
+        db = Database(database_url=test_db_url)
+        
+        try:
+            await db.connect()
+        except Exception as e:
+            pytest.skip(f"PostgreSQL test database not available: {e}")
 
-        # Store reference to check if close was called
-        original_pool_size = len(db._pool)
-        assert original_pool_size > 0  # Should have connections in pool
+        # Verify pool was created
+        assert db.pool is not None
 
         # Cleanup should close the database
         await safe_shutdown_cleanup(db=db, db_owned=True)
 
-        # Pool should be empty after close
-        assert len(db._pool) == 0
+        # Pool should be closed - verify by attempting to get a connection should fail
+        # The pool reference may still exist but be closed
+        try:
+            async with db.get_connection(timeout=1.0):
+                pytest.fail("Expected DatabaseNotConnectedError but connection succeeded")
+        except Exception:
+            # Expected - pool is closed
+            pass
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_safe_shutdown_cleanup_without_db_ownership(self):
         """Test safe_shutdown_cleanup respects db_owned flag."""
+        from src.constants import Database as DatabaseConfig
         from src.core.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
-        db = Database(db_path=":memory:")
-        await db.connect()
+        test_db_url = DatabaseConfig.TEST_URL
+        db = Database(database_url=test_db_url)
+        
+        try:
+            await db.connect()
+        except Exception as e:
+            pytest.skip(f"PostgreSQL test database not available: {e}")
 
-        original_pool_size = len(db._pool)
-        assert original_pool_size > 0  # Should have connections in pool
+        # Verify pool was created
+        assert db.pool is not None
 
         # Cleanup should NOT close the database if db_owned is False
         await safe_shutdown_cleanup(db=db, db_owned=False)
 
-        # Pool should still have connections
-        assert len(db._pool) == original_pool_size
+        # Pool should still be active - verify by getting a connection
+        try:
+            async with db.get_connection(timeout=1.0):
+                # Connection should succeed
+                pass
+        except Exception as e:
+            pytest.fail(f"Pool should still be active but connection failed: {e}")
 
         # Cleanup manually
         await db.close()
@@ -424,13 +448,20 @@ class TestDatabaseBatchOperations:
         assert error.recoverable is False
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_add_users_batch_validates_emails(self):
         """Test that batch user add validates all emails."""
+        from src.constants import Database as DatabaseConfig
         from src.core.exceptions import ValidationError
         from src.models.database import Database
 
-        db = Database(db_path=":memory:")
-        await db.connect()
+        test_db_url = DatabaseConfig.TEST_URL
+        db = Database(database_url=test_db_url)
+        
+        try:
+            await db.connect()
+        except Exception as e:
+            pytest.skip(f"PostgreSQL test database not available: {e}")
 
         try:
             users = [
