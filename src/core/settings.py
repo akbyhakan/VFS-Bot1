@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +13,10 @@ class VFSSettings(BaseSettings):
     vfs_email: str = Field(default="", description="VFS Global account email")
     vfs_password: SecretStr = Field(
         default=SecretStr(""), description="VFS Global account password"
+    )
+    vfs_password_encrypted: bool = Field(
+        default=False, 
+        description="Flag indicating if VFS_PASSWORD is Fernet-encrypted"
     )
 
     # Encryption Keys
@@ -158,6 +162,39 @@ class VFSSettings(BaseSettings):
         if v_upper not in allowed:
             raise ValueError(f'LOG_LEVEL must be one of: {", ".join(allowed)}')
         return v_upper
+
+    @model_validator(mode="after")
+    def decrypt_vfs_password(self) -> "VFSSettings":
+        """
+        Decrypt VFS password if it was stored encrypted.
+        
+        Returns:
+            Self with decrypted password
+            
+        Raises:
+            ValueError: If decryption fails
+        """
+        if self.vfs_password_encrypted:
+            try:
+                from cryptography.fernet import Fernet
+                
+                # Get encryption key
+                encryption_key = self.encryption_key.get_secret_value()
+                cipher = Fernet(encryption_key.encode())
+                
+                # Decrypt the password
+                encrypted_password = self.vfs_password.get_secret_value()
+                decrypted_password = cipher.decrypt(encrypted_password.encode()).decode()
+                
+                # Update the password with decrypted value
+                self.vfs_password = SecretStr(decrypted_password)
+                
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to decrypt VFS_PASSWORD. Ensure ENCRYPTION_KEY is correct. Error: {e}"
+                )
+        
+        return self
 
     def get_cors_origins(self) -> List[str]:
         """

@@ -61,10 +61,21 @@ class EnvValidator:
                     if not cls._validate_email(value):
                         validation_errors.append(f"{var}: Invalid email format")
                 elif var == "VFS_PASSWORD":
-                    if len(value) < 8:
-                        validation_errors.append(
-                            f"{var}: Password too short (minimum 8 characters)"
-                        )
+                    # Check if password is encrypted
+                    is_encrypted = os.getenv("VFS_PASSWORD_ENCRYPTED", "false").lower() == "true"
+                    
+                    if is_encrypted:
+                        # Validate Fernet token format (base64-encoded, longer string)
+                        if not cls._validate_fernet_token(value):
+                            validation_errors.append(
+                                f"{var}: Invalid encrypted password format (should be Fernet-encrypted)"
+                            )
+                    else:
+                        # Plain text password validation
+                        if len(value) < 8:
+                            validation_errors.append(
+                                f"{var}: Password too short (minimum 8 characters)"
+                            )
                 elif var == "ENCRYPTION_KEY":
                     if not cls._validate_encryption_key(value):
                         validation_errors.append(
@@ -175,6 +186,33 @@ class EnvValidator:
             decoded = base64.urlsafe_b64decode(key.encode())
             # Fernet key should be 32 bytes
             return len(decoded) == 32
+        except Exception:
+            return False
+
+    @staticmethod
+    def _validate_fernet_token(token: str) -> bool:
+        """
+        Validate Fernet token format (encrypted data).
+
+        Args:
+            token: Fernet token to validate
+
+        Returns:
+            True if valid Fernet token format
+        """
+        try:
+            import base64
+            
+            # Fernet tokens are base64-encoded and typically longer than plain text
+            # They should be at least 60-80 characters for a typical password
+            if len(token) < 60:
+                return False
+            
+            # Try to decode as base64
+            decoded = base64.urlsafe_b64decode(token.encode())
+            
+            # Should be at least 40 bytes (Fernet adds ~40 bytes overhead)
+            return len(decoded) >= 40
         except Exception:
             return False
 
