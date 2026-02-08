@@ -33,14 +33,6 @@ services:
       - ./screenshots:/app/screenshots
     environment:
       - DATABASE_URL=postgresql://vfs_bot:${POSTGRES_PASSWORD:-changeme}@postgres:5432/vfs_bot
-      - VFS_EMAIL=${VFS_EMAIL}
-      - VFS_PASSWORD=${VFS_PASSWORD}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - EMAIL_SENDER=${EMAIL_SENDER}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
-      - EMAIL_RECEIVER=${EMAIL_RECEIVER}
-      - CAPTCHA_API_KEY=${CAPTCHA_API_KEY}
     env_file:
       - .env
     healthcheck:
