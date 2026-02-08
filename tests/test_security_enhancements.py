@@ -257,7 +257,7 @@ class TestDatabaseConnectionConfig:
         from src.models.database import Database
 
         db = Database(database_url=DatabaseConfig.TEST_URL)
-        
+
         try:
             await db.connect()
         except (OSError, Exception) as e:
