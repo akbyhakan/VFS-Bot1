@@ -72,6 +72,11 @@ def pytest_configure(config):
     if not os.getenv("DATABASE_URL"):
         os.environ["DATABASE_URL"] = "postgresql://localhost:5432/vfs_bot_test"
 
+    # Register custom markers
+    config.addinivalue_line("markers", "integration: Integration tests (require PostgreSQL)")
+    config.addinivalue_line("markers", "e2e: End-to-end tests (require browser)")
+    config.addinivalue_line("markers", "slow: Tests that take > 30 seconds")
+
     # Suppress async mock warnings
     warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
