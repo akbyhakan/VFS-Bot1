@@ -1,0 +1,314 @@
+{
+  "dashboard": {
+    "title": "VFS-Bot Monitoring",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Slot Checks",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(vfs_slot_checks_total[5m])",
+            "legendFormat": "{{centre}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "yaxes": [
+          {
+            "label": "Checks per second",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Bookings Success/Failed",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "vfs_bookings_success_total",
+            "legendFormat": "Success - {{centre}}",
+            "refId": "A"
+          },
+          {
+            "expr": "vfs_bookings_failed_total",
+            "legendFormat": "Failed - {{centre}} ({{reason}})",
+            "refId": "B"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "yaxes": [
+          {
+            "label": "Total Bookings",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Active Users",
+        "type": "gauge",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "vfs_active_users",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 5,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Response Time",
+        "type": "graph",
+        "gridPos": {
+          "x": 6,
+          "y": 8,
+          "w": 12,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(vfs_response_time_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{operation}}",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(vfs_response_time_seconds_bucket[5m]))",
+            "legendFormat": "p50 - {{operation}}",
+            "refId": "B"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "yaxes": [
+          {
+            "label": "Response Time (seconds)",
+            "format": "s"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Circuit Breaker State",
+        "type": "gauge",
+        "gridPos": {
+          "x": 18,
+          "y": 8,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "vfs_circuit_breaker_state",
+            "legendFormat": "{{service}}",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "red"
+                }
+              ]
+            },
+            "mappings": [
+              {
+                "type": "value",
+                "value": 0,
+                "text": "Closed"
+              },
+              {
+                "type": "value",
+                "value": 1,
+                "text": "Open"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Bot Uptime",
+        "type": "gauge",
+        "gridPos": {
+          "x": 0,
+          "y": 14,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "vfs_bot_uptime_seconds",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 60,
+                  "color": "yellow"
+                },
+                {
+                  "value": 3600,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Database Connections",
+        "type": "gauge",
+        "gridPos": {
+          "x": 6,
+          "y": 14,
+          "w": 6,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "vfs_db_connections_active",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": 0,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "green"
+                },
+                {
+                  "value": 15,
+                  "color": "yellow"
+                },
+                {
+                  "value": 18,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Errors by Type",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 14,
+          "w": 12,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "rate(vfs_errors_total[5m])",
+            "legendFormat": "{{error_type}} - {{component}}",
+            "refId": "A"
+          }
+        ],
+        "datasource": "${DS_PROMETHEUS}",
+        "yaxes": [
+          {
+            "label": "Errors per second",
+            "format": "short"
+          },
+          {
+            "format": "short"
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "schemaVersion": 36,
+    "version": 1
+  },
+  "overwrite": true
+}
