@@ -69,11 +69,7 @@ class SlotPatternAnalyzer:
         }
         self._patterns["slots"].append(record)
         self._pending_writes += 1
-        
-        # Only save if batch size reached
-        if self._pending_writes >= _BATCH_SIZE:
-            self._save_data_sync()
-        
+        self._save_data_sync()
         logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
 
     async def record_slot_found_async(
@@ -85,11 +81,24 @@ class SlotPatternAnalyzer:
         time: str,
         duration_seconds: Optional[int] = None,
     ) -> None:
-        """Bulunan slot'u kaydet (async version)."""
-        # Record the slot
-        self.record_slot_found(country, centre, category, date, time, duration_seconds)
+        """Bulunan slot'u kaydet (async version with batching)."""
+        now = datetime.now(timezone.utc)
+        record = {
+            "country": country,
+            "centre": centre,
+            "category": category,
+            "slot_date": date,
+            "slot_time": time,
+            "found_at": now.isoformat(),
+            "found_hour": now.hour,
+            "found_weekday": now.strftime("%A"),
+            "duration_seconds": duration_seconds,
+        }
+        self._patterns["slots"].append(record)
+        self._pending_writes += 1
+        logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
         
-        # Check if we should save
+        # Check if we should save (batch logic)
         await self._maybe_save()
 
     async def _maybe_save(self) -> None:
