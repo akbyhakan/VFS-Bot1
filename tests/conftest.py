@@ -123,7 +123,7 @@ def config() -> Dict[str, Any]:
         "credentials": {"email": "test@example.com", "password": "testpass"},
         "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
         "captcha": {
-            "api_key": "dd22eca10ee02b8bfcb0a991ea2099dd",
+            "api_key": "test_dummy_key_not_real",
             "manual_timeout": 10,
         },
         "bot": {

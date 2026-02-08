@@ -291,38 +291,48 @@ async def batch_update(
         batch = updates[i : i + batch_size]
 
         try:
+            # Group updates by their column sets for executemany optimization
+            from collections import defaultdict
+            groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
+
+            for update_data in batch:
+                if id_column not in update_data:
+                    logger.warning(f"Skipping update without {id_column}: {update_data}")
+                    continue
+                update_dict = update_data.copy()
+                update_dict.pop(id_column)
+                if not update_dict:
+                    continue
+                # Validate columns
+                valid_cols = tuple(
+                    col for col in sorted(update_dict.keys())
+                    if validate_sql_identifier(col)
+                )
+                if valid_cols:
+                    groups[valid_cols].append(update_data)
+
             async with conn.transaction():
-                for update_data in batch:
-                    if id_column not in update_data:
-                        logger.warning(f"Skipping update without {id_column}: {update_data}")
-                        continue
-
-                    # Make a copy to avoid modifying the original
-                    update_dict = update_data.copy()
-                    row_id = update_dict.pop(id_column)
-
-                    if not update_dict:
-                        continue
-
-                    # Validate column names
-                    for col in update_dict.keys():
-                        if not validate_sql_identifier(col):
-                            logger.warning(f"Skipping invalid column name: {col}")
-                            continue
-
-                    # Build SET clause with numbered placeholders
+                for cols, group_updates in groups.items():
+                    # Build parameterized query for this column group
                     param_num = 1
                     set_parts = []
-                    for k in update_dict.keys():
-                        set_parts.append(f"{k} = ${param_num}")
+                    for col in cols:
+                        set_parts.append(f"{col} = ${param_num}")
                         param_num += 1
                     set_clause = ", ".join(set_parts)
-                    values = list(update_dict.values()) + [row_id]
-
                     query = f"UPDATE {table} SET {set_clause} WHERE {id_column} = ${param_num}"
 
-                    result = await conn.execute(query, *values)
-                    total_updated += _parse_command_tag(result)
+                    # Build args list for executemany
+                    args_list = []
+                    for update_data in group_updates:
+                        update_dict = update_data.copy()
+                        row_id = update_dict.pop(id_column)
+                        values = tuple(update_dict[col] for col in cols) + (row_id,)
+                        args_list.append(values)
+
+                    # Use executemany for true batch execution
+                    await conn.executemany(query, args_list)
+                    total_updated += len(args_list)
 
             logger.debug(f"Updated batch of {len(batch)} rows in {table}")
 

@@ -20,16 +20,6 @@ from src.core.runners import run_both_mode, run_bot_mode, run_web_mode
 from src.core.shutdown import setup_signal_handlers
 from src.core.startup import validate_environment, verify_critical_dependencies
 
-# Backward compatibility - deprecated, use src.core.shutdown / src.core.startup directly
-from src.core.shutdown import (  # noqa: F401
-    fast_emergency_cleanup as _fast_emergency_cleanup,
-)
-from src.core.shutdown import graceful_shutdown  # noqa: F401
-from src.core.shutdown import graceful_shutdown_with_timeout  # noqa: F401
-from src.core.shutdown import (  # noqa: F401
-    safe_shutdown_cleanup as _safe_shutdown_cleanup,
-)
-
 
 def main() -> None:
     """Main entry point."""

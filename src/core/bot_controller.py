@@ -7,6 +7,7 @@ the VFSBot instance from web dashboard endpoints.
 
 import asyncio
 import logging
+import threading
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
@@ -25,7 +26,8 @@ class BotController:
     """
 
     _instance: Optional["BotController"] = None
-    _lock = asyncio.Lock()
+    _lock: Optional[asyncio.Lock] = None
+    _lock_init = threading.Lock()  # Thread-safe guard for lock creation
 
     def __init__(self):
         """Initialize bot controller (use get_instance() instead)."""
@@ -39,6 +41,14 @@ class BotController:
         self._configured = False
 
     @classmethod
+    def _get_lock(cls) -> asyncio.Lock:
+        """Get or create async lock - must be called within event loop."""
+        with cls._lock_init:
+            if cls._lock is None:
+                cls._lock = asyncio.Lock()
+        return cls._lock
+
+    @classmethod
     async def get_instance(cls) -> "BotController":
         """
         Get singleton instance of BotController.
@@ -47,7 +57,7 @@ class BotController:
             BotController instance
         """
         if cls._instance is None:
-            async with cls._lock:
+            async with cls._get_lock():
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
@@ -59,7 +69,7 @@ class BotController:
         
         Stops any running bot and clears the singleton.
         """
-        async with cls._lock:
+        async with cls._get_lock():
             if cls._instance is not None:
                 try:
                     await cls._instance.stop_bot()
@@ -78,7 +88,7 @@ class BotController:
             db: Database instance
             notifier: Notification service instance
         """
-        async with self._lock:
+        async with self._get_lock():
             self._config = config
             self._db = db
             self._notifier = notifier
@@ -92,7 +102,7 @@ class BotController:
         Returns:
             Status dictionary with result
         """
-        async with self._lock:
+        async with self._get_lock():
             # Check if configured
             if not self._configured:
                 logger.error("BotController not configured")
@@ -185,7 +195,7 @@ class BotController:
         Returns:
             Status dictionary with result
         """
-        async with self._lock:
+        async with self._get_lock():
             if not self.is_running:
                 logger.warning("Bot is not running")
                 return {"status": "error", "message": "Bot is not running"}

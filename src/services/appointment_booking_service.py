@@ -30,6 +30,12 @@ TURKISH_MONTHS = {
     "Aralık": "12",
 }
 
+# Double match patterns for different languages
+DOUBLE_MATCH_PATTERNS = [
+    r"(\d+)\s*Başvuru sahipleri.*?:\s*(\d{2}-\d{2}-\d{4})",  # Turkish
+    r"(\d+)\s*[Aa]pplicants?.*?:\s*(\d{2}-\d{2}-\d{4})",     # English
+]
+
 
 def get_selector_with_fallback(selector_name: str) -> List[str]:
     """
@@ -303,9 +309,12 @@ class AppointmentBookingService:
 
         page_content = await page.content()
 
-        # Pattern: "X Başvuru sahipleri .... : DD-MM-YYYY"
-        pattern = r"(\d+)\s*Başvuru sahipleri.*?:\s*(\d{2}-\d{2}-\d{4})"
-        match = re.search(pattern, page_content)
+        # Try Turkish pattern first, then English
+        match = None
+        for pattern in DOUBLE_MATCH_PATTERNS:
+            match = re.search(pattern, page_content)
+            if match:
+                break
 
         if not match:
             # Check if page structure might have changed
@@ -320,7 +329,7 @@ class AppointmentBookingService:
                     "CRITICAL: Page structure may have changed - "
                     "expected keywords not found. Manual review required."
                 )
-                raise SelectorNotFoundError("double_match_pattern", tried_selectors=[pattern])
+                raise SelectorNotFoundError("double_match_pattern", tried_selectors=DOUBLE_MATCH_PATTERNS)
 
             # Keywords found but pattern didn't match - might be no availability
             logger.warning("Appointment info pattern not found, but page seems valid")
@@ -923,36 +932,28 @@ class AppointmentBookingService:
             await self.handle_review_and_pay(page)
 
             # Step 6: Process payment with PaymentService (PCI-DSS compliant)
-            if self.payment_service:
-                # Use PaymentService for secure payment processing
-                user_id = reservation.get("user_id", 0)
-                card_details = reservation.get("payment_card")
-                
-                # PaymentService will enforce PCI-DSS security controls
-                # It will reject automated payments in production
-                payment_success = await self.payment_service.process_payment(
-                    page=page,
-                    user_id=user_id,
-                    card_details=card_details
+            if self.payment_service is None:
+                logger.error(
+                    "PaymentService is required for payment processing. "
+                    "Legacy inline payment mode has been removed for security (PCI-DSS compliance)."
                 )
-                
-                if not payment_success:
-                    logger.error("Payment processing failed")
-                    return False
-            else:
-                # Fallback: Use inline payment (legacy mode without security controls)
-                logger.warning("PaymentService not available, using legacy payment mode")
-                if "payment_card" in reservation:
-                    await self.fill_payment_form(page, reservation["payment_card"])
-                else:
-                    logger.error("No payment card info in reservation")
-                    return False
+                raise ValueError("PaymentService is required - legacy payment mode removed for PCI-DSS compliance")
 
-                # Step 7: Handle 3D Secure (only for legacy mode)
-                phone = reservation["persons"][0]["phone_number"]
-                if not await self.handle_3d_secure(page, phone):
-                    logger.error("3D Secure verification failed")
-                    return False
+            # Use PaymentService for secure payment processing
+            user_id = reservation.get("user_id", 0)
+            card_details = reservation.get("payment_card")
+            
+            # PaymentService will enforce PCI-DSS security controls
+            # It will reject automated payments in production
+            payment_success = await self.payment_service.process_payment(
+                page=page,
+                user_id=user_id,
+                card_details=card_details
+            )
+            
+            if not payment_success:
+                logger.error("Payment processing failed")
+                return False
 
             logger.info("=" * 50)
             logger.info("✅ BOOKING FLOW COMPLETED SUCCESSFULLY")
