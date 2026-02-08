@@ -582,6 +582,31 @@ Features:
 - Sensitive data filtering (CVV, passwords)
 - Screenshot attachments
 
+### Quick Start: Prometheus + Grafana Monitoring
+
+The bot includes built-in Prometheus metrics and a ready-to-use Grafana dashboard. To start the monitoring stack:
+
+```bash
+# Start Prometheus and Grafana
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Access Grafana dashboard
+# URL: http://localhost:3000
+# Default credentials: admin / vfsbot_grafana
+```
+
+The dashboard includes:
+- **Bot Uptime** - How long the bot has been running
+- **Slot Check Rate** - Requests per second to VFS API
+- **Active Users** - Number of users being monitored
+- **Bookings** - Success vs failure metrics
+- **Response Time P95** - 95th percentile API response time
+- **Circuit Breaker State** - Bot health and error protection
+- **Error Rate by Type** - Categorized error tracking
+- **DB Query Duration** - Database performance
+
+Metrics are exposed at `http://localhost:8000/metrics/prometheus` when the bot is running.
+
 ---
 
 ## 🔐 Security Best Practices

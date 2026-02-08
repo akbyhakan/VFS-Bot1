@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: 'vfs-bot'
+    static_configs:
+      - targets: ['vfs-bot:8000']
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 30s
