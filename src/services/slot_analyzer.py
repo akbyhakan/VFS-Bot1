@@ -71,7 +71,7 @@ class SlotPatternAnalyzer:
             "duration_seconds": duration_seconds,
         }
         self._patterns["slots"].append(record)
-        self._pending_writes += 1
+        # Synchronous method saves immediately for backward compatibility
         self._save_data_sync()
         logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
 
@@ -124,9 +124,12 @@ class SlotPatternAnalyzer:
 
     async def flush(self) -> None:
         """Force write any pending data to disk."""
-        if self._pending_writes > 0:
+        with self._lock:
+            pending = self._pending_writes
+        
+        if pending > 0:
             await asyncio.to_thread(self._save_data_sync)
-            logger.info(f"Flushed {self._pending_writes} pending slot records to disk")
+            logger.info(f"Flushed {pending} pending slot records to disk")
 
     def analyze_patterns(self, days: int = 30) -> Dict[str, Any]:
         """Son N gündeki pattern'leri analiz et."""

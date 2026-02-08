@@ -692,10 +692,14 @@ class IMAPListener:
                 target_size = self._max_processed_uids // 2
                 to_remove = current_size - target_size
                 
+                # Remove oldest UIDs (defensive check in case of edge cases)
                 for _ in range(to_remove):
                     if self._processed_uids_queue:
                         oldest_uid = self._processed_uids_queue.popleft()
                         self._processed_uids_set.discard(oldest_uid)
+                    else:
+                        # Queue exhausted before target - should not happen
+                        break
                 
                 logger.info(
                     f"Cleaned up processed UIDs: {current_size} -> {len(self._processed_uids_set)} "
