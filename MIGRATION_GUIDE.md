@@ -22,14 +22,14 @@ VFS-Bot has been migrated from SQLite to PostgreSQL for better scalability, conc
 
 ### 1. Backup Your Current Data
 
-**CRITICAL**: Always backup your SQLite database before migrating:
+**CRITICAL**: Always backup your PostgreSQL database before migrating:
 
 ```bash
-# Backup SQLite database
-cp vfs_bot.db vfs_bot_backup_$(date +%Y%m%d).db
+# Backup PostgreSQL database using pg_dump
+pg_dump postgresql://vfs_bot:password@localhost:5432/vfs_bot > vfs_bot_backup_$(date +%Y%m%d).sql
 
-# Or use the built-in backup utility
-python -c "from src.utils.db_backup_util import create_backup; create_backup('vfs_bot.db', suffix='pre_migration')"
+# Or use environment variable
+pg_dump $DATABASE_URL > vfs_bot_backup_$(date +%Y%m%d).sql
 ```
 
 ### 2. Install PostgreSQL

@@ -79,9 +79,10 @@ ADMIN_PASSWORD={admin_hash}
 ENV=production
 
 # ===========================================
-# Database
+# Database (PostgreSQL)
 # ===========================================
-DATABASE_PATH=vfs_bot.db
+DATABASE_URL=postgresql://vfs_bot:changeme@localhost:5432/vfs_bot
+POSTGRES_PASSWORD=changeme
 DB_POOL_SIZE=10
 
 # ===========================================

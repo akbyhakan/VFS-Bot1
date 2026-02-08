@@ -24,12 +24,19 @@ def unique_encryption_key(monkeypatch):
 @pytest.fixture
 async def test_db(tmp_path, unique_encryption_key):
     """Create a test database."""
-    db_path = tmp_path / "test_database.db"
-    db = Database(str(db_path))
-    await db.connect()
+    from src.constants import Database as DatabaseConfig
+    
+    # Use PostgreSQL test database URL
+    test_db_url = DatabaseConfig.TEST_URL
+    db = Database(database_url=test_db_url)
+    
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+    
     yield db
     await db.close()
-    # Cleanup is automatic with tmp_path
 
 
 @pytest.mark.asyncio
@@ -773,15 +780,22 @@ class TestTokenBlacklist:
 class TestDatabasePoolExhaustion:
     """Tests for database connection pool exhaustion."""
 
-    async def test_connection_pool_exhaustion(self, tmp_path, unique_encryption_key):
+    @pytest.mark.integration
+    async def test_connection_pool_exhaustion(self, unique_encryption_key):
         """Test behavior when connection pool is exhausted."""
         import asyncio
 
+        from src.constants import Database as DatabaseConfig
         from src.core.exceptions import DatabasePoolTimeoutError
 
-        db_path = tmp_path / "test_pool.db"
-        db = Database(str(db_path), pool_size=2)
-        await db.connect()
+        # Use PostgreSQL test database with small pool
+        test_db_url = DatabaseConfig.TEST_URL
+        db = Database(database_url=test_db_url, pool_size=2)
+        
+        try:
+            await db.connect()
+        except Exception as e:
+            pytest.skip(f"PostgreSQL test database not available: {e}")
 
         try:
             # Hold all connections
