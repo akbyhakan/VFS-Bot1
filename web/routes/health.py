@@ -15,6 +15,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
+def get_version() -> str:
+    """
+    Get application version from centralized source.
+    
+    Returns:
+        Version string
+    """
+    from src import __version__
+    return __version__
+
+
 @router.get("/api/status")
 async def get_status() -> Dict[str, Any]:
     """
@@ -59,6 +70,9 @@ async def health_check() -> Dict[str, Any]:
         snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False)
     )
 
+    # Check notification service health
+    notification_health = await check_notification_health()
+
     # Determine overall status based on component health
     if db_healthy and bot_healthy and circuit_breaker_healthy:
         overall_status = "healthy"
@@ -70,7 +84,7 @@ async def health_check() -> Dict[str, Any]:
     return {
         "status": overall_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "2.1.0",
+        "version": get_version(),
         "uptime_seconds": snapshot.uptime_seconds,
         "components": {
             "database": {
@@ -85,9 +99,7 @@ async def health_check() -> Dict[str, Any]:
                 "status": "healthy" if circuit_breaker_healthy else "open",
                 "trips": snapshot.circuit_breaker_trips,
             },
-            "notifications": {
-                "status": "healthy",
-            },
+            "notifications": notification_health,
         },
         "metrics": {
             "total_checks": snapshot.total_checks,
@@ -190,7 +202,7 @@ async def detailed_health_check() -> Dict[str, Any]:
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "version": "2.1.0",
+            "version": get_version(),
             "python_version": sys.version,
             "system": {"note": "psutil not installed - install for detailed system metrics"},
             "components": {
@@ -236,7 +248,7 @@ async def detailed_health_check() -> Dict[str, Any]:
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "2.1.0",
+        "version": get_version(),
         "python_version": sys.version,
         "system": {
             "cpu_percent": psutil.cpu_percent(interval=1),
