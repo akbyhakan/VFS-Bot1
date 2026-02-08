@@ -8,18 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **BREAKING**: Migrated database from SQLite to PostgreSQL
-  - Changed `aiosqlite` to `asyncpg` for better performance and scalability
-  - Updated all SQL queries to use PostgreSQL syntax (numbered placeholders `$1, $2, ...`)
-  - Changed `INTEGER PRIMARY KEY AUTOINCREMENT` to `BIGSERIAL PRIMARY KEY`
-  - Updated boolean defaults from `0/1` to `FALSE/TRUE`
-  - Changed timestamps from `TIMESTAMP` to `TIMESTAMPTZ` with `NOW()` function
-  - Removed SQLite-specific methods (`_set_secure_db_permissions`, `_verify_db_permissions`, `cleanup_idle_connections`)
-  - Updated Database class to use asyncpg connection pooling
-  - Changed initialization parameter from `db_path` to `database_url`
-  - Updated DatabaseFactory to use `database_url` instead of `db_path`
-  - Environment variable changed from `DATABASE_PATH` to `DATABASE_URL`
-  - Updated database operations to use asyncpg patterns (direct methods instead of cursor)
+- Database: PostgreSQL with asyncpg connection pooling
+- Updated all database operations to use asyncpg patterns
 
 ## [2.2.0] - 2026-01-24
 
@@ -230,7 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Web dashboard with FastAPI
 - Multi-channel notifications (Telegram, Email)
 - Multiple captcha solver support
-- SQLite database for tracking
+- PostgreSQL database for tracking
 - Docker support
 - Multi-user and multi-centre support
 
