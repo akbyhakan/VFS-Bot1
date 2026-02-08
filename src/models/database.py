@@ -46,6 +46,18 @@ ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
     }
 )
 
+# Allowed fields for users table update (SQL injection prevention)
+ALLOWED_USER_UPDATE_FIELDS = frozenset(
+    {
+        "email",
+        "password",
+        "centre",
+        "category",
+        "subcategory",
+        "active",
+    }
+)
+
 
 class DatabaseState:
     """Database connection state constants."""
@@ -1281,7 +1293,9 @@ class Database:
         active: Optional[bool] = None,
     ) -> bool:
         """
-        Update user information.
+        Update user information with explicit field whitelist.
+
+        Only allows updating specific whitelisted fields to prevent SQL injection.
 
         Args:
             user_id: User ID
@@ -1541,6 +1555,7 @@ class Database:
         Update multiple users in a single transaction for improved performance.
 
         Each update dict should contain 'id' and the fields to update.
+        Field names are validated against ALLOWED_USER_UPDATE_FIELDS whitelist.
 
         Args:
             updates: List of update dictionaries with 'id' and optional fields:
@@ -1550,17 +1565,25 @@ class Database:
             Number of users successfully updated
 
         Raises:
-            ValidationError: If any email format is invalid
+            ValidationError: If any email format is invalid or invalid field name
             BatchOperationError: If batch operation fails
         """
         if not updates:
             return 0
 
-        # Validate all emails first (fail fast)
+        # Validate all emails first and check field names (fail fast)
         for update in updates:
             email = update.get("email")
             if email and not validate_email(email):
                 raise ValidationError(f"Invalid email format: {email}", field="email")
+            
+            # Validate field names against whitelist (excluding 'id')
+            for field_name in update.keys():
+                if field_name != "id" and field_name not in ALLOWED_USER_UPDATE_FIELDS:
+                    raise ValidationError(
+                        f"Invalid field name for user update: {field_name}",
+                        field=field_name
+                    )
 
         updated_count = 0
 

@@ -169,9 +169,9 @@ def test_jwt_key_rotation(monkeypatch):
     monkeypatch.setenv("API_SECRET_KEY", old_key)
 
     # Clear the LRU cache for _get_jwt_settings
-    from src.core.auth import _get_jwt_settings
+    from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     data = {"sub": "testuser", "name": "Test User"}
     old_token = create_access_token(data)
@@ -179,7 +179,7 @@ def test_jwt_key_rotation(monkeypatch):
     # Change to new key and set old key as previous
     monkeypatch.setenv("API_SECRET_KEY", new_key)
     monkeypatch.setenv("API_SECRET_KEY_PREVIOUS", old_key)
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Old token should still verify using the previous key
     payload = verify_token(old_token)
@@ -204,9 +204,9 @@ def test_jwt_key_rotation_without_previous_key(monkeypatch):
     monkeypatch.setenv("API_SECRET_KEY", old_key)
 
     # Clear the LRU cache for _get_jwt_settings
-    from src.core.auth import _get_jwt_settings
+    from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     data = {"sub": "testuser"}
     old_token = create_access_token(data)
@@ -215,7 +215,7 @@ def test_jwt_key_rotation_without_previous_key(monkeypatch):
     monkeypatch.setenv("API_SECRET_KEY", new_key)
     if "API_SECRET_KEY_PREVIOUS" in os.environ:
         monkeypatch.delenv("API_SECRET_KEY_PREVIOUS")
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Old token should fail to verify
     with pytest.raises(HTTPException) as exc_info:
