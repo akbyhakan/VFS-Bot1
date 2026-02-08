@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-migrate db-upgrade db-downgrade db-history db-current
 
 help:
 	@echo "Available commands:"
@@ -11,6 +11,11 @@ help:
 	@echo "  make clean        - Clean build artifacts and cache"
 	@echo "  make docker-test  - Run tests in Docker"
 	@echo "  make pre-commit   - Run pre-commit hooks"
+	@echo "  make db-migrate   - Generate new migration (usage: make db-migrate msg='description')"
+	@echo "  make db-upgrade   - Apply pending migrations"
+	@echo "  make db-downgrade - Rollback last migration"
+	@echo "  make db-history   - Show migration history"
+	@echo "  make db-current   - Show current migration version"
 
 install:
 	pip install -r requirements.txt
@@ -49,3 +54,19 @@ docker-test:
 
 pre-commit:
 	pre-commit run --all-files
+
+# Database migration commands (Alembic)
+db-migrate:
+	alembic revision --autogenerate -m "$(msg)"
+
+db-upgrade:
+	alembic upgrade head
+
+db-downgrade:
+	alembic downgrade -1
+
+db-history:
+	alembic history --verbose
+
+db-current:
+	alembic current

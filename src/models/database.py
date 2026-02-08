@@ -426,7 +426,18 @@ class Database:
             return False
 
     async def _create_tables(self) -> None:
-        """Create database tables if they don't exist."""
+        """
+        Create database tables if they don't exist.
+        
+        Note: Schema changes should be managed via Alembic migrations.
+        Run 'alembic upgrade head' to apply pending migrations.
+        This method creates baseline tables for initial setup only.
+        
+        For production: Use Alembic CLI commands in Makefile:
+        - make db-upgrade: Apply pending migrations
+        - make db-migrate msg="description": Create new migration
+        - make db-history: View migration history
+        """
         if self.pool is None:
             raise RuntimeError("Database connection is not established.")
         async with self.pool.acquire() as conn:
