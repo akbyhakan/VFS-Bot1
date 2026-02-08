@@ -40,9 +40,8 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     # Initialize database if not provided
     db_owned = db is None
     if db_owned:
-        from src.models.database_factory import DatabaseFactory
-        db = await DatabaseFactory.get_instance()
-        await db.connect()
+        from src.models.db_factory import DatabaseFactory
+        db = await DatabaseFactory.ensure_connected()
 
     # Start database backup service (SQLite only - PostgreSQL should use pg_dump)
     backup_service = None
@@ -141,9 +140,8 @@ async def run_web_mode(
     # Initialize database if not provided
     db_owned = db is None
     if db_owned:
-        from src.models.database_factory import DatabaseFactory
-        db = await DatabaseFactory.get_instance()
-        await db.connect()
+        from src.models.db_factory import DatabaseFactory
+        db = await DatabaseFactory.ensure_connected()
 
     cleanup_service = None  # Initialize to None
     cleanup_task = None
@@ -194,9 +192,8 @@ async def run_both_mode(config: dict) -> None:
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
     # Initialize shared database instance for both modes
-    from src.models.database_factory import DatabaseFactory
-    db = await DatabaseFactory.get_instance()
-    await db.connect()
+    from src.models.db_factory import DatabaseFactory
+    db = await DatabaseFactory.ensure_connected()
 
     # Initialize notification service
     notifier = NotificationService(config["notifications"])

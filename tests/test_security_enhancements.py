@@ -246,33 +246,32 @@ class TestEnvironmentValidation:
         validate_environment()
 
 
-class TestDatabaseWALMode:
-    """Test database WAL mode configuration."""
+class TestDatabaseConnectionConfig:
+    """Test database connection configuration (PostgreSQL)."""
 
     @pytest.mark.asyncio
-    async def test_database_wal_mode_enabled(self, tmp_path):
-        """Test that WAL mode is enabled on database."""
+    @pytest.mark.integration
+    async def test_database_connection_pool_created(self):
+        """Test that connection pool is created on connect."""
+        from src.constants import Database as DatabaseConfig
         from src.models.database import Database
 
-        db_path = tmp_path / "test.db"
-        db = Database(str(db_path))
-        await db.connect()
+        db = Database(database_url=DatabaseConfig.TEST_URL)
 
         try:
-            # Check WAL mode is enabled
-            async with db.conn.execute("PRAGMA journal_mode") as cursor:
-                result = await cursor.fetchone()
-                assert result[0].lower() == "wal"
+            await db.connect()
+        except (OSError, Exception) as e:
+            # Skip test if database is not available
+            pytest.skip(f"Database not available for integration test: {e}")
 
-            # Check busy timeout is set
-            async with db.conn.execute("PRAGMA busy_timeout") as cursor:
-                result = await cursor.fetchone()
-                assert result[0] == 30000
+        try:
+            # Verify pool is created
+            assert db.pool is not None
 
-            # Check foreign keys are enabled
-            async with db.conn.execute("PRAGMA foreign_keys") as cursor:
-                result = await cursor.fetchone()
-                assert result[0] == 1
+            # Verify we can execute a query
+            async with db.get_connection() as conn:
+                result = await conn.fetchval("SELECT 1")
+                assert result == 1
         finally:
             await db.close()
 

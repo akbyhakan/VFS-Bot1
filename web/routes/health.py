@@ -278,19 +278,15 @@ async def check_database_health() -> bool:
     import time
 
     try:
-        from src.models.database_factory import DatabaseFactory
+        from src.models.db_factory import DatabaseFactory
 
-        db = await DatabaseFactory.get_instance()
-        await db.connect()
-        try:
-            start_time = time.time()
-            async with db.get_connection(timeout=5.0) as conn:
-                result = await conn.fetchval("SELECT 1")
-                latency_ms = (time.time() - start_time) * 1000
-                logger.debug(f"Database health check latency: {latency_ms:.2f}ms")
-                return result is not None
-        finally:
-            await db.close()
+        db = await DatabaseFactory.ensure_connected()
+        start_time = time.time()
+        async with db.get_connection(timeout=5.0) as conn:
+            result = await conn.fetchval("SELECT 1")
+            latency_ms = (time.time() - start_time) * 1000
+            logger.debug(f"Database health check latency: {latency_ms:.2f}ms")
+            return result is not None
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
@@ -301,18 +297,14 @@ async def check_database() -> Dict[str, Any]:
     import time
 
     try:
-        from src.models.database_factory import DatabaseFactory
+        from src.models.db_factory import DatabaseFactory
 
-        db = await DatabaseFactory.get_instance()
-        await db.connect()
-        try:
-            start_time = time.time()
-            async with db.get_connection(timeout=5.0) as conn:
-                result = await conn.fetchval("SELECT 1")
-                latency_ms = (time.time() - start_time) * 1000
-                is_healthy = result is not None
-        finally:
-            await db.close()
+        db = await DatabaseFactory.ensure_connected()
+        start_time = time.time()
+        async with db.get_connection(timeout=5.0) as conn:
+            result = await conn.fetchval("SELECT 1")
+            latency_ms = (time.time() - start_time) * 1000
+            is_healthy = result is not None
         return {
             "status": "healthy" if is_healthy else "unhealthy",
             "latency_ms": round(latency_ms, 2),
