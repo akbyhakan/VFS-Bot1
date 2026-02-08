@@ -16,14 +16,14 @@ from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..alert_service import AlertSeverity
-from ..appointment_booking_service import get_selector
+from ..booking import get_selector
 from ..appointment_deduplication import get_deduplication_service
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
 
 if TYPE_CHECKING:
-    from ..appointment_booking_service import AppointmentBookingService
+    from ..booking import AppointmentBookingService
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
     from .slot_checker import SlotChecker, SlotInfo
