@@ -281,6 +281,9 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
     mock_bot_instance.start = AsyncMock()
     mock_bot_instance.stop = AsyncMock()
     mock_bot_instance.cleanup = AsyncMock()
+    # Mock the trigger event
+    mock_bot_instance._trigger_event = AsyncMock()
+    mock_bot_instance._trigger_event.set = MagicMock()
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
@@ -291,6 +294,8 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
     result = await controller.trigger_check_now()
 
     assert result["status"] == "success"
+    # Verify that the trigger event was set
+    mock_bot_instance._trigger_event.set.assert_called_once()
 
     # Clean up
     await controller.stop_bot()

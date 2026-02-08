@@ -90,6 +90,54 @@ def require_connection(func: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
+async def _migrate_encrypt_passport_numbers(conn: asyncpg.Connection) -> None:
+    """
+    Data migration: Encrypt existing passport numbers in personal_details table.
+    
+    Args:
+        conn: Database connection
+    """
+    # Fetch all rows with unencrypted passport numbers
+    rows = await conn.fetch(
+        """
+        SELECT id, passport_number 
+        FROM personal_details 
+        WHERE passport_number IS NOT NULL 
+          AND passport_number != '' 
+          AND (passport_number_encrypted IS NULL OR passport_number_encrypted = '')
+        """
+    )
+    
+    if not rows:
+        logger.info("No passport numbers to encrypt")
+        return
+    
+    encrypted_count = 0
+    failed_count = 0
+    
+    for row in rows:
+        try:
+            encrypted_passport = encrypt_password(row["passport_number"])
+            await conn.execute(
+                """
+                UPDATE personal_details 
+                SET passport_number_encrypted = $1, passport_number = ''
+                WHERE id = $2
+                """,
+                encrypted_passport,
+                row["id"]
+            )
+            encrypted_count += 1
+        except Exception as e:
+            logger.error(f"Failed to encrypt passport for record {row['id']}: {e}")
+            failed_count += 1
+    
+    logger.info(
+        f"Passport encryption migration completed: "
+        f"{encrypted_count} encrypted, {failed_count} failed"
+    )
+
+
 class Database:
     """PostgreSQL database manager for VFS-Bot with connection pooling."""
 
@@ -130,6 +178,16 @@ class Database:
             "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
             "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
             "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
+        },
+        {
+            "version": 5,
+            "description": "Add passport_number_encrypted to personal_details for PII encryption",
+            "table": "personal_details",
+            "column": "passport_number_encrypted",
+            "sql": "ALTER TABLE personal_details ADD COLUMN IF NOT EXISTS passport_number_encrypted TEXT",
+            "default_sql": "",  # No default needed, will be populated by migration
+            "data_migration_func": _migrate_encrypt_passport_numbers,
+            "rollback_sql": "ALTER TABLE personal_details DROP COLUMN IF EXISTS passport_number_encrypted",
         },
 
     ]
@@ -871,6 +929,11 @@ class Database:
                         if migration.get("default_sql"):
                             await conn.execute(migration["default_sql"])
 
+                        # Execute custom data migration function if provided
+                        if migration.get("data_migration_func"):
+                            logger.info(f"Running custom data migration for v{migration['version']}")
+                            await migration["data_migration_func"](conn)
+
                         # Record migration
                         await conn.execute(
                             """INSERT INTO schema_migrations (version, description)
@@ -1145,20 +1208,27 @@ class Database:
                 f"Invalid phone number format: {mobile_number}", field="mobile_number"
             )
 
+        # Encrypt passport number if provided
+        passport_number = details.get("passport_number")
+        passport_number_encrypted = None
+        if passport_number:
+            passport_number_encrypted = encrypt_password(passport_number)
+
         async with self.get_connection() as conn:
             personal_id = await conn.fetchval(
                 """
                 INSERT INTO personal_details
-                (user_id, first_name, last_name, passport_number, passport_expiry,
+                (user_id, first_name, last_name, passport_number, passport_number_encrypted, passport_expiry,
                  gender, mobile_code, mobile_number, email, nationality, date_of_birth,
                  address_line1, address_line2, state, city, postcode)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
                 RETURNING id
             """,
                 user_id,
                 details.get("first_name"),
                 details.get("last_name"),
-                details.get("passport_number"),
+                "",  # Keep old passport_number empty for backward compatibility
+                passport_number_encrypted,
                 details.get("passport_expiry"),
                 details.get("gender"),
                 details.get("mobile_code"),
@@ -1197,7 +1267,22 @@ class Database:
 
         async with self.get_connection() as conn:
             row = await conn.fetchrow("SELECT * FROM personal_details WHERE user_id = $1", user_id)
-            return dict(row) if row else None
+            if not row:
+                return None
+            
+            details = dict(row)
+            
+            # Decrypt passport number if encrypted version exists
+            if details.get("passport_number_encrypted"):
+                try:
+                    details["passport_number"] = decrypt_password(details["passport_number_encrypted"])
+                except Exception as e:
+                    logger.warning(f"Failed to decrypt passport number for user {user_id}: {e}")
+                    # Fall back to old unencrypted value if available
+                    if not details.get("passport_number"):
+                        details["passport_number"] = None
+            
+            return details
 
     @require_connection
     async def get_personal_details_batch(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
@@ -1231,6 +1316,17 @@ class Database:
             result = {}
             for row in rows:
                 details = dict(row)
+                
+                # Decrypt passport number if encrypted version exists
+                if details.get("passport_number_encrypted"):
+                    try:
+                        details["passport_number"] = decrypt_password(details["passport_number_encrypted"])
+                    except Exception as e:
+                        logger.warning(f"Failed to decrypt passport number for user {details['user_id']}: {e}")
+                        # Fall back to old unencrypted value if available
+                        if not details.get("passport_number"):
+                            details["passport_number"] = None
+                
                 result[details["user_id"]] = details
 
             return result
@@ -1446,9 +1542,21 @@ class Database:
 
         # Add valid fields to update
         for field, value in valid_fields.items():
-            updates.append(f"{field} = ${param_num}")
-            params.append(value)
-            param_num += 1
+            # Encrypt passport_number if present
+            if field == "passport_number" and value is not None:
+                # Encrypt and store in passport_number_encrypted
+                encrypted_value = encrypt_password(value)
+                updates.append(f"passport_number_encrypted = ${param_num}")
+                params.append(encrypted_value)
+                param_num += 1
+                # Clear old unencrypted field
+                updates.append(f"passport_number = ${param_num}")
+                params.append("")
+                param_num += 1
+            else:
+                updates.append(f"{field} = ${param_num}")
+                params.append(value)
+                param_num += 1
 
         if not updates:
             return True  # Nothing to update (success case)
