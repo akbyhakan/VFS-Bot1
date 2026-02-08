@@ -187,12 +187,20 @@ class PaymentHandler:
         start_time = time.time()
 
         while time.time() - start_time < max_wait:
-            # Check 1: Redirected to VFS (verify it's a proper redirect, not just substring)
+            # Check 1: Redirected to VFS (verify proper domain with URL parsing)
             current_url = page.url
-            # Use proper URL validation to prevent security issues
-            if current_url.startswith("https://vfsglobal.com") or current_url.startswith("http://vfsglobal.com"):
-                logger.info("✅ Redirected to VFS - Payment successful")
-                return True
+            try:
+                from urllib.parse import urlparse
+                parsed_url = urlparse(current_url)
+                # Check that the domain is exactly vfsglobal.com or a subdomain
+                if parsed_url.hostname and (
+                    parsed_url.hostname == "vfsglobal.com" 
+                    or parsed_url.hostname.endswith(".vfsglobal.com")
+                ):
+                    logger.info("✅ Redirected to VFS - Payment successful")
+                    return True
+            except Exception as e:
+                logger.debug(f"Error parsing URL {current_url}: {e}")
 
             # Check 2: Success indicators on page
             success_indicators = [
