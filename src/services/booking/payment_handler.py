@@ -187,9 +187,10 @@ class PaymentHandler:
         start_time = time.time()
 
         while time.time() - start_time < max_wait:
-            # Check 1: Redirected to VFS
+            # Check 1: Redirected to VFS (verify it's a proper redirect, not just substring)
             current_url = page.url
-            if "vfsglobal.com" in current_url:
+            # Use proper URL validation to prevent security issues
+            if current_url.startswith("https://vfsglobal.com") or current_url.startswith("http://vfsglobal.com"):
                 logger.info("✅ Redirected to VFS - Payment successful")
                 return True
 
