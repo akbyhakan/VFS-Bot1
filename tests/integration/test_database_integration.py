@@ -107,12 +107,12 @@ class TestDatabaseIntegrationWithTestcontainers:
         tasks = [health_check_task() for _ in range(20)]
         results = await asyncio.gather(*tasks)
         
-        # At least 75% should succeed
+        # At least 90% should succeed
         success_count = sum(1 for r in results if r is True)
         success_rate = success_count / len(results)
         
-        assert success_rate >= 0.75, (
-            f"Expected >= 75% success rate, got {success_rate:.1%} "
+        assert success_rate >= 0.90, (
+            f"Expected >= 90% success rate, got {success_rate:.1%} "
             f"({success_count}/{len(results)} successful)"
         )
 

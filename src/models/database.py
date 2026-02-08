@@ -81,6 +81,55 @@ def require_connection(func: F) -> F:
 class Database:
     """PostgreSQL database manager for VFS-Bot with connection pooling."""
 
+    # Define migrations as a class-level constant to avoid duplication
+    MIGRATIONS = [
+        {
+            "version": 1,
+            "description": "Add visa_category to appointment_requests",
+            "table": "appointment_requests",
+            "column": "visa_category",
+            "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
+            "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
+        },
+        {
+            "version": 2,
+            "description": "Add visa_subcategory to appointment_requests",
+            "table": "appointment_requests",
+            "column": "visa_subcategory",
+            "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
+            "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
+        },
+        {
+            "version": 3,
+            "description": "Add gender to appointment_persons",
+            "table": "appointment_persons",
+            "column": "gender",
+            "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
+            "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
+        },
+        {
+            "version": 4,
+            "description": "Add is_child_with_parent to appointment_persons",
+            "table": "appointment_persons",
+            "column": "is_child_with_parent",
+            "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
+            "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
+        },
+        {
+            "version": 5,
+            "description": "Add cvv_encrypted to payment_card",
+            "table": "payment_card",
+            "column": "cvv_encrypted",
+            "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
+            "default_sql": None,
+            "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
+        },
+    ]
+
     def __init__(self, database_url: Optional[str] = None, pool_size: Optional[int] = None):
         """
         Initialize database connection pool.
@@ -111,7 +160,7 @@ class Database:
         self._pool_lock = asyncio.Lock()
         
         # State tracking for graceful degradation
-        self._state: str = DatabaseState.DISCONNECTED
+        # Note: _state is not stored; it's computed by the state property
         self._last_successful_query: Optional[datetime] = None
         self._consecutive_failures: int = 0
         self._max_failures_before_degraded: int = 3
@@ -201,14 +250,12 @@ class Database:
             # Increment failure counter
             self._consecutive_failures += 1
             
-            # Check if we've exceeded the degradation threshold
-            if self._consecutive_failures >= self._max_failures_before_degraded:
-                if self._state != DatabaseState.DEGRADED:
-                    self._state = DatabaseState.DEGRADED
-                    logger.warning(
-                        f"Database entering DEGRADED state after {self._consecutive_failures} "
-                        f"consecutive failures: {e}"
-                    )
+            # Log warning if entering DEGRADED state
+            if self._consecutive_failures == self._max_failures_before_degraded:
+                logger.warning(
+                    f"Database entering DEGRADED state after {self._consecutive_failures} "
+                    f"consecutive failures: {e}"
+                )
             
             # If critical, re-raise the exception
             if critical:
@@ -265,8 +312,7 @@ class Database:
 
                 await self._create_tables()
 
-                # Update state to CONNECTED
-                self._state = DatabaseState.CONNECTED
+                # Reset failure counter on successful connection
                 self._consecutive_failures = 0
 
                 logger.info(
@@ -286,7 +332,7 @@ class Database:
             # Close connection pool
             if self.pool:
                 await self.pool.close()
-            self._state = DatabaseState.DISCONNECTED
+            # Pool is None, so state property will return DISCONNECTED automatically
             logger.info("Database connection pool closed")
 
     async def __aenter__(self) -> "Database":
@@ -734,56 +780,8 @@ class Database:
             "token_blacklist",
         })
 
-        # Define migrations in order (uses ADD COLUMN IF NOT EXISTS - PostgreSQL 9.6+)
-        migrations = [
-            {
-                "version": 1,
-                "description": "Add visa_category to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_category",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
-            },
-            {
-                "version": 2,
-                "description": "Add visa_subcategory to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_subcategory",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
-            },
-            {
-                "version": 3,
-                "description": "Add gender to appointment_persons",
-                "table": "appointment_persons",
-                "column": "gender",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
-                "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
-            },
-            {
-                "version": 4,
-                "description": "Add is_child_with_parent to appointment_persons",
-                "table": "appointment_persons",
-                "column": "is_child_with_parent",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
-                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
-            },
-            {
-                "version": 5,
-                "description": "Add cvv_encrypted to payment_card",
-                "table": "payment_card",
-                "column": "cvv_encrypted",
-                "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
-                # No default value needed - existing cards can have NULL cvv_encrypted,
-                # and new cards will set this value when created
-                "default_sql": None,
-                "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
-            },
-        ]
+        # Use class-level migrations constant
+        migrations = self.MIGRATIONS
 
         # Validate all migration table names against whitelist
         for migration in migrations:
@@ -875,58 +873,8 @@ class Database:
         Returns:
             Migration dict if found, None otherwise
         """
-        # Note: This needs access to the migrations list from _run_versioned_migrations
-        # We'll need to store migrations as a class variable or redefine them here
-        # For now, redefine the migrations list (should match _run_versioned_migrations)
-        migrations = [
-            {
-                "version": 1,
-                "description": "Add visa_category to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_category",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
-            },
-            {
-                "version": 2,
-                "description": "Add visa_subcategory to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_subcategory",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
-            },
-            {
-                "version": 3,
-                "description": "Add gender to appointment_persons",
-                "table": "appointment_persons",
-                "column": "gender",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
-                "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
-            },
-            {
-                "version": 4,
-                "description": "Add is_child_with_parent to appointment_persons",
-                "table": "appointment_persons",
-                "column": "is_child_with_parent",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
-                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
-                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
-            },
-            {
-                "version": 5,
-                "description": "Add cvv_encrypted to payment_card",
-                "table": "payment_card",
-                "column": "cvv_encrypted",
-                "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
-                "default_sql": None,
-                "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
-            },
-        ]
-        
-        for migration in migrations:
+        # Use class-level migrations constant
+        for migration in self.MIGRATIONS:
             if migration["version"] == version:
                 return migration
         return None
