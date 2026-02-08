@@ -156,7 +156,7 @@ class SessionManager:
                 try:
                     os.close(fd)
                 except OSError as e:
-                    logger.debug(f"Session file cleanup failed: {e}")
+                    logger.debug(f"File descriptor already closed by fdopen: {e}")
                 logger.error(f"Failed to save session: {e}")
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)

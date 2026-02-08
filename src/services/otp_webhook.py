@@ -403,7 +403,7 @@ class OTPWebhookService:
                     try:
                         queue.remove(entry)
                     except ValueError as e:
-                        logger.debug(f"Entry already removed from queue: {e}")
+                        logger.debug(f"Failed to remove entry from queue (not found): {e}")
 
                 removed = initial_count - len(queue)
                 total_removed += removed
