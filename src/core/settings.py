@@ -43,7 +43,10 @@ class VFSSettings(BaseSettings):
     )
 
     # Database Configuration
-    database_path: str = Field(default="vfs_bot.db", description="Path to SQLite database file")
+    database_url: str = Field(
+        default="postgresql://localhost:5432/vfs_bot",
+        description="PostgreSQL database connection URL"
+    )
     db_pool_size: int = Field(default=10, ge=1, le=100, description="Database connection pool size")
     db_connection_timeout: float = Field(
         default=30.0, gt=0, description="Database connection timeout in seconds"

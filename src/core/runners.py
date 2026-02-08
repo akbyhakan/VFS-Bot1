@@ -40,7 +40,8 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     # Initialize database if not provided
     db_owned = db is None
     if db_owned:
-        db = Database()
+        from src.models.database_factory import DatabaseFactory
+        db = await DatabaseFactory.get_instance()
         await db.connect()
 
     # Start database backup service
@@ -138,7 +139,8 @@ async def run_web_mode(
     # Initialize database if not provided
     db_owned = db is None
     if db_owned:
-        db = Database()
+        from src.models.database_factory import DatabaseFactory
+        db = await DatabaseFactory.get_instance()
         await db.connect()
 
     cleanup_service = None  # Initialize to None
@@ -190,7 +192,8 @@ async def run_both_mode(config: dict) -> None:
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
     # Initialize shared database instance for both modes
-    db = Database()
+    from src.models.database_factory import DatabaseFactory
+    db = await DatabaseFactory.get_instance()
     await db.connect()
 
     # Initialize notification service

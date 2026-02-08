@@ -205,26 +205,22 @@ class AuditLogger:
         try:
             if self.db is not None:
                 async with self.db.get_connection() as conn:
-                    async with conn.cursor() as cursor:
-                        await cursor.execute(
-                            """
-                            INSERT INTO audit_log
+                    await conn.execute(
+                        """
+                        INSERT INTO audit_log
                         (action, user_id, username, ip_address, user_agent,
                          details, timestamp, success)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                            (
-                                entry.action,
-                                entry.user_id,
-                                entry.username,
-                                entry.ip_address,
-                                entry.user_agent,
-                                json.dumps(entry.details),
-                                entry.timestamp,
-                                entry.success,
-                            ),
-                        )
-                    await conn.commit()
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        """,
+                        entry.action,
+                        entry.user_id,
+                        entry.username,
+                        entry.ip_address,
+                        entry.user_agent,
+                        json.dumps(entry.details),
+                        entry.timestamp,
+                        entry.success,
+                    )
         except Exception as e:
             logger.error(f"Failed to persist audit entry: {e}")
             self._buffer.append(entry)
@@ -241,24 +237,26 @@ class AuditLogger:
 
         try:
             async with self.db.get_connection() as conn:
-                async with conn.cursor() as cursor:
-                    query = "SELECT * FROM audit_log WHERE 1=1"
-                    params: List[Union[str, int]] = []
+                query = "SELECT * FROM audit_log WHERE 1=1"
+                params: List[Union[str, int]] = []
+                param_count = 0
 
-                    if action:
-                        query += " AND action = ?"
-                        params.append(action.value)
+                if action:
+                    param_count += 1
+                    query += f" AND action = ${param_count}"
+                    params.append(action.value)
 
-                    if user_id:
-                        query += " AND user_id = ?"
-                        params.append(user_id)
+                if user_id:
+                    param_count += 1
+                    query += f" AND user_id = ${param_count}"
+                    params.append(user_id)
 
-                    query += " ORDER BY timestamp DESC LIMIT ?"
-                    params.append(limit)
+                param_count += 1
+                query += f" ORDER BY timestamp DESC LIMIT ${param_count}"
+                params.append(limit)
 
-                    await cursor.execute(query, params)
-                    rows = await cursor.fetchall()
-                    return [dict(row) for row in rows]
+                rows = await conn.fetch(query, *params)
+                return [dict(row) for row in rows]
         except Exception as e:
             logger.error(f"Failed to fetch audit entries: {e}")
             return []
