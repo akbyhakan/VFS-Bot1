@@ -85,6 +85,7 @@ class Security:
     MIN_SECRET_KEY_LENGTH: Final[int] = 64
     MIN_API_KEY_SALT_LENGTH: Final[int] = 32
     MIN_ENCRYPTION_KEY_LENGTH: Final[int] = 32
+    # Supported: HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512
     JWT_ALGORITHM: Final[str] = "HS256"
     JWT_EXPIRY_HOURS: Final[int] = 24
     PASSWORD_HASH_ROUNDS: Final[int] = 12
