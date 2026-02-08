@@ -20,7 +20,7 @@ class DatabaseFactory:
         ```python
         # Get database instance
         db = DatabaseFactory.get_instance()
-        await db.poolect()
+        await db.connect()
 
         # Use in different modules
         db = DatabaseFactory.get_instance()  # Same instance

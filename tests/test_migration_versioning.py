@@ -29,7 +29,7 @@ def unique_encryption_key(monkeypatch):
 async def test_migration_versioning_fresh_db(unique_encryption_key):
     """Test that migration versioning works on a fresh database."""
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     # Check that schema_migrations table exists
     async with db.pool.acquire() as conn:
@@ -58,7 +58,7 @@ async def test_migration_versioning_fresh_db(unique_encryption_key):
 async def test_migration_versioning_backward_compatibility(unique_encryption_key):
     """Test backward compatibility - migrations detected as already applied."""
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     # Simulate an old database by removing schema_migrations table
     # and checking that columns still get marked as applied
@@ -70,7 +70,7 @@ async def test_migration_versioning_backward_compatibility(unique_encryption_key
 
     # Reconnect - this should detect existing columns and mark migrations as applied
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     async with db.pool.acquire() as conn:
         # Check that all migrations are now marked as applied
@@ -85,7 +85,7 @@ async def test_migration_versioning_backward_compatibility(unique_encryption_key
 async def test_migration_idempotency(unique_encryption_key):
     """Test that migrations are idempotent (running twice doesn't fail)."""
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     # Count migrations
     async with db.pool.acquire() as conn:
@@ -95,7 +95,7 @@ async def test_migration_idempotency(unique_encryption_key):
 
     # Reconnect and migrations should run again (but skip already applied)
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     async with db.pool.acquire() as conn:
         count2 = await conn.fetchval("SELECT COUNT(*) FROM schema_migrations")
@@ -110,7 +110,7 @@ async def test_migration_idempotency(unique_encryption_key):
 async def test_migrated_columns_exist(unique_encryption_key):
     """Test that all migrated columns actually exist in the tables."""
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
 
     async with db.pool.acquire() as conn:
         # Check appointment_requests columns

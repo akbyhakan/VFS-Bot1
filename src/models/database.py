@@ -177,7 +177,7 @@ class Database:
 
     async def __aenter__(self) -> "Database":
         """Async context manager entry."""
-        await self.poolect()
+        await self.connect()
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

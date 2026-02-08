@@ -19,7 +19,7 @@ async def integration_db() -> AsyncGenerator[Database, None]:
         Database instance for testing
     """
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.poolect()
+    await db.connect()
     yield db
     await db.close()
 
@@ -334,7 +334,7 @@ class TestDatabaseIdleConnectionCleanup:
         from src.models.database import Database
 
         db = Database(database_url=DatabaseConfig.TEST_URL, pool_size=3)
-        await db.poolect()
+        await db.connect()
 
         try:
             # Get a connection and mark it with last_used time
