@@ -80,6 +80,46 @@ country_profiles:
     language: "fi"
     retry_multiplier: 1.0
 
+  est:  # Estonya
+    name: "Estonya"
+    name_en: "Estonia"
+    default_mode: "dynamic"
+    timezone: "Europe/Tallinn"
+    language: "et"
+    retry_multiplier: 1.0
+
+  isl:  # İzlanda
+    name: "İzlanda"
+    name_en: "Iceland"
+    default_mode: "dynamic"
+    timezone: "Atlantic/Reykjavik"
+    language: "is"
+    retry_multiplier: 1.0
+
+  ltu:  # Litvanya
+    name: "Litvanya"
+    name_en: "Lithuania"
+    default_mode: "dynamic"
+    timezone: "Europe/Vilnius"
+    language: "lt"
+    retry_multiplier: 1.0
+
+  lva:  # Letonya
+    name: "Letonya"
+    name_en: "Latvia"
+    default_mode: "dynamic"
+    timezone: "Europe/Riga"
+    language: "lv"
+    retry_multiplier: 1.0
+
+  mlt:  # Malta
+    name: "Malta"
+    name_en: "Malta"
+    default_mode: "dynamic"
+    timezone: "Europe/Malta"
+    language: "mt"
+    retry_multiplier: 1.0
+
   grc:  # Yunanistan
     name: "Yunanistan"
     name_en: "Greece"
