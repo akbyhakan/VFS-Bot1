@@ -81,8 +81,19 @@ class BookingValidator:
                 "message": "Randevu bilgisi bulunamadı (sayfa yapısı kontrol edildi)",
             }
 
-        found_capacity = int(match.group(1))
-        found_date = self.normalize_date(match.group(2))
+        try:
+            found_capacity = int(match.group(1))
+            found_date = self.normalize_date(match.group(2))
+        except (ValueError, IndexError) as e:
+            logger.error(f"Failed to parse regex match groups: {e}. Match: {match.group(0)}")
+            return {
+                "match": False,
+                "capacity_match": False,
+                "date_match": False,
+                "found_capacity": 0,
+                "found_date": None,
+                "message": f"Failed to parse appointment data: {e}",
+            }
 
         # 1. Kapasite eşleştirme
         capacity_match = found_capacity >= required_capacity

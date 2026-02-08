@@ -29,10 +29,14 @@ class BookingOrchestrator:
         Initialize booking orchestrator.
 
         Args:
-            config: Bot configuration
-            captcha_solver: Captcha solver instance
-            human_sim: Human simulator instance
+            config: Bot configuration dictionary
+            captcha_solver: Optional captcha solver instance
+            human_sim: Optional human simulator for realistic interactions
             payment_service: Optional PaymentService instance for PCI-DSS compliant payment processing
+
+        Example:
+            >>> config = {'vfs': {'form_wait_seconds': 21}}
+            >>> orchestrator = BookingOrchestrator(config=config)
         """
         self.config = config
         self.captcha_solver = captcha_solver

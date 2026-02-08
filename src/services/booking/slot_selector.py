@@ -58,10 +58,8 @@ class SlotSelector:
             Date string in DD/MM/YYYY format, or None if parsing fails
 
         Examples:
-            >>> parse_aria_label_to_date("23 Ocak 2026")
-            "23/01/2026"
-            >>> parse_aria_label_to_date("5 Şubat 2026")
-            "05/02/2026"
+            parse_aria_label_to_date("23 Ocak 2026") returns "23/01/2026"
+            parse_aria_label_to_date("5 Şubat 2026") returns "05/02/2026"
         """
         try:
             # aria-label format: "23 Ocak 2026"

@@ -61,6 +61,27 @@ class TestBookingPackageStructure:
         assert service.payment_handler is not None
         assert service.validator is not None
 
+    def test_booking_orchestrator_with_none_config(self):
+        """Test BookingOrchestrator handles None config gracefully."""
+        from src.services.booking import BookingOrchestrator
+
+        # Should not crash with None config
+        service = BookingOrchestrator(config={})
+        assert service.config == {}
+        assert service.form_filler is not None
+
+    def test_booking_orchestrator_with_missing_config_keys(self):
+        """Test BookingOrchestrator with minimal/missing config keys."""
+        from src.services.booking import BookingOrchestrator
+
+        # Empty config should not crash initialization
+        service = BookingOrchestrator(config={})
+        assert service.config == {}
+        
+        # Config with unexpected structure should not crash
+        service2 = BookingOrchestrator(config={"unknown": "value"})
+        assert service2.config == {"unknown": "value"}
+
     def test_form_filler_initialization(self):
         """Test FormFiller can be initialized."""
         from src.services.booking import FormFiller
