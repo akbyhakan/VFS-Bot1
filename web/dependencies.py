@@ -11,7 +11,7 @@ backward compatibility by re-exporting all these components.
 import logging
 from typing import Any, AsyncIterator, Dict
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.core.auth import verify_token
@@ -61,21 +61,44 @@ metrics = ThreadSafeMetrics()
 
 # Dependency functions
 async def verify_jwt_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    request: Request,
 ) -> Dict[str, Any]:
     """
-    Verify JWT token from Authorization header.
+    Verify JWT token from HttpOnly cookie or Authorization header.
+    
+    Cookie-based authentication is preferred for security (XSS protection).
+    Authorization header is kept for backward compatibility with API clients.
 
     Args:
-        credentials: HTTP authorization credentials
+        request: FastAPI request object
 
     Returns:
         Decoded token payload
 
     Raises:
-        HTTPException: If token is invalid
+        HTTPException: If token is invalid or missing
     """
-    token = credentials.credentials
+    from fastapi import HTTPException
+    
+    token = None
+    
+    # First, try to get token from HttpOnly cookie (primary method)
+    token = request.cookies.get("access_token")
+    
+    # Fallback to Authorization header (backward compatibility)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    
+    # If no token found in either location, reject request
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     return verify_token(token)
 
 
