@@ -19,6 +19,7 @@ from src.core.monitoring import init_sentry
 from src.core.runners import run_both_mode, run_bot_mode, run_web_mode
 from src.core.shutdown import setup_signal_handlers
 from src.core.startup import validate_environment, verify_critical_dependencies
+from src.core.startup_validator import log_security_warnings
 
 
 def main() -> None:
@@ -53,6 +54,7 @@ def main() -> None:
         logger.info("Phase 1 (Pre-flight): Starting environment validation...")
         validate_environment()
         EnvValidator.validate(strict=True)
+        log_security_warnings(strict=True)
         logger.info("Phase 1 (Pre-flight): Environment validation completed")
 
         # Phase 1: Pre-flight - Dependency verification

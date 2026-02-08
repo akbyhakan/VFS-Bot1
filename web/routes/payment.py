@@ -62,6 +62,13 @@ async def save_payment_card(
 
     Note: This is a personal bot where the user stores their own data
     on their own server. CVV is encrypted and stored for automatic payments.
+    
+    Validation is automatically handled by Pydantic PaymentCardRequest model:
+    - Card number: 13-19 digits, Luhn algorithm validated
+    - Cardholder name: 2-100 characters, letters and spaces only
+    - Expiry month: 01-12 format
+    - Expiry year: YY or YYYY format
+    - CVV: 3-4 digits only
 
     Args:
         card_data: Payment card data including CVV

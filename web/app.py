@@ -209,11 +209,18 @@ def get_real_client_ip(request: Request) -> str:
     return client_host if is_valid_ip(client_host) else "unknown"
 
 
+# Determine environment for OpenAPI configuration
+env = get_validated_environment()
+_is_dev = env in ("development", "dev", "local", "testing", "test")
+
 # Create FastAPI app with enhanced OpenAPI documentation and lifespan
 app = FastAPI(
     title="VFS-Bot Dashboard API",
     version="2.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _is_dev else None,
+    redoc_url="/redoc" if _is_dev else None,
+    openapi_url="/openapi.json" if _is_dev else None,
     description="""
 ## VFS Global Appointment Booking Bot API
 
@@ -305,7 +312,7 @@ API endpoints are rate-limited to prevent abuse:
 )
 
 # Run startup security validation
-log_security_warnings()
+log_security_warnings(strict=True)
 
 
 # Configure middleware (order matters!)
