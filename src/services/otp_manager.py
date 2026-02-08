@@ -489,6 +489,8 @@ class IMAPListener:
         session_registry: SessionRegistry,
         poll_interval: int = 3,
         max_email_age_seconds: int = 300,
+        max_processed_uids: int = 10000,
+        noop_interval_seconds: int = 120,
     ):
         """
         Initialize IMAP listener.
@@ -501,6 +503,8 @@ class IMAPListener:
             session_registry: Session registry instance
             poll_interval: Poll interval in seconds
             max_email_age_seconds: Maximum age of emails to process
+            max_processed_uids: Maximum size of processed UIDs set before cleanup
+            noop_interval_seconds: Interval for IMAP NOOP keepalive commands
         """
         self._email = email
         self._app_password = app_password
@@ -509,11 +513,20 @@ class IMAPListener:
         self._session_registry = session_registry
         self._poll_interval = poll_interval
         self._max_email_age = max_email_age_seconds
+        self._max_processed_uids = max_processed_uids
+        self._noop_interval = noop_interval_seconds
 
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._processed_uids: set = set()
         self._lock = threading.Lock()
+        
+        # Health tracking
+        self._last_noop_time = time.time()
+        self._connection_healthy = False
+        self._last_successful_poll: Optional[datetime] = None
+        self._total_reconnects = 0
+        self._consecutive_poll_errors = 0
 
     def start(self):
         """Start IMAP listener thread."""
@@ -557,21 +570,54 @@ class IMAPListener:
             mail = None
             try:
                 mail = self._connect_imap()
+                self._connection_healthy = True
+                self._last_noop_time = time.time()
                 reconnect_delay = 5  # Reset on successful connection
 
                 # Main poll loop
                 while self._running:
                     try:
+                        # Send NOOP keepalive if interval elapsed
+                        current_time = time.time()
+                        if current_time - self._last_noop_time >= self._noop_interval:
+                            try:
+                                mail.noop()
+                                self._last_noop_time = current_time
+                                logger.debug("IMAP NOOP keepalive sent")
+                            except Exception as e:
+                                logger.warning(f"NOOP keepalive failed: {e}")
+                                raise  # Trigger reconnection
+                        
                         self._poll_emails(mail)
+                        self._last_successful_poll = datetime.now(timezone.utc)
+                        self._consecutive_poll_errors = 0
+                        
+                        # Cleanup processed UIDs after successful poll
+                        self._cleanup_processed_uids()
+                        
                         time.sleep(self._poll_interval)
+                    except (imaplib.IMAP4.abort, imaplib.IMAP4.error) as e:
+                        # Protocol-level errors - reconnect immediately
+                        logger.error(f"IMAP protocol error: {e}")
+                        self._consecutive_poll_errors += 1
+                        break  # Reconnect
                     except Exception as e:
-                        logger.error(f"Error polling emails: {e}")
+                        self._consecutive_poll_errors += 1
+                        logger.error(f"Error polling emails (consecutive: {self._consecutive_poll_errors}): {e}")
+                        
+                        # Break after 5 consecutive errors
+                        if self._consecutive_poll_errors >= 5:
+                            logger.critical("5 consecutive poll errors - stopping IMAP listener")
+                            self._running = False
+                            break
                         break  # Reconnect
 
             except Exception as e:
                 logger.error(f"IMAP listener error: {e}")
+                self._total_reconnects += 1
 
             finally:
+                self._connection_healthy = False
                 if mail:
                     try:
                         mail.close()
@@ -581,7 +627,7 @@ class IMAPListener:
 
             # Wait before reconnecting
             if self._running:
-                logger.info(f"Reconnecting in {reconnect_delay}s...")
+                logger.info(f"Reconnecting in {reconnect_delay}s... (total reconnects: {self._total_reconnects})")
                 time.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
 
@@ -627,6 +673,41 @@ class IMAPListener:
                 logger.warning(f"Error processing email: {e}")
                 with self._lock:
                     self._processed_uids.discard(num)
+
+    def _cleanup_processed_uids(self) -> None:
+        """Clean up processed UIDs set to prevent unbounded memory growth."""
+        with self._lock:
+            current_size = len(self._processed_uids)
+            if current_size > self._max_processed_uids:
+                # Discard until size is max_processed_uids // 2
+                target_size = self._max_processed_uids // 2
+                to_remove = current_size - target_size
+                
+                # Convert to list and remove oldest (first) items
+                uid_list = list(self._processed_uids)
+                for uid in uid_list[:to_remove]:
+                    self._processed_uids.discard(uid)
+                
+                logger.info(
+                    f"Cleaned up processed UIDs: {current_size} -> {len(self._processed_uids)} "
+                    f"(removed {to_remove} oldest UIDs)"
+                )
+
+    def get_health(self) -> dict:
+        """
+        Get IMAP listener health status.
+        
+        Returns:
+            Dictionary with health metrics
+        """
+        with self._lock:
+            return {
+                "connected": self._connection_healthy,
+                "last_successful_poll": self._last_successful_poll.isoformat() if self._last_successful_poll else None,
+                "total_reconnects": self._total_reconnects,
+                "consecutive_poll_errors": self._consecutive_poll_errors,
+                "processed_uids_count": len(self._processed_uids),
+            }
 
 
 class SMSWebhookHandler:
@@ -1107,6 +1188,7 @@ class OTPManager:
                 "port": self._imap_config.port,
                 "folder": self._imap_config.folder,
             },
+            "imap_health": self._imap_listener.get_health(),
         }
 
 

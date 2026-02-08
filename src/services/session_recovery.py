@@ -1,4 +1,5 @@
 """Gelişmiş session recovery sistemi."""
+import asyncio
 import json
 import logging
 import os
@@ -166,3 +167,17 @@ class SessionRecovery:
             context: Dict[str, Any] = checkpoint.get("context", {})
             return context
         return {}
+
+    async def save_checkpoint_async(
+        self, step: str, user_id: int, context: Dict[str, Any]
+    ) -> None:
+        """Async wrapper for save_checkpoint — prevents blocking the event loop."""
+        await asyncio.to_thread(self.save_checkpoint, step, user_id, context)
+
+    async def load_checkpoint_async(self) -> Optional[Dict[str, Any]]:
+        """Async wrapper for load_checkpoint — prevents blocking the event loop."""
+        return await asyncio.to_thread(self.load_checkpoint)
+
+    async def clear_checkpoint_async(self) -> None:
+        """Async wrapper for clear_checkpoint."""
+        await asyncio.to_thread(self.clear_checkpoint)

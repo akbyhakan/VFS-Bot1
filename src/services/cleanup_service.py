@@ -70,25 +70,7 @@ class CleanupService:
                 )
                 return 0
 
-            deleted_count = 0
-            cutoff_time = datetime.now(timezone.utc).timestamp() - (
-                self.screenshot_cleanup_days * 24 * 3600
-            )
-
-            # Iterate through all files in screenshot directory
-            for screenshot_file in self.screenshot_dir.glob("*.png"):
-                try:
-                    # Check file modification time
-                    file_mtime = screenshot_file.stat().st_mtime
-
-                    if file_mtime < cutoff_time:
-                        screenshot_file.unlink()
-                        deleted_count += 1
-                        logger.debug(f"Deleted old screenshot: {screenshot_file.name}")
-
-                except Exception as e:
-                    logger.warning(f"Failed to delete screenshot {screenshot_file.name}: {e}")
-                    continue
+            deleted_count = await asyncio.to_thread(self._cleanup_screenshots_sync)
 
             if deleted_count > 0:
                 logger.info(
@@ -101,6 +83,30 @@ class CleanupService:
         except Exception as e:
             logger.error(f"Error during screenshot cleanup: {e}", exc_info=True)
             return 0
+
+    def _cleanup_screenshots_sync(self) -> int:
+        """Synchronous screenshot cleanup logic."""
+        deleted_count = 0
+        cutoff_time = datetime.now(timezone.utc).timestamp() - (
+            self.screenshot_cleanup_days * 24 * 3600
+        )
+
+        # Iterate through all files in screenshot directory
+        for screenshot_file in self.screenshot_dir.glob("*.png"):
+            try:
+                # Check file modification time
+                file_mtime = screenshot_file.stat().st_mtime
+
+                if file_mtime < cutoff_time:
+                    screenshot_file.unlink()
+                    deleted_count += 1
+                    logger.debug(f"Deleted old screenshot: {screenshot_file.name}")
+
+            except Exception as e:
+                logger.warning(f"Failed to delete screenshot {screenshot_file.name}: {e}")
+                continue
+
+        return deleted_count
 
     async def _send_critical_alert(self, message: str) -> None:
         """

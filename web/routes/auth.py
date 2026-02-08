@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
+# Process-level flag for one-time use enforcement
+_admin_secret_consumed = False
+
 
 @router.post("/generate-key")
 @limiter.limit("3/hour")
@@ -36,6 +39,17 @@ async def create_api_key_endpoint(
     Raises:
         HTTPException: If admin secret is invalid
     """
+    global _admin_secret_consumed
+    
+    # Check if admin secret has already been used
+    if _admin_secret_consumed:
+        client_ip = get_remote_address(request)
+        logger.warning(f"Attempt to reuse consumed admin secret from {client_ip}")
+        raise HTTPException(
+            status_code=403,
+            detail="Admin secret already used. Set a new ADMIN_SECRET in .env and restart the application to generate another key."
+        )
+    
     admin_secret = os.getenv("ADMIN_SECRET")
     if not admin_secret:
         raise HTTPException(status_code=500, detail="Server configuration error")
@@ -45,7 +59,15 @@ async def create_api_key_endpoint(
         raise HTTPException(status_code=403, detail="Invalid admin secret")
 
     new_key = generate_api_key()
-    return {"api_key": new_key, "note": "Save this key securely! It will not be shown again."}
+    
+    # Mark admin secret as consumed
+    _admin_secret_consumed = True
+    logger.info("Admin secret consumed - one-time use enforced")
+    
+    return {
+        "api_key": new_key,
+        "note": "Save this key securely! It will not be shown again. The admin secret is now invalidated and cannot be used again."
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
