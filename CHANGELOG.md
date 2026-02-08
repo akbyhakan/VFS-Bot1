@@ -70,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `src/models/database.py` to use encryption for VFS passwords
 - Added `ENCRYPTION_KEY` environment variable (required)
 - Added `get_active_users_with_decrypted_passwords()` method
-- **Migration required:** Existing users need to re-register with new password encryption
 
 #### Environment Variable Validation
 - Enhanced `src/core/env_validator.py` with format validation
@@ -164,7 +163,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added "Security Best Practices" section
 - Added "Testing" section with pytest examples
 - Added "Monitoring & Metrics" section with endpoint documentation
-- Added "Migration Guide (v2.0.0 → v2.1.0)"
 - Enhanced with Prometheus integration examples
 - Circuit breaker monitoring documentation
 

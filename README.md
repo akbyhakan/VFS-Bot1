@@ -456,7 +456,7 @@ Response:
 {
   "status": "healthy",
   "timestamp": "2026-01-09T15:30:00Z",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "components": {
     "database": true,
     "bot": true,
@@ -924,72 +924,6 @@ The circuit breaker prevents infinite error loops:
   - Circuit closes after successful operation
 
 Monitor via `/health` endpoint - status will be "degraded" when circuit is open.
-
-## 🔄 Migration Guide (v2.0.0 → v2.1.0)
-
-### Breaking Changes
-
-1. **Password Storage** - Passwords are now encrypted instead of hashed
-
-### Migration Steps
-
-1. **Update dependencies:**
-
-```bash
-pip install -r requirements.txt --upgrade
-```
-
-2. **Generate encryption key:**
-
-```bash
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-3. **Add to `.env`:**
-
-```env
-ENCRYPTION_KEY=<generated-key>
-```
-
-4. **Re-add users** - Existing users must be re-registered:
-
-```python
-# The old hashed passwords cannot be decrypted
-# Users need to update their passwords through the dashboard
-# Or use a migration script (see below)
-```
-
-5. **Optional: Migration script for existing users:**
-
-If you have users and know their original passwords:
-
-```python
-import asyncio
-from src.models.database import Database
-from src.utils.encryption import encrypt_password
-
-async def migrate_user(db, user_id, plaintext_password):
-    """Migrate a single user to encrypted password."""
-    encrypted = encrypt_password(plaintext_password)
-    # Update user password directly
-    async with db.pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE users SET password = $1 WHERE id = $2",
-            encrypted, user_id
-        )
-
-# Run migration
-async def main():
-    db = Database()
-    await db.connect()
-    # Update each user with their original password
-    await migrate_user(db, user_id=1, plaintext_password="original_password")
-    await db.close()
-
-asyncio.run(main())
-```
-
-⚠️ **Important:** Without the original plaintext passwords, users must re-register.
 
 ## 🤝 Contributing
 
