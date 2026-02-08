@@ -49,28 +49,35 @@ def main() -> None:
     setup_signal_handlers()
 
     try:
-        # Initialize Sentry monitoring
-        init_sentry()
-
-        # Verify critical dependencies
-        verify_critical_dependencies()
-
-        # Validate environment variables
-        logger.info("Validating environment variables...")
+        # Phase 1: Pre-flight - Environment validation
+        logger.info("Phase 1 (Pre-flight): Starting environment validation...")
         validate_environment()
         EnvValidator.validate(strict=True)
+        logger.info("Phase 1 (Pre-flight): Environment validation completed")
 
-        # Load configuration
-        logger.info("Loading configuration...")
+        # Phase 1: Pre-flight - Dependency verification
+        logger.info("Phase 1 (Pre-flight): Verifying critical dependencies...")
+        verify_critical_dependencies()
+        logger.info("Phase 1 (Pre-flight): Critical dependencies verified")
+
+        # Phase 2: Monitoring - Initialize Sentry (now that env vars are validated)
+        logger.info("Phase 2 (Monitoring): Initializing Sentry monitoring...")
+        init_sentry()
+        logger.info("Phase 2 (Monitoring): Sentry monitoring initialized")
+
+        # Phase 3: Config - Load and validate configuration
+        logger.info("Phase 3 (Config): Loading configuration...")
         config = load_config(args.config)
-        logger.info("Configuration loaded successfully")
+        logger.info("Phase 3 (Config): Configuration loaded successfully")
 
-        # Validate config
+        logger.info("Phase 3 (Config): Validating configuration...")
         if not ConfigValidator.validate(config):
-            logger.error("Invalid configuration, exiting...")
+            logger.error("Phase 3 (Config): Invalid configuration, exiting...")
             sys.exit(1)
+        logger.info("Phase 3 (Config): Configuration validation completed")
 
-        # Run in selected mode
+        # Phase 4: Run - Start application in selected mode
+        logger.info(f"Phase 4 (Run): Starting application in '{args.mode}' mode...")
         if args.mode == "bot":
             asyncio.run(run_bot_mode(config))
         elif args.mode == "web":
