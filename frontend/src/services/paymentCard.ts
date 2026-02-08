@@ -31,7 +31,25 @@ export const paymentCardApi = {
   async savePaymentCard(
     cardData: PaymentCardRequest
   ): Promise<{ success: boolean; card_id: number; message: string }> {
-    return await api.post('/api/payment-card', cardData);
+    try {
+      return await api.post('/api/payment-card', cardData);
+    } catch (error: unknown) {
+      // Handle 422 validation errors from Pydantic
+      if (isApiError(error) && error.response?.status === 422) {
+        const detail = error.response.data?.detail;
+        if (Array.isArray(detail)) {
+          // Extract field-specific validation errors
+          const fieldErrors = detail
+            .map((err: { loc: string[]; msg: string }) => {
+              const field = err.loc[err.loc.length - 1];
+              return `${field}: ${err.msg}`;
+            })
+            .join('; ');
+          throw new Error(`Validation error: ${fieldErrors}`);
+        }
+      }
+      throw error;
+    }
   },
 
   /**

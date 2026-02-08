@@ -515,3 +515,224 @@ class TestNewExceptionTypes:
         assert error_dict["details"]["operation"] == "update_users_batch"
         assert error_dict["details"]["failed_count"] == 3
         assert error_dict["details"]["success_count"] == 7
+
+
+class TestStartupValidatorStrictMode:
+    """Test startup validator strict mode functionality."""
+
+    def test_strict_mode_raises_system_exit_in_production(self):
+        """Test that strict mode raises SystemExit in production with placeholder secrets."""
+        from src.core.startup_validator import log_security_warnings
+
+        old_env = os.getenv("ENV")
+        old_api_key = os.getenv("API_SECRET_KEY")
+
+        try:
+            # Set production environment with placeholder secret
+            os.environ["ENV"] = "production"
+            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+
+            # Should raise SystemExit in strict mode
+            with pytest.raises(SystemExit) as exc_info:
+                log_security_warnings(strict=True)
+
+            assert exc_info.value.code == 1
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_api_key:
+                os.environ["API_SECRET_KEY"] = old_api_key
+            elif "API_SECRET_KEY" in os.environ:
+                del os.environ["API_SECRET_KEY"]
+
+    def test_strict_mode_does_not_raise_in_development(self):
+        """Test that strict mode does not raise in development environment."""
+        from src.core.startup_validator import log_security_warnings
+
+        old_env = os.getenv("ENV")
+        old_api_key = os.getenv("API_SECRET_KEY")
+
+        try:
+            # Set development environment with placeholder secret
+            os.environ["ENV"] = "development"
+            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+
+            # Should not raise in development
+            result = log_security_warnings(strict=True)
+            # Returns True because no warnings in development (env check skips validation)
+            assert result is True
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_api_key:
+                os.environ["API_SECRET_KEY"] = old_api_key
+            elif "API_SECRET_KEY" in os.environ:
+                del os.environ["API_SECRET_KEY"]
+
+    def test_non_strict_mode_returns_false_but_no_exit(self):
+        """Test that non-strict mode returns False but does not exit."""
+        from src.core.startup_validator import log_security_warnings
+
+        old_env = os.getenv("ENV")
+        old_api_key = os.getenv("API_SECRET_KEY")
+
+        try:
+            # Set production environment with placeholder secret
+            os.environ["ENV"] = "production"
+            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+
+            # Should not raise, just return False
+            result = log_security_warnings(strict=False)
+            assert result is False
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_api_key:
+                os.environ["API_SECRET_KEY"] = old_api_key
+            elif "API_SECRET_KEY" in os.environ:
+                del os.environ["API_SECRET_KEY"]
+
+    def test_strict_mode_passes_with_valid_secrets(self):
+        """Test that strict mode passes with properly generated secrets."""
+        from cryptography.fernet import Fernet
+
+        from src.core.startup_validator import log_security_warnings
+
+        old_env = os.getenv("ENV")
+        old_api_key = os.getenv("API_SECRET_KEY")
+        old_enc_key = os.getenv("ENCRYPTION_KEY")
+        old_vfs_key = os.getenv("VFS_ENCRYPTION_KEY")
+
+        try:
+            # Set production environment with valid secrets
+            os.environ["ENV"] = "production"
+            os.environ["API_SECRET_KEY"] = "a" * 64  # Valid 64-char secret
+            os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()  # Valid encryption key
+            os.environ["VFS_ENCRYPTION_KEY"] = "b" * 32  # Valid 32-char key
+
+            # Should pass and return True
+            result = log_security_warnings(strict=True)
+            assert result is True
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_api_key:
+                os.environ["API_SECRET_KEY"] = old_api_key
+            elif "API_SECRET_KEY" in os.environ:
+                del os.environ["API_SECRET_KEY"]
+
+            if old_enc_key:
+                os.environ["ENCRYPTION_KEY"] = old_enc_key
+            elif "ENCRYPTION_KEY" in os.environ:
+                del os.environ["ENCRYPTION_KEY"]
+
+            if old_vfs_key:
+                os.environ["VFS_ENCRYPTION_KEY"] = old_vfs_key
+            elif "VFS_ENCRYPTION_KEY" in os.environ:
+                del os.environ["VFS_ENCRYPTION_KEY"]
+
+
+class TestOpenAPISecurityConfig:
+    """Test OpenAPI docs security configuration."""
+
+    def test_openapi_disabled_in_production(self):
+        """Test that OpenAPI docs are disabled in production environment."""
+        from unittest.mock import patch
+
+        old_env = os.getenv("ENV")
+        old_cors = os.getenv("CORS_ALLOWED_ORIGINS")
+
+        try:
+            # Set production environment with valid CORS
+            os.environ["ENV"] = "production"
+            os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+
+            # Need to reload the app module to pick up new environment
+            with patch.dict(os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}):
+                # Import after setting environment
+                import importlib
+
+                import web.app
+
+                importlib.reload(web.app)
+
+                # Check that docs URLs are None in production
+                assert web.app.app.docs_url is None
+                assert web.app.app.redoc_url is None
+                assert web.app.app.openapi_url is None
+
+        finally:
+            # Restore original environment
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_cors:
+                os.environ["CORS_ALLOWED_ORIGINS"] = old_cors
+            elif "CORS_ALLOWED_ORIGINS" in os.environ:
+                del os.environ["CORS_ALLOWED_ORIGINS"]
+
+            # Reload app to restore original state
+            import importlib
+
+            import web.app
+
+            importlib.reload(web.app)
+
+    def test_openapi_enabled_in_development(self):
+        """Test that OpenAPI docs are enabled in development environment."""
+        from unittest.mock import patch
+
+        old_env = os.getenv("ENV")
+
+        try:
+            # Set development environment
+            os.environ["ENV"] = "development"
+
+            with patch.dict(os.environ, {"ENV": "development"}):
+                # Import after setting environment
+                import importlib
+
+                import web.app
+
+                importlib.reload(web.app)
+
+                # Check that docs URLs are set in development
+                assert web.app.app.docs_url == "/docs"
+                assert web.app.app.redoc_url == "/redoc"
+                assert web.app.app.openapi_url == "/openapi.json"
+
+        finally:
+            # Restore original environment
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            # Reload app to restore original state
+            import importlib
+
+            import web.app
+
+            importlib.reload(web.app)

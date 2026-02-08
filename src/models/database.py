@@ -1793,6 +1793,28 @@ class Database:
             if field not in card_data:
                 raise ValueError(f"Missing required field: {field}")
 
+        # Defensive validation (defense-in-depth)
+        card_number = card_data["card_number"]
+        expiry_month = card_data["expiry_month"]
+        cvv = card_data["cvv"]
+
+        # Validate card_number: only digits, length 13-19
+        if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
+            raise ValueError("Card number must be 13-19 digits")
+
+        # Validate expiry_month: must be 01-12
+        try:
+            month = int(expiry_month)
+        except ValueError:
+            raise ValueError("Invalid expiry month format")
+        
+        if not (1 <= month <= 12):
+            raise ValueError("Expiry month must be between 01 and 12")
+
+        # Validate CVV: only digits, length 3-4
+        if not cvv.isdigit() or not (3 <= len(cvv) <= 4):
+            raise ValueError("CVV must be 3-4 digits")
+
         # Encrypt sensitive data (card number and CVV)
         card_number_encrypted = encrypt_password(card_data["card_number"])
         cvv_encrypted = encrypt_password(card_data["cvv"])

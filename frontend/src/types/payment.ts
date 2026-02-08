@@ -12,10 +12,15 @@ export interface PaymentCard {
 }
 
 export interface PaymentCardRequest {
+  /** Card holder name: 2-100 characters, letters and spaces only */
   card_holder_name: string;
+  /** Card number: 13-19 digits only, validated with Luhn algorithm */
   card_number: string;
+  /** Expiry month: 01-12 format */
   expiry_month: string;
+  /** Expiry year: YY or YYYY format */
   expiry_year: string;
+  /** CVV: 3-4 digits only */
   cvv: string;
 }
 

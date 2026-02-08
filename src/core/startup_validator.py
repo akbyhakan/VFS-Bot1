@@ -13,6 +13,10 @@ DANGEROUS_DEFAULTS = frozenset({
     "your-base64-encoded-encryption-key-here",
     "your-32-byte-encryption-key-here",
     "your-secure-api-key-here",
+    "one-time-secret-for-key-generation",
+    "your-api-key-here",
+    "change-me",
+    "CHANGE_ME",
 })
 
 
@@ -54,6 +58,8 @@ def validate_production_security() -> List[str]:
         "API_SECRET_KEY": 64,
         "ENCRYPTION_KEY": 32,
         "VFS_ENCRYPTION_KEY": 32,
+        "DASHBOARD_API_KEY": 32,
+        "ADMIN_SECRET": 32,
     }
     for key, min_length in security_vars.items():
         value = os.getenv(key, "")
@@ -63,30 +69,53 @@ def validate_production_security() -> List[str]:
                 f"(minimum {min_length} characters required)."
             )
 
+    # Check DATABASE_URL
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url or database_url in DANGEROUS_DEFAULTS:
+        warnings.append(
+            "DATABASE_URL is empty or contains placeholder value. "
+            "Set a valid database connection string."
+        )
+
     return warnings
 
 
-def log_security_warnings() -> bool:
+def log_security_warnings(strict: bool = False) -> bool:
     """
     Log security warnings at startup.
 
+    Args:
+        strict: If True, raise SystemExit in production/staging when warnings exist
+
     Returns:
         True if no critical warnings found, False otherwise
+
+    Raises:
+        SystemExit: If strict=True and warnings exist in production/staging
     """
+    env = os.getenv("ENV", "production").lower()
     warnings = validate_production_security()
 
     if not warnings:
         logger.info("Startup security validation passed")
         return True
 
-    logger.warning("=" * 60)
-    logger.warning("SECURITY CONFIGURATION WARNINGS")
-    logger.warning("=" * 60)
+    # In strict mode with production/staging, use critical logging
+    log_func = logger.critical if (strict and env in ("production", "staging")) else logger.warning
+
+    log_func("=" * 60)
+    log_func("SECURITY CONFIGURATION WARNINGS")
+    log_func("=" * 60)
     for warning in warnings:
-        logger.warning(f"⚠️  {warning}")
-    logger.warning("=" * 60)
-    logger.warning(
+        log_func(f"⚠️  {warning}")
+    log_func("=" * 60)
+    log_func(
         "Fix these issues or set ENV=development to suppress these warnings."
     )
+
+    # In strict mode, exit if in production or staging
+    if strict and env in ("production", "staging"):
+        logger.critical("CRITICAL: Exiting due to security warnings in strict mode")
+        raise SystemExit(1)
 
     return False
