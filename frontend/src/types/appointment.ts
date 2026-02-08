@@ -1,3 +1,5 @@
+import { AppointmentRequestStatus } from './enums';
+
 export interface AppointmentPerson {
   first_name: string;
   last_name: string;
@@ -43,7 +45,7 @@ export interface AppointmentRequestResponse {
   centres: string[];
   preferred_dates: string[];
   person_count: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: AppointmentRequestStatus;
   created_at: string;
   completed_at?: string;
   persons: AppointmentPersonResponse[];

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.core.enums import AppointmentStatus
 from src.models.schemas import (
     AppointmentCreate,
     AppointmentResponse,
@@ -91,12 +92,12 @@ def test_appointment_response_valid():
         category="Tourism",
         appointment_date="2024-01-15",
         appointment_time="10:00",
-        status="confirmed",
+        status=AppointmentStatus.CONFIRMED.value,
         created_at=now,
     )
 
     assert appt.id == 1
-    assert appt.status == "confirmed"
+    assert appt.status == AppointmentStatus.CONFIRMED.value
 
 
 def test_bot_config_defaults():
@@ -200,7 +201,7 @@ def test_appointment_response_config():
         category="Tourism",
         appointment_date="2024-01-15",
         appointment_time="10:00",
-        status="confirmed",
+        status=AppointmentStatus.CONFIRMED.value,
         created_at=now,
     )
 

@@ -835,132 +835,38 @@ class Database:
 
     async def _run_versioned_migrations(self) -> None:
         """
-        Run versioned database migrations.
+        DEPRECATED: Run versioned database migrations.
 
-        This method implements a versioning system for database migrations.
-        Each migration is tracked in the schema_migrations table to ensure
-        it only runs once. Provides backward compatibility with existing
-        databases by detecting already-applied changes.
+        This method is deprecated in favor of Alembic migrations.
+        It now only logs a message directing users to use Alembic.
         
-        Note: Requires PostgreSQL 9.6+ for ADD COLUMN IF NOT EXISTS syntax.
+        **Migration to Alembic:**
+        - In-code migrations are no longer used
+        - Use `alembic upgrade head` to apply new migrations
+        - See alembic/versions/ for migration files
         """
-        if self.pool is None:
-            raise RuntimeError("Database connection is not established.")
-
-        # Whitelist of valid table names for security
-        VALID_TABLES = frozenset({
-            "appointment_requests",
-            "appointment_persons",
-            "payment_card",
-            "users",
-            "personal_details",
-            "appointments",
-            "logs",
-            "audit_log",
-            "appointment_history",
-            "user_webhooks",
-            "proxy_endpoints",
-            "token_blacklist",
-        })
-
-        # Use class-level migrations constant
-        migrations = self.MIGRATIONS
-
-        # Validate all migration table names against whitelist
-        for migration in migrations:
-            if migration["table"] not in VALID_TABLES:
-                raise ValueError(
-                    f"Invalid table name in migration v{migration['version']}: "
-                    f"{migration['table']}"
-                )
-
-        async with self.pool.acquire() as conn:
-            # Get applied migrations
-            applied_versions = {
-                row["version"]
-                for row in await conn.fetch("SELECT version FROM schema_migrations ORDER BY version")
-            }
-
-            # Backward compatibility: Check if migrations already applied
-            # If schema_migrations is empty but columns exist, mark as applied
-            if not applied_versions:
-                for migration in migrations:
-                    # Check if column exists in PostgreSQL
-                    column_exists = await conn.fetchval(
-                        """
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name = $1 AND column_name = $2
-                        )
-                        """,
-                        migration["table"],
-                        migration["column"],
-                    )
-
-                    if column_exists:
-                        # Column exists, mark migration as applied
-                        await conn.execute(
-                            """INSERT INTO schema_migrations (version, description)
-                               VALUES ($1, $2)""",
-                            migration["version"],
-                            migration["description"],
-                        )
-                        applied_versions.add(migration["version"])
-                        logger.info(
-                            f"Migration v{migration['version']} already applied "
-                            f"(backward compatibility): {migration['description']}"
-                        )
-
-            # Determine pending migrations
-            pending_migrations = [m for m in migrations if m["version"] not in applied_versions]
-
-            # Apply pending migrations
-            for migration in pending_migrations:
-
-                # Run migration in its own transaction
-                try:
-                    logger.info(f"Applying migration v{migration['version']}: {migration['description']}")
-
-                    async with conn.transaction():
-                        # Execute the migration SQL
-                        await conn.execute(migration["sql"])
-
-                        # Execute default value update if provided
-                        if migration.get("default_sql"):
-                            await conn.execute(migration["default_sql"])
-
-                        # Execute custom data migration function if provided
-                        if migration.get("data_migration_func"):
-                            logger.info(f"Running custom data migration for v{migration['version']}")
-                            await migration["data_migration_func"](conn)
-
-                        # Record migration
-                        await conn.execute(
-                            """INSERT INTO schema_migrations (version, description)
-                               VALUES ($1, $2)""",
-                            migration["version"],
-                            migration["description"],
-                        )
-
-                    logger.info(f"Migration v{migration['version']} completed successfully")
-
-                except Exception as e:
-                    logger.error(f"Migration v{migration['version']} failed: {e}")
-                    # Re-raise to prevent partial migration state
-                    raise
-
-            logger.info("All schema migrations completed")
+        logger.warning(
+            "In-code migrations are deprecated. "
+            "Database schema migrations are now managed by Alembic. "
+            "Run 'alembic upgrade head' to apply pending migrations."
+        )
 
     def _get_migration_by_version(self, version: int) -> Optional[Dict[str, Any]]:
         """
-        Get migration definition by version number.
+        DEPRECATED: Get migration definition by version number.
 
+        This method is deprecated in favor of Alembic migrations.
+        
         Args:
             version: Migration version number
 
         Returns:
             Migration dict if found, None otherwise
         """
+        logger.warning(
+            "In-code migration system is deprecated. "
+            "Use Alembic for database migrations."
+        )
         # Use class-level migrations constant
         for migration in self.MIGRATIONS:
             if migration["version"] == version:
@@ -969,10 +875,10 @@ class Database:
 
     async def rollback_migration(self, target_version: int) -> None:
         """
-        Rollback migrations to a target version.
+        DEPRECATED: Rollback migrations to a target version.
 
-        This method rolls back all migrations with versions greater than target_version.
-        Migrations are rolled back in reverse order (highest version first).
+        This method is deprecated in favor of Alembic migrations.
+        Use `alembic downgrade <target>` to rollback migrations.
 
         Args:
             target_version: Target version to rollback to (exclusive)
@@ -981,6 +887,11 @@ class Database:
             RuntimeError: If database connection is not established
             ValueError: If a migration lacks rollback_sql
         """
+        logger.warning(
+            "In-code migration rollback is deprecated. "
+            "Use 'alembic downgrade <target>' to rollback migrations."
+        )
+        
         if self.pool is None:
             raise RuntimeError("Database connection is not established.")
 
