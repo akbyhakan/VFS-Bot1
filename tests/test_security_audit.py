@@ -1,7 +1,6 @@
 """Security audit tests."""
 
 import os
-import sqlite3
 
 import pytest
 
@@ -42,14 +41,16 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
     """
     db = database
 
-    # Get table schema
+    # Get table schema from PostgreSQL information_schema
     async with db.get_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("PRAGMA table_info(payment_card)")
-            columns_info = await cursor.fetchall()
+        columns_info = await conn.fetch("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'payment_card'
+        """)
 
     # Extract column names
-    columns = [col[1] for col in columns_info]
+    columns = [col['column_name'] for col in columns_info]
 
     # Verify CVV is stored encrypted (not plain text)
     assert "cvv_encrypted" in columns  # CVV is stored encrypted for personal bot use
@@ -155,10 +156,8 @@ async def test_password_encryption_in_database(database):
 
     # Read password directly from database
     async with db.get_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
-            row = await cursor.fetchone()
-            stored_password = row[0]
+        row = await conn.fetchrow("SELECT password FROM users WHERE id = $1", user_id)
+        stored_password = row['password']
 
     # Verify password is encrypted (not plaintext)
     assert stored_password != plaintext_password

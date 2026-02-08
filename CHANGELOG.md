@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated Database class to use asyncpg connection pooling
   - Changed initialization parameter from `db_path` to `database_url`
   - Updated DatabaseFactory to use `database_url` instead of `db_path`
+  - Environment variable changed from `DATABASE_PATH` to `DATABASE_URL`
+  - Updated database operations to use asyncpg patterns (direct methods instead of cursor)
 
 ## [2.2.0] - 2026-01-24
 

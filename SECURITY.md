@@ -35,6 +35,7 @@ Please report (suspected) security vulnerabilities through [GitHub Security Advi
 ## Known Security Considerations
 
 - **Credential Storage**: All sensitive data must be stored in `.env` file
+- **Database Security**: PostgreSQL connection URL should use strong passwords and TLS encryption
 - **API Keys**: Captcha solver API keys should be kept private
 - **Browser Automation**: Bot runs with real browser, avoid running on untrusted networks
 - **Rate Limiting**: VFS Global may implement rate limiting or CAPTCHA challenges

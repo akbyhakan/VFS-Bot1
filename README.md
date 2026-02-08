@@ -947,12 +947,11 @@ async def migrate_user(db, user_id, plaintext_password):
     """Migrate a single user to encrypted password."""
     encrypted = encrypt_password(plaintext_password)
     # Update user password directly
-    async with db.conn.cursor() as cursor:
-        await cursor.execute(
-            "UPDATE users SET password = ? WHERE id = ?",
-            (encrypted, user_id)
+    async with db.pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET password = $1 WHERE id = $2",
+            encrypted, user_id
         )
-    await db.conn.commit()
 
 # Run migration
 async def main():

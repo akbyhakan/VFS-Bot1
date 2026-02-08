@@ -3,6 +3,7 @@
 import pytest
 from cryptography.fernet import Fernet
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 
@@ -29,10 +30,9 @@ def unique_encryption_key(monkeypatch):
 
 
 @pytest.fixture
-async def test_db(tmp_path, unique_encryption_key):
+async def test_db(unique_encryption_key):
     """Create a test database."""
-    db_path = tmp_path / "test_validation.db"
-    db = Database(str(db_path))
+    db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
     # Add a test user

@@ -128,7 +128,7 @@ def test_settings_default_values():
 
         # Check defaults
         assert settings.env == "production"
-        assert settings.database_path == "vfs_bot.db"
+        assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
         assert settings.db_pool_size == 10
         assert settings.db_connection_timeout == 30.0
         assert settings.rate_limit_enabled is True

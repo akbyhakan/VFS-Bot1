@@ -278,9 +278,9 @@ async def check_database_health() -> bool:
     import time
 
     try:
-        from src.models.database import Database
+        from src.models.database_factory import DatabaseFactory
 
-        db = Database()
+        db = await DatabaseFactory.get_instance()
         await db.connect()
         try:
             start_time = time.time()
@@ -301,9 +301,9 @@ async def check_database() -> Dict[str, Any]:
     import time
 
     try:
-        from src.models.database import Database
+        from src.models.database_factory import DatabaseFactory
 
-        db = Database()
+        db = await DatabaseFactory.get_instance()
         await db.connect()
         try:
             start_time = time.time()

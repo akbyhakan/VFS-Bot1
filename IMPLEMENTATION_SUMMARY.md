@@ -208,20 +208,29 @@ addopts =
 ```python
 async def add_users_batch(self, users: List[Dict[str, Any]]) -> List[int]:
     """Add multiple users in a single transaction."""
-    async with self.get_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.executemany(
-                "INSERT INTO users (email, password, ...) VALUES (?, ?, ...)",
-                user_data
-            )
-            await conn.commit()
-            # Return list of inserted IDs
-            ...
+    async with self.pool.acquire() as conn:
+        async with conn.transaction():
+            user_ids = []
+            for user in users:
+                user_id = await conn.fetchval(
+                    "INSERT INTO users (email, password, ...) VALUES ($1, $2, ...) RETURNING id",
+                    user['email'], user['password'], ...
+                )
+                user_ids.append(user_id)
+            return user_ids
 
 async def update_users_batch(self, updates: List[Dict[str, Any]]) -> int:
     """Update multiple users in a single transaction."""
-    # Process all updates within single transaction
-    ...
+    async with self.pool.acquire() as conn:
+        async with conn.transaction():
+            count = 0
+            for update in updates:
+                await conn.execute(
+                    "UPDATE users SET ... WHERE id = $1",
+                    update['id']
+                )
+                count += 1
+            return count
 ```
 
 **Tests**: 

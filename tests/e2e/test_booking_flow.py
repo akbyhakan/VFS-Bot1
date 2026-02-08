@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 
@@ -12,11 +13,10 @@ class TestBookingFlow:
     """E2E tests for the booking flow."""
 
     @pytest.mark.asyncio
-    async def test_full_booking_flow_success(self, tmp_path):
+    async def test_full_booking_flow_success(self):
         """Test complete booking flow from login to confirmation."""
         # Setup test database
-        db_path = tmp_path / "e2e_test.db"
-        db = Database(str(db_path))
+        db = Database(database_url=DatabaseConfig.TEST_URL)
         await db.connect()
 
         try:
@@ -91,10 +91,9 @@ class TestBookingFlow:
         return "captcha_solution"
 
     @pytest.mark.asyncio
-    async def test_booking_flow_slot_not_available(self, tmp_path):
+    async def test_booking_flow_slot_not_available(self):
         """Test flow when no slots are available."""
-        db_path = tmp_path / "e2e_no_slots.db"
-        db = Database(str(db_path))
+        db = Database(database_url=DatabaseConfig.TEST_URL)
         await db.connect()
 
         try:
@@ -180,12 +179,11 @@ class TestBookingFlow:
             assert otp_received.isdigit()
 
     @pytest.mark.asyncio
-    async def test_concurrent_booking_attempts(self, tmp_path):
+    async def test_concurrent_booking_attempts(self):
         """Test that concurrent booking attempts are handled correctly."""
         import asyncio
 
-        db_path = tmp_path / "e2e_concurrent.db"
-        db = Database(str(db_path))
+        db = Database(database_url=DatabaseConfig.TEST_URL)
         await db.connect()
 
         try:
