@@ -1,11 +1,13 @@
 """Load tests for concurrent operations."""
 
 import asyncio
+import os
 import time
 from pathlib import Path
 
 import pytest
 
+from src.constants import Database as DbConstants
 from src.models.database import Database
 from src.utils.security.rate_limiter import RateLimiter, reset_rate_limiter
 
@@ -79,9 +81,6 @@ class TestConcurrentLoad:
     @pytest.mark.slow
     async def test_database_concurrent_writes(self):
         """Test database under concurrent write load."""
-        from src.constants import Database as DbConstants
-        import os
-        
         database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
         db = Database(database_url=database_url, pool_size=10)
         await db.connect()
@@ -120,9 +119,6 @@ class TestConcurrentLoad:
     @pytest.mark.slow
     async def test_database_concurrent_reads(self):
         """Test database under concurrent read load."""
-        from src.constants import Database as DbConstants
-        import os
-        
         database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
         db = Database(database_url=database_url, pool_size=10)
         await db.connect()
@@ -165,9 +161,6 @@ class TestConcurrentLoad:
     @pytest.mark.slow
     async def test_mixed_read_write_load(self):
         """Test database with mixed read and write operations."""
-        from src.constants import Database as DbConstants
-        import os
-        
         database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
         db = Database(database_url=database_url, pool_size=10)
         await db.connect()
@@ -232,9 +225,6 @@ class TestConcurrentLoad:
     @pytest.mark.slow
     async def test_connection_pool_stress(self):
         """Stress test connection pool with sustained load."""
-        from src.constants import Database as DbConstants
-        import os
-        
         database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
         db = Database(database_url=database_url, pool_size=5)  # Small pool for stress testing
         await db.connect()
@@ -276,9 +266,6 @@ class TestConcurrentLoad:
     @pytest.mark.slow
     async def test_sustained_load_over_time(self):
         """Test sustained load over a longer period."""
-        from src.constants import Database as DbConstants
-        import os
-        
         database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
         db = Database(database_url=database_url, pool_size=10)
         await db.connect()

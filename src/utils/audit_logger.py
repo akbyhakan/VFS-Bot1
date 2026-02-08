@@ -237,24 +237,22 @@ class AuditLogger:
 
         try:
             async with self.db.get_connection() as conn:
-                query = "SELECT * FROM audit_log WHERE 1=1"
+                # Build query parts separately to avoid f-string SQL injection risks
+                query_parts = ["SELECT * FROM audit_log WHERE 1=1"]
                 params: List[Union[str, int]] = []
-                param_count = 0
 
                 if action:
-                    param_count += 1
-                    query += f" AND action = ${param_count}"
                     params.append(action.value)
+                    query_parts.append(f"AND action = ${len(params)}")
 
                 if user_id:
-                    param_count += 1
-                    query += f" AND user_id = ${param_count}"
                     params.append(user_id)
+                    query_parts.append(f"AND user_id = ${len(params)}")
 
-                param_count += 1
-                query += f" ORDER BY timestamp DESC LIMIT ${param_count}"
                 params.append(limit)
+                query_parts.append(f"ORDER BY timestamp DESC LIMIT ${len(params)}")
 
+                query = " ".join(query_parts)
                 rows = await conn.fetch(query, *params)
                 return [dict(row) for row in rows]
         except Exception as e:

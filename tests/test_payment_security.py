@@ -1,8 +1,11 @@
 """Tests for payment card security with CVV encryption."""
 
+import os
+
 import pytest
 from cryptography.fernet import Fernet
 
+from src.constants import Database as DbConstants
 from src.models.database import Database
 from src.utils.encryption import reset_encryption
 
@@ -22,9 +25,6 @@ def unique_encryption_key(monkeypatch):
 @pytest.fixture
 async def test_db(unique_encryption_key):
     """Create a test database."""
-    from src.constants import Database as DbConstants
-    import os
-    
     database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
     db = Database(database_url=database_url)
     await db.connect()
