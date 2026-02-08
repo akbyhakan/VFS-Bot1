@@ -112,7 +112,9 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
 
         return self._dict_to_appointment_request(request_dict)
 
-    async def get_all(self, limit: int = 100, status: Optional[str] = None) -> List[AppointmentRequest]:
+    async def get_all(
+        self, limit: int = 100, status: Optional[str] = None
+    ) -> List[AppointmentRequest]:
         """
         Get all appointment requests (delegates to Database.get_all_appointment_requests).
 
@@ -175,14 +177,11 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         """
         # For status updates, use update_status method
         if "status" in data:
-            return await self.update_status(
-                id,
-                data["status"],
-                data.get("completed_at")
-            )
+            return await self.update_status(id, data["status"], data.get("completed_at"))
 
         # For other updates, build dynamic query
         import json
+
         update_fields = []
         values = []
         param_num = 1
@@ -200,10 +199,12 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         if not update_fields:
             return False
 
-        update_fields.append(f"updated_at = NOW()")
+        update_fields.append("updated_at = NOW()")
         values.append(id)
 
-        query = f"UPDATE appointment_requests SET {', '.join(update_fields)} WHERE id = ${param_num}"
+        query = "UPDATE appointment_requests SET {} WHERE id = ${}".format(
+            ", ".join(update_fields), param_num
+        )
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *values)

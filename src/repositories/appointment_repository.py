@@ -188,8 +188,15 @@ class AppointmentRepository(BaseRepository[Appointment]):
         param_num = 1
 
         for key, value in data.items():
-            if key in ["centre", "category", "subcategory", "appointment_date", 
-                      "appointment_time", "reference_number", "status"]:
+            if key in [
+                "centre",
+                "category",
+                "subcategory",
+                "appointment_date",
+                "appointment_time",
+                "reference_number",
+                "status",
+            ]:
                 update_fields.append(f"{key} = ${param_num}")
                 values.append(value)
                 param_num += 1
@@ -197,10 +204,12 @@ class AppointmentRepository(BaseRepository[Appointment]):
         if not update_fields:
             return False
 
-        update_fields.append(f"updated_at = NOW()")
+        update_fields.append("updated_at = NOW()")
         values.append(id)
 
-        query = f"UPDATE appointments SET {', '.join(update_fields)} WHERE id = ${param_num}"
+        query = "UPDATE appointments SET {} WHERE id = ${}".format(
+            ", ".join(update_fields), param_num
+        )
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *values)

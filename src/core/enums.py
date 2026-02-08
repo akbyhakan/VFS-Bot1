@@ -5,6 +5,7 @@ from enum import Enum
 
 class AppointmentRequestStatus(str, Enum):
     """Status values for appointment requests."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -18,6 +19,7 @@ class AppointmentRequestStatus(str, Enum):
 
 class AppointmentStatus(str, Enum):
     """Status values for booked appointments."""
+
     PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
@@ -30,6 +32,7 @@ class AppointmentStatus(str, Enum):
 
 class AppointmentHistoryStatus(str, Enum):
     """Status values for appointment history records."""
+
     FOUND = "found"
     BOOKED = "booked"
     FAILED = "failed"
@@ -43,6 +46,7 @@ class AppointmentHistoryStatus(str, Enum):
 
 class MetricsStatus(str, Enum):
     """Status values for Prometheus metrics."""
+
     SUCCESS = "success"
     FAILED = "failed"
 
@@ -54,6 +58,7 @@ class MetricsStatus(str, Enum):
 
 class SlotCheckStatus(str, Enum):
     """Status values for slot check results."""
+
     FOUND = "found"
     NOT_FOUND = "not_found"
 
@@ -65,6 +70,7 @@ class SlotCheckStatus(str, Enum):
 
 class LogLevel(str, Enum):
     """Log level values for database logs."""
+
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"

@@ -27,9 +27,9 @@ router = APIRouter(prefix="/api", tags=["appointments"])
 def _load_countries_from_yaml() -> List[Dict[str, str]]:
     """
     Load countries data from country_profiles.yaml.
-    
+
     This replaces hardcoded COUNTRIES_DATA to follow DRY principle.
-    
+
     Returns:
         List of country dictionaries with code, name_en, and name_tr
     """
@@ -37,19 +37,21 @@ def _load_countries_from_yaml() -> List[Dict[str, str]]:
     if not yaml_path.exists():
         logger.warning("country_profiles.yaml not found, returning empty country list")
         return []
-    
+
     try:
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        
+
         countries = []
         for code, profile in data.get("country_profiles", {}).items():
-            countries.append({
-                "code": code,
-                "name_en": profile.get("name_en", ""),
-                "name_tr": profile.get("name", ""),
-            })
-        
+            countries.append(
+                {
+                    "code": code,
+                    "name_en": profile.get("name_en", ""),
+                    "name_tr": profile.get("name", ""),
+                }
+            )
+
         logger.info(f"Loaded {len(countries)} countries from YAML")
         return countries
     except Exception as e:
@@ -319,7 +321,9 @@ async def update_appointment_request_status(
             raise HTTPException(status_code=400, detail="Invalid status value")
 
         # Set completed_at timestamp only when status becomes 'completed'
-        completed_at = datetime.now(timezone.utc) if status == AppointmentRequestStatus.COMPLETED else None
+        completed_at = (
+            datetime.now(timezone.utc) if status == AppointmentRequestStatus.COMPLETED else None
+        )
 
         updated = await db.update_appointment_request_status(
             request_id=request_id, status=status, completed_at=completed_at

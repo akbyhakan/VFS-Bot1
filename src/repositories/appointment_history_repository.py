@@ -190,11 +190,7 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         """
         # For status updates, use update_status method
         if "status" in data and "error_message" in data:
-            return await self.update_status(
-                id,
-                data["status"],
-                data.get("error_message")
-            )
+            return await self.update_status(id, data["status"], data.get("error_message"))
 
         # For other updates, build dynamic query
         update_fields = []
@@ -202,8 +198,15 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         param_num = 1
 
         for key, value in data.items():
-            if key in ["centre", "mission", "status", "category", "slot_date", 
-                      "slot_time", "error_message"]:
+            if key in [
+                "centre",
+                "mission",
+                "status",
+                "category",
+                "slot_date",
+                "slot_time",
+                "error_message",
+            ]:
                 update_fields.append(f"{key} = ${param_num}")
                 values.append(value)
                 param_num += 1
@@ -211,10 +214,12 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         if not update_fields:
             return False
 
-        update_fields.append(f"updated_at = NOW()")
+        update_fields.append("updated_at = NOW()")
         values.append(id)
 
-        query = f"UPDATE appointment_history SET {', '.join(update_fields)} WHERE id = ${param_num}"
+        query = "UPDATE appointment_history SET {} WHERE id = ${}".format(
+            ", ".join(update_fields), param_num
+        )
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *values)
