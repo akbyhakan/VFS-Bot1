@@ -118,131 +118,73 @@ class VFSBot:
 
         logger.info("VFSBot initialized with modular components")
 
-    # Backward compatibility properties for legacy code accessing old attributes
-    @property
-    def auth_service(self):
-        """Backward compatibility property for auth_service."""
-        return self.services.workflow.auth_service
+    # Service attribute mapping for backward compatibility
+    _LEGACY_ATTRS = {
+        # Workflow services
+        "auth_service": ("workflow", "auth_service"),
+        "slot_checker": ("workflow", "slot_checker"),
+        "booking_service": ("workflow", "booking_service"),
+        "error_handler": ("workflow", "error_handler"),
+        "waitlist_handler": ("workflow", "waitlist_handler"),
+        "alert_service": ("workflow", "alert_service"),
+        "payment_service": ("workflow", "payment_service"),
+        # Core services
+        "captcha_solver": ("core", "captcha_solver"),
+        "centre_fetcher": ("core", "centre_fetcher"),
+        "otp_service": ("core", "otp_service"),
+        "rate_limiter": ("core", "rate_limiter"),
+        "error_capture": ("core", "error_capture"),
+        "user_semaphore": ("core", "user_semaphore"),
+        # Anti-detection services
+        "human_sim": ("anti_detection", "human_sim"),
+        "header_manager": ("anti_detection", "header_manager"),
+        "session_manager": ("anti_detection", "session_manager"),
+        "token_sync": ("anti_detection", "token_sync"),
+        "cloudflare_handler": ("anti_detection", "cloudflare_handler"),
+        "proxy_manager": ("anti_detection", "proxy_manager"),
+        # Automation services
+        "scheduler": ("automation", "scheduler"),
+        "slot_analyzer": ("automation", "slot_analyzer"),
+        "self_healing": ("automation", "self_healing"),
+        "session_recovery": ("automation", "session_recovery"),
+        "country_profiles": ("automation", "country_profiles"),
+    }
 
-    @property
-    def slot_checker(self):
-        """Backward compatibility property for slot_checker."""
-        return self.services.workflow.slot_checker
+    _LEGACY_SPECIAL_ATTRS = {
+        "anti_detection_enabled": ("anti_detection", "enabled"),
+    }
 
-    @property
-    def booking_service(self):
-        """Backward compatibility property for booking_service."""
-        return self.services.workflow.booking_service
+    def __getattr__(self, name: str):
+        """
+        Handle legacy attribute access with deprecation warnings.
+        
+        This method provides backward compatibility for code that accesses
+        service attributes directly on the VFSBot instance instead of
+        through the services context.
+        """
+        if name in self._LEGACY_ATTRS:
+            warnings.warn(
+                f"Direct access to '{name}' is deprecated since v2.0. "
+                f"Use 'bot.services.{self._LEGACY_ATTRS[name][0]}.{self._LEGACY_ATTRS[name][1]}' instead. "
+                f"This will be removed in v3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            group, attr = self._LEGACY_ATTRS[name]
+            return getattr(getattr(self.services, group), attr)
 
-    @property
-    def error_handler(self):
-        """Backward compatibility property for error_handler."""
-        return self.services.workflow.error_handler
+        if name in self._LEGACY_SPECIAL_ATTRS:
+            group, attr = self._LEGACY_SPECIAL_ATTRS[name]
+            warnings.warn(
+                f"Direct access to '{name}' is deprecated since v2.0. "
+                f"Use 'bot.services.{group}.{attr}' instead. "
+                f"This will be removed in v3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return getattr(getattr(self.services, group), attr)
 
-    @property
-    def waitlist_handler(self):
-        """Backward compatibility property for waitlist_handler."""
-        return self.services.workflow.waitlist_handler
-
-    @property
-    def alert_service(self):
-        """Backward compatibility property for alert_service."""
-        return self.services.workflow.alert_service
-
-    @property
-    def payment_service(self):
-        """Backward compatibility property for payment_service."""
-        return self.services.workflow.payment_service
-
-    @property
-    def captcha_solver(self):
-        """Backward compatibility property for captcha_solver."""
-        return self.services.core.captcha_solver
-
-    @property
-    def centre_fetcher(self):
-        """Backward compatibility property for centre_fetcher."""
-        return self.services.core.centre_fetcher
-
-    @property
-    def otp_service(self):
-        """Backward compatibility property for otp_service."""
-        return self.services.core.otp_service
-
-    @property
-    def rate_limiter(self):
-        """Backward compatibility property for rate_limiter."""
-        return self.services.core.rate_limiter
-
-    @property
-    def error_capture(self):
-        """Backward compatibility property for error_capture."""
-        return self.services.core.error_capture
-
-    @property
-    def user_semaphore(self):
-        """Backward compatibility property for user_semaphore."""
-        return self.services.core.user_semaphore
-
-    @property
-    def human_sim(self):
-        """Backward compatibility property for human_sim."""
-        return self.services.anti_detection.human_sim
-
-    @property
-    def header_manager(self):
-        """Backward compatibility property for header_manager."""
-        return self.services.anti_detection.header_manager
-
-    @property
-    def session_manager(self):
-        """Backward compatibility property for session_manager."""
-        return self.services.anti_detection.session_manager
-
-    @property
-    def token_sync(self):
-        """Backward compatibility property for token_sync."""
-        return self.services.anti_detection.token_sync
-
-    @property
-    def cloudflare_handler(self):
-        """Backward compatibility property for cloudflare_handler."""
-        return self.services.anti_detection.cloudflare_handler
-
-    @property
-    def proxy_manager(self):
-        """Backward compatibility property for proxy_manager."""
-        return self.services.anti_detection.proxy_manager
-
-    @property
-    def anti_detection_enabled(self):
-        """Backward compatibility property for anti_detection_enabled."""
-        return self.services.anti_detection.enabled
-
-    @property
-    def scheduler(self):
-        """Backward compatibility property for scheduler."""
-        return self.services.automation.scheduler
-
-    @property
-    def slot_analyzer(self):
-        """Backward compatibility property for slot_analyzer."""
-        return self.services.automation.slot_analyzer
-
-    @property
-    def self_healing(self):
-        """Backward compatibility property for self_healing."""
-        return self.services.automation.self_healing
-
-    @property
-    def session_recovery(self):
-        """Backward compatibility property for session_recovery."""
-        return self.services.automation.session_recovery
-
-    @property
-    def country_profiles(self):
-        """Backward compatibility property for country_profiles."""
-        return self.services.automation.country_profiles
+        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
 
     async def __aenter__(self) -> "VFSBot":
         """

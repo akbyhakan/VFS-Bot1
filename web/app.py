@@ -325,7 +325,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # 3. Correlation ID middleware for request tracking
 app.add_middleware(CorrelationMiddleware)
 
-# 3. Configure CORS
+# 4. Configure CORS
 allowed_origins_str = os.getenv(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
 )
@@ -357,7 +357,7 @@ app.add_middleware(
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
-# 4. Add request tracking middleware
+# 5. Add request tracking middleware
 app.add_middleware(RequestTrackingMiddleware)
 
 
