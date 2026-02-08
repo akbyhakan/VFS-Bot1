@@ -456,7 +456,7 @@ def _get_jwt_settings() -> JWTSettings:
         )
 
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")
-    
+
     # Validate algorithm against whitelist
     if algorithm not in SUPPORTED_JWT_ALGORITHMS:
         raise ValueError(
