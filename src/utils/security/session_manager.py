@@ -155,8 +155,8 @@ class SessionManager:
                 # Close fd if it's still open (fdopen takes ownership normally)
                 try:
                     os.close(fd)
-                except OSError:
-                    pass  # fd was already closed by fdopen
+                except OSError as e:
+                    logger.debug(f"File descriptor already closed by fdopen: {e}")
                 logger.error(f"Failed to save session: {e}")
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)

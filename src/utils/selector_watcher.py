@@ -92,7 +92,8 @@ class SelectorHealthCheck:
                                     "Please update config/selectors.yaml"
                                 )
                                 return result
-                        except Exception:
+                        except Exception as e:
+                            logger.debug(f"Fallback selector {i} failed for {selector_path}: {e}")
                             continue
 
                 result["error"] = f"All selectors failed: {str(e)}"

@@ -335,7 +335,8 @@ class WaitlistHandler:
                     await locator.wait_for(timeout=5000, state="visible")
                     logger.info(f"Success screen detected: found '{indicator}'")
                     return True
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Success indicator '{indicator}' not found: {e}")
                     continue
 
             return False
@@ -396,7 +397,8 @@ class WaitlistHandler:
                         text = await element.text_content()
                         if text and len(text.strip().split()) >= 2:
                             details["people"].append(text.strip())
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"Could not extract text from name element: {e}")
                         continue
             except Exception as e:
                 logger.warning(f"Could not extract person names: {e}")
