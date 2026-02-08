@@ -565,10 +565,13 @@ class Database:
                 """)
 
                 # Create triggers for tables with updated_at column
-                # Using quote_ident to safely quote table names (security best practice)
-                for table in ['users', 'personal_details', 'payment_card', 'appointment_requests', 'appointment_history', 'proxy_endpoints']:
-                    # Using format() with quote_ident would require raw SQL, so we validate table names first
-                    # The table names are hardcoded and safe, but we still want to be explicit about security
+                # Table names are validated against a whitelist for security
+                TABLES_WITH_UPDATED_AT = frozenset(['users', 'personal_details', 'payment_card', 
+                                                     'appointment_requests', 'appointment_history', 'proxy_endpoints'])
+                for table in TABLES_WITH_UPDATED_AT:
+                    # Table names come from a hardcoded frozenset above - safe from SQL injection
+                    # We use f-string here because asyncpg doesn't support parameterized identifiers
+                    # and the table names are compile-time constants
                     await conn.execute(f"""
                         DROP TRIGGER IF EXISTS update_{table}_updated_at ON {table};
                         CREATE TRIGGER update_{table}_updated_at
