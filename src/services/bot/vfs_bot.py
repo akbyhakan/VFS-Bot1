@@ -3,13 +3,14 @@
 import asyncio
 import logging
 import random
+import time
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
 from ...constants import Intervals, RateLimits, Timeouts
-from ...models.database import Database
+from ...models.database import Database, DatabaseState
 from ..alert_service import AlertSeverity
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
@@ -62,6 +63,11 @@ class VFSBot:
 
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
+
+        # User cache for graceful degradation (Issue 3.3)
+        self._cached_users: List[Dict[str, Any]] = []
+        self._cached_users_time: float = 0
+        self._USERS_CACHE_TTL: float = 300.0  # 5 minutes
 
         # Emit deprecation warnings for legacy parameters
         if captcha_solver is not None:
@@ -363,6 +369,71 @@ class VFSBot:
             # Normal timeout - no shutdown requested
             return False
 
+    async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
+        """
+        Get active users with fallback support for graceful degradation.
+        
+        Uses execute_with_fallback() to implement caching layer.
+        On DB failure, returns cached users if available.
+        
+        Returns:
+            List of active users with decrypted passwords
+        """
+        # Try to get users from database using fallback mechanism
+        users = await self.db.execute_with_fallback(
+            query_func=self.db.get_active_users_with_decrypted_passwords,
+            fallback_value=None,
+            critical=False,
+        )
+        
+        if users is not None:
+            # Success - update cache
+            self._cached_users = users
+            self._cached_users_time = time.time()
+            return users
+        
+        # DB failure - check if cache is still fresh
+        cache_age = time.time() - self._cached_users_time
+        if cache_age < self._USERS_CACHE_TTL and self._cached_users:
+            logger.warning(
+                f"Database unavailable, using cached users (age: {cache_age:.1f}s, "
+                f"count: {len(self._cached_users)})"
+            )
+            return self._cached_users
+        
+        # Cache expired or empty
+        logger.error(
+            f"Database unavailable and cache expired (age: {cache_age:.1f}s) - "
+            "returning empty user list"
+        )
+        return []
+
+    async def _ensure_db_connection(self) -> None:
+        """
+        Ensure database connection is healthy and attempt reconnection if needed.
+        
+        Checks database state and calls reconnect() if degraded or disconnected.
+        Sends alert on successful reconnection.
+        """
+        db_state = self.db.state
+        
+        if db_state in (DatabaseState.DEGRADED, DatabaseState.DISCONNECTED):
+            logger.warning(f"Database in {db_state} state - attempting reconnection")
+            
+            try:
+                reconnected = await self.db.reconnect()
+                if reconnected:
+                    logger.info("Database reconnection successful")
+                    await self._send_alert_safe(
+                        message="Database connection restored",
+                        severity=AlertSeverity.INFO,
+                        metadata={"previous_state": db_state, "new_state": self.db.state},
+                    )
+                else:
+                    logger.error("Database reconnection failed")
+            except Exception as e:
+                logger.error(f"Error during database reconnection: {e}")
+
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
         while self.running and not self.shutdown_event.is_set():
@@ -407,8 +478,11 @@ class VFSBot:
                 if await self.browser_manager.should_restart():
                     await self.browser_manager.restart_fresh()
 
-                # Get active users with decrypted passwords
-                users = await self.db.get_active_users_with_decrypted_passwords()
+                # Ensure database connection is healthy
+                await self._ensure_db_connection()
+
+                # Get active users with fallback support
+                users = await self._get_users_with_fallback()
                 logger.info(
                     f"Processing {len(users)} active users "
                     f"(max {RateLimits.CONCURRENT_USERS} concurrent)"

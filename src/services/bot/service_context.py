@@ -20,7 +20,7 @@ from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
 from ..adaptive_scheduler import AdaptiveScheduler
 from ..alert_service import AlertChannel, AlertConfig, AlertService
-from ..appointment_booking_service import AppointmentBookingService
+from ..booking import AppointmentBookingService
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
 from ..country_profile_loader import CountryProfileLoader

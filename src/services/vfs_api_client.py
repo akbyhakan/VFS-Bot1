@@ -16,7 +16,13 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
 from ..core.countries import SOURCE_COUNTRY_CODE, get_country_info, get_route, validate_mission_code
-from ..core.exceptions import ConfigurationError, VFSAuthenticationError, VFSSessionExpiredError
+from ..core.exceptions import (
+    ConfigurationError,
+    VFSAuthenticationError,
+    VFSRateLimitError,
+    VFSSessionExpiredError,
+)
+from ..utils.security.endpoint_rate_limiter import EndpointRateLimiter
 from ..utils.token_utils import calculate_effective_expiry
 
 logger = logging.getLogger(__name__)
@@ -224,6 +230,9 @@ class VFSApiClient:
         self._refresh_complete_event = asyncio.Event()  # Signal when refresh completes
         self._refresh_complete_event.set()  # Initially set (no refresh in progress)
 
+        # Per-endpoint rate limiter (Issue 3.4)
+        self.endpoint_limiter = EndpointRateLimiter()
+
         logger.info(
             f"VFSApiClient initialized for {self.country_info.name_en} "
             f"({self.mission_code}) - Route: {self.route}"
@@ -309,8 +318,14 @@ class VFSApiClient:
 
         Returns:
             VFSSession with tokens
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._init_http_session()
+
+        # Apply rate limiting for login endpoint
+        await self.endpoint_limiter.acquire("login")
 
         encrypted_password = VFSPasswordEncryption.encrypt(password)
 
@@ -330,6 +345,16 @@ class VFSApiClient:
             data=payload,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         ) as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("login", retry_after)
+                logger.error(f"Rate limited by VFS on login (429), retry after {retry_after}s")
+                raise VFSRateLimitError(
+                    f"Rate limited on login endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             if response.status != 200:
                 error_text = await response.text()
                 logger.error(f"Login failed: {response.status}")
@@ -365,10 +390,26 @@ class VFSApiClient:
 
         Returns:
             List of centre information
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._ensure_authenticated()
 
+        # Apply rate limiting for centres endpoint
+        await self.endpoint_limiter.acquire("centres")
+
         async with self._session.get(f"{get_vfs_api_base()}/master/center") as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("centres", retry_after)
+                logger.error(f"Rate limited by VFS on centres (429), retry after {retry_after}s")
+                raise VFSRateLimitError(
+                    f"Rate limited on centres endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             data = await response.json()
             logger.info(f"Retrieved {len(data)} centres")
             result: List[CentreInfo] = data
@@ -383,12 +424,30 @@ class VFSApiClient:
 
         Returns:
             List of visa categories
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._ensure_authenticated()
+
+        # Apply rate limiting for centres endpoint
+        await self.endpoint_limiter.acquire("centres")
 
         async with self._session.get(
             f"{get_vfs_api_base()}/master/visacategory", params={"centerId": centre_id}
         ) as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("centres", retry_after)
+                logger.error(
+                    f"Rate limited by VFS on visa categories (429), retry after {retry_after}s"
+                )
+                raise VFSRateLimitError(
+                    f"Rate limited on visa categories endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             data = await response.json()
             result: List[VisaCategoryInfo] = data
             return result
@@ -405,13 +464,32 @@ class VFSApiClient:
 
         Returns:
             List of visa subcategories
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._ensure_authenticated()
+
+        # Apply rate limiting for centres endpoint
+        await self.endpoint_limiter.acquire("centres")
 
         async with self._session.get(
             f"{get_vfs_api_base()}/master/subvisacategory",
             params={"centerId": centre_id, "visaCategoryId": category_id},
         ) as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("centres", retry_after)
+                logger.error(
+                    f"Rate limited by VFS on visa subcategories (429), "
+                    f"retry after {retry_after}s"
+                )
+                raise VFSRateLimitError(
+                    f"Rate limited on visa subcategories endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             data = await response.json()
             result: List[VisaSubcategoryInfo] = data
             return result
@@ -429,8 +507,14 @@ class VFSApiClient:
 
         Returns:
             SlotAvailability with dates if available
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._ensure_authenticated()
+
+        # Apply rate limiting for slot check endpoint
+        await self.endpoint_limiter.acquire("slot_check")
 
         params = {
             "centerId": centre_id,
@@ -441,6 +525,18 @@ class VFSApiClient:
         async with self._session.get(
             f"{get_vfs_api_base()}/appointment/slots", params=params
         ) as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("slot_check", retry_after)
+                logger.error(
+                    f"Rate limited by VFS on slot check (429), retry after {retry_after}s"
+                )
+                raise VFSRateLimitError(
+                    f"Rate limited on slot check endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             if response.status != 200:
                 return SlotAvailability(
                     available=False,
@@ -475,14 +571,30 @@ class VFSApiClient:
 
         Returns:
             Booking confirmation
+
+        Raises:
+            VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._ensure_authenticated()
+
+        # Apply rate limiting for booking endpoint
+        await self.endpoint_limiter.acquire("booking")
 
         payload = {"appointmentDate": slot_date, "appointmentTime": slot_time, **applicant_data}
 
         async with self._session.post(
             f"{get_vfs_api_base()}/appointment/applicants", json=payload
         ) as response:
+            # Handle 429 rate limiting
+            if response.status == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                self.endpoint_limiter.on_rate_limited("booking", retry_after)
+                logger.error(f"Rate limited by VFS on booking (429), retry after {retry_after}s")
+                raise VFSRateLimitError(
+                    f"Rate limited on booking endpoint. Retry after {retry_after}s",
+                    wait_time=retry_after,
+                )
+
             data = await response.json()
 
             if response.status == 200:
