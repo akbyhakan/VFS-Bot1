@@ -22,10 +22,27 @@ from ..utils.token_utils import calculate_effective_expiry
 logger = logging.getLogger(__name__)
 
 
-# VFS Global API Base URLs - configurable via environment variables
-VFS_API_BASE = os.getenv("VFS_API_BASE", "https://lift-api.vfsglobal.com")
-VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE", "https://liftassets.vfsglobal.com")
-CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE", "https://d2ab400qlgxn2g.cloudfront.net/dev/spaces")
+# VFS Global API Base URLs - MUST be configured via environment variables
+VFS_API_BASE = os.getenv("VFS_API_BASE")
+if not VFS_API_BASE:
+    raise ConfigurationError(
+        "VFS_API_BASE environment variable must be set. "
+        "Check your .env file configuration."
+    )
+
+VFS_ASSETS_BASE = os.getenv("VFS_ASSETS_BASE")
+if not VFS_ASSETS_BASE:
+    raise ConfigurationError(
+        "VFS_ASSETS_BASE environment variable must be set. "
+        "Check your .env file configuration."
+    )
+
+CONTENTFUL_BASE = os.getenv("CONTENTFUL_BASE")
+if not CONTENTFUL_BASE:
+    raise ConfigurationError(
+        "CONTENTFUL_BASE environment variable must be set. "
+        "Check your .env file configuration."
+    )
 
 
 class CentreInfo(TypedDict):

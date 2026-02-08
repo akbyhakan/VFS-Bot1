@@ -33,8 +33,9 @@ class TestSessionRecovery:
         )
 
         assert temp_checkpoint_file.exists()
-        with open(temp_checkpoint_file, "r") as f:
-            data = json.load(f)
+        
+        # Load checkpoint using recovery method (handles encryption)
+        data = recovery.load_checkpoint()
 
         assert data["step"] == "logged_in"
         assert data["user_id"] == 123
@@ -242,3 +243,140 @@ class TestSessionRecovery:
         checkpoint = recovery.load_checkpoint()
         # Will be None because it's > 1 hour old, but shouldn't raise exception
         assert checkpoint is None or checkpoint["step"] == "logged_in"
+
+    def test_encrypted_checkpoint_save_and_load(self, temp_checkpoint_file, monkeypatch):
+        """Test saving and loading encrypted checkpoints."""
+        from cryptography.fernet import Fernet
+
+        # Set encryption key
+        encryption_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+
+        # Save a checkpoint
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={"email": "test@example.com", "password": "secret"}
+        )
+
+        assert temp_checkpoint_file.exists()
+
+        # Verify file is encrypted by checking for Fernet token prefix
+        raw_data = temp_checkpoint_file.read_bytes()
+        # Fernet tokens start with version byte (0x80) followed by timestamp
+        # The base64 encoding typically starts with 'gAAAAA'
+        assert raw_data.startswith(b'gAAAAA'), "File should be encrypted with Fernet"
+
+        # Load checkpoint - should decrypt successfully
+        checkpoint = recovery.load_checkpoint()
+
+        assert checkpoint is not None
+        assert checkpoint["step"] == "logged_in"
+        assert checkpoint["user_id"] == 123
+        assert checkpoint["context"]["email"] == "test@example.com"
+        assert checkpoint["context"]["password"] == "secret"
+
+    def test_encrypted_checkpoint_without_key(self, temp_checkpoint_file, monkeypatch):
+        """Test that checkpoint falls back to unencrypted when no key is set."""
+        # Remove encryption key
+        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+
+        # Save a checkpoint
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={"email": "test@example.com"}
+        )
+
+        assert temp_checkpoint_file.exists()
+
+        # Verify file is NOT encrypted (readable as JSON)
+        raw_data = temp_checkpoint_file.read_bytes()
+        data = json.loads(raw_data.decode("utf-8"))
+        assert data["step"] == "logged_in"
+
+        # Load checkpoint - should work
+        checkpoint = recovery.load_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint["step"] == "logged_in"
+
+    def test_backward_compat_unencrypted_to_encrypted(self, temp_checkpoint_file, monkeypatch):
+        """Test backward compatibility: reading old unencrypted checkpoint with encryption enabled."""
+        # First save without encryption
+        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={"email": "test@example.com"}
+        )
+
+        # Now enable encryption and try to load
+        from cryptography.fernet import Fernet
+        encryption_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
+
+        recovery_encrypted = SessionRecovery(str(temp_checkpoint_file))
+        checkpoint = recovery_encrypted.load_checkpoint()
+
+        # Should still load the unencrypted checkpoint (backward compatibility)
+        assert checkpoint is not None
+        assert checkpoint["step"] == "logged_in"
+        assert checkpoint["user_id"] == 123
+
+    def test_encrypted_checkpoint_wrong_key(self, temp_checkpoint_file, monkeypatch):
+        """Test that loading with wrong encryption key fails gracefully."""
+        from cryptography.fernet import Fernet
+
+        # Save with one key
+        encryption_key_1 = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", encryption_key_1)
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+        recovery.save_checkpoint(
+            step="logged_in", user_id=123, context={"email": "test@example.com"}
+        )
+
+        # Try to load with different key
+        encryption_key_2 = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", encryption_key_2)
+
+        recovery_wrong_key = SessionRecovery(str(temp_checkpoint_file))
+        checkpoint = recovery_wrong_key.load_checkpoint()
+
+        # Should fail to decrypt and return None (error handled gracefully)
+        assert checkpoint is None
+
+    def test_encrypted_checkpoint_sensitive_data(self, temp_checkpoint_file, monkeypatch):
+        """Test that sensitive data in context is encrypted."""
+        from cryptography.fernet import Fernet
+
+        # Set encryption key
+        encryption_key = Fernet.generate_key().decode()
+        monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
+
+        recovery = SessionRecovery(str(temp_checkpoint_file))
+
+        # Save checkpoint with sensitive data
+        sensitive_context = {
+            "email": "user@example.com",
+            "password": "supersecret123",
+            "token": "auth-token-xyz",
+            "user_id": 456,
+        }
+        recovery.save_checkpoint(step="logged_in", user_id=123, context=sensitive_context)
+
+        # Read raw file data
+        raw_data = temp_checkpoint_file.read_bytes()
+
+        # Verify sensitive data is NOT in plaintext
+        raw_text = raw_data.decode("utf-8", errors="ignore")
+        assert "supersecret123" not in raw_text
+        assert "auth-token-xyz" not in raw_text
+        assert "user@example.com" not in raw_text
+
+        # But should be retrievable when decrypted
+        checkpoint = recovery.load_checkpoint()
+        assert checkpoint is not None
+        assert checkpoint["context"]["password"] == "supersecret123"
+        assert checkpoint["context"]["token"] == "auth-token-xyz"
+        assert checkpoint["context"]["email"] == "user@example.com"
