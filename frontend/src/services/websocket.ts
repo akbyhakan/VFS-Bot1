@@ -1,5 +1,4 @@
 import { WEBSOCKET_RECONNECT } from '@/utils/constants';
-import { tokenManager } from '@/utils/tokenManager';
 import { logger } from '@/utils/logger';
 import type { WebSocketMessage } from '@/types/api';
 
@@ -31,11 +30,9 @@ export class WebSocketService {
       logger.info('WebSocket connected');
       this.reconnectAttempts = 0;
 
-      // Send authentication token
-      const token = tokenManager.getToken();
-      if (token && this.ws) {
-        this.ws.send(JSON.stringify({ token }));
-      }
+      // Authentication is handled via HttpOnly cookie during WebSocket handshake
+      // The cookie is automatically sent by the browser for same-origin WebSocket connections
+      // No need to send token manually
 
       // Start heartbeat
       this.startHeartbeat();

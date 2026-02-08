@@ -5,7 +5,6 @@ import { Upload, FileText, Download, CheckCircle2, XCircle, AlertCircle } from '
 import { toast } from 'sonner';
 import axios from 'axios';
 import { API_BASE_URL } from '@/utils/constants';
-import { tokenManager } from '@/utils/tokenManager';
 
 interface CSVImportModalProps {
   isOpen: boolean;
@@ -78,15 +77,15 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const token = tokenManager.getToken();
+      // Use cookie-based authentication (HttpOnly cookie sent automatically)
       const response = await axios.post<ImportResult>(
         `${API_BASE_URL}/api/users/import`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            ...(token && { Authorization: `Bearer ${token}` }),
           },
+          withCredentials: true,  // Send HttpOnly cookies with request
         }
       );
 

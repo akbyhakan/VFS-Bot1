@@ -19,6 +19,13 @@ from ..core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
+# Supported JWT algorithms whitelist
+SUPPORTED_JWT_ALGORITHMS = frozenset({
+    "HS256", "HS384", "HS512",
+    "RS256", "RS384", "RS512",
+    "ES256", "ES384", "ES512"
+})
+
 
 class AuthRateLimiter:
     """Rate limiter for authentication endpoints to prevent brute-force attacks."""
@@ -449,6 +456,13 @@ def _get_jwt_settings() -> JWTSettings:
         )
 
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+
+    # Validate algorithm against whitelist
+    if algorithm not in SUPPORTED_JWT_ALGORITHMS:
+        raise ValueError(
+            f"Unsupported JWT algorithm: {algorithm}. "
+            f"Supported algorithms: {', '.join(sorted(SUPPORTED_JWT_ALGORITHMS))}"
+        )
 
     try:
         expire_hours = int(os.getenv("JWT_EXPIRY_HOURS", "24"))

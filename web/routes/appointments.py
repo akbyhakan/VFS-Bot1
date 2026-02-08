@@ -2,8 +2,9 @@
 
 import logging
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,19 +25,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["appointments"])
 
 
-def _load_countries_from_yaml() -> List[Dict[str, str]]:
+@lru_cache(maxsize=1)
+def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
     """
     Load countries data from country_profiles.yaml.
 
     This replaces hardcoded COUNTRIES_DATA to follow DRY principle.
 
     Returns:
-        List of country dictionaries with code, name_en, and name_tr
+        Tuple of country dictionaries with code, name_en, and name_tr
     """
     yaml_path = Path("config/country_profiles.yaml")
     if not yaml_path.exists():
         logger.warning("country_profiles.yaml not found, returning empty country list")
-        return []
+        return tuple()
 
     try:
         with open(yaml_path, "r", encoding="utf-8") as f:
@@ -53,14 +55,14 @@ def _load_countries_from_yaml() -> List[Dict[str, str]]:
             )
 
         logger.info(f"Loaded {len(countries)} countries from YAML")
-        return countries
+        return tuple(countries)
     except Exception as e:
         logger.error(f"Failed to load countries from YAML: {e}")
-        return []
+        return tuple()
 
 
 # Load countries data from YAML (replaces hardcoded list)
-COUNTRIES_DATA = _load_countries_from_yaml()
+COUNTRIES_DATA = list(_load_countries_from_yaml())
 
 
 @router.get("/countries", response_model=List[CountryResponse])

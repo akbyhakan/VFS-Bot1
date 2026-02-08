@@ -1,6 +1,5 @@
 import { api } from './api';
 import { REMEMBER_ME_KEY } from '@/utils/constants';
-import { tokenManager } from '@/utils/tokenManager';
 import type { LoginRequest, TokenResponse } from '@/types/api';
 
 export class AuthService {
@@ -8,10 +7,9 @@ export class AuthService {
     const response = await api.post<TokenResponse>('/api/auth/login', credentials);
     
     // HttpOnly cookie is automatically set by the server
-    // Store token in localStorage/sessionStorage as fallback for backward compatibility
-    tokenManager.setToken(response.access_token, rememberMe);
+    // Cookie-based authentication handles all token management
     
-    // Store remember me preference (for compatibility)
+    // Store remember me preference
     if (rememberMe) {
       localStorage.setItem(REMEMBER_ME_KEY, 'true');
     } else {
@@ -34,17 +32,21 @@ export class AuthService {
       });
     }
     
-    // Clear local storage
-    tokenManager.clearToken();
+    // Clear local preferences
     localStorage.removeItem(REMEMBER_ME_KEY);
   }
 
   getToken(): string | null {
-    return tokenManager.getToken();
+    // Token is not accessible from JavaScript for security (HttpOnly cookie)
+    // Return null to maintain backward compatibility
+    return null;
   }
 
   isAuthenticated(): boolean {
-    return tokenManager.hasToken();
+    // Authentication state is managed server-side via HttpOnly cookie
+    // Client-side check is not reliable - use API call to /api/auth/me if needed
+    // For now, return false to force proper server-side validation
+    return false;
   }
 
   shouldRememberUser(): boolean {

@@ -1,6 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '@/utils/constants';
-import { tokenManager } from '@/utils/tokenManager';
 import type { ApiError } from '@/types/api';
 
 // Default timeout: 30 seconds
@@ -26,22 +25,8 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      withCredentials: true,  // Send cookies with every request (for HttpOnly cookie auth)
+      withCredentials: true,  // Send HttpOnly cookies with every request
     });
-
-    // Request interceptor to add auth token
-    // Note: Primary auth is via HttpOnly cookie (automatically sent by browser).
-    // Authorization header is kept for backward compatibility with API clients.
-    this.client.interceptors.request.use(
-      (config) => {
-        const token = tokenManager.getToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
 
     // Response interceptor for error handling with token refresh
     this.client.interceptors.response.use(
@@ -56,7 +41,6 @@ class ApiClient {
               this.failedQueue.push({ resolve, reject });
             })
               .then(() => {
-                originalRequest.headers.Authorization = `Bearer ${tokenManager.getToken()}`;
                 return this.client(originalRequest);
               })
               .catch((err) => Promise.reject(err));
@@ -66,23 +50,20 @@ class ApiClient {
           this.isRefreshing = true;
 
           try {
-            // Attempt to refresh the token
-            const newToken = await this.refreshToken();
-            tokenManager.setToken(newToken);
+            // Attempt to refresh the token via cookie-based refresh endpoint
+            await this.refreshToken();
 
-            // Process queued requests with new token
+            // Process queued requests - new cookie is set automatically
             this.failedQueue.forEach((prom) => prom.resolve());
             this.failedQueue = [];
 
-            // Retry original request with new token
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            // Retry original request - cookie is sent automatically
             return this.client(originalRequest);
           } catch (refreshError) {
             // Refresh failed, clear queue and logout
             this.failedQueue.forEach((prom) => prom.reject(refreshError));
             this.failedQueue = [];
 
-            tokenManager.clearToken();
             // Only redirect if not already on login page to prevent infinite loop
             if (!window.location.pathname.includes('/login')) {
               window.location.href = '/login';
@@ -98,10 +79,10 @@ class ApiClient {
     );
   }
 
-  private async refreshToken(): Promise<string> {
+  private async refreshToken(): Promise<void> {
     try {
-      const response = await this.client.post<{ access_token: string }>('/api/auth/refresh');
-      return response.data.access_token;
+      // Refresh endpoint will set new HttpOnly cookie automatically
+      await this.client.post('/api/auth/refresh');
     } catch (error) {
       throw new Error('Token refresh failed');
     }

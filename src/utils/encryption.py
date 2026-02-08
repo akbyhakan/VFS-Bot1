@@ -12,9 +12,6 @@ from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
-# Support for key rotation
-ENCRYPTION_KEY_OLD = os.getenv("ENCRYPTION_KEY_OLD")  # For key rotation
-
 
 def _normalize_key(key: Optional[str | bytes]) -> str:
     """
@@ -66,7 +63,7 @@ class PasswordEncryption:
 
             # Initialize old cipher for key rotation support
             self._old_cipher: Optional[Fernet] = None
-            old_key = ENCRYPTION_KEY_OLD
+            old_key = os.getenv("ENCRYPTION_KEY_OLD")
             if old_key:
                 try:
                     old_cipher_key = old_key.encode() if isinstance(old_key, str) else old_key
@@ -293,6 +290,7 @@ def get_encryption() -> PasswordEncryption:
             # Key unchanged - update check time and return
             _last_key_check_time = current_time
             return _encryption_instance
+        # Key changed or no cached instance - recreate with new key
 
     # Acquire lock only if instance doesn't exist or key changed
     with _encryption_lock:
