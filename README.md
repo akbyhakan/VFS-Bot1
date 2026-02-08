@@ -18,7 +18,7 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - 🔔 **Multi-Channel Notifications** - Telegram and Email alerts
 - 🧩 **Multiple Captcha Solvers** - Support for 2captcha, anticaptcha, nopecha, and manual solving
 - 👥 **Multi-User Support** - Handle multiple users and centres simultaneously
-- 🗄️ **PostgreSQL Database** - Track users, appointments, and logs
+- 🗄️ **PostgreSQL Database** - Scalable, production-ready database with connection pooling
 - 🐳 **Docker Support** - Easy deployment with Docker and Docker Compose
 - ⚙️ **YAML Configuration** - Simple configuration with environment variable support
 - 🔒 **Secure** - Credentials stored in environment variables
@@ -112,6 +112,7 @@ The system learns over time which selectors work best and automatically promotes
 ## 📋 Requirements
 
 - Python 3.12 or higher
+- **PostgreSQL 16+** (or 9.6+ minimum for basic features)
 - Modern web browser (Chromium installed automatically by Playwright)
 - Internet connection
 - VFS Global account
@@ -120,25 +121,49 @@ The system learns over time which selectors work best and automatically promotes
 
 ### Option 1: Using pip (Local Installation)
 
-1. **Clone the repository**
+1. **Install PostgreSQL**
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get update
+   sudo apt-get install postgresql postgresql-contrib
+   
+   # macOS
+   brew install postgresql@16
+   
+   # Start PostgreSQL service
+   sudo systemctl start postgresql  # Linux
+   brew services start postgresql@16  # macOS
+   ```
+
+2. **Create database**
+   ```bash
+   # Create user and database
+   sudo -u postgres psql
+   CREATE USER vfs_bot WITH PASSWORD 'changeme';
+   CREATE DATABASE vfs_bot OWNER vfs_bot;
+   GRANT ALL PRIVILEGES ON DATABASE vfs_bot TO vfs_bot;
+   \q
+   ```
+
+3. **Clone the repository**
    ```bash
    git clone https://github.com/akbyhakan/VFS-Bot1.git
    cd VFS-Bot1
    ```
 
-2. **Create virtual environment**
+4. **Create virtual environment**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+5. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    playwright install chromium
    ```
 
-4. **Configure the bot**
+6. **Configure the bot**
    ```bash
    cp config/config.example.yaml config/config.yaml
    cp .env.example .env
@@ -146,7 +171,7 @@ The system learns over time which selectors work best and automatically promotes
    
    Edit `config/config.yaml` and `.env` with your details.
 
-5. **Run the bot**
+7. **Run the bot**
    ```bash
    # Run with web dashboard (recommended)
    python main.py --mode web
@@ -158,11 +183,13 @@ The system learns over time which selectors work best and automatically promotes
    python main.py --mode both
    ```
 
-6. **Access the dashboard**
+8. **Access the dashboard**
    
    Open your browser and navigate to: `http://localhost:8000`
 
 ### Option 2: Using Docker
+
+**Note:** Docker Compose automatically sets up PostgreSQL for you.
 
 1. **Clone and configure**
    ```bash
@@ -171,12 +198,16 @@ The system learns over time which selectors work best and automatically promotes
    cp .env.example .env
    ```
    
-   Edit `.env` with your credentials.
+   Edit `.env` with your credentials. Important: Set `POSTGRES_PASSWORD` for the database.
 
 2. **Run with Docker Compose**
    ```bash
    docker-compose up -d
    ```
+   
+   This will start:
+   - PostgreSQL database server
+   - VFS-Bot application
 
 3. **Access the dashboard**
    
@@ -219,8 +250,9 @@ The system learns over time which selectors work best and automatically promotes
    - Use different keys for development and production
 
 4. **Database Security:**
+   - Set `DATABASE_URL` to point to your PostgreSQL instance
    - Configure `DB_POOL_SIZE` based on your workload (default: 10)
-   - Regularly backup your database
+   - Regularly backup your database using `pg_dump`
    - Passwords are encrypted, not hashed (required for VFS authentication)
 
 5. **Token Management:**
@@ -244,6 +276,10 @@ ENCRYPTION_KEY=your-base64-encoded-encryption-key-here
 VFS_ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
 # Database Configuration
+# PostgreSQL connection URL
+DATABASE_URL=postgresql://vfs_bot:changeme@localhost:5432/vfs_bot
+# PostgreSQL password (used by Docker Compose)
+POSTGRES_PASSWORD=changeme
 DB_POOL_SIZE=10
 
 # Token Management
