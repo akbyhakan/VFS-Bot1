@@ -290,6 +290,7 @@ def get_encryption() -> PasswordEncryption:
             # Key unchanged - update check time and return
             _last_key_check_time = current_time
             return _encryption_instance
+        # If key changed, fall through to recreate instance
 
     # Acquire lock only if instance doesn't exist or key changed
     with _encryption_lock:
