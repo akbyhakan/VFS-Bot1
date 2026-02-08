@@ -52,7 +52,8 @@ class TestSubstituteEnvVars:
 
     def test_substitute_missing_var(self):
         """Test substituting missing environment variable."""
-        with patch.dict(os.environ, {}, clear=True):
+        # Set development environment to ensure dev mode behavior
+        with patch.dict(os.environ, {"ENV": "development"}, clear=True):
             result = substitute_env_vars("${MISSING_VAR}")
             assert result == ""
 
@@ -87,6 +88,34 @@ class TestSubstituteEnvVars:
         """Test string without env var pattern."""
         result = substitute_env_vars("no variables here")
         assert result == "no variables here"
+
+    def test_substitute_critical_env_var_missing_production(self):
+        """Test that missing critical env var raises ValueError in production."""
+        with patch.dict(os.environ, {"ENV": "production"}, clear=True):
+            with pytest.raises(ValueError) as exc_info:
+                substitute_env_vars("${ENCRYPTION_KEY}")
+            assert "CRITICAL" in str(exc_info.value)
+            assert "ENCRYPTION_KEY" in str(exc_info.value)
+
+    def test_substitute_critical_env_var_missing_development(self):
+        """Test that missing critical env var logs warning but returns empty string in dev."""
+        import logging
+        
+        with patch.dict(os.environ, {"ENV": "development"}, clear=True):
+            with patch("src.core.config_loader.logger") as mock_logger:
+                result = substitute_env_vars("${VFS_ENCRYPTION_KEY}")
+                assert result == ""
+                # Verify warning was logged
+                mock_logger.warning.assert_called_once()
+                call_args = mock_logger.warning.call_args[0][0]
+                assert "VFS_ENCRYPTION_KEY" in call_args
+                assert "not set" in call_args
+
+    def test_substitute_critical_env_var_set(self):
+        """Test that critical env var is substituted when set."""
+        with patch.dict(os.environ, {"ENCRYPTION_KEY": "test-key-123"}):
+            result = substitute_env_vars("${ENCRYPTION_KEY}")
+            assert result == "test-key-123"
 
 
 class TestLoadConfig:
@@ -126,3 +155,36 @@ class TestLoadConfig:
         result = load_config("nested.yaml")
         assert "nested" in result
         assert result["nested"]["key"] == "value"
+
+    @patch("pathlib.Path.exists")
+    def test_load_config_no_fallback_in_production(self, mock_exists):
+        """Test that config loading raises error in production when file is missing."""
+        # Config file doesn't exist, example also doesn't exist
+        mock_exists.return_value = False
+        
+        with patch.dict(os.environ, {"ENV": "production"}):
+            with pytest.raises(FileNotFoundError) as exc_info:
+                load_config("missing.yaml")
+            assert "CRITICAL" in str(exc_info.value)
+            assert "production" in str(exc_info.value)
+
+    @patch("builtins.open", new_callable=mock_open, read_data="example: config\n")
+    @patch("pathlib.Path.exists")
+    def test_load_config_fallback_in_development(self, mock_exists, mock_file):
+        """Test that config loading falls back to example in development."""
+        # Main config doesn't exist, but example does
+        def exists_side_effect(self):
+            path_str = str(self)
+            if "config.example.yaml" in path_str:
+                return True
+            return False
+        
+        mock_exists.side_effect = exists_side_effect
+        
+        with patch.dict(os.environ, {"ENV": "development"}):
+            with patch("src.core.config_loader.logger") as mock_logger:
+                result = load_config("config/config.yaml")
+                # Verify warning was logged
+                mock_logger.warning.assert_called_once()
+                call_args = mock_logger.warning.call_args[0][0]
+                assert "Falling back" in call_args or "fallback" in call_args.lower()

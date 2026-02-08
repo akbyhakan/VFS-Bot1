@@ -118,11 +118,16 @@ class TestGracefulShutdownNotifications:
         with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
             bot = VFSBot.__new__(VFSBot)
             bot.running = True
+            bot._stopped = False  # Initialize the stopped flag
             bot.browser_manager = browser_manager
             bot.notifier = notifier
             bot._active_booking_tasks = []
-            bot.alert_service = MagicMock()
-            bot.alert_service.send_alert = AsyncMock()
+            
+            # Mock services.workflow.alert_service
+            bot.services = MagicMock()
+            bot.services.workflow = MagicMock()
+            bot.services.workflow.alert_service = MagicMock()
+            bot.services.workflow.alert_service.send_alert = AsyncMock()
 
             # Simulate active tasks
             async def mock_task():
@@ -134,9 +139,47 @@ class TestGracefulShutdownNotifications:
             await bot.stop()
 
             # Verify notification was sent
-            assert bot.alert_service.send_alert.called
-            call_args = bot.alert_service.send_alert.call_args_list[0][1]
+            assert bot.services.workflow.alert_service.send_alert.called
+            call_args = bot.services.workflow.alert_service.send_alert.call_args_list[0][1]
             assert "waiting" in call_args["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_stop_idempotent(self):
+        """Test that stop() can be called multiple times safely."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        # Create minimal mocks
+        config = {"bot": {}, "anti_detection": {"enabled": False}}
+        db = MagicMock()
+        notifier = MagicMock()
+        notifier.notify_bot_stopped = AsyncMock()
+
+        # Mock browser manager
+        browser_manager = MagicMock()
+        browser_manager.close = AsyncMock()
+
+        # Create VFSBot instance with mocks
+        with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
+            bot = VFSBot.__new__(VFSBot)
+            bot.running = True
+            bot._stopped = False
+            bot.browser_manager = browser_manager
+            bot.notifier = notifier
+            bot._active_booking_tasks = []
+            
+            # Mock services
+            bot.services = MagicMock()
+            bot.services.workflow = MagicMock()
+            bot.services.workflow.alert_service = None  # No alert service
+
+            # Call stop twice
+            await bot.stop()
+            await bot.stop()
+
+            # Browser manager close should only be called once
+            assert browser_manager.close.call_count == 1
+            # Notifier should only be called once
+            assert notifier.notify_bot_stopped.call_count == 1
 
 
 class TestBotLoopErrorRecoveryJitter:
