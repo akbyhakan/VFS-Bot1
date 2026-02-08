@@ -31,6 +31,19 @@ def _get_environment() -> str:
     return os.getenv("ENV", "production").lower()
 
 
+def _is_production_environment(env: str) -> bool:
+    """
+    Check if the environment is production.
+    
+    Args:
+        env: Environment name
+        
+    Returns:
+        True if production environment, False otherwise
+    """
+    return env not in ("development", "dev", "local", "testing", "test")
+
+
 def load_env_variables() -> None:
     """Load environment variables from .env file."""
     # Try project root first (correct location)
@@ -69,7 +82,7 @@ def substitute_env_vars(value: Any) -> Any:
         pattern = r"\$\{([^}]+)\}"
         matches = re.findall(pattern, value)
         env = _get_environment()
-        is_production = env not in ("development", "dev", "local", "testing", "test")
+        is_production = _is_production_environment(env)
         
         for match in matches:
             env_value = os.getenv(match)
@@ -121,7 +134,7 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     load_env_variables()
     
     env = _get_environment()
-    is_production = env not in ("development", "dev", "local", "testing", "test")
+    is_production = _is_production_environment(env)
 
     # Check if config exists, otherwise use example
     config_file = Path(config_path)
