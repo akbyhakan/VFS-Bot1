@@ -4,6 +4,8 @@ import logging
 
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
+from src.core.enums import MetricsStatus, SlotCheckStatus
+
 logger = logging.getLogger(__name__)
 
 # Slot checking metrics
@@ -134,8 +136,8 @@ class MetricsHelper:
             centre: VFS centre name
             found: Whether slot was found
         """
-        status = "found" if found else "not_found"
-        SLOT_CHECKS_TOTAL.labels(centre=centre, status=status).inc()
+        status = SlotCheckStatus.FOUND if found else SlotCheckStatus.NOT_FOUND
+        SLOT_CHECKS_TOTAL.labels(centre=centre, status=status.value).inc()
 
     @staticmethod
     def record_booking_success(centre: str) -> None:
@@ -201,8 +203,8 @@ class MetricsHelper:
             duration: Query duration in seconds
             success: Whether query was successful
         """
-        status = "success" if success else "failed"
-        DB_QUERIES_TOTAL.labels(operation=operation, status=status).inc()
+        status = MetricsStatus.SUCCESS if success else MetricsStatus.FAILED
+        DB_QUERIES_TOTAL.labels(operation=operation, status=status.value).inc()
         DB_QUERY_DURATION.labels(operation=operation).observe(duration)
 
     @staticmethod
@@ -244,8 +246,8 @@ class MetricsHelper:
             method: Payment method
             success: Whether payment was successful
         """
-        status = "success" if success else "failed"
-        PAYMENT_ATTEMPTS_TOTAL.labels(method=method, status=status).inc()
+        status = MetricsStatus.SUCCESS if success else MetricsStatus.FAILED
+        PAYMENT_ATTEMPTS_TOTAL.labels(method=method, status=status.value).inc()
 
     @staticmethod
     def record_captcha_solved(solver: str, duration: float, success: bool) -> None:
@@ -257,8 +259,8 @@ class MetricsHelper:
             duration: Time to solve in seconds
             success: Whether solving was successful
         """
-        status = "success" if success else "failed"
-        CAPTCHA_SOLVED_TOTAL.labels(solver=solver, status=status).inc()
+        status = MetricsStatus.SUCCESS if success else MetricsStatus.FAILED
+        CAPTCHA_SOLVED_TOTAL.labels(solver=solver, status=status.value).inc()
         CAPTCHA_SOLVE_DURATION.labels(solver=solver).observe(duration)
 
     @staticmethod

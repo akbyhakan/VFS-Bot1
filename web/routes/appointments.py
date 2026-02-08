@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
 from src.models.database import Database
 from web.dependencies import (
@@ -314,11 +315,11 @@ async def update_appointment_request_status(
         if not status:
             raise HTTPException(status_code=400, detail="Status is required")
 
-        if status not in ["pending", "processing", "completed", "failed"]:
+        if status not in AppointmentRequestStatus.values():
             raise HTTPException(status_code=400, detail="Invalid status value")
 
         # Set completed_at timestamp only when status becomes 'completed'
-        completed_at = datetime.now(timezone.utc) if status == "completed" else None
+        completed_at = datetime.now(timezone.utc) if status == AppointmentRequestStatus.COMPLETED else None
 
         updated = await db.update_appointment_request_status(
             request_id=request_id, status=status, completed_at=completed_at
