@@ -5,14 +5,14 @@ import logging
 import os
 from typing import Dict
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import create_access_token
 from src.core.security import generate_api_key
 from src.models.database import Database
-from web.dependencies import LoginRequest, TokenResponse, get_db
+from web.dependencies import LoginRequest, TokenResponse, get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -103,12 +103,13 @@ async def create_api_key_endpoint(
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
+async def login(request: Request, response: Response, credentials: LoginRequest) -> TokenResponse:
     """
-    Login endpoint - returns JWT token.
+    Login endpoint - returns JWT token and sets HttpOnly cookie.
 
     Args:
         request: FastAPI request object (required for rate limiter)
+        response: FastAPI response object (for setting cookies)
         credentials: Username and password
 
     Returns:
@@ -118,6 +119,7 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
         HTTPException: If credentials are invalid or environment not configured
     """
     from src.core.auth import verify_password
+    from src.core.settings import get_settings
 
     # Get credentials from environment - fail if not set
     admin_username = os.getenv("ADMIN_USERNAME")
@@ -161,4 +163,43 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
         data={"sub": credentials.username, "name": credentials.username}
     )
 
+    # Set HttpOnly cookie for security (primary auth method)
+    settings = get_settings()
+    is_production = settings.is_production()
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Prevents JavaScript access (XSS protection)
+        secure=is_production,  # HTTPS only in production
+        samesite="strict",  # CSRF protection
+        max_age=86400,  # 24 hours (matches JWT expiry)
+        path="/",
+    )
+
+    # Also return token in response body for backward compatibility
+    # (API clients and existing code that uses Authorization header)
     return TokenResponse(access_token=access_token)
+
+
+@router.post("/logout")
+async def logout(
+    response: Response,
+    _: Dict[str, Any] = Depends(verify_jwt_token)
+) -> Dict[str, str]:
+    """
+    Logout endpoint - clears the HttpOnly cookie.
+    
+    Requires authentication to prevent unauthorized cookie manipulation.
+
+    Args:
+        response: FastAPI response object (for clearing cookies)
+        _: JWT token payload (dependency for authentication)
+
+    Returns:
+        Success message
+    """
+    # Clear the access_token cookie
+    response.delete_cookie(key="access_token", path="/")
+    
+    return {"message": "Logged out successfully"}

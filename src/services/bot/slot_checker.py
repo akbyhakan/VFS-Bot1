@@ -53,44 +53,23 @@ class SlotChecker:
         self.cloudflare_handler = cloudflare_handler
         self.error_capture = error_capture or ErrorCapture()
         
-        # Selector configuration with fallback to hardcoded values
-        self.selectors = selectors or {}
-        
-        # Get selectors from config or use hardcoded defaults
-        appointment_selectors = self.selectors.get("defaults", {}).get("appointment", {})
-        
-        # Extract selectors with fallbacks
-        self._centre_selector = self._get_selector(appointment_selectors.get("centre_dropdown"), "select#centres")
-        self._category_selector = self._get_selector(appointment_selectors.get("category_dropdown"), "select#categories")
-        self._subcategory_selector = self._get_selector(appointment_selectors.get("subcategory_dropdown"), "select#subcategories")
-        self._check_slots_button = self._get_selector(appointment_selectors.get("check_slots_button"), "button#check-slots")
-        self._available_slot = self._get_selector(appointment_selectors.get("available_slot"), ".available-slot")
-        self._slot_date = ".slot-date"  # Not in YAML yet, use hardcoded
-        self._slot_time = ".slot-time"  # Not in YAML yet, use hardcoded
+        # Initialize SelectorManager for country-aware selectors
+        from ...utils.selectors import get_selector_manager
+        country = config.get("vfs", {}).get("mission", "default")
+        self._selector_manager = get_selector_manager(country)
     
-    def _get_selector(self, config_value: Any, default: str) -> str:
+    def _get_selector(self, selector_path: str, fallback: str) -> str:
         """
-        Get selector from config or return default.
+        Get selector from SelectorManager or return fallback.
         
         Args:
-            config_value: Selector from config (can be string or dict with 'primary')
-            default: Default selector to use
+            selector_path: Dot-notation path to selector (e.g., "appointment.slot_date")
+            fallback: Default selector to use if not found
             
         Returns:
             Selector string
         """
-        if config_value is None:
-            return default
-        
-        # If config_value is a dict, get the primary selector
-        if isinstance(config_value, dict):
-            return config_value.get("primary", default)
-        
-        # If it's a string, use it directly
-        if isinstance(config_value, str):
-            return config_value
-        
-        return default
+        return self._selector_manager.get(selector_path, fallback)
 
     async def check_slots(
         self, page: Page, centre: str, category: str, subcategory: str
@@ -127,26 +106,30 @@ class SlotChecker:
                 await self.cloudflare_handler.handle_challenge(page)
 
             # Select centre, category, subcategory using configured selectors
-            await page.select_option(self._centre_selector, label=centre)
+            await page.select_option(self._get_selector("appointment.centre_dropdown", "select#centres"), label=centre)
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
-            await page.select_option(self._category_selector, label=category)
+            await page.select_option(self._get_selector("appointment.category_dropdown", "select#categories"), label=category)
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
-            await page.select_option(self._subcategory_selector, label=subcategory)
+            await page.select_option(self._get_selector("appointment.subcategory_dropdown", "select#subcategories"), label=subcategory)
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
             # Click to check slots with human simulation using configured selector
-            await smart_click(page, self._check_slots_button, self.human_sim)
+            await smart_click(page, self._get_selector("appointment.check_slots_button", "button#check-slots"), self.human_sim)
             await asyncio.sleep(random.uniform(*Delays.AFTER_CLICK_CHECK))
 
             # Check if slots are available using configured selector
-            slots_available = await page.locator(self._available_slot).count() > 0
+            slots_available = await page.locator(self._get_selector("appointment.available_slot", ".available-slot")).count() > 0
 
             if slots_available:
+                # Get slot selectors from SelectorManager
+                date_selector = self._get_selector("appointment.slot_date", ".slot-date")
+                time_selector = self._get_selector("appointment.slot_time", ".slot-time")
+                
                 # Get first available slot
-                date_content = await page.locator(self._slot_date).first.text_content()
-                time_content = await page.locator(self._slot_time).first.text_content()
+                date_content = await page.locator(date_selector).first.text_content()
+                time_content = await page.locator(time_selector).first.text_content()
 
                 date = date_content.strip() if date_content else ""
                 time = time_content.strip() if time_content else ""

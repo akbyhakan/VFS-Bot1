@@ -7,7 +7,8 @@ export class AuthService {
   async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<TokenResponse> {
     const response = await api.post<TokenResponse>('/api/auth/login', credentials);
     
-    // Store token using tokenManager
+    // HttpOnly cookie is automatically set by the server
+    // Store token in localStorage/sessionStorage as fallback for backward compatibility
     tokenManager.setToken(response.access_token, rememberMe);
     
     // Store remember me preference (for compatibility)
@@ -20,7 +21,20 @@ export class AuthService {
     return response;
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    // Call logout endpoint to clear HttpOnly cookie
+    try {
+      await api.post('/api/auth/logout');
+    } catch (error) {
+      // Log error with context for debugging authentication flow issues
+      // In production, this should be sent to a proper error tracking service
+      console.error('Logout API call failed - continuing with local cleanup:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // Clear local storage
     tokenManager.clearToken();
     localStorage.removeItem(REMEMBER_ME_KEY);
   }

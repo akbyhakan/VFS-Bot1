@@ -77,6 +77,16 @@ defaults:
       fallbacks:
         - ".slot-available"
         - "[data-available='true']"
+    slot_date:
+      primary: ".slot-date"
+      fallbacks:
+        - "[data-testid='slot-date']"
+        - ".appointment-date"
+    slot_time:
+      primary: ".slot-time"
+      fallbacks:
+        - "[data-testid='slot-time']"
+        - ".appointment-time"
     
   # Captcha selectors
   captcha:

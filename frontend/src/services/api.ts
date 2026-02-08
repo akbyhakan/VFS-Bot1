@@ -26,9 +26,12 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true,  // Send cookies with every request (for HttpOnly cookie auth)
     });
 
     // Request interceptor to add auth token
+    // Note: Primary auth is via HttpOnly cookie (automatically sent by browser).
+    // Authorization header is kept for backward compatibility with API clients.
     this.client.interceptors.request.use(
       (config) => {
         const token = tokenManager.getToken();

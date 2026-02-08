@@ -1,6 +1,10 @@
 /**
  * Secure token manager with memory-first storage
  * Provides token management with remember me support and expiration handling
+ * 
+ * NOTE: As of v2.2.0, primary authentication is via HttpOnly cookies for XSS protection.
+ * This module is maintained for backward compatibility with API clients and as a fallback
+ * mechanism. The browser automatically sends the HttpOnly cookie with each request.
  */
 
 import { AUTH_TOKEN_KEY } from './constants';
