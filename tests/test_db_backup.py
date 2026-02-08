@@ -38,11 +38,21 @@ class TestDatabaseBackup:
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = Path(tmpdir) / "backups"
 
-            # Mock successful pg_dump process
-            mock_process = AsyncMock()
-            mock_process.communicate = AsyncMock(return_value=(b"", b""))
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+            # Create a side effect that creates the file when pg_dump is called
+            def create_backup_file(*args, **kwargs):
+                # The command is unpacked, so args is like ('pg_dump', '-h', 'localhost', ...)
+                if "-f" in args:
+                    f_index = args.index("-f")
+                    if f_index + 1 < len(args):
+                        backup_path = args[f_index + 1]
+                        Path(backup_path).touch()
+                
+                mock_process = AsyncMock()
+                mock_process.communicate = AsyncMock(return_value=(b"", b""))
+                mock_process.returncode = 0
+                return mock_process
+
+            mock_subprocess.side_effect = create_backup_file
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
@@ -55,6 +65,7 @@ class TestDatabaseBackup:
             # Verify subprocess was called with correct command
             assert mock_subprocess.called
             call_args = mock_subprocess.call_args
+            # args are after unpacking
             cmd_args = call_args[0]
             
             # Should contain pg_dump and appropriate flags
@@ -64,11 +75,6 @@ class TestDatabaseBackup:
             assert "-U" in cmd_args and "user" in cmd_args
             assert "-d" in cmd_args and "testdb" in cmd_args
             assert "-f" in cmd_args
-
-            # Verify backup file was created (we need to create it in the test)
-            # Since we're mocking, the actual file won't be created by pg_dump
-            # So we simulate it
-            Path(backup_path).touch()
             
             assert Path(backup_path).exists()
             assert "vfs_bot_backup_" in backup_path
@@ -212,11 +218,21 @@ class TestDatabaseBackup:
             backup_path = backup_dir / "vfs_bot_backup_20240101_120000.sql"
             backup_path.write_text("fake backup content")
 
-            # Mock successful subprocess calls (for both backup before restore and restore itself)
-            mock_process = AsyncMock()
-            mock_process.communicate = AsyncMock(return_value=(b"", b""))
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+            # Create a side effect that creates the file when pg_dump is called (for safety backup)
+            def create_backup_file(*args, **kwargs):
+                # args is unpacked command elements
+                if "-f" in args:
+                    f_index = args.index("-f")
+                    if f_index + 1 < len(args):
+                        file_path = args[f_index + 1]
+                        Path(file_path).touch()
+                
+                mock_process = AsyncMock()
+                mock_process.communicate = AsyncMock(return_value=(b"", b""))
+                mock_process.returncode = 0
+                return mock_process
+
+            mock_subprocess.side_effect = create_backup_file
 
             service = DatabaseBackup(
                 database_url="postgresql://user:pass@localhost:5432/testdb",
@@ -254,11 +270,21 @@ class TestDatabaseBackup:
             backup_path = backup_dir / "vfs_bot_backup_20240101_120000.sql"
             backup_path.write_text("fake backup content")
 
-            # Mock successful subprocess calls
-            mock_process = AsyncMock()
-            mock_process.communicate = AsyncMock(return_value=(b"", b""))
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+            # Create a side effect that creates files and tracks calls
+            def create_backup_file(*args, **kwargs):
+                # args is unpacked command elements
+                if "-f" in args:
+                    f_index = args.index("-f")
+                    if f_index + 1 < len(args):
+                        file_path = args[f_index + 1]
+                        Path(file_path).touch()
+                
+                mock_process = AsyncMock()
+                mock_process.communicate = AsyncMock(return_value=(b"", b""))
+                mock_process.returncode = 0
+                return mock_process
+
+            mock_subprocess.side_effect = create_backup_file
 
             service = DatabaseBackup(
                 database_url="postgresql://testuser:testpass@testhost:5433/testdb",
@@ -270,6 +296,7 @@ class TestDatabaseBackup:
 
             # Get the last call (restore call, not the safety backup call)
             last_call_args = mock_subprocess.call_args_list[-1]
+            # args are unpacked elements
             cmd_args = last_call_args[0]
             
             # Should use psql for restore
@@ -318,11 +345,21 @@ class TestDatabaseBackup:
         with tempfile.TemporaryDirectory() as tmpdir:
             backup_dir = Path(tmpdir) / "backups"
 
-            # Mock successful pg_dump process
-            mock_process = AsyncMock()
-            mock_process.communicate = AsyncMock(return_value=(b"", b""))
-            mock_process.returncode = 0
-            mock_subprocess.return_value = mock_process
+            # Create a side effect that creates the file when pg_dump is called
+            def create_backup_file(*args, **kwargs):
+                # args is unpacked command elements
+                if "-f" in args:
+                    f_index = args.index("-f")
+                    if f_index + 1 < len(args):
+                        file_path = args[f_index + 1]
+                        Path(file_path).touch()
+                
+                mock_process = AsyncMock()
+                mock_process.communicate = AsyncMock(return_value=(b"", b""))
+                mock_process.returncode = 0
+                return mock_process
+
+            mock_subprocess.side_effect = create_backup_file
 
             # Use very short interval for testing (in hours)
             service = DatabaseBackup(
