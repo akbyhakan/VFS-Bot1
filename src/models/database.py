@@ -512,6 +512,17 @@ class Database:
                 """
                 )
 
+                # Admin secret usage tracking table (multi-worker safe)
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS admin_secret_usage (
+                        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+                        consumed BOOLEAN NOT NULL DEFAULT false,
+                        consumed_at TIMESTAMPTZ
+                    )
+                """
+                )
+
                 # Appointment requests table
                 await conn.execute(
                     """
@@ -1223,6 +1234,40 @@ class Database:
             """
             )
             return [dict(row) for row in rows]
+
+    @require_connection
+    async def get_user_with_details_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single user with their personal details joined by user ID.
+
+        This method provides better performance than fetching all users
+        and filtering in Python when you only need one user.
+
+        Args:
+            user_id: User ID to retrieve
+
+        Returns:
+            User dictionary with personal details or None if not found
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}")
+        
+        async with self.get_connection() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT u.id, u.email, u.centre as center_name,
+                       u.category as visa_category, u.subcategory as visa_subcategory,
+                       u.active as is_active, u.created_at, u.updated_at,
+                       p.first_name, p.last_name, p.mobile_number as phone
+                FROM users u
+                LEFT JOIN personal_details p ON u.id = p.user_id
+                WHERE u.id = $1
+                """, user_id
+            )
+            return dict(row) if row else None
 
     @require_connection
     async def update_user(

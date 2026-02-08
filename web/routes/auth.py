@@ -5,29 +5,58 @@ import logging
 import os
 from typing import Dict
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import create_access_token
 from src.core.security import generate_api_key
-from web.dependencies import LoginRequest, TokenResponse
+from src.models.database import Database
+from web.dependencies import LoginRequest, TokenResponse, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
-# Process-level flag for one-time use enforcement
-# NOTE: In multi-worker deployments (Gunicorn/uvicorn --workers > 1), each worker
-# has its own copy of this flag, allowing the admin secret to be used once per worker.
-# For true one-time enforcement across all workers, use external storage (Redis/DB).
-_admin_secret_consumed = False
+
+async def _is_admin_secret_consumed(db: Database) -> bool:
+    """
+    Check if admin secret has been consumed (multi-worker safe).
+    
+    Args:
+        db: Database instance
+        
+    Returns:
+        True if admin secret has been consumed, False otherwise
+    """
+    async with db.get_connection() as conn:
+        result = await conn.fetchval(
+            "SELECT consumed FROM admin_secret_usage ORDER BY id DESC LIMIT 1"
+        )
+        return bool(result) if result is not None else False
+
+
+async def _mark_admin_secret_consumed(db: Database) -> None:
+    """
+    Mark admin secret as consumed (multi-worker safe).
+    
+    Args:
+        db: Database instance
+    """
+    async with db.get_connection() as conn:
+        await conn.execute(
+            """INSERT INTO admin_secret_usage (id, consumed, consumed_at)
+               VALUES (1, true, NOW())
+               ON CONFLICT (id) DO UPDATE SET consumed = true, consumed_at = NOW()"""
+        )
 
 
 @router.post("/generate-key")
 @limiter.limit("3/hour")
 async def create_api_key_endpoint(
-    request: Request, x_admin_secret: str = Header(..., alias="X-Admin-Secret")
+    request: Request,
+    x_admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    db: Database = Depends(get_db),
 ) -> Dict[str, str]:
     """
     Generate API key with admin secret - one-time use endpoint.
@@ -35,6 +64,7 @@ async def create_api_key_endpoint(
     Args:
         request: FastAPI request object (required for rate limiter)
         x_admin_secret: Admin secret from X-Admin-Secret header
+        db: Database instance
 
     Returns:
         New API key
@@ -42,10 +72,8 @@ async def create_api_key_endpoint(
     Raises:
         HTTPException: If admin secret is invalid
     """
-    global _admin_secret_consumed
-    
-    # Check if admin secret has already been used
-    if _admin_secret_consumed:
+    # Check if admin secret has already been used (multi-worker safe)
+    if await _is_admin_secret_consumed(db):
         client_ip = get_remote_address(request)
         logger.warning(f"Attempt to reuse consumed admin secret from {client_ip}")
         raise HTTPException(
@@ -63,8 +91,8 @@ async def create_api_key_endpoint(
 
     new_key = generate_api_key()
     
-    # Mark admin secret as consumed
-    _admin_secret_consumed = True
+    # Mark admin secret as consumed (multi-worker safe)
+    await _mark_admin_secret_consumed(db)
     logger.info("Admin secret consumed - one-time use enforced")
     
     return {
@@ -101,8 +129,8 @@ async def login(request: Request, credentials: LoginRequest) -> TokenResponse:
             detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
         )
 
-    # Check username
-    if credentials.username != admin_username:
+    # Check username with constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(credentials.username, admin_username):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
