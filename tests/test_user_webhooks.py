@@ -1,30 +1,20 @@
 """Test user webhook functionality."""
 
 import asyncio
-import os
-import tempfile
 
 import pytest
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 
 @pytest.fixture
 async def db():
     """Create a temporary test database."""
-    # Create temp database file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as f:
-        db_path = f.name
-
-    try:
-        database = Database(db_path=db_path)
-        await database.connect()
-        yield database
-    finally:
-        await database.close()
-        # Clean up temp file
-        if os.path.exists(db_path):
-            os.unlink(db_path)
+    database = Database(database_url=DatabaseConfig.TEST_URL)
+    await database.connect()
+    yield database
+    await database.close()
 
 
 @pytest.fixture
@@ -133,8 +123,7 @@ async def test_webhook_cascade_delete(db, test_user):
 
     # Verify user is deleted
     async with db.get_connection() as conn:
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (test_user,))
-        user = await cursor.fetchone()
+        user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", test_user)
         assert user is None
 
     # Note: CASCADE DELETE works at the database level

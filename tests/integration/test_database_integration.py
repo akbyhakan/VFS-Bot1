@@ -1,28 +1,24 @@
 """Integration tests for database operations."""
 
 import asyncio
-from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 
 @pytest_asyncio.fixture
-async def integration_db(tmp_path: Path) -> AsyncGenerator[Database, None]:
+async def integration_db() -> AsyncGenerator[Database, None]:
     """
     Create integration test database.
-
-    Args:
-        tmp_path: Pytest temporary directory fixture
 
     Yields:
         Database instance for testing
     """
-    db_path = tmp_path / "integration_test.db"
-    db = Database(str(db_path))
+    db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
     yield db
     await db.close()
@@ -122,19 +118,15 @@ class TestDatabaseIntegration:
         async def read_user() -> dict:
             """Read user in separate connection."""
             async with integration_db.get_connection() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-                    row = await cursor.fetchone()
-                    return dict(row) if row else {}
+                row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+                return dict(row) if row else {}
 
         async def update_user() -> None:
             """Update user in separate connection."""
             async with integration_db.get_connection() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute(
-                        "UPDATE users SET centre = ? WHERE id = ?", ("Ankara", user_id)
-                    )
-                    await conn.commit()
+                await conn.execute(
+                    "UPDATE users SET centre = $1 WHERE id = $2", "Ankara", user_id
+                )
 
         # Initial read
         user = await read_user()
@@ -237,13 +229,11 @@ class TestDatabaseContextManager:
     """Tests for database async context manager."""
 
     @pytest.mark.asyncio
-    async def test_database_context_manager(self, tmp_path):
+    async def test_database_context_manager(self):
         """Test database async context manager."""
         from src.models.database import Database
 
-        db_path = tmp_path / "context_test.db"
-
-        async with Database(str(db_path)) as db:
+        async with Database(database_url=DatabaseConfig.TEST_URL) as db:
             assert db.conn is not None
 
             # Should be able to use the database
@@ -260,14 +250,12 @@ class TestDatabaseContextManager:
         # (We can't easily test this without accessing internals)
 
     @pytest.mark.asyncio
-    async def test_database_context_manager_exception_handling(self, tmp_path):
+    async def test_database_context_manager_exception_handling(self):
         """Test that database context manager closes on exception."""
         from src.models.database import Database
 
-        db_path = tmp_path / "context_exception_test.db"
-
         with pytest.raises(RuntimeError):
-            async with Database(str(db_path)) as db:
+            async with Database(database_url=DatabaseConfig.TEST_URL) as db:
                 assert db.conn is not None
                 # Force an exception
                 raise RuntimeError("Test exception")
@@ -339,14 +327,13 @@ class TestDatabaseIdleConnectionCleanup:
     """Tests for database idle connection cleanup."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_idle_connections(self, tmp_path):
+    async def test_cleanup_idle_connections(self):
         """Test idle connection cleanup."""
         import time
 
         from src.models.database import Database
 
-        db_path = tmp_path / "idle_test.db"
-        db = Database(str(db_path), pool_size=3)
+        db = Database(database_url=DatabaseConfig.TEST_URL, pool_size=3)
         await db.connect()
 
         try:

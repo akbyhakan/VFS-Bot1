@@ -1,34 +1,20 @@
 """Tests for database batch query functionality."""
 
-import os
-import tempfile
-from pathlib import Path
-
 import pytest
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 
 @pytest.fixture
 async def temp_db():
     """Create a temporary database for testing."""
-    # Use a temporary file for the database
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-    temp_file.close()
-    db_path = temp_file.name
-
-    db = Database(db_path)
+    db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
     yield db
 
     await db.close()
-
-    # Clean up
-    try:
-        os.unlink(db_path)
-    except OSError:
-        pass
 
 
 @pytest.mark.asyncio
@@ -171,11 +157,7 @@ async def test_get_personal_details_batch_missing_users(temp_db):
 @pytest.mark.asyncio
 async def test_get_personal_details_batch_invalid_ids():
     """Test batch query with invalid user IDs."""
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-    temp_file.close()
-    db_path = temp_file.name
-
-    db = Database(db_path)
+    db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
     try:
@@ -190,7 +172,3 @@ async def test_get_personal_details_batch_invalid_ids():
             await db.get_personal_details_batch([1, -5, 3])
     finally:
         await db.close()
-        try:
-            os.unlink(db_path)
-        except OSError:
-            pass

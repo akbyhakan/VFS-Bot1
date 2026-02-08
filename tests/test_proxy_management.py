@@ -1,11 +1,10 @@
 """Tests for proxy management functionality."""
 
 import os
-import tempfile
-from pathlib import Path
 
 import pytest
 
+from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.security.netnut_proxy import NetNutProxyManager, mask_proxy_password
@@ -17,13 +16,10 @@ class TestProxyDatabase:
 
     async def test_add_proxy(self):
         """Test adding a proxy to database."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             proxy_id = await db.add_proxy(
@@ -45,22 +41,15 @@ class TestProxyDatabase:
             assert proxy["is_active"] == 1
             assert proxy["failure_count"] == 0
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_proxy_password_encryption(self):
         """Test that proxy passwords are encrypted in database."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             proxy_id = await db.add_proxy(
@@ -72,12 +61,11 @@ class TestProxyDatabase:
 
             # Read directly from database to verify encryption
             async with db.get_connection() as conn:
-                cursor = await conn.execute(
-                    "SELECT password_encrypted FROM proxy_endpoints WHERE id = ?",
-                    (proxy_id,),
+                row = await conn.fetchrow(
+                    "SELECT password_encrypted FROM proxy_endpoints WHERE id = $1",
+                    proxy_id,
                 )
-                row = await cursor.fetchone()
-                encrypted_password = row[0]
+                encrypted_password = row["password_encrypted"]
 
             # Encrypted password should not match plain text
             assert encrypted_password != "secret_password_123"
@@ -86,22 +74,15 @@ class TestProxyDatabase:
             decrypted = decrypt_password(encrypted_password)
             assert decrypted == "secret_password_123"
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_get_active_proxies(self):
         """Test retrieving active proxies."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add multiple proxies
             proxy1_id = await db.add_proxy(
@@ -123,22 +104,15 @@ class TestProxyDatabase:
             assert active[0]["server"] == "proxy1.example.com"
             assert active[0]["password"] == "pass1"  # Should be decrypted
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_update_proxy(self):
         """Test updating a proxy."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             proxy_id = await db.add_proxy(
@@ -165,22 +139,15 @@ class TestProxyDatabase:
             assert proxy["username"] == "test_user"  # Should remain unchanged
             assert proxy["password"] == "new_password"
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_delete_proxy(self):
         """Test deleting a proxy."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             proxy_id = await db.add_proxy(
@@ -202,22 +169,15 @@ class TestProxyDatabase:
             deleted_again = await db.delete_proxy(proxy_id)
             assert deleted_again is False
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_mark_proxy_failed(self):
         """Test marking a proxy as failed."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             proxy_id = await db.add_proxy(
@@ -243,22 +203,15 @@ class TestProxyDatabase:
             proxy = await db.get_proxy_by_id(proxy_id)
             assert proxy["failure_count"] == 2
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_reset_proxy_failures(self):
         """Test resetting proxy failure counts."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxies
             proxy1_id = await db.add_proxy(
@@ -289,22 +242,15 @@ class TestProxyDatabase:
             assert proxy1["failure_count"] == 0
             assert proxy2["failure_count"] == 0
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_get_proxy_stats(self):
         """Test getting proxy statistics."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Initially no proxies
             stats = await db.get_proxy_stats()
@@ -332,22 +278,15 @@ class TestProxyDatabase:
             assert stats["active"] == 2
             assert stats["inactive"] == 1
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     async def test_unique_constraint(self):
         """Test that duplicate proxies are rejected."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxy
             await db.add_proxy(
@@ -366,12 +305,8 @@ class TestProxyDatabase:
                     password="different_password",
                 )
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
 
 class TestNetNutProxyManager:
@@ -380,13 +315,10 @@ class TestNetNutProxyManager:
     @pytest.mark.asyncio
     async def test_load_from_database(self):
         """Test loading proxies from database."""
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
+        db = Database(database_url=DatabaseConfig.TEST_URL)
+        await db.connect()
 
         try:
-            db = Database(db_path=db_path)
-            await db.connect()
 
             # Add proxies
             await db.add_proxy(
@@ -414,12 +346,8 @@ class TestNetNutProxyManager:
             assert "protocol" in proxy
             assert "endpoint" in proxy
 
-            await db.close()
-
         finally:
-            # Cleanup
-            if os.path.exists(db_path):
-                os.unlink(db_path)
+            await db.close()
 
     def test_mask_proxy_password(self):
         """Test password masking utility."""
