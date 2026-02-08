@@ -261,10 +261,11 @@ class TestSessionRecovery:
 
         assert temp_checkpoint_file.exists()
 
-        # Verify file is encrypted (not readable as JSON)
+        # Verify file is encrypted by checking for Fernet token prefix
         raw_data = temp_checkpoint_file.read_bytes()
-        with pytest.raises(json.JSONDecodeError):
-            json.loads(raw_data.decode("utf-8"))
+        # Fernet tokens start with version byte (0x80) followed by timestamp
+        # The base64 encoding typically starts with 'gAAAAA'
+        assert raw_data.startswith(b'gAAAAA'), "File should be encrypted with Fernet"
 
         # Load checkpoint - should decrypt successfully
         checkpoint = recovery.load_checkpoint()
