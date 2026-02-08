@@ -1,4 +1,4 @@
-"""Slot pattern analizi ve raporlama."""
+"""Slot pattern analysis and reporting."""
 import asyncio
 import json
 import logging
@@ -16,7 +16,7 @@ _BATCH_INTERVAL = 60.0   # Or every 60 seconds (whichever comes first)
 
 
 class SlotPatternAnalyzer:
-    """Slot açılma pattern'lerini analiz et ve raporla."""
+    """Analyze and report slot availability patterns."""
 
     def __init__(self, data_file: str = "data/slot_patterns.json"):
         self.data_file = Path(data_file)
@@ -27,18 +27,18 @@ class SlotPatternAnalyzer:
         self._lock = threading.Lock()  # Protect batch write state
 
     def _load_data(self) -> Dict[str, Any]:
-        """Mevcut pattern verilerini yükle."""
+        """Load existing pattern data from file."""
         if self.data_file.exists():
             try:
                 with open(self.data_file, "r", encoding="utf-8") as f:
                     data: Dict[str, Any] = json.load(f)
                     return data
             except Exception as e:
-                logger.error(f"Pattern data yüklenemedi: {e}")
+                logger.error(f"Failed to load pattern data: {e}")
         return {"slots": [], "stats": {}}
 
     def _save_data_sync(self) -> None:
-        """Pattern verilerini kaydet."""
+        """Save pattern data to file."""
         try:
             with open(self.data_file, "w", encoding="utf-8") as f:
                 json.dump(self._patterns, f, indent=2, ensure_ascii=False)
@@ -46,7 +46,7 @@ class SlotPatternAnalyzer:
                 self._pending_writes = 0
                 self._last_save_time = datetime.now(timezone.utc)
         except Exception as e:
-            logger.error(f"Pattern data kaydedilemedi: {e}")
+            logger.error(f"Failed to save pattern data: {e}")
 
     def record_slot_found(
         self,
@@ -57,7 +57,7 @@ class SlotPatternAnalyzer:
         time: str,
         duration_seconds: Optional[int] = None,
     ) -> None:
-        """Bulunan slot'u kaydet."""
+        """Record a found slot."""
         now = datetime.now(timezone.utc)
         record = {
             "country": country,
@@ -73,7 +73,7 @@ class SlotPatternAnalyzer:
         self._patterns["slots"].append(record)
         # Synchronous method saves immediately for backward compatibility
         self._save_data_sync()
-        logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
+        logger.info(f"Slot pattern recorded: {country}/{centre}")
 
     async def record_slot_found_async(
         self,
@@ -84,7 +84,7 @@ class SlotPatternAnalyzer:
         time: str,
         duration_seconds: Optional[int] = None,
     ) -> None:
-        """Bulunan slot'u kaydet (async version with batching)."""
+        """Record a found slot (async version with batching)."""
         now = datetime.now(timezone.utc)
         record = {
             "country": country,
@@ -102,7 +102,7 @@ class SlotPatternAnalyzer:
         with self._lock:
             self._pending_writes += 1
         
-        logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
+        logger.info(f"Slot pattern recorded: {country}/{centre}")
         
         # Check if we should save (batch logic)
         await self._maybe_save()
@@ -132,7 +132,7 @@ class SlotPatternAnalyzer:
             logger.info(f"Flushed {pending} pending slot records to disk")
 
     def analyze_patterns(self, days: int = 30) -> Dict[str, Any]:
-        """Son N gündeki pattern'leri analiz et."""
+        """Analyze patterns from the last N days."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         recent_slots = []
         for s in self._patterns.get("slots", []):
@@ -148,30 +148,30 @@ class SlotPatternAnalyzer:
                 continue
 
         if not recent_slots:
-            return {"message": "Yeterli veri yok"}
+            return {"message": "Insufficient data"}
 
-        # Saat bazlı analiz
+        # Hourly analysis
         hour_counts: Dict[int, int] = defaultdict(int)
         for slot in recent_slots:
             hour_counts[slot["found_hour"]] += 1
 
-        # Gün bazlı analiz
+        # Daily analysis
         day_counts: Dict[str, int] = defaultdict(int)
         for slot in recent_slots:
             day_counts[slot["found_weekday"]] += 1
 
-        # Merkez bazlı analiz
+        # Centre-based analysis
         centre_counts: Dict[str, int] = defaultdict(int)
         for slot in recent_slots:
             centre_counts[slot["centre"]] += 1
 
-        # En iyi saatler (top 3)
+        # Best hours (top 3)
         best_hours = sorted(hour_counts.items(), key=lambda x: x[1], reverse=True)[:3]
 
-        # En iyi günler (top 3)
+        # Best days (top 3)
         best_days = sorted(day_counts.items(), key=lambda x: x[1], reverse=True)[:3]
 
-        # En aktif merkezler
+        # Most active centres
         best_centres = sorted(centre_counts.items(), key=lambda x: x[1], reverse=True)[:5]
 
         return {
@@ -184,7 +184,7 @@ class SlotPatternAnalyzer:
         }
 
     def generate_weekly_report(self) -> str:
-        """Haftalık Telegram raporu oluştur."""
+        """Generate weekly Telegram report."""
         analysis = self.analyze_patterns(days=7)
 
         if "message" in analysis:

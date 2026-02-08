@@ -102,7 +102,7 @@ class TestSlotPatternAnalyzer:
         analysis = analyzer.analyze_patterns(days=30)
 
         assert "message" in analysis
-        assert analysis["message"] == "Yeterli veri yok"
+        assert analysis["message"] == "Insufficient data"
 
     def test_analyze_patterns_with_data(self, temp_data_file):
         """Test analyze_patterns with sample data."""
