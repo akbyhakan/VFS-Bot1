@@ -35,9 +35,8 @@ def upgrade() -> None:
         END $$;
     """)
     
-    # Note: Data migration is handled by the application's 
-    # _migrate_encrypt_passport_numbers function in database.py
-    # This is called during database initialization to encrypt existing passport numbers
+    # Note: Data migration for existing passport numbers should be handled
+    # during application runtime when passport numbers are accessed and updated.
 
 
 def downgrade() -> None:
