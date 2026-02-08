@@ -215,8 +215,14 @@ class TestGracefulShutdownTimeout:
         # Cleanup should close the database
         await safe_shutdown_cleanup(db=db, db_owned=True)
 
-        # Pool should be closed after cleanup
-        assert db.pool is None or db.pool._closed
+        # Pool should be closed - verify by attempting to get a connection should fail
+        # The pool reference may still exist but be closed
+        try:
+            async with db.get_connection(timeout=1.0):
+                pytest.fail("Expected DatabaseNotConnectedError but connection succeeded")
+        except Exception:
+            # Expected - pool is closed
+            pass
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -241,9 +247,13 @@ class TestGracefulShutdownTimeout:
         # Cleanup should NOT close the database if db_owned is False
         await safe_shutdown_cleanup(db=db, db_owned=False)
 
-        # Pool should still be active
-        assert db.pool is not None
-        assert not db.pool._closed
+        # Pool should still be active - verify by getting a connection
+        try:
+            async with db.get_connection(timeout=1.0):
+                # Connection should succeed
+                pass
+        except Exception as e:
+            pytest.fail(f"Pool should still be active but connection failed: {e}")
 
         # Cleanup manually
         await db.close()

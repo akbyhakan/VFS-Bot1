@@ -179,11 +179,12 @@ class TestDatabaseBackupAutoStart:
     @pytest.mark.asyncio
     async def test_backup_service_creation(self):
         """Test backup service creation."""
+        from src.constants import Database as DatabaseConfig
         from src.utils.db_backup import DatabaseBackup
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Use PostgreSQL test database URL
-            test_db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
+            test_db_url = DatabaseConfig.TEST_URL
             backup_dir = str(Path(tmpdir) / "backups")
 
             # Create service directly (not using singleton getter)
