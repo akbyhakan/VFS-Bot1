@@ -10,6 +10,8 @@ import logging
 import threading
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from src.constants import Delays
+
 if TYPE_CHECKING:
     from src.models.database import Database
     from src.services.bot.vfs_bot import VFSBot
@@ -246,7 +248,7 @@ class BotController:
             return stop_result
 
         # Small delay
-        await asyncio.sleep(2)
+        await asyncio.sleep(Delays.RESTART_DELAY)
 
         # Start the bot
         start_result = await self.start_bot()

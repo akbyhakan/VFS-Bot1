@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
+from ...constants import Delays
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +110,7 @@ class CloudflareHandler:
                     return True
 
                 # Wait before checking again
-                await asyncio.sleep(2)
+                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
 
         except Exception as e:
             logger.error(f"Error handling Waiting Room: {e}")
@@ -150,7 +152,7 @@ class CloudflareHandler:
                         logger.info("Turnstile challenge passed")
                         return True
 
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
 
             return True
 

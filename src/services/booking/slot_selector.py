@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
 
+from ...constants import Delays
 from .selector_utils import TURKISH_MONTHS, resolve_selector, try_selectors, get_selector
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class SlotSelector:
             return False
 
         # Wait for time slots to load
-        await asyncio.sleep(2)
+        await asyncio.sleep(Delays.TIME_SLOTS_LOAD_WAIT)
         await self.wait_for_overlay(page)
 
         # Select time (preference: 09:00+)
