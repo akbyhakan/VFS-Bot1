@@ -26,8 +26,12 @@ export class AuthService {
     try {
       await api.post('/api/auth/logout');
     } catch (error) {
-      // Continue with local cleanup even if API call fails
-      console.error('Logout API call failed:', error);
+      // Log error with context for debugging authentication flow issues
+      // In production, this should be sent to a proper error tracking service
+      console.error('Logout API call failed - continuing with local cleanup:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
     }
     
     // Clear local storage

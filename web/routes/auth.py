@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 from src.core.auth import create_access_token
 from src.core.security import generate_api_key
 from src.models.database import Database
-from web.dependencies import LoginRequest, TokenResponse, get_db
+from web.dependencies import LoginRequest, TokenResponse, get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -183,12 +183,18 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
 
 
 @router.post("/logout")
-async def logout(response: Response) -> Dict[str, str]:
+async def logout(
+    response: Response,
+    _: Dict[str, Any] = Depends(verify_jwt_token)
+) -> Dict[str, str]:
     """
     Logout endpoint - clears the HttpOnly cookie.
+    
+    Requires authentication to prevent unauthorized cookie manipulation.
 
     Args:
         response: FastAPI response object (for clearing cookies)
+        _: JWT token payload (dependency for authentication)
 
     Returns:
         Success message

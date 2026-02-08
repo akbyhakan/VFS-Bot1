@@ -204,15 +204,22 @@ class EnvValidator:
             import base64
             
             # Fernet tokens are base64-encoded and typically longer than plain text
-            # They should be at least 60-80 characters for a typical password
+            # Minimum 60 characters: Fernet adds ~41 bytes overhead (version byte + 
+            # timestamp + IV + padding) to the encrypted data, which becomes ~55 chars
+            # in base64. A short password would still result in 60+ chars total.
             if len(token) < 60:
                 return False
             
             # Try to decode as base64
             decoded = base64.urlsafe_b64decode(token.encode())
             
-            # Should be at least 40 bytes (Fernet adds ~40 bytes overhead)
-            return len(decoded) >= 40
+            # Fernet overhead: 1 byte version + 8 bytes timestamp + 16 bytes IV + 
+            # 16 bytes auth tag + PKCS7 padding = minimum ~40 bytes overhead
+            # So any valid Fernet token should have at least 40 bytes
+            if len(decoded) < 40:
+                return False
+                
+            return True
         except Exception:
             return False
 
