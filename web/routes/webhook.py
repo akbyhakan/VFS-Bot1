@@ -42,8 +42,7 @@ async def create_webhook(
     try:
         # Verify user exists
         async with db.get_connection() as conn:
-            cursor = await conn.execute("SELECT id FROM users WHERE id = ?", (user_id,))
-            user = await cursor.fetchone()
+            user = await conn.fetchrow("SELECT id FROM users WHERE id = $1", user_id)
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
 

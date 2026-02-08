@@ -20,10 +20,13 @@ def unique_encryption_key(monkeypatch):
 
 
 @pytest.fixture
-async def test_db(tmp_path, unique_encryption_key):
+async def test_db(unique_encryption_key):
     """Create a test database."""
-    db_path = tmp_path / "test_payment_security.db"
-    db = Database(str(db_path))
+    from src.constants import Database as DbConstants
+    import os
+    
+    database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+    db = Database(database_url=database_url)
     await db.connect()
     yield db
     await db.close()
@@ -150,18 +153,16 @@ async def test_card_number_and_cvv_encryption(test_db):
 
     # Query the database directly to check encryption
     async with test_db.get_connection() as conn:
-        async with conn.cursor() as cursor:
-            await cursor.execute(
-                "SELECT card_number_encrypted, cvv_encrypted FROM payment_card LIMIT 1"
-            )
-            row = await cursor.fetchone()
+        row = await conn.fetchrow(
+            "SELECT card_number_encrypted, cvv_encrypted FROM payment_card LIMIT 1"
+        )
 
-            # The encrypted values should NOT be the plaintext
-            assert row["card_number_encrypted"] != card_number
-            assert row["cvv_encrypted"] != cvv
-            # The encrypted values should be non-empty strings
-            assert len(row["card_number_encrypted"]) > 0
-            assert len(row["cvv_encrypted"]) > 0
+        # The encrypted values should NOT be the plaintext
+        assert row["card_number_encrypted"] != card_number
+        assert row["cvv_encrypted"] != cvv
+        # The encrypted values should be non-empty strings
+        assert len(row["card_number_encrypted"]) > 0
+        assert len(row["cvv_encrypted"]) > 0
 
 
 @pytest.mark.asyncio

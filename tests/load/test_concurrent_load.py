@@ -77,10 +77,13 @@ class TestConcurrentLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_database_concurrent_writes(self, tmp_path: Path):
+    async def test_database_concurrent_writes(self):
         """Test database under concurrent write load."""
-        db_path = tmp_path / "load_test.db"
-        db = Database(str(db_path), pool_size=10)
+        from src.constants import Database as DbConstants
+        import os
+        
+        database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+        db = Database(database_url=database_url, pool_size=10)
         await db.connect()
 
         try:
@@ -115,10 +118,13 @@ class TestConcurrentLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_database_concurrent_reads(self, tmp_path: Path):
+    async def test_database_concurrent_reads(self):
         """Test database under concurrent read load."""
-        db_path = tmp_path / "load_read_test.db"
-        db = Database(str(db_path), pool_size=10)
+        from src.constants import Database as DbConstants
+        import os
+        
+        database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+        db = Database(database_url=database_url, pool_size=10)
         await db.connect()
 
         try:
@@ -157,10 +163,13 @@ class TestConcurrentLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_mixed_read_write_load(self, tmp_path: Path):
+    async def test_mixed_read_write_load(self):
         """Test database with mixed read and write operations."""
-        db_path = tmp_path / "load_mixed_test.db"
-        db = Database(str(db_path), pool_size=10)
+        from src.constants import Database as DbConstants
+        import os
+        
+        database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+        db = Database(database_url=database_url, pool_size=10)
         await db.connect()
 
         try:
@@ -221,10 +230,13 @@ class TestConcurrentLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_connection_pool_stress(self, tmp_path: Path):
+    async def test_connection_pool_stress(self):
         """Stress test connection pool with sustained load."""
-        db_path = tmp_path / "pool_stress_test.db"
-        db = Database(str(db_path), pool_size=5)  # Small pool for stress testing
+        from src.constants import Database as DbConstants
+        import os
+        
+        database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+        db = Database(database_url=database_url, pool_size=5)  # Small pool for stress testing
         await db.connect()
 
         try:
@@ -233,9 +245,7 @@ class TestConcurrentLoad:
             async def perform_operation(op_id: int) -> bool:
                 """Perform a database operation."""
                 async with db.get_connection(timeout=10.0) as conn:
-                    async with conn.cursor() as cursor:
-                        await cursor.execute("SELECT 1")
-                        await cursor.fetchone()
+                    result = await conn.fetchval("SELECT 1")
                 return True
 
             start_time = time.time()
@@ -264,10 +274,13 @@ class TestConcurrentLoad:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
-    async def test_sustained_load_over_time(self, tmp_path: Path):
+    async def test_sustained_load_over_time(self):
         """Test sustained load over a longer period."""
-        db_path = tmp_path / "sustained_load_test.db"
-        db = Database(str(db_path), pool_size=10)
+        from src.constants import Database as DbConstants
+        import os
+        
+        database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+        db = Database(database_url=database_url, pool_size=10)
         await db.connect()
 
         try:
