@@ -46,6 +46,18 @@ ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
     }
 )
 
+# Allowed fields for users table update (SQL injection prevention)
+ALLOWED_USER_UPDATE_FIELDS = frozenset(
+    {
+        "email",
+        "password",
+        "centre",
+        "category",
+        "subcategory",
+        "active",
+    }
+)
+
 
 class DatabaseState:
     """Database connection state constants."""
@@ -119,15 +131,7 @@ class Database:
             "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
             "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
         },
-        {
-            "version": 5,
-            "description": "Add cvv_encrypted to payment_card",
-            "table": "payment_card",
-            "column": "cvv_encrypted",
-            "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
-            "default_sql": None,
-            "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
-        },
+
     ]
 
     def __init__(self, database_url: Optional[str] = None, pool_size: Optional[int] = None):
@@ -422,7 +426,18 @@ class Database:
             return False
 
     async def _create_tables(self) -> None:
-        """Create database tables if they don't exist."""
+        """
+        Create database tables if they don't exist.
+        
+        Note: Schema changes should be managed via Alembic migrations.
+        Run 'alembic upgrade head' to apply pending migrations.
+        This method creates baseline tables for initial setup only.
+        
+        For production: Use Alembic CLI commands in Makefile:
+        - make db-upgrade: Apply pending migrations
+        - make db-migrate msg="description": Create new migration
+        - make db-history: View migration history
+        """
         if self.pool is None:
             raise RuntimeError("Database connection is not established.")
         async with self.pool.acquire() as conn:
@@ -514,9 +529,19 @@ class Database:
                         card_number_encrypted TEXT NOT NULL,
                         expiry_month TEXT NOT NULL,
                         expiry_year TEXT NOT NULL,
-                        cvv_encrypted TEXT,
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         updated_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """
+                )
+
+                # Admin secret usage tracking table (multi-worker safe)
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS admin_secret_usage (
+                        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+                        consumed BOOLEAN NOT NULL DEFAULT false,
+                        consumed_at TIMESTAMPTZ
                     )
                 """
                 )
@@ -1234,6 +1259,40 @@ class Database:
             return [dict(row) for row in rows]
 
     @require_connection
+    async def get_user_with_details_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single user with their personal details joined by user ID.
+
+        This method provides better performance than fetching all users
+        and filtering in Python when you only need one user.
+
+        Args:
+            user_id: User ID to retrieve
+
+        Returns:
+            User dictionary with personal details or None if not found
+
+        Raises:
+            ValueError: If user_id is invalid
+        """
+        if not isinstance(user_id, int) or user_id <= 0:
+            raise ValueError(f"Invalid user_id: {user_id}")
+        
+        async with self.get_connection() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT u.id, u.email, u.centre as center_name,
+                       u.category as visa_category, u.subcategory as visa_subcategory,
+                       u.active as is_active, u.created_at, u.updated_at,
+                       p.first_name, p.last_name, p.mobile_number as phone
+                FROM users u
+                LEFT JOIN personal_details p ON u.id = p.user_id
+                WHERE u.id = $1
+                """, user_id
+            )
+            return dict(row) if row else None
+
+    @require_connection
     async def update_user(
         self,
         user_id: int,
@@ -1245,7 +1304,9 @@ class Database:
         active: Optional[bool] = None,
     ) -> bool:
         """
-        Update user information.
+        Update user information with explicit field whitelist.
+
+        Only allows updating specific whitelisted fields to prevent SQL injection.
 
         Args:
             user_id: User ID
@@ -1505,6 +1566,7 @@ class Database:
         Update multiple users in a single transaction for improved performance.
 
         Each update dict should contain 'id' and the fields to update.
+        Field names are validated against ALLOWED_USER_UPDATE_FIELDS whitelist.
 
         Args:
             updates: List of update dictionaries with 'id' and optional fields:
@@ -1514,17 +1576,25 @@ class Database:
             Number of users successfully updated
 
         Raises:
-            ValidationError: If any email format is invalid
+            ValidationError: If any email format is invalid or invalid field name
             BatchOperationError: If batch operation fails
         """
         if not updates:
             return 0
 
-        # Validate all emails first (fail fast)
+        # Validate all emails first and check field names (fail fast)
         for update in updates:
             email = update.get("email")
             if email and not validate_email(email):
                 raise ValidationError(f"Invalid email format: {email}", field="email")
+            
+            # Validate field names against whitelist (excluding 'id')
+            for field_name in update.keys():
+                if field_name != "id" and field_name not in ALLOWED_USER_UPDATE_FIELDS:
+                    raise ValidationError(
+                        f"Invalid field name for user update: {field_name}",
+                        field=field_name
+                    )
 
         updated_count = 0
 
@@ -1775,12 +1845,12 @@ class Database:
         """
         Save or update payment card.
 
-        Note: This is a personal bot where the user stores their own data
-        on their own server. CVV is encrypted and stored for automatic payments.
+        Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
+        Card holder must enter CVV at payment time.
 
         Args:
             card_data: Dictionary containing card_holder_name, card_number,
-                      expiry_month, expiry_year, and cvv
+                      expiry_month, expiry_year
 
         Returns:
             Card ID
@@ -1788,7 +1858,7 @@ class Database:
         Raises:
             ValueError: If card data is invalid
         """
-        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year", "cvv"]
+        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
         for field in required_fields:
             if field not in card_data:
                 raise ValueError(f"Missing required field: {field}")
@@ -1796,7 +1866,6 @@ class Database:
         # Defensive validation (defense-in-depth)
         card_number = card_data["card_number"]
         expiry_month = card_data["expiry_month"]
-        cvv = card_data["cvv"]
 
         # Validate card_number: only digits, length 13-19
         if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
@@ -1811,13 +1880,8 @@ class Database:
         if not (1 <= month <= 12):
             raise ValueError("Expiry month must be between 01 and 12")
 
-        # Validate CVV: only digits, length 3-4
-        if not cvv.isdigit() or not (3 <= len(cvv) <= 4):
-            raise ValueError("CVV must be 3-4 digits")
-
-        # Encrypt sensitive data (card number and CVV)
+        # Encrypt sensitive data (card number only)
         card_number_encrypted = encrypt_password(card_data["card_number"])
-        cvv_encrypted = encrypt_password(card_data["cvv"])
 
         async with self.get_connection() as conn:
             # Check if a card already exists
@@ -1832,15 +1896,13 @@ class Database:
                         card_number_encrypted = $2,
                         expiry_month = $3,
                         expiry_year = $4,
-                        cvv_encrypted = $5,
                         updated_at = NOW()
-                    WHERE id = $6
+                    WHERE id = $5
                     """,
                     card_data["card_holder_name"],
                     card_number_encrypted,
                     card_data["expiry_month"],
                     card_data["expiry_year"],
-                    cvv_encrypted,
                     existing["id"],
                 )
                 logger.info("Payment card updated")
@@ -1851,15 +1913,14 @@ class Database:
                     """
                     INSERT INTO payment_card
                     (card_holder_name, card_number_encrypted, expiry_month,
-                     expiry_year, cvv_encrypted)
-                    VALUES ($1, $2, $3, $4, $5)
+                     expiry_year)
+                    VALUES ($1, $2, $3, $4)
                     RETURNING id
                     """,
                     card_data["card_holder_name"],
                     card_number_encrypted,
                     card_data["expiry_month"],
                     card_data["expiry_year"],
-                    cvv_encrypted,
                 )
                 if card_id is None:
                     raise RuntimeError("Failed to get inserted card ID")
@@ -1870,13 +1931,13 @@ class Database:
     @require_connection
     async def get_payment_card(self) -> Optional[Dict[str, Any]]:
         """
-        Get the saved payment card with decrypted card number and CVV.
+        Get the saved payment card with decrypted card number.
 
-        Note: This is a personal bot where the user stores their own data
-        on their own server. CVV is decrypted for automatic payments.
+        Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
+        Card holder must enter CVV at payment time.
 
         Returns:
-            Card dictionary with decrypted card number and CVV or None if no card exists
+            Card dictionary with decrypted card number or None if no card exists
         """
         async with self.get_connection() as conn:
             row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
@@ -1886,21 +1947,15 @@ class Database:
 
             card = dict(row)
 
-            # Decrypt card number and CVV
+            # Decrypt card number
             try:
                 card["card_number"] = decrypt_password(card["card_number_encrypted"])
-                if card.get("cvv_encrypted"):
-                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
-                else:
-                    card["cvv"] = None
             except Exception as e:
                 logger.error(f"Failed to decrypt card data: {e}")
                 raise ValueError("Failed to decrypt card data")
 
             # Remove encrypted fields from response
             del card["card_number_encrypted"]
-            if "cvv_encrypted" in card:
-                del card["cvv_encrypted"]
 
             return card
 
@@ -1931,10 +1986,8 @@ class Database:
                 logger.error(f"Failed to decrypt card number: {e}")
                 card["card_number_masked"] = "**** **** **** ****"
 
-            # Remove encrypted fields and CVV (never expose in masked view)
+            # Remove encrypted fields (never expose in masked view)
             del card["card_number_encrypted"]
-            if "cvv_encrypted" in card:
-                del card["cvv_encrypted"]
 
             return card
 

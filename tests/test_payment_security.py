@@ -1,4 +1,4 @@
-"""Tests for payment card security with CVV encryption."""
+"""Tests for payment card security."""
 
 import os
 
@@ -34,21 +34,19 @@ async def test_db(unique_encryption_key):
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_cvv_stored_encrypted_in_database(test_db):
+async def test_card_stored_without_cvv(test_db):
     """
-    CVV should be encrypted when stored in the database.
+    CVV should NOT be stored per PCI-DSS Requirement 3.2.
 
-    Note: This is a personal bot where the user stores their own data
-    on their own server. CVV is encrypted for automatic payments.
+    Card holder must enter CVV at payment time.
     """
-    # Save card WITH CVV
+    # Save card WITHOUT CVV
     card_id = await test_db.save_payment_card(
         {
             "card_holder_name": "Test User",
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
-            "cvv": "123",
         }
     )
 
@@ -58,9 +56,9 @@ async def test_cvv_stored_encrypted_in_database(test_db):
     card = await test_db.get_payment_card()
 
     assert card is not None
-    # Assert CVV is decrypted and available
-    assert card["cvv"] == "123"
-    assert "cvv_encrypted" not in card  # Encrypted field should be removed
+    # Assert CVV is NOT present (PCI-DSS compliance)
+    assert "cvv" not in card
+    assert "cvv_encrypted" not in card
 
     # Verify card has expected fields
     assert card["card_holder_name"] == "Test User"
@@ -83,7 +81,6 @@ async def test_masked_card_no_cvv(test_db):
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
-            "cvv": "456",
         }
     )
 
@@ -133,12 +130,11 @@ async def test_connection_pool_leak_protection(test_db):
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_card_number_and_cvv_encryption(test_db):
+async def test_card_number_encryption(test_db):
     """
-    Test that card numbers and CVV are properly encrypted in the database.
+    Test that card numbers are properly encrypted in the database.
     """
     card_number = "4111111111111111"
-    cvv = "789"
 
     # Save card
     await test_db.save_payment_card(
@@ -147,29 +143,26 @@ async def test_card_number_and_cvv_encryption(test_db):
             "card_number": card_number,
             "expiry_month": "12",
             "expiry_year": "2025",
-            "cvv": cvv,
         }
     )
 
     # Query the database directly to check encryption
     async with test_db.get_connection() as conn:
         row = await conn.fetchrow(
-            "SELECT card_number_encrypted, cvv_encrypted FROM payment_card LIMIT 1"
+            "SELECT card_number_encrypted FROM payment_card LIMIT 1"
         )
 
-        # The encrypted values should NOT be the plaintext
+        # The encrypted value should NOT be the plaintext
         assert row["card_number_encrypted"] != card_number
-        assert row["cvv_encrypted"] != cvv
-        # The encrypted values should be non-empty strings
+        # The encrypted value should be a non-empty string
         assert len(row["card_number_encrypted"]) > 0
-        assert len(row["cvv_encrypted"]) > 0
 
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_card_update_with_cvv(test_db):
+async def test_card_update(test_db):
     """
-    Test that updating a card with CVV works correctly.
+    Test that updating a card works correctly.
     """
     # Create initial card
     card_id = await test_db.save_payment_card(
@@ -178,18 +171,16 @@ async def test_card_update_with_cvv(test_db):
             "card_number": "4111111111111111",
             "expiry_month": "12",
             "expiry_year": "2025",
-            "cvv": "123",
         }
     )
 
-    # Update card (with new CVV)
+    # Update card
     updated_id = await test_db.save_payment_card(
         {
             "card_holder_name": "Updated User",
             "card_number": "4111111111111111",
             "expiry_month": "01",
             "expiry_year": "2026",
-            "cvv": "456",
         }
     )
 
@@ -201,4 +192,3 @@ async def test_card_update_with_cvv(test_db):
     assert card["card_holder_name"] == "Updated User"
     assert card["expiry_month"] == "01"
     assert card["expiry_year"] == "2026"
-    assert card["cvv"] == "456"  # CVV should be updated

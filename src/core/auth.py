@@ -5,10 +5,10 @@ import logging
 import os
 import re
 import threading
+import time
 import uuid
 from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, cast
 
 from fastapi import HTTPException, status
@@ -403,10 +403,18 @@ class JWTSettings(NamedTuple):
     expire_hours: int
 
 
-@lru_cache(maxsize=1)
+# TTL-based cache for JWT settings (replaces lru_cache for key rotation support)
+_jwt_settings_cache: Optional[JWTSettings] = None
+_jwt_settings_cache_time: float = 0
+_JWT_SETTINGS_TTL: int = 300  # 5 minutes TTL
+
+
 def _get_jwt_settings() -> JWTSettings:
     """
-    Get JWT settings with lazy initialization.
+    Get JWT settings with lazy initialization and TTL-based cache.
+
+    This replaces lru_cache to support key rotation without server restart.
+    Settings are cached for 5 minutes, then refreshed from environment.
 
     Returns:
         JWTSettings named tuple with secret_key, algorithm, and expire_hours
@@ -414,6 +422,15 @@ def _get_jwt_settings() -> JWTSettings:
     Raises:
         ValueError: If API_SECRET_KEY is not set or invalid
     """
+    global _jwt_settings_cache, _jwt_settings_cache_time
+    
+    now = time.monotonic()
+    
+    # Return cached settings if still valid
+    if _jwt_settings_cache is not None and (now - _jwt_settings_cache_time) < _JWT_SETTINGS_TTL:
+        return _jwt_settings_cache
+    
+    # Load fresh settings from environment
     secret_key = os.getenv("API_SECRET_KEY")
     if not secret_key:
         raise ValueError(
@@ -438,7 +455,23 @@ def _get_jwt_settings() -> JWTSettings:
     except (ValueError, TypeError):
         raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
 
-    return JWTSettings(secret_key=secret_key, algorithm=algorithm, expire_hours=expire_hours)
+    # Update cache
+    _jwt_settings_cache = JWTSettings(secret_key=secret_key, algorithm=algorithm, expire_hours=expire_hours)
+    _jwt_settings_cache_time = now
+    
+    return _jwt_settings_cache
+
+
+def invalidate_jwt_settings_cache() -> None:
+    """
+    Invalidate JWT settings cache.
+    
+    This forces a reload of settings from environment on next access.
+    Useful for testing or when key rotation is performed.
+    """
+    global _jwt_settings_cache, _jwt_settings_cache_time
+    _jwt_settings_cache = None
+    _jwt_settings_cache_time = 0
 
 
 def get_secret_key() -> str:

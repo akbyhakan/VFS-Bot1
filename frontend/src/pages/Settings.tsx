@@ -31,7 +31,6 @@ export function Settings() {
     card_number: '',
     expiry_month: '',
     expiry_year: '',
-    cvv: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -130,7 +129,6 @@ export function Settings() {
         card_number: '',
         expiry_month: card.expiry_month,
         expiry_year: card.expiry_year,
-        cvv: '',
       });
     } else {
       setFormData({
@@ -138,7 +136,6 @@ export function Settings() {
         card_number: '',
         expiry_month: '',
         expiry_year: '',
-        cvv: '',
       });
     }
     setIsEditing(true);
@@ -151,7 +148,6 @@ export function Settings() {
       card_number: '',
       expiry_month: '',
       expiry_year: '',
-      cvv: '',
     });
   };
 
@@ -179,7 +175,6 @@ export function Settings() {
         card_number: '',
         expiry_month: '',
         expiry_year: '',
-        cvv: '',
       });
       toast.success('Kart bilgileri kaydedildi');
     }
@@ -365,32 +360,6 @@ export function Settings() {
                         formErrors.expiryYear ? 'border-red-500' : 'border-dark-600'
                       }`}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-dark-400 mb-1">CVV</label>
-                    <input
-                      type="password"
-                      value={formData.cvv}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (/^\d{0,4}$/.test(value)) {
-                          setFormData({ ...formData, cvv: value });
-                          const newErrors = { ...formErrors };
-                          delete newErrors.cvv;
-                          setFormErrors(newErrors);
-                        }
-                      }}
-                      placeholder="•••"
-                      maxLength={4}
-                      autoComplete="cc-csc"
-                      inputMode="numeric"
-                      className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${
-                        formErrors.cvv ? 'border-red-500' : 'border-dark-600'
-                      }`}
-                    />
-                    {formErrors.cvv && (
-                      <p className="text-red-500 text-xs mt-1">{formErrors.cvv}</p>
-                    )}
                   </div>
                   {formErrors.expiryMonth && (
                     <div className="col-span-2">

@@ -13,7 +13,7 @@ from typing import Any, Dict
 import pytest
 from cryptography.fernet import Fernet
 
-from src.core.auth import _get_jwt_settings
+from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 from src.core.security import _get_api_key_salt, hash_api_key
 from src.models.database import ALLOWED_PERSONAL_DETAILS_FIELDS, Database
 from src.utils.encryption import reset_encryption
@@ -416,7 +416,7 @@ def test_thread_safe_bot_state_logs_deque():
 def test_jwt_secret_key_minimum_length_64(monkeypatch):
     """Test that JWT secret key must be at least 64 characters."""
     # Clear cache
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Test with short key (should fail)
     short_key = "x" * 32  # Only 32 characters
@@ -432,7 +432,7 @@ def test_jwt_secret_key_minimum_length_64(monkeypatch):
 def test_jwt_secret_key_accepts_64_chars(monkeypatch):
     """Test that JWT secret key accepts exactly 64 characters."""
     # Clear cache
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Test with exactly 64 characters
     valid_key = "x" * 64
@@ -446,7 +446,7 @@ def test_jwt_secret_key_accepts_64_chars(monkeypatch):
 def test_jwt_secret_key_accepts_longer_than_64(monkeypatch):
     """Test that JWT secret key accepts more than 64 characters."""
     # Clear cache
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Test with more than 64 characters
     valid_key = "x" * 100
@@ -460,7 +460,7 @@ def test_jwt_secret_key_accepts_longer_than_64(monkeypatch):
 def test_jwt_secret_key_not_set(monkeypatch):
     """Test that missing JWT secret key raises error."""
     # Clear cache
-    _get_jwt_settings.cache_clear()
+    invalidate_jwt_settings_cache()
 
     # Remove env var
     monkeypatch.delenv("API_SECRET_KEY", raising=False)

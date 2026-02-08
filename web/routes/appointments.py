@@ -2,8 +2,10 @@
 
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.core.exceptions import ValidationError
@@ -20,30 +22,42 @@ from web.dependencies import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["appointments"])
 
-# Countries data (21 countries as specified)
-COUNTRIES_DATA = [
-    {"code": "nld", "name_en": "Netherlands", "name_tr": "Hollanda"},
-    {"code": "aut", "name_en": "Austria", "name_tr": "Avusturya"},
-    {"code": "bel", "name_en": "Belgium", "name_tr": "Belçika"},
-    {"code": "che", "name_en": "Switzerland", "name_tr": "İsviçre"},
-    {"code": "cze", "name_en": "Czech Republic", "name_tr": "Çekya"},
-    {"code": "deu", "name_en": "Germany", "name_tr": "Almanya"},
-    {"code": "dnk", "name_en": "Denmark", "name_tr": "Danimarka"},
-    {"code": "esp", "name_en": "Spain", "name_tr": "İspanya"},
-    {"code": "est", "name_en": "Estonia", "name_tr": "Estonya"},
-    {"code": "fin", "name_en": "Finland", "name_tr": "Finlandiya"},
-    {"code": "fra", "name_en": "France", "name_tr": "Fransa"},
-    {"code": "grc", "name_en": "Greece", "name_tr": "Yunanistan"},
-    {"code": "hun", "name_en": "Hungary", "name_tr": "Macaristan"},
-    {"code": "isl", "name_en": "Iceland", "name_tr": "İzlanda"},
-    {"code": "ita", "name_en": "Italy", "name_tr": "İtalya"},
-    {"code": "ltu", "name_en": "Lithuania", "name_tr": "Litvanya"},
-    {"code": "lva", "name_en": "Latvia", "name_tr": "Letonya"},
-    {"code": "mlt", "name_en": "Malta", "name_tr": "Malta"},
-    {"code": "nor", "name_en": "Norway", "name_tr": "Norveç"},
-    {"code": "pol", "name_en": "Poland", "name_tr": "Polonya"},
-    {"code": "prt", "name_en": "Portugal", "name_tr": "Portekiz"},
-]
+
+def _load_countries_from_yaml() -> List[Dict[str, str]]:
+    """
+    Load countries data from country_profiles.yaml.
+    
+    This replaces hardcoded COUNTRIES_DATA to follow DRY principle.
+    
+    Returns:
+        List of country dictionaries with code, name_en, and name_tr
+    """
+    yaml_path = Path("config/country_profiles.yaml")
+    if not yaml_path.exists():
+        logger.warning("country_profiles.yaml not found, returning empty country list")
+        return []
+    
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        
+        countries = []
+        for code, profile in data.get("country_profiles", {}).items():
+            countries.append({
+                "code": code,
+                "name_en": profile.get("name_en", ""),
+                "name_tr": profile.get("name", ""),
+            })
+        
+        logger.info(f"Loaded {len(countries)} countries from YAML")
+        return countries
+    except Exception as e:
+        logger.error(f"Failed to load countries from YAML: {e}")
+        return []
+
+
+# Load countries data from YAML (replaces hardcoded list)
+COUNTRIES_DATA = _load_countries_from_yaml()
 
 
 @router.get("/countries", response_model=List[CountryResponse])

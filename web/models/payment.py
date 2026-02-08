@@ -4,13 +4,15 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class PaymentCardRequest(BaseModel):
-    """Payment card request model."""
+    """Payment card request model.
+    
+    Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
+    """
 
     card_holder_name: str = Field(..., min_length=2, max_length=100)
     card_number: str = Field(..., min_length=13, max_length=19, pattern=r"^\d{13,19}$")
     expiry_month: str = Field(..., pattern=r"^(0[1-9]|1[0-2])$")
     expiry_year: str = Field(..., pattern=r"^\d{2,4}$")
-    cvv: str = Field(..., min_length=3, max_length=4, pattern=r"^\d{3,4}$")
 
     @field_validator("card_number")
     @classmethod
