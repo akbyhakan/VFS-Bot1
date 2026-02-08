@@ -89,14 +89,23 @@ def setup_test_environment(monkeypatch):
 
 
 @pytest_asyncio.fixture
-async def database(tmp_path):
-    """Create a test database."""
-    db_path = tmp_path / "test.db"
-    db = Database(str(db_path))
+async def database():
+    """
+    Create a test database.
+    
+    Note: This fixture requires a PostgreSQL test database to be available.
+    Set TEST_DATABASE_URL environment variable or it will use the default.
+    """
+    import os
+    from src.constants import Database as DbConstants
+    
+    # Use test database URL from environment or default
+    database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
+    
+    db = Database(database_url=database_url)
     await db.connect()
     yield db
     await db.close()
-    # Cleanup is automatic with tmp_path
 
 
 @pytest.fixture

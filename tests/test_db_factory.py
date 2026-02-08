@@ -27,14 +27,17 @@ class TestDatabaseFactory:
         assert isinstance(db1, Database)
 
     def test_get_instance_with_custom_path(self):
-        """Test get_instance with custom database path."""
-        db = DatabaseFactory.get_instance(db_path="custom.db")
-        assert db.db_path == "custom.db"
+        """Test get_instance with custom database URL."""
+        db = DatabaseFactory.get_instance(database_url="postgresql://localhost/custom_db")
+        assert db.database_url == "postgresql://localhost/custom_db"
 
     def test_get_instance_with_default_path(self):
-        """Test get_instance uses default path."""
+        """Test get_instance uses default database URL."""
+        import os
         db = DatabaseFactory.get_instance()
-        assert db.db_path == "vfs_bot.db"
+        # Should use default from environment or fallback
+        expected = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+        assert db.database_url == expected
 
     def test_get_instance_with_pool_size(self):
         """Test get_instance with custom pool size."""
@@ -43,10 +46,10 @@ class TestDatabaseFactory:
 
     def test_get_instance_ignores_later_params(self):
         """Test that params are ignored after first instance creation."""
-        db1 = DatabaseFactory.get_instance(db_path="first.db")
-        db2 = DatabaseFactory.get_instance(db_path="second.db")
+        db1 = DatabaseFactory.get_instance(database_url="postgresql://localhost/first_db")
+        db2 = DatabaseFactory.get_instance(database_url="postgresql://localhost/second_db")
         assert db1 is db2
-        assert db1.db_path == "first.db"
+        assert db1.database_url == "postgresql://localhost/first_db"
 
     def test_reset_instance(self):
         """Test reset_instance clears singleton."""
@@ -117,9 +120,11 @@ class TestDatabaseFactory:
         assert all(instance is instances[0] for instance in instances)
 
     def test_get_instance_none_path_uses_default(self):
-        """Test that None db_path uses default value."""
-        db = DatabaseFactory.get_instance(db_path=None)
-        assert db.db_path == "vfs_bot.db"
+        """Test that None database_url uses default value."""
+        import os
+        db = DatabaseFactory.get_instance(database_url=None)
+        expected = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+        assert db.database_url == expected
 
     @pytest.mark.asyncio
     async def test_ensure_connected_calls_connect(self):

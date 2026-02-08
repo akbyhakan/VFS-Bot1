@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **BREAKING**: Migrated database from SQLite to PostgreSQL
+  - Changed `aiosqlite` to `asyncpg` for better performance and scalability
+  - Updated all SQL queries to use PostgreSQL syntax (numbered placeholders `$1, $2, ...`)
+  - Changed `INTEGER PRIMARY KEY AUTOINCREMENT` to `BIGSERIAL PRIMARY KEY`
+  - Updated boolean defaults from `0/1` to `FALSE/TRUE`
+  - Changed timestamps from `TIMESTAMP` to `TIMESTAMPTZ` with `NOW()` function
+  - Removed SQLite-specific methods (`_set_secure_db_permissions`, `_verify_db_permissions`, `cleanup_idle_connections`)
+  - Updated Database class to use asyncpg connection pooling
+  - Changed initialization parameter from `db_path` to `database_url`
+  - Updated DatabaseFactory to use `database_url` instead of `db_path`
+
 ## [2.2.0] - 2026-01-24
 
 ### 🚀 NEW FEATURES

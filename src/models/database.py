@@ -1,18 +1,16 @@
-"""Database operations for VFS-Bot using SQLite."""
+"""Database operations for VFS-Bot using PostgreSQL."""
 
 import asyncio
 import logging
 import os
 import secrets
-import stat
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
-from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, TypeVar
 
-import aiosqlite
+import asyncpg
 
 from src.core.exceptions import (
     BatchOperationError,
@@ -73,19 +71,21 @@ def require_connection(func: F) -> F:
 
 
 class Database:
-    """SQLite database manager for VFS-Bot with connection pooling."""
+    """PostgreSQL database manager for VFS-Bot with connection pooling."""
 
-    def __init__(self, db_path: str = "vfs_bot.db", pool_size: Optional[int] = None):
+    def __init__(self, database_url: Optional[str] = None, pool_size: Optional[int] = None):
         """
         Initialize database connection pool.
 
         Args:
-            db_path: Path to SQLite database file
+            database_url: PostgreSQL connection URL (defaults to DATABASE_URL env var)
             pool_size: Maximum number of concurrent connections (defaults to
                 DB_POOL_SIZE env var or calculated optimal size)
         """
-        self.db_path = db_path
-        self.conn: Optional[aiosqlite.Connection] = None
+        self.database_url = database_url or os.getenv(
+            "DATABASE_URL", "postgresql://localhost:5432/vfs_bot"
+        )
+        self.conn: Optional[asyncpg.Pool] = None
         # Get pool size from parameter, env var, or calculate optimal size
         if pool_size is None:
             env_pool_size = os.getenv("DB_POOL_SIZE")
@@ -94,9 +94,7 @@ class Database:
             else:
                 pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size
-        self._pool: List[aiosqlite.Connection] = []
         self._pool_lock = asyncio.Lock()
-        self._available_connections: asyncio.Queue = asyncio.Queue(maxsize=pool_size)
 
     def _calculate_optimal_pool_size(self) -> int:
         """
@@ -111,157 +109,68 @@ class Database:
         # Clamp between 5 and 20
         return min(max(optimal_size, 5), 20)
 
-    def _set_secure_db_permissions(self) -> None:
-        """Set restrictive file permissions on database files (Unix/Linux only)."""
-        if os.name == "nt":  # Skip on Windows
-            return
+    @staticmethod
+    def _parse_command_tag(command_tag: str) -> int:
+        """
+        Parse PostgreSQL command tag to extract affected row count.
 
-        db_path = Path(self.db_path)
-        secure_mode = stat.S_IRUSR | stat.S_IWUSR  # 0o600 = owner read/write only
+        PostgreSQL command tags follow the format 'COMMAND N' where N is the count.
+        Examples: 'UPDATE 5', 'DELETE 3', 'INSERT 0 1'
 
+        Args:
+            command_tag: PostgreSQL command tag string
+
+        Returns:
+            Number of affected rows, or 0 if parsing fails
+        """
         try:
-            if db_path.exists():
-                current_mode = db_path.stat().st_mode & 0o777
-                if current_mode != 0o600:
-                    os.chmod(str(db_path), secure_mode)
-                    logger.info(
-                        f"Database file permissions set to 600: {db_path} "
-                        f"(was {oct(current_mode)})"
-                    )
-
-            # Also secure WAL and SHM files if they exist
-            for suffix in ("-wal", "-shm"):
-                wal_path = Path(str(db_path) + suffix)
-                if wal_path.exists():
-                    os.chmod(str(wal_path), secure_mode)
-        except OSError as e:
-            logger.warning(f"Could not set database file permissions: {e}")
-
-    def _verify_db_permissions(self) -> None:
-        """Warn if database file has overly permissive permissions."""
-        if os.name == "nt":
-            return
-
-        db_path = Path(self.db_path)
-        try:
-            if db_path.exists():
-                current_mode = db_path.stat().st_mode
-                if current_mode & (stat.S_IRGRP | stat.S_IROTH):
-                    logger.warning(
-                        f"Database file {db_path} has permissive permissions "
-                        f"(mode: {oct(current_mode & 0o777)}). "
-                        f"Recommended: chmod 600 {db_path}"
-                    )
-        except OSError:
-            pass
+            # Command tags format: 'COMMAND N' or 'INSERT oid N'
+            parts = command_tag.split()
+            if len(parts) >= 2:
+                # For INSERT: 'INSERT 0 N' - return last part
+                # For UPDATE/DELETE: 'UPDATE N' - return last part
+                return int(parts[-1])
+            return 0
+        except (ValueError, IndexError):
+            logger.warning(f"Failed to parse command tag: {command_tag}")
+            return 0
 
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
             try:
-                # Create main connection for schema management
-                self.conn = await aiosqlite.connect(self.db_path)
-                self.conn.row_factory = aiosqlite.Row
-
-                # Enable WAL mode for better concurrency (database-wide setting)
-                await self.conn.execute("PRAGMA journal_mode=WAL")
-                # Add busy timeout for concurrent access
-                await self.conn.execute("PRAGMA busy_timeout=30000")
-                # Enable foreign keys
-                await self.conn.execute("PRAGMA foreign_keys=ON")
-                await self.conn.commit()
+                # Calculate minimum pool size (at least 2, at most ceiling of half max)
+                # Examples: pool=5 → min=3, pool=4 → min=2, pool=10 → min=5
+                min_pool = max(2, (self.pool_size + 1) // 2)
+                
+                # Create connection pool
+                self.conn = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=min_pool,
+                    max_size=self.pool_size,
+                    timeout=30.0,
+                )
 
                 await self._create_tables()
 
-                # Initialize connection pool
-                # Note: WAL mode is a database-wide setting that persists across connections
-                for _ in range(self.pool_size):
-                    conn = await aiosqlite.connect(self.db_path)
-                    conn.row_factory = aiosqlite.Row
-
-                    # Verify WAL mode is enabled for this connection
-                    cursor = await conn.execute("PRAGMA journal_mode")
-                    mode = await cursor.fetchone()
-                    if mode and mode[0].lower() != "wal":
-                        logger.warning(f"Connection not in WAL mode, enabling: {mode}")
-                        await conn.execute("PRAGMA journal_mode=WAL")
-
-                    # Add busy timeout for this connection
-                    await conn.execute("PRAGMA busy_timeout=30000")
-
-                    self._pool.append(conn)
-                    await self._available_connections.put(conn)
-
-                # Set secure file permissions on database files (Unix/Linux only)
-                self._set_secure_db_permissions()
-
                 logger.info(
-                    f"Database connected with pool size {self.pool_size} "
-                    f"(WAL mode enabled): {self.db_path}"
+                    f"Database connected with pool size {min_pool}-{self.pool_size}: "
+                    f"{self.database_url.split('@')[-1] if '@' in self.database_url else 'localhost'}"
                 )
             except Exception:
-                # Clean up partial connections on error
+                # Clean up on error
                 if self.conn:
                     await self.conn.close()
                     self.conn = None
-                for conn in self._pool:
-                    await conn.close()
-                self._pool.clear()
-                # Clear the queue
-                while not self._available_connections.empty():
-                    try:
-                        self._available_connections.get_nowait()
-                    except asyncio.QueueEmpty:
-                        break
                 raise
 
     async def close(self) -> None:
         """Close database connection pool."""
         async with self._pool_lock:
-            # Close pooled connections
-            for conn in self._pool:
-                await conn.close()
-            self._pool.clear()
-
-            # Clear the queue
-            while not self._available_connections.empty():
-                try:
-                    self._available_connections.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-
-            # Close main connection
+            # Close connection pool
             if self.conn:
                 await self.conn.close()
             logger.info("Database connection pool closed")
-
-    async def cleanup_idle_connections(self, idle_timeout_seconds: int = 300) -> int:
-        """Clean up idle connections from the pool."""
-        async with self._pool_lock:
-            now = time.time()
-            cleaned = 0
-            active_pool = []
-
-            while not self._available_connections.empty():
-                try:
-                    conn = self._available_connections.get_nowait()
-                    last_used = getattr(conn, "_last_used", now)
-
-                    if now - last_used > idle_timeout_seconds:
-                        await conn.close()
-                        cleaned += 1
-                    else:
-                        active_pool.append(conn)
-                except asyncio.QueueEmpty:
-                    break
-
-            for conn in active_pool:
-                await self._available_connections.put(conn)
-
-            if cleaned > 0:
-                logger.info(f"Cleaned up {cleaned} idle database connections")
-
-            return cleaned
 
     async def __aenter__(self) -> "Database":
         """Async context manager entry."""
@@ -273,7 +182,7 @@ class Database:
         await self.close()
 
     @asynccontextmanager
-    async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[aiosqlite.Connection]:
+    async def get_connection(self, timeout: float = 30.0) -> AsyncIterator[asyncpg.Connection]:
         """
         Get a connection from the pool with timeout.
 
@@ -286,54 +195,22 @@ class Database:
         Raises:
             DatabasePoolTimeoutError: If connection cannot be acquired within timeout
         """
-        conn = None
+        if self.conn is None:
+            raise DatabaseNotConnectedError()
         try:
-            conn = await asyncio.wait_for(self._available_connections.get(), timeout=timeout)
-            yield conn
+            async with self.conn.acquire() as conn:
+                yield conn
         except asyncio.TimeoutError:
             logger.error(
                 f"Database connection pool exhausted "
                 f"(timeout: {timeout}s, pool_size: {self.pool_size})"
             )
             raise DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
-        finally:
-            if conn is not None:
-                try:
-                    # Track when connection was last used for idle cleanup
-                    conn._last_used = time.time()  # noqa: type: ignore[attr-defined]
-                    await self._available_connections.put(conn)
-                except Exception as e:
-                    logger.error(f"Failed to return connection to pool: {e}")
-                    # Connection is lost - create a new one to maintain pool size
-                    try:
-                        # Note: qsize() is a snapshot and may be inaccurate in concurrent scenarios
-                        # but provides useful debugging information for production issues
-                        current_pool_size = self._available_connections.qsize()
-                        logger.info(
-                            f"Creating replacement connection for lost connection "
-                            f"(current pool size: {current_pool_size}/{self.pool_size})"
-                        )
-                        new_conn = await aiosqlite.connect(self.db_path)
-                        new_conn.row_factory = aiosqlite.Row
-                        await new_conn.execute("PRAGMA journal_mode=WAL")
-                        await new_conn.execute("PRAGMA busy_timeout=30000")
-                        await self._available_connections.put(new_conn)
-                        logger.info("Replacement connection created successfully")
-                    except Exception as create_error:
-                        # Note: qsize() is a best-effort metric for logging purposes
-                        current_pool_size = self._available_connections.qsize()
-                        logger.error(f"Failed to create replacement connection: {create_error}")
-                        logger.warning(
-                            f"Connection pool degraded: {current_pool_size}/{self.pool_size} "
-                            f"connections available (configured: {self.pool_size}). "
-                            f"This may lead to pool exhaustion if more connections are lost. "
-                            f"Consider restarting the application to restore full pool capacity."
-                        )
 
     @asynccontextmanager
     async def get_connection_with_retry(
         self, timeout: float = 30.0, max_retries: int = 3
-    ) -> AsyncIterator[aiosqlite.Connection]:
+    ) -> AsyncIterator[asyncpg.Connection]:
         """
         Get a connection from the pool with retry logic.
 
@@ -375,10 +252,8 @@ class Database:
         """
         try:
             async with self.get_connection(timeout=5.0) as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("SELECT 1")
-                    result = await cursor.fetchone()
-                    return result is not None
+                result = await conn.fetchval("SELECT 1")
+                return result is not None
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
@@ -387,30 +262,30 @@ class Database:
         """Create database tables if they don't exist."""
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
-        async with self.conn.cursor() as cursor:
+        async with self.conn.acquire() as conn:
             # Users table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     email TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
                     centre TEXT NOT NULL,
                     category TEXT NOT NULL,
                     subcategory TEXT NOT NULL,
-                    active BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
 
             # Personal details table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS personal_details (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
                     first_name TEXT NOT NULL,
                     last_name TEXT NOT NULL,
                     passport_number TEXT NOT NULL,
@@ -426,19 +301,19 @@ class Database:
                     state TEXT,
                     city TEXT,
                     postcode TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
             """
             )
 
             # Appointments table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS appointments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
                     centre TEXT NOT NULL,
                     category TEXT NOT NULL,
                     subcategory TEXT NOT NULL,
@@ -446,47 +321,47 @@ class Database:
                     appointment_time TEXT,
                     status TEXT DEFAULT 'pending',
                     reference_number TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 )
             """
             )
 
             # Logs table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     level TEXT NOT NULL,
                     message TEXT NOT NULL,
-                    user_id INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_id BIGINT,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
             """
             )
 
             # Payment card table (single card for all payments)
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS payment_card (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     card_holder_name TEXT NOT NULL,
                     card_number_encrypted TEXT NOT NULL,
                     expiry_month TEXT NOT NULL,
                     expiry_year TEXT NOT NULL,
                     cvv_encrypted TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
 
             # Appointment requests table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS appointment_requests (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     country_code TEXT NOT NULL,
                     visa_category TEXT NOT NULL,
                     visa_subcategory TEXT NOT NULL,
@@ -494,19 +369,19 @@ class Database:
                     preferred_dates TEXT NOT NULL,
                     person_count INTEGER NOT NULL CHECK(person_count >= 1 AND person_count <= 6),
                     status TEXT DEFAULT 'pending',
-                    completed_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    completed_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
 
             # Appointment persons table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS appointment_persons (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    request_id INTEGER NOT NULL,
+                    id BIGSERIAL PRIMARY KEY,
+                    request_id BIGINT NOT NULL,
                     first_name TEXT NOT NULL,
                     last_name TEXT NOT NULL,
                     gender TEXT NOT NULL,
@@ -518,55 +393,55 @@ class Database:
                     phone_code TEXT NOT NULL DEFAULT '90',
                     phone_number TEXT NOT NULL,
                     email TEXT NOT NULL,
-                    is_child_with_parent BOOLEAN NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_child_with_parent BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                 )
             """
             )
 
             # Audit log table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS audit_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     action TEXT NOT NULL,
-                    user_id INTEGER,
+                    user_id BIGINT,
                     username TEXT,
                     ip_address TEXT,
                     user_agent TEXT,
                     details TEXT,
                     timestamp TEXT NOT NULL,
-                    success BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    success BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                 )
             """
             )
 
             # Audit log indexes
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
             """
             )
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
             """
             )
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
             """
             )
 
             # Appointment history table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS appointment_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
                     centre TEXT NOT NULL,
                     mission TEXT NOT NULL,
                     category TEXT,
@@ -575,15 +450,15 @@ class Database:
                     status TEXT NOT NULL DEFAULT 'pending',
                     attempt_count INTEGER DEFAULT 1,
                     error_message TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """
             )
 
             # Index for faster queries
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
                 ON appointment_history(user_id, status)
@@ -591,21 +466,21 @@ class Database:
             )
 
             # User webhooks table - per-user OTP webhook tokens
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_webhooks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL UNIQUE,
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL UNIQUE,
                     webhook_token VARCHAR(64) UNIQUE NOT NULL,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """
             )
 
             # Index for faster webhook token lookups
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
                 ON user_webhooks(webhook_token)
@@ -613,26 +488,26 @@ class Database:
             )
 
             # Proxy endpoints table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS proxy_endpoints (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id BIGSERIAL PRIMARY KEY,
                     server TEXT NOT NULL,
                     port INTEGER NOT NULL,
                     username TEXT NOT NULL,
                     password_encrypted TEXT NOT NULL,
-                    is_active BOOLEAN DEFAULT 1,
-                    last_used TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    last_used TIMESTAMPTZ,
                     failure_count INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
                     UNIQUE(server, port, username)
                 )
             """
             )
 
             # Index for active proxies lookup
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
                 ON proxy_endpoints(is_active)
@@ -640,18 +515,18 @@ class Database:
             )
 
             # Token blacklist table
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS token_blacklist (
                     jti VARCHAR(64) PRIMARY KEY,
-                    exp TIMESTAMP NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    exp TIMESTAMPTZ NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
 
             # Index for cleanup
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
                 ON token_blacklist(exp)
@@ -659,17 +534,15 @@ class Database:
             )
 
             # Schema migrations table for versioned migrations
-            await cursor.execute(
+            await conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     version INTEGER PRIMARY KEY,
                     description TEXT NOT NULL,
-                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    applied_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
-
-            await self.conn.commit()
 
             # Migration: Add new columns if they don't exist (versioned)
             await self._run_versioned_migrations()
@@ -684,6 +557,8 @@ class Database:
         Each migration is tracked in the schema_migrations table to ensure
         it only runs once. Provides backward compatibility with existing
         databases by detecting already-applied changes.
+        
+        Note: Requires PostgreSQL 9.6+ for ADD COLUMN IF NOT EXISTS syntax.
         """
         if self.conn is None:
             raise RuntimeError("Database connection is not established.")
@@ -704,14 +579,14 @@ class Database:
             "token_blacklist",
         })
 
-        # Define migrations in order
+        # Define migrations in order (uses ADD COLUMN IF NOT EXISTS - PostgreSQL 9.6+)
         migrations = [
             {
                 "version": 1,
                 "description": "Add visa_category to appointment_requests",
                 "table": "appointment_requests",
                 "column": "visa_category",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
                 "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
             },
             {
@@ -719,7 +594,7 @@ class Database:
                 "description": "Add visa_subcategory to appointment_requests",
                 "table": "appointment_requests",
                 "column": "visa_subcategory",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
                 "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
             },
             {
@@ -727,7 +602,7 @@ class Database:
                 "description": "Add gender to appointment_persons",
                 "table": "appointment_persons",
                 "column": "gender",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN gender TEXT",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
                 "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
             },
             {
@@ -735,15 +610,15 @@ class Database:
                 "description": "Add is_child_with_parent to appointment_persons",
                 "table": "appointment_persons",
                 "column": "is_child_with_parent",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN",
-                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = 0 WHERE is_child_with_parent IS NULL",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
+                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
             },
             {
                 "version": 5,
                 "description": "Add cvv_encrypted to payment_card",
                 "table": "payment_card",
                 "column": "cvv_encrypted",
-                "sql": "ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT",
+                "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
                 # No default value needed - existing cards can have NULL cvv_encrypted,
                 # and new cards will set this value when created
                 "default_sql": None,
@@ -758,26 +633,36 @@ class Database:
                     f"{migration['table']}"
                 )
 
-        async with self.conn.cursor() as cursor:
+        async with self.conn.acquire() as conn:
             # Get applied migrations
-            await cursor.execute("SELECT version FROM schema_migrations ORDER BY version")
-            applied_versions = {row[0] for row in await cursor.fetchall()}
+            applied_versions = {
+                row["version"]
+                for row in await conn.fetch("SELECT version FROM schema_migrations ORDER BY version")
+            }
 
             # Backward compatibility: Check if migrations already applied
             # If schema_migrations is empty but columns exist, mark as applied
             if not applied_versions:
                 for migration in migrations:
-                    # Table name already validated above
-                    await cursor.execute(f"PRAGMA table_info({migration['table']})")
-                    columns = await cursor.fetchall()
-                    column_names = [col[1] for col in columns]
+                    # Check if column exists in PostgreSQL
+                    column_exists = await conn.fetchval(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = $1 AND column_name = $2
+                        )
+                        """,
+                        migration["table"],
+                        migration["column"],
+                    )
 
-                    if migration["column"] in column_names:
+                    if column_exists:
                         # Column exists, mark migration as applied
-                        await cursor.execute(
+                        await conn.execute(
                             """INSERT INTO schema_migrations (version, description)
-                               VALUES (?, ?)""",
-                            (migration["version"], migration["description"]),
+                               VALUES ($1, $2)""",
+                            migration["version"],
+                            migration["description"],
                         )
                         applied_versions.add(migration["version"])
                         logger.info(
@@ -785,23 +670,8 @@ class Database:
                             f"(backward compatibility): {migration['description']}"
                         )
 
-                await self.conn.commit()
-
             # Determine pending migrations
             pending_migrations = [m for m in migrations if m["version"] not in applied_versions]
-
-            if pending_migrations:
-                # Create automatic backup before applying migrations
-                try:
-                    from src.utils.db_backup_util import DatabaseBackup
-                    backup_util = DatabaseBackup(self.db_path)
-                    backup_path = backup_util.create_backup(suffix="pre_migration")
-                    if backup_path:
-                        logger.info(f"Pre-migration backup created: {backup_path}")
-                    else:
-                        logger.warning("Failed to create pre-migration backup - proceeding anyway")
-                except Exception as backup_error:
-                    logger.warning(f"Could not create pre-migration backup: {backup_error}")
 
             # Apply pending migrations
             for migration in migrations:
@@ -812,26 +682,25 @@ class Database:
                 try:
                     logger.info(f"Applying migration v{migration['version']}: {migration['description']}")
 
-                    # Execute the migration SQL
-                    await cursor.execute(migration["sql"])
+                    async with conn.transaction():
+                        # Execute the migration SQL
+                        await conn.execute(migration["sql"])
 
-                    # Execute default value update if provided
-                    if migration.get("default_sql"):
-                        await cursor.execute(migration["default_sql"])
+                        # Execute default value update if provided
+                        if migration.get("default_sql"):
+                            await conn.execute(migration["default_sql"])
 
-                    # Record migration
-                    await cursor.execute(
-                        """INSERT INTO schema_migrations (version, description)
-                           VALUES (?, ?)""",
-                        (migration["version"], migration["description"]),
-                    )
+                        # Record migration
+                        await conn.execute(
+                            """INSERT INTO schema_migrations (version, description)
+                               VALUES ($1, $2)""",
+                            migration["version"],
+                            migration["description"],
+                        )
 
-                    await self.conn.commit()
                     logger.info(f"Migration v{migration['version']} completed successfully")
 
                 except Exception as e:
-                    # Rollback this migration
-                    await self.conn.rollback()
                     logger.error(f"Migration v{migration['version']} failed: {e}")
                     # Re-raise to prevent partial migration state
                     raise
@@ -839,79 +708,11 @@ class Database:
             logger.info("All schema migrations completed")
 
     async def _migrate_schema(self) -> None:
-        """Migrate database schema for new columns."""
-        if self.conn is None:
-            raise RuntimeError("Database connection is not established.")
-
-        async with self.conn.cursor() as cursor:
-            # Check if appointment_requests table has visa_category column
-            await cursor.execute("PRAGMA table_info(appointment_requests)")
-            columns = await cursor.fetchall()
-            column_names = [col[1] for col in columns]
-
-            # Add visa_category if missing
-            if "visa_category" not in column_names:
-                logger.info("Adding visa_category column to appointment_requests")
-                await cursor.execute(
-                    "ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT"
-                )
-                # Update existing records with a default value
-                await cursor.execute(
-                    "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL"
-                )
-
-            # Add visa_subcategory if missing
-            if "visa_subcategory" not in column_names:
-                logger.info("Adding visa_subcategory column to appointment_requests")
-                await cursor.execute(
-                    "ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT"
-                )
-                # Update existing records with a default value
-                await cursor.execute(
-                    """UPDATE appointment_requests
-                    SET visa_subcategory = ''
-                    WHERE visa_subcategory IS NULL"""
-                )
-
-            # Check appointment_persons table
-            await cursor.execute("PRAGMA table_info(appointment_persons)")
-            person_columns = await cursor.fetchall()
-            person_column_names = [col[1] for col in person_columns]
-
-            # Add gender if missing
-            if "gender" not in person_column_names:
-                logger.info("Adding gender column to appointment_persons")
-                await cursor.execute("ALTER TABLE appointment_persons ADD COLUMN gender TEXT")
-                # Update existing records with default value
-                await cursor.execute(
-                    "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL"
-                )
-
-            # Add is_child_with_parent if missing
-            if "is_child_with_parent" not in person_column_names:
-                logger.info("Adding is_child_with_parent column to appointment_persons")
-                await cursor.execute(
-                    "ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN"
-                )
-                # Update existing records with default value
-                await cursor.execute(
-                    """UPDATE appointment_persons
-                    SET is_child_with_parent = 0
-                    WHERE is_child_with_parent IS NULL"""
-                )
-
-            # Check payment_card table for cvv_encrypted column
-            await cursor.execute("PRAGMA table_info(payment_card)")
-            payment_columns = await cursor.fetchall()
-            payment_column_names = [col[1] for col in payment_columns]
-
-            # Add cvv_encrypted if missing
-            if "cvv_encrypted" not in payment_column_names:
-                logger.info("Adding cvv_encrypted column to payment_card")
-                await cursor.execute("ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT")
-
-            await self.conn.commit()
-            logger.info("Schema migration completed")
+        """Migrate database schema for new columns (legacy method for backward compatibility)."""
+        # This method is now handled by _run_versioned_migrations
+        # Keep for backward compatibility but make it a no-op
+        logger.info("Schema migration handled by versioned migrations")
+        pass
 
     @require_connection
     async def add_user(
@@ -941,20 +742,22 @@ class Database:
         encrypted_password = encrypt_password(password)
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT INTO users (email, password, centre, category, subcategory)
-                    VALUES (?, ?, ?, ?, ?)
-                """,
-                    (email, encrypted_password, centre, category, subcategory),
-                )
-                await conn.commit()
-                logger.info(f"User added: {email}")
-                last_id = cursor.lastrowid
-                if last_id is None:
-                    raise RuntimeError("Failed to fetch lastrowid after insert")
-                return int(last_id)
+            user_id = await conn.fetchval(
+                """
+                INSERT INTO users (email, password, centre, category, subcategory)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+            """,
+                email,
+                encrypted_password,
+                centre,
+                category,
+                subcategory,
+            )
+            logger.info(f"User added: {email}")
+            if user_id is None:
+                raise RuntimeError("Failed to fetch user ID after insert")
+            return int(user_id)
 
     @require_connection
     async def get_active_users(self) -> List[Dict[str, Any]]:
@@ -965,10 +768,8 @@ class Database:
             List of user dictionaries
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE active = 1")
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+            rows = await conn.fetch("SELECT * FROM users WHERE active = true")
+            return [dict(row) for row in rows]
 
     @require_connection
     async def get_user_with_decrypted_password(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -989,19 +790,17 @@ class Database:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-                row = await cursor.fetchone()
-                if row:
-                    user = dict(row)
-                    # Decrypt password for VFS login
-                    try:
-                        user["password"] = decrypt_password(user["password"])
-                    except Exception as e:
-                        logger.error(f"Failed to decrypt password for user {user_id}: {e}")
-                        raise
-                    return user
-                return None
+            row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+            if row:
+                user = dict(row)
+                # Decrypt password for VFS login
+                try:
+                    user["password"] = decrypt_password(user["password"])
+                except Exception as e:
+                    logger.error(f"Failed to decrypt password for user {user_id}: {e}")
+                    raise
+                return user
+            return None
 
     @require_connection
     async def get_active_users_with_decrypted_passwords(self) -> List[Dict[str, Any]]:
@@ -1012,34 +811,32 @@ class Database:
             List of user dictionaries with decrypted passwords
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM users WHERE active = 1")
-                rows = await cursor.fetchall()
-                users = []
-                failed_users = []
-                for row in rows:
-                    user = dict(row)
-                    # Decrypt password for VFS login
-                    try:
-                        user["password"] = decrypt_password(user["password"])
-                        users.append(user)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to decrypt password for user "
-                            f"{user['id']} ({user['email']}): {e}. "
-                            f"User needs to re-register with new password."
-                        )
-                        failed_users.append(user["email"])
-
-                # Alert if users failed decryption
-                if failed_users:
-                    logger.warning(
-                        f"⚠️  {len(failed_users)} user(s) have invalid "
-                        f"encrypted passwords and will be skipped: "
-                        f"{', '.join(failed_users)}. They need to re-register."
+            rows = await conn.fetch("SELECT * FROM users WHERE active = true")
+            users = []
+            failed_users = []
+            for row in rows:
+                user = dict(row)
+                # Decrypt password for VFS login
+                try:
+                    user["password"] = decrypt_password(user["password"])
+                    users.append(user)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to decrypt password for user "
+                        f"{user['id']} ({user['email']}): {e}. "
+                        f"User needs to re-register with new password."
                     )
+                    failed_users.append(user["email"])
 
-                return users
+            # Alert if users failed decryption
+            if failed_users:
+                logger.warning(
+                    f"⚠️  {len(failed_users)} user(s) have invalid "
+                    f"encrypted passwords and will be skipped: "
+                    f"{', '.join(failed_users)}. They need to re-register."
+                )
+
+            return users
 
     @require_connection
     async def add_personal_details(self, user_id: int, details: Dict[str, Any]) -> int:
@@ -1074,40 +871,36 @@ class Database:
             )
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT INTO personal_details
-                    (user_id, first_name, last_name, passport_number, passport_expiry,
-                     gender, mobile_code, mobile_number, email, nationality, date_of_birth,
-                     address_line1, address_line2, state, city, postcode)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        user_id,
-                        details.get("first_name"),
-                        details.get("last_name"),
-                        details.get("passport_number"),
-                        details.get("passport_expiry"),
-                        details.get("gender"),
-                        details.get("mobile_code"),
-                        details.get("mobile_number"),
-                        details.get("email"),
-                        details.get("nationality"),
-                        details.get("date_of_birth"),
-                        details.get("address_line1"),
-                        details.get("address_line2"),
-                        details.get("state"),
-                        details.get("city"),
-                        details.get("postcode"),
-                    ),
-                )
-                await conn.commit()
-                logger.info(f"Personal details added for user {user_id}")
-                last_id = cursor.lastrowid
-                if last_id is None:
-                    raise RuntimeError("Failed to fetch lastrowid after insert")
-                return int(last_id)
+            personal_id = await conn.fetchval(
+                """
+                INSERT INTO personal_details
+                (user_id, first_name, last_name, passport_number, passport_expiry,
+                 gender, mobile_code, mobile_number, email, nationality, date_of_birth,
+                 address_line1, address_line2, state, city, postcode)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                RETURNING id
+            """,
+                user_id,
+                details.get("first_name"),
+                details.get("last_name"),
+                details.get("passport_number"),
+                details.get("passport_expiry"),
+                details.get("gender"),
+                details.get("mobile_code"),
+                details.get("mobile_number"),
+                details.get("email"),
+                details.get("nationality"),
+                details.get("date_of_birth"),
+                details.get("address_line1"),
+                details.get("address_line2"),
+                details.get("state"),
+                details.get("city"),
+                details.get("postcode"),
+            )
+            logger.info(f"Personal details added for user {user_id}")
+            if personal_id is None:
+                raise RuntimeError("Failed to fetch ID after insert")
+            return int(personal_id)
 
     @require_connection
     async def get_personal_details(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -1128,10 +921,8 @@ class Database:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM personal_details WHERE user_id = ?", (user_id,))
-                row = await cursor.fetchone()
-                return dict(row) if row else None
+            row = await conn.fetchrow("SELECT * FROM personal_details WHERE user_id = $1", user_id)
+            return dict(row) if row else None
 
     @require_connection
     async def get_personal_details_batch(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
@@ -1155,29 +946,19 @@ class Database:
             if not isinstance(user_id, int) or user_id <= 0:
                 raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
 
-        # Build SQL query with parameterized placeholders
-        # SQL Injection Safety: This is safe because:
-        # 1. user_ids are validated as positive integers above (no SQL can be injected)
-        # 2. placeholders contains only "?" characters (no dynamic SQL)
-        # 3. SQLite uses parameter binding - values never enter the SQL string
-        # 4. Alternative would be to use: "... WHERE user_id IN (SELECT value FROM json_each(?))"
-        #    but that's less readable and not significantly safer
-        num_placeholders = len(user_ids)
-        placeholders = ",".join(["?"] * num_placeholders)
-        query = f"SELECT * FROM personal_details WHERE user_id IN ({placeholders})"
-
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(query, user_ids)
-                rows = await cursor.fetchall()
+            rows = await conn.fetch(
+                "SELECT * FROM personal_details WHERE user_id = ANY($1::bigint[])",
+                user_ids
+            )
 
-                # Map results by user_id
-                result = {}
-                for row in rows:
-                    details = dict(row)
-                    result[details["user_id"]] = details
+            # Map results by user_id
+            result = {}
+            for row in rows:
+                details = dict(row)
+                result[details["user_id"]] = details
 
-                return result
+            return result
 
     @require_connection
     async def get_all_users_with_details(self) -> List[Dict[str, Any]]:
@@ -1188,21 +969,19 @@ class Database:
             List of user dictionaries with personal details
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    SELECT
-                        u.id, u.email, u.centre as center_name,
-                        u.category as visa_category, u.subcategory as visa_subcategory,
-                        u.active as is_active, u.created_at, u.updated_at,
-                        p.first_name, p.last_name, p.mobile_number as phone
-                    FROM users u
-                    LEFT JOIN personal_details p ON u.id = p.user_id
-                    ORDER BY u.created_at DESC
+            rows = await conn.fetch(
                 """
-                )
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+                SELECT
+                    u.id, u.email, u.centre as center_name,
+                    u.category as visa_category, u.subcategory as visa_subcategory,
+                    u.active as is_active, u.created_at, u.updated_at,
+                    p.first_name, p.last_name, p.mobile_number as phone
+                FROM users u
+                LEFT JOIN personal_details p ON u.id = p.user_id
+                ORDER BY u.created_at DESC
+            """
+            )
+            return [dict(row) for row in rows]
 
     @require_connection
     async def update_user(
@@ -1240,45 +1019,50 @@ class Database:
         # Build dynamic update query
         updates: List[str] = []
         params: List[Any] = []
+        param_num = 1
 
         if email is not None:
-            updates.append("email = ?")
+            updates.append(f"email = ${param_num}")
             params.append(email)
+            param_num += 1
         if password is not None:
             # Encrypt password before storage
             encrypted_password = encrypt_password(password)
-            updates.append("password = ?")
+            updates.append(f"password = ${param_num}")
             params.append(encrypted_password)
+            param_num += 1
         if centre is not None:
-            updates.append("centre = ?")
+            updates.append(f"centre = ${param_num}")
             params.append(centre)
+            param_num += 1
         if category is not None:
-            updates.append("category = ?")
+            updates.append(f"category = ${param_num}")
             params.append(category)
+            param_num += 1
         if subcategory is not None:
-            updates.append("subcategory = ?")
+            updates.append(f"subcategory = ${param_num}")
             params.append(subcategory)
+            param_num += 1
         if active is not None:
-            updates.append("active = ?")
-            params.append(1 if active else 0)
+            updates.append(f"active = ${param_num}")
+            params.append(active)
+            param_num += 1
 
         if not updates:
             return True  # Nothing to update
 
-        updates.append("updated_at = CURRENT_TIMESTAMP")
+        updates.append("updated_at = NOW()")
         params.append(user_id)
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
-                await cursor.execute(query, params)
-                await conn.commit()
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ${param_num}"
+            result = await conn.execute(query, *params)
 
-                if cursor.rowcount == 0:
-                    return False
+            if result == "UPDATE 0":
+                return False
 
-                logger.info(f"User {user_id} updated")
-                return True
+            logger.info(f"User {user_id} updated")
+            return True
 
     @require_connection
     async def update_personal_details(
@@ -1319,16 +1103,20 @@ class Database:
         # Build dynamic update query
         updates: List[str] = []
         params: List[Any] = []
+        param_num = 1
 
         if first_name is not None:
-            updates.append("first_name = ?")
+            updates.append(f"first_name = ${param_num}")
             params.append(first_name)
+            param_num += 1
         if last_name is not None:
-            updates.append("last_name = ?")
+            updates.append(f"last_name = ${param_num}")
             params.append(last_name)
+            param_num += 1
         if mobile_number is not None:
-            updates.append("mobile_number = ?")
+            updates.append(f"mobile_number = ${param_num}")
             params.append(mobile_number)
+            param_num += 1
 
         # Filter only allowed fields and log rejected fields in a single pass
         valid_fields = {}
@@ -1347,28 +1135,28 @@ class Database:
 
         # Add valid fields to update
         for field, value in valid_fields.items():
-            updates.append(f"{field} = ?")
+            updates.append(f"{field} = ${param_num}")
             params.append(value)
+            param_num += 1
 
         if not updates:
             return True  # Nothing to update (success case)
 
         # Add updated_at timestamp and user_id
-        updates.append("updated_at = ?")
+        updates.append(f"updated_at = ${param_num}")
         params.append(datetime.now(timezone.utc))
+        param_num += 1
         params.append(user_id)
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                query = f"UPDATE personal_details SET {', '.join(updates)} WHERE user_id = ?"
-                await cursor.execute(query, params)
-                await conn.commit()
+            query = f"UPDATE personal_details SET {', '.join(updates)} WHERE user_id = ${param_num}"
+            result = await conn.execute(query, *params)
 
-                if cursor.rowcount == 0:
-                    return False
+            if result == "UPDATE 0":
+                return False
 
-                logger.info(f"Personal details updated for user {user_id}")
-                return True
+            logger.info(f"Personal details updated for user {user_id}")
+            return True
 
     @require_connection
     async def delete_user(self, user_id: int) -> bool:
@@ -1389,15 +1177,13 @@ class Database:
             raise ValueError(f"Invalid user_id: {user_id}. Must be a positive integer.")
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-                await conn.commit()
+            result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
 
-                if cursor.rowcount == 0:
-                    return False
+            if result == "DELETE 0":
+                return False
 
-                logger.info(f"User {user_id} deleted")
-                return True
+            logger.info(f"User {user_id} deleted")
+            return True
 
     @require_connection
     async def add_users_batch(self, users: List[Dict[str, Any]]) -> List[int]:
@@ -1429,43 +1215,26 @@ class Database:
 
         async with self.get_connection() as conn:
             try:
-                async with conn.cursor() as cursor:
-                    # Use executemany for efficiency
-                    user_data = []
+                async with conn.transaction():
+                    # Insert users one by one with RETURNING to get IDs
                     for user in users:
                         # Encrypt password before storing
                         encrypted_password = encrypt_password(user["password"])
-                        user_data.append(
-                            (
-                                user["email"],
-                                encrypted_password,
-                                user["centre"],
-                                user["category"],
-                                user["subcategory"],
-                            )
+                        
+                        user_id = await conn.fetchval(
+                            """
+                            INSERT INTO users (email, password, centre, category, subcategory)
+                            VALUES ($1, $2, $3, $4, $5)
+                            RETURNING id
+                            """,
+                            user["email"],
+                            encrypted_password,
+                            user["centre"],
+                            user["category"],
+                            user["subcategory"],
                         )
-
-                    # Insert all users in a single transaction
-                    await cursor.executemany(
-                        """
-                        INSERT INTO users (email, password, centre, category, subcategory)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        user_data,
-                    )
-
-                    await conn.commit()
-
-                    # Get all inserted IDs
-                    # Note: SQLite doesn't support RETURNING, so we query by email
-                    for user in users:
-                        await cursor.execute(
-                            "SELECT id FROM users WHERE email = ? ORDER BY id DESC LIMIT 1",
-                            (user["email"],),
-                        )
-                        row = await cursor.fetchone()
-                        if row:
-                            user_ids.append(row[0])
+                        if user_id:
+                            user_ids.append(user_id)
 
                     logger.info(f"Batch added {len(user_ids)} users")
                     return user_ids
@@ -1511,7 +1280,7 @@ class Database:
 
         async with self.get_connection() as conn:
             try:
-                async with conn.cursor() as cursor:
+                async with conn.transaction():
                     # Process each update individually but within a single transaction
                     for update in updates:
                         user_id = update.get("id")
@@ -1522,41 +1291,47 @@ class Database:
                         # Build dynamic update query
                         fields: List[str] = []
                         params: List[Any] = []
+                        param_num = 1
 
                         if "email" in update:
-                            fields.append("email = ?")
+                            fields.append(f"email = ${param_num}")
                             params.append(update["email"])
+                            param_num += 1
                         if "password" in update:
                             # Encrypt password before storage
                             encrypted_password = encrypt_password(update["password"])
-                            fields.append("password = ?")
+                            fields.append(f"password = ${param_num}")
                             params.append(encrypted_password)
+                            param_num += 1
                         if "centre" in update:
-                            fields.append("centre = ?")
+                            fields.append(f"centre = ${param_num}")
                             params.append(update["centre"])
+                            param_num += 1
                         if "category" in update:
-                            fields.append("category = ?")
+                            fields.append(f"category = ${param_num}")
                             params.append(update["category"])
+                            param_num += 1
                         if "subcategory" in update:
-                            fields.append("subcategory = ?")
+                            fields.append(f"subcategory = ${param_num}")
                             params.append(update["subcategory"])
+                            param_num += 1
                         if "active" in update:
-                            fields.append("active = ?")
-                            params.append(1 if update["active"] else 0)
+                            fields.append(f"active = ${param_num}")
+                            params.append(update["active"])
+                            param_num += 1
 
                         if not fields:
                             continue
 
-                        fields.append("updated_at = CURRENT_TIMESTAMP")
+                        fields.append("updated_at = NOW()")
                         params.append(user_id)
 
-                        query = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
-                        await cursor.execute(query, params)
+                        query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${param_num}"
+                        result = await conn.execute(query, *params)
 
-                        if cursor.rowcount > 0:
+                        if result != "UPDATE 0":
                             updated_count += 1
 
-                    await conn.commit()
                     logger.info(f"Batch updated {updated_count} users")
                     return updated_count
 
@@ -1596,22 +1371,20 @@ class Database:
             Appointment ID
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT INTO appointments
-                    (user_id, centre, category, subcategory, appointment_date,
-                     appointment_time, reference_number)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (user_id, centre, category, subcategory, date, time, reference),
-                )
-                await conn.commit()
-                logger.info(f"Appointment added for user {user_id}")
-                last_id = cursor.lastrowid
-                if last_id is None:
-                    raise RuntimeError("Failed to fetch lastrowid after insert")
-                return int(last_id)
+            appt_id = await conn.fetchval(
+                """
+                INSERT INTO appointments
+                (user_id, centre, category, subcategory, appointment_date,
+                 appointment_time, reference_number)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            """,
+                user_id, centre, category, subcategory, date, time, reference,
+            )
+            logger.info(f"Appointment added for user {user_id}")
+            if appt_id is None:
+                raise RuntimeError("Failed to fetch ID after insert")
+            return int(appt_id)
 
     @require_connection
     async def get_appointments(self, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -1625,13 +1398,11 @@ class Database:
             List of appointment dictionaries
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                if user_id:
-                    await cursor.execute("SELECT * FROM appointments WHERE user_id = ?", (user_id,))
-                else:
-                    await cursor.execute("SELECT * FROM appointments")
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+            if user_id:
+                rows = await conn.fetch("SELECT * FROM appointments WHERE user_id = $1", user_id)
+            else:
+                rows = await conn.fetch("SELECT * FROM appointments")
+            return [dict(row) for row in rows]
 
     @require_connection
     async def add_log(self, level: str, message: str, user_id: Optional[int] = None) -> None:
@@ -1644,15 +1415,13 @@ class Database:
             user_id: Optional user ID
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT INTO logs (level, message, user_id)
-                    VALUES (?, ?, ?)
-                """,
-                    (level, message, user_id),
-                )
-                await conn.commit()
+            await conn.execute(
+                """
+                INSERT INTO logs (level, message, user_id)
+                VALUES ($1, $2, $3)
+            """,
+                level, message, user_id,
+            )
 
     @require_connection
     async def get_logs(self, limit: int = 100) -> List[Dict[str, Any]]:
@@ -1666,12 +1435,10 @@ class Database:
             List of log dictionaries
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    "SELECT * FROM logs ORDER BY created_at DESC LIMIT ?", (limit,)
-                )
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+            rows = await conn.fetch(
+                "SELECT * FROM logs ORDER BY created_at DESC LIMIT $1", limit
+            )
+            return [dict(row) for row in rows]
 
     @require_connection
     async def add_blacklisted_token(self, jti: str, exp: datetime) -> None:
@@ -1683,15 +1450,14 @@ class Database:
             exp: Token expiration time
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO token_blacklist (jti, exp)
-                    VALUES (?, ?)
-                    """,
-                    (jti, exp.isoformat()),
-                )
-                await conn.commit()
+            await conn.execute(
+                """
+                INSERT INTO token_blacklist (jti, exp)
+                VALUES ($1, $2)
+                ON CONFLICT (jti) DO UPDATE SET exp = EXCLUDED.exp
+                """,
+                jti, exp.isoformat(),
+            )
 
     @require_connection
     async def is_token_blacklisted(self, jti: str) -> bool:
@@ -1705,17 +1471,15 @@ class Database:
             True if token is blacklisted and not expired
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                now = datetime.now(timezone.utc).isoformat()
-                await cursor.execute(
-                    """
-                    SELECT 1 FROM token_blacklist
-                    WHERE jti = ? AND exp > ?
-                    """,
-                    (jti, now),
-                )
-                result = await cursor.fetchone()
-                return result is not None
+            now = datetime.now(timezone.utc).isoformat()
+            result = await conn.fetchval(
+                """
+                SELECT 1 FROM token_blacklist
+                WHERE jti = $1 AND exp > $2
+                """,
+                jti, now,
+            )
+            return result is not None
 
     @require_connection
     async def get_active_blacklisted_tokens(self) -> List[tuple[str, datetime]]:
@@ -1726,17 +1490,15 @@ class Database:
             List of (jti, exp) tuples
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                now = datetime.now(timezone.utc).isoformat()
-                await cursor.execute(
-                    """
-                    SELECT jti, exp FROM token_blacklist
-                    WHERE exp > ?
-                    """,
-                    (now,),
-                )
-                rows = await cursor.fetchall()
-                return [(row[0], datetime.fromisoformat(row[1])) for row in rows]
+            now = datetime.now(timezone.utc).isoformat()
+            rows = await conn.fetch(
+                """
+                SELECT jti, exp FROM token_blacklist
+                WHERE exp > $1
+                """,
+                now,
+            )
+            return [(row[0], datetime.fromisoformat(row[1])) for row in rows]
 
     @require_connection
     async def cleanup_expired_tokens(self) -> int:
@@ -1747,18 +1509,16 @@ class Database:
             Number of tokens removed
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                now = datetime.now(timezone.utc).isoformat()
-                await cursor.execute(
-                    """
-                    DELETE FROM token_blacklist
-                    WHERE exp <= ?
-                    """,
-                    (now,),
-                )
-                await conn.commit()
-                count: int = cursor.rowcount
-                return count
+            now = datetime.now(timezone.utc).isoformat()
+            result = await conn.execute(
+                """
+                DELETE FROM token_blacklist
+                WHERE exp <= $1
+                """,
+                now,
+            )
+            count = self._parse_command_tag(result)
+            return count
 
     @require_connection
     async def save_payment_card(self, card_data: Dict[str, str]) -> int:
@@ -1788,60 +1548,52 @@ class Database:
         cvv_encrypted = encrypt_password(card_data["cvv"])
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                # Check if a card already exists
-                await cursor.execute("SELECT id FROM payment_card LIMIT 1")
-                existing = await cursor.fetchone()
+            # Check if a card already exists
+            existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
 
-                if existing:
-                    # Update existing card
-                    await cursor.execute(
-                        """
-                        UPDATE payment_card
-                        SET card_holder_name = ?,
-                            card_number_encrypted = ?,
-                            expiry_month = ?,
-                            expiry_year = ?,
-                            cvv_encrypted = ?,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?
-                        """,
-                        (
-                            card_data["card_holder_name"],
-                            card_number_encrypted,
-                            card_data["expiry_month"],
-                            card_data["expiry_year"],
-                            cvv_encrypted,
-                            existing["id"],
-                        ),
-                    )
-                    await conn.commit()
-                    logger.info("Payment card updated")
-                    return int(existing["id"])
-                else:
-                    # Insert new card
-                    await cursor.execute(
-                        """
-                        INSERT INTO payment_card
-                        (card_holder_name, card_number_encrypted, expiry_month,
-                         expiry_year, cvv_encrypted)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (
-                            card_data["card_holder_name"],
-                            card_number_encrypted,
-                            card_data["expiry_month"],
-                            card_data["expiry_year"],
-                            cvv_encrypted,
-                        ),
-                    )
-                    await conn.commit()
-                    card_id = cursor.lastrowid
-                    if card_id is None:
-                        raise RuntimeError("Failed to get inserted card ID")
-                    logger.info(f"Payment card created with ID: {card_id}")
-                    result_id: int = card_id
-                    return result_id
+            if existing:
+                # Update existing card
+                await conn.execute(
+                    """
+                    UPDATE payment_card
+                    SET card_holder_name = $1,
+                        card_number_encrypted = $2,
+                        expiry_month = $3,
+                        expiry_year = $4,
+                        cvv_encrypted = $5,
+                        updated_at = NOW()
+                    WHERE id = $6
+                    """,
+                    card_data["card_holder_name"],
+                    card_number_encrypted,
+                    card_data["expiry_month"],
+                    card_data["expiry_year"],
+                    cvv_encrypted,
+                    existing["id"],
+                )
+                logger.info("Payment card updated")
+                return int(existing["id"])
+            else:
+                # Insert new card
+                card_id = await conn.fetchval(
+                    """
+                    INSERT INTO payment_card
+                    (card_holder_name, card_number_encrypted, expiry_month,
+                     expiry_year, cvv_encrypted)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING id
+                    """,
+                    card_data["card_holder_name"],
+                    card_number_encrypted,
+                    card_data["expiry_month"],
+                    card_data["expiry_year"],
+                    cvv_encrypted,
+                )
+                if card_id is None:
+                    raise RuntimeError("Failed to get inserted card ID")
+                logger.info(f"Payment card created with ID: {card_id}")
+                result_id: int = card_id
+                return result_id
 
     @require_connection
     async def get_payment_card(self) -> Optional[Dict[str, Any]]:
@@ -1855,32 +1607,30 @@ class Database:
             Card dictionary with decrypted card number and CVV or None if no card exists
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM payment_card LIMIT 1")
-                row = await cursor.fetchone()
+            row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
 
-                if not row:
-                    return None
+            if not row:
+                return None
 
-                card = dict(row)
+            card = dict(row)
 
-                # Decrypt card number and CVV
-                try:
-                    card["card_number"] = decrypt_password(card["card_number_encrypted"])
-                    if card.get("cvv_encrypted"):
-                        card["cvv"] = decrypt_password(card["cvv_encrypted"])
-                    else:
-                        card["cvv"] = None
-                except Exception as e:
-                    logger.error(f"Failed to decrypt card data: {e}")
-                    raise ValueError("Failed to decrypt card data")
+            # Decrypt card number and CVV
+            try:
+                card["card_number"] = decrypt_password(card["card_number_encrypted"])
+                if card.get("cvv_encrypted"):
+                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
+                else:
+                    card["cvv"] = None
+            except Exception as e:
+                logger.error(f"Failed to decrypt card data: {e}")
+                raise ValueError("Failed to decrypt card data")
 
-                # Remove encrypted fields from response
-                del card["card_number_encrypted"]
-                if "cvv_encrypted" in card:
-                    del card["cvv_encrypted"]
+            # Remove encrypted fields from response
+            del card["card_number_encrypted"]
+            if "cvv_encrypted" in card:
+                del card["cvv_encrypted"]
 
-                return card
+            return card
 
     @require_connection
     async def get_payment_card_masked(self) -> Optional[Dict[str, Any]]:
@@ -1893,30 +1643,28 @@ class Database:
             Card dictionary with masked card number or None if no card exists
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT * FROM payment_card LIMIT 1")
-                row = await cursor.fetchone()
+            row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
 
-                if not row:
-                    return None
+            if not row:
+                return None
 
-                card = dict(row)
+            card = dict(row)
 
-                # Decrypt card number to get last 4 digits, then mask
-                try:
-                    card_number = decrypt_password(card["card_number_encrypted"])
-                    last_four = card_number[-4:]
-                    card["card_number_masked"] = f"**** **** **** {last_four}"
-                except Exception as e:
-                    logger.error(f"Failed to decrypt card number: {e}")
-                    card["card_number_masked"] = "**** **** **** ****"
+            # Decrypt card number to get last 4 digits, then mask
+            try:
+                card_number = decrypt_password(card["card_number_encrypted"])
+                last_four = card_number[-4:]
+                card["card_number_masked"] = f"**** **** **** {last_four}"
+            except Exception as e:
+                logger.error(f"Failed to decrypt card number: {e}")
+                card["card_number_masked"] = "**** **** **** ****"
 
-                # Remove encrypted fields and CVV (never expose in masked view)
-                del card["card_number_encrypted"]
-                if "cvv_encrypted" in card:
-                    del card["cvv_encrypted"]
+            # Remove encrypted fields and CVV (never expose in masked view)
+            del card["card_number_encrypted"]
+            if "cvv_encrypted" in card:
+                del card["cvv_encrypted"]
 
-                return card
+            return card
 
     @require_connection
     async def delete_payment_card(self) -> bool:
@@ -1927,17 +1675,14 @@ class Database:
             True if card was deleted, False if no card existed
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT id FROM payment_card LIMIT 1")
-                existing = await cursor.fetchone()
+            existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
 
-                if not existing:
-                    return False
+            if not existing:
+                return False
 
-                await cursor.execute("DELETE FROM payment_card WHERE id = ?", (existing["id"],))
-                await conn.commit()
-                logger.info("Payment card deleted")
-                return True
+            await conn.execute("DELETE FROM payment_card WHERE id = $1", existing["id"])
+            logger.info("Payment card deleted")
+            return True
 
     @require_connection
     async def create_appointment_request(
@@ -1968,25 +1713,23 @@ class Database:
         import json
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
+            async with conn.transaction():
                 # Insert appointment request
-                await cursor.execute(
+                request_id = await conn.fetchval(
                     """
                     INSERT INTO appointment_requests
                     (country_code, visa_category, visa_subcategory, centres,
                      preferred_dates, person_count)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    RETURNING id
                     """,
-                    (
-                        country_code,
-                        visa_category,
-                        visa_subcategory,
-                        json.dumps(centres),
-                        json.dumps(preferred_dates),
-                        person_count,
-                    ),
+                    country_code,
+                    visa_category,
+                    visa_subcategory,
+                    json.dumps(centres),
+                    json.dumps(preferred_dates),
+                    person_count,
                 )
-                request_id = cursor.lastrowid
                 if request_id is None:
                     raise RuntimeError("Failed to get inserted request ID")
 
@@ -1999,32 +1742,29 @@ class Database:
                     if not validate_email(email):
                         raise ValidationError(f"Invalid email format: {email}", field="email")
 
-                    await cursor.execute(
+                    await conn.execute(
                         """
                         INSERT INTO appointment_persons
                         (request_id, first_name, last_name, gender, nationality, birth_date,
                          passport_number, passport_issue_date, passport_expiry_date,
                          phone_code, phone_number, email, is_child_with_parent)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                         """,
-                        (
-                            request_id,
-                            person.get("first_name"),
-                            person.get("last_name"),
-                            person.get("gender", "male"),
-                            person.get("nationality", "Turkey"),
-                            person.get("birth_date"),
-                            person.get("passport_number"),
-                            person.get("passport_issue_date"),
-                            person.get("passport_expiry_date"),
-                            person.get("phone_code", "90"),
-                            person.get("phone_number"),
-                            person.get("email"),
-                            person.get("is_child_with_parent", False),
-                        ),
+                        request_id,
+                        person.get("first_name"),
+                        person.get("last_name"),
+                        person.get("gender", "male"),
+                        person.get("nationality", "Turkey"),
+                        person.get("birth_date"),
+                        person.get("passport_number"),
+                        person.get("passport_issue_date"),
+                        person.get("passport_expiry_date"),
+                        person.get("phone_code", "90"),
+                        person.get("phone_number"),
+                        person.get("email"),
+                        person.get("is_child_with_parent", False),
                     )
 
-                await conn.commit()
                 logger.info(f"Appointment request created: {request_id}")
                 result_id: int = request_id
                 return result_id
@@ -2043,36 +1783,33 @@ class Database:
         import json
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                # Get request
-                await cursor.execute(
-                    "SELECT * FROM appointment_requests WHERE id = ?", (request_id,)
-                )
-                request_row = await cursor.fetchone()
+            # Get request
+            request_row = await conn.fetchrow(
+                "SELECT * FROM appointment_requests WHERE id = $1", request_id
+            )
 
-                if not request_row:
-                    return None
+            if not request_row:
+                return None
 
-                request = dict(request_row)
+            request = dict(request_row)
 
-                # Parse JSON fields
-                request["centres"] = json.loads(request["centres"])
-                request["preferred_dates"] = json.loads(request["preferred_dates"])
+            # Parse JSON fields
+            request["centres"] = json.loads(request["centres"])
+            request["preferred_dates"] = json.loads(request["preferred_dates"])
 
-                # Ensure visa fields have defaults for old records
-                if "visa_category" not in request or request["visa_category"] is None:
-                    request["visa_category"] = ""
-                if "visa_subcategory" not in request or request["visa_subcategory"] is None:
-                    request["visa_subcategory"] = ""
+            # Ensure visa fields have defaults for old records
+            if "visa_category" not in request or request["visa_category"] is None:
+                request["visa_category"] = ""
+            if "visa_subcategory" not in request or request["visa_subcategory"] is None:
+                request["visa_subcategory"] = ""
 
-                # Get persons
-                await cursor.execute(
-                    "SELECT * FROM appointment_persons WHERE request_id = ?", (request_id,)
-                )
-                person_rows = await cursor.fetchall()
-                request["persons"] = [dict(row) for row in person_rows]
+            # Get persons
+            person_rows = await conn.fetch(
+                "SELECT * FROM appointment_persons WHERE request_id = $1", request_id
+            )
+            request["persons"] = [dict(row) for row in person_rows]
 
-                return request
+            return request
 
     @require_connection
     async def get_all_appointment_requests(
@@ -2090,42 +1827,39 @@ class Database:
         import json
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                if status:
-                    await cursor.execute(
-                        """SELECT * FROM appointment_requests
-                        WHERE status = ? ORDER BY created_at DESC""",
-                        (status,),
-                    )
-                else:
-                    await cursor.execute(
-                        "SELECT * FROM appointment_requests ORDER BY created_at DESC"
-                    )
+            if status:
+                request_rows = await conn.fetch(
+                    """SELECT * FROM appointment_requests
+                    WHERE status = $1 ORDER BY created_at DESC""",
+                    status,
+                )
+            else:
+                request_rows = await conn.fetch(
+                    "SELECT * FROM appointment_requests ORDER BY created_at DESC"
+                )
 
-                request_rows = await cursor.fetchall()
-                requests = []
+            requests = []
 
-                for request_row in request_rows:
-                    request = dict(request_row)
-                    request["centres"] = json.loads(request["centres"])
-                    request["preferred_dates"] = json.loads(request["preferred_dates"])
+            for request_row in request_rows:
+                request = dict(request_row)
+                request["centres"] = json.loads(request["centres"])
+                request["preferred_dates"] = json.loads(request["preferred_dates"])
 
-                    # Ensure visa fields have defaults for old records
-                    if "visa_category" not in request or request["visa_category"] is None:
-                        request["visa_category"] = ""
-                    if "visa_subcategory" not in request or request["visa_subcategory"] is None:
-                        request["visa_subcategory"] = ""
+                # Ensure visa fields have defaults for old records
+                if "visa_category" not in request or request["visa_category"] is None:
+                    request["visa_category"] = ""
+                if "visa_subcategory" not in request or request["visa_subcategory"] is None:
+                    request["visa_subcategory"] = ""
 
-                    # Get persons for this request
-                    await cursor.execute(
-                        "SELECT * FROM appointment_persons WHERE request_id = ?", (request["id"],)
-                    )
-                    person_rows = await cursor.fetchall()
-                    request["persons"] = [dict(row) for row in person_rows]
+                # Get persons for this request
+                person_rows = await conn.fetch(
+                    "SELECT * FROM appointment_persons WHERE request_id = $1", request["id"]
+                )
+                request["persons"] = [dict(row) for row in person_rows]
 
-                    requests.append(request)
+                requests.append(request)
 
-                return requests
+            return requests
 
     @require_connection
     async def get_pending_appointment_request_for_user(
@@ -2143,32 +1877,29 @@ class Database:
             Appointment request dict with persons list, or None
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                # Get user email
-                await cursor.execute("SELECT email FROM users WHERE id = ?", (user_id,))
-                user_row = await cursor.fetchone()
-                if not user_row:
-                    return None
+            # Get user email
+            user_row = await conn.fetchrow("SELECT email FROM users WHERE id = $1", user_id)
+            if not user_row:
+                return None
 
-                user_email = user_row["email"]
+            user_email = user_row["email"]
 
-                # Find pending request where any person matches user email
-                await cursor.execute(
-                    """
-                    SELECT DISTINCT ar.id FROM appointment_requests ar
-                    JOIN appointment_persons ap ON ar.id = ap.request_id
-                    WHERE ap.email = ? AND ar.status = 'pending'
-                    ORDER BY ar.created_at DESC
-                    LIMIT 1
-                    """,
-                    (user_email,),
-                )
-                row = await cursor.fetchone()
-                if not row:
-                    return None
+            # Find pending request where any person matches user email
+            row = await conn.fetchrow(
+                """
+                SELECT DISTINCT ar.id FROM appointment_requests ar
+                JOIN appointment_persons ap ON ar.id = ap.request_id
+                WHERE ap.email = $1 AND ar.status = 'pending'
+                ORDER BY ar.created_at DESC
+                LIMIT 1
+                """,
+                user_email,
+            )
+            if not row:
+                return None
 
-                # Use existing method to get full request with persons
-                return await self.get_appointment_request(row["id"])
+            # Use existing method to get full request with persons
+            return await self.get_appointment_request(row["id"])
 
     @require_connection
     async def update_appointment_request_status(
@@ -2186,32 +1917,29 @@ class Database:
             True if updated, False if request not found
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                if completed_at:
-                    await cursor.execute(
-                        """
-                        UPDATE appointment_requests
-                        SET status = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?
-                        """,
-                        (status, completed_at, request_id),
-                    )
-                else:
-                    await cursor.execute(
-                        """
-                        UPDATE appointment_requests
-                        SET status = ?, updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?
-                        """,
-                        (status, request_id),
-                    )
+            if completed_at:
+                result = await conn.execute(
+                    """
+                    UPDATE appointment_requests
+                    SET status = $1, completed_at = $2, updated_at = NOW()
+                    WHERE id = $3
+                    """,
+                    status, completed_at, request_id,
+                )
+            else:
+                result = await conn.execute(
+                    """
+                    UPDATE appointment_requests
+                    SET status = $1, updated_at = NOW()
+                    WHERE id = $2
+                    """,
+                    status, request_id,
+                )
 
-                await conn.commit()
-
-                if cursor.rowcount > 0:
-                    logger.info(f"Appointment request {request_id} status updated to {status}")
-                    return True
-                return False
+            if result != "UPDATE 0":
+                logger.info(f"Appointment request {request_id} status updated to {status}")
+                return True
+            return False
 
     @require_connection
     async def delete_appointment_request(self, request_id: int) -> bool:
@@ -2225,14 +1953,12 @@ class Database:
             True if deleted, False if not found
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("DELETE FROM appointment_requests WHERE id = ?", (request_id,))
-                await conn.commit()
+            result = await conn.execute("DELETE FROM appointment_requests WHERE id = $1", request_id)
 
-                if cursor.rowcount > 0:
-                    logger.info(f"Appointment request {request_id} deleted")
-                    return True
-                return False
+            if result != "DELETE 0":
+                logger.info(f"Appointment request {request_id} deleted")
+                return True
+            return False
 
     @require_connection
     async def cleanup_completed_requests(self, days: int = 30) -> int:
@@ -2250,22 +1976,20 @@ class Database:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    DELETE FROM appointment_requests
-                    WHERE status = 'completed' AND completed_at < ?
-                    """,
-                    (cutoff_date,),
-                )
-                await conn.commit()
-                deleted_count = cursor.rowcount
+            result = await conn.execute(
+                """
+                DELETE FROM appointment_requests
+                WHERE status = 'completed' AND completed_at < $1
+                """,
+                cutoff_date,
+            )
+            deleted_count = self._parse_command_tag(result)
 
-                if deleted_count > 0:
-                    logger.info(f"Cleaned up {deleted_count} old appointment requests")
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} old appointment requests")
 
-                result_count: int = deleted_count
-                return result_count
+            result_count: int = deleted_count
+            return result_count
 
     @require_connection
     async def add_audit_log(
@@ -2296,30 +2020,26 @@ class Database:
         timestamp = datetime.now(timezone.utc).isoformat()
 
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    """
-                    INSERT INTO audit_log
-                    (action, user_id, username, ip_address, user_agent, details, timestamp, success)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        action,
-                        user_id,
-                        username,
-                        ip_address,
-                        user_agent,
-                        details,
-                        timestamp,
-                        1 if success else 0,
-                    ),
-                )
-                await conn.commit()
-                last_id = cursor.lastrowid
-                if last_id is None:
-                    raise RuntimeError("Failed to fetch lastrowid after insert")
-                logger.debug(f"Audit log entry added: {action}")
-                return int(last_id)
+            audit_id = await conn.fetchval(
+                """
+                INSERT INTO audit_log
+                (action, user_id, username, ip_address, user_agent, details, timestamp, success)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
+                """,
+                action,
+                user_id,
+                username,
+                ip_address,
+                user_agent,
+                details,
+                timestamp,
+                success,
+            )
+            if audit_id is None:
+                raise RuntimeError("Failed to fetch ID after insert")
+            logger.debug(f"Audit log entry added: {action}")
+            return int(audit_id)
 
     @require_connection
     async def get_audit_logs(
@@ -2340,23 +2060,24 @@ class Database:
             List of audit log dictionaries
         """
         async with self.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                query = "SELECT * FROM audit_log WHERE 1=1"
-                params: List[Any] = []
+            query = "SELECT * FROM audit_log WHERE 1=1"
+            params: List[Any] = []
+            param_num = 1
 
-                if action:
-                    query += " AND action = ?"
-                    params.append(action)
-                if user_id is not None:
-                    query += " AND user_id = ?"
-                    params.append(user_id)
+            if action:
+                query += f" AND action = ${param_num}"
+                params.append(action)
+                param_num += 1
+            if user_id is not None:
+                query += f" AND user_id = ${param_num}"
+                params.append(user_id)
+                param_num += 1
 
-                query += " ORDER BY timestamp DESC LIMIT ?"
-                params.append(limit)
+            query += f" ORDER BY timestamp DESC LIMIT ${param_num}"
+            params.append(limit)
 
-                await cursor.execute(query, params)
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+            rows = await conn.fetch(query, *params)
+            return [dict(row) for row in rows]
 
     @require_connection
     async def add_appointment_history(
@@ -2387,16 +2108,16 @@ class Database:
             History record ID
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            history_id = await conn.fetchval(
                 """
                 INSERT INTO appointment_history
                 (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
                 """,
-                (user_id, centre, mission, category, slot_date, slot_time, status, error_message),
+                user_id, centre, mission, category, slot_date, slot_time, status, error_message,
             )
-            await conn.commit()
-            return cursor.lastrowid or 0
+            return history_id or 0
 
     @require_connection
     async def get_appointment_history(
@@ -2413,19 +2134,20 @@ class Database:
         Returns:
             List of history records
         """
-        query = "SELECT * FROM appointment_history WHERE user_id = ?"
+        query = "SELECT * FROM appointment_history WHERE user_id = $1"
         params: List[Any] = [user_id]
+        param_num = 2
 
         if status:
-            query += " AND status = ?"
+            query += f" AND status = ${param_num}"
             params.append(status)
+            param_num += 1
 
-        query += " ORDER BY created_at DESC LIMIT ?"
+        query += f" ORDER BY created_at DESC LIMIT ${param_num}"
         params.append(limit)
 
         async with self.get_connection() as conn:
-            cursor = await conn.execute(query, params)
-            rows = await cursor.fetchall()
+            rows = await conn.fetch(query, *params)
             return [dict(row) for row in rows]
 
     @require_connection
@@ -2437,12 +2159,11 @@ class Database:
             await conn.execute(
                 """
                 UPDATE appointment_history
-                SET status = ?, error_message = ?, updated_at = ?, attempt_count = attempt_count + 1
-                WHERE id = ?
+                SET status = $1, error_message = $2, updated_at = $3, attempt_count = attempt_count + 1
+                WHERE id = $4
                 """,
-                (status, error_message, datetime.now(timezone.utc), history_id),
+                status, error_message, datetime.now(timezone.utc), history_id,
             )
-            await conn.commit()
             return True
 
     # =====================
@@ -2475,11 +2196,10 @@ class Database:
             await conn.execute(
                 """
                 INSERT INTO user_webhooks (user_id, webhook_token, is_active)
-                VALUES (?, ?, 1)
+                VALUES ($1, $2, true)
                 """,
-                (user_id, token),
+                user_id, token,
             )
-            await conn.commit()
 
         logger.info(f"Webhook created for user {user_id}: {token[:8]}...")
         return token
@@ -2496,13 +2216,12 @@ class Database:
             Webhook data or None if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
-                SELECT * FROM user_webhooks WHERE user_id = ?
+                SELECT * FROM user_webhooks WHERE user_id = $1
                 """,
-                (user_id,),
+                user_id,
             )
-            row = await cursor.fetchone()
             return dict(row) if row else None
 
     @require_connection
@@ -2517,19 +2236,18 @@ class Database:
             True if deleted, False if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            result = await conn.execute(
                 """
-                DELETE FROM user_webhooks WHERE user_id = ?
+                DELETE FROM user_webhooks WHERE user_id = $1
                 """,
-                (user_id,),
+                user_id,
             )
-            await conn.commit()
-            deleted = cursor.rowcount > 0
+            deleted = result != "DELETE 0"
 
         if deleted:
             logger.info(f"Webhook deleted for user {user_id}")
-        result: bool = deleted
-        return result
+        result_bool: bool = deleted
+        return result_bool
 
     # ================================================================================
     # Proxy Management Methods
@@ -2557,22 +2275,21 @@ class Database:
 
         async with self.get_connection() as conn:
             try:
-                cursor = await conn.execute(
+                proxy_id = await conn.fetchval(
                     """
                     INSERT INTO proxy_endpoints
                     (server, port, username, password_encrypted, updated_at)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    VALUES ($1, $2, $3, $4, NOW())
+                    RETURNING id
                     """,
-                    (server, port, username, encrypted_password),
+                    server, port, username, encrypted_password,
                 )
-                await conn.commit()
-                proxy_id = cursor.lastrowid or 0
 
                 logger.info(f"Proxy added: {server}:{port} (ID: {proxy_id})")
-                return proxy_id
+                return proxy_id or 0
 
             except Exception as e:
-                if "UNIQUE constraint failed" in str(e):
+                if "unique constraint" in str(e).lower() or "duplicate key" in str(e).lower():
                     raise ValueError(
                         f"Proxy with server={server}, port={port}, "
                         f"username={username} already exists"
@@ -2588,16 +2305,15 @@ class Database:
             List of proxy dictionaries with decrypted passwords
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            rows = await conn.fetch(
                 """
                 SELECT id, server, port, username, password_encrypted, is_active,
                        last_used, failure_count, created_at, updated_at
                 FROM proxy_endpoints
-                WHERE is_active = 1
+                WHERE is_active = true
                 ORDER BY failure_count ASC, last_used ASC NULLS FIRST
                 """
             )
-            rows = await cursor.fetchall()
 
             proxies = []
             for row in rows:
@@ -2626,16 +2342,15 @@ class Database:
             Proxy dictionary with decrypted password or None if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
                 SELECT id, server, port, username, password_encrypted, is_active,
                        last_used, failure_count, created_at, updated_at
                 FROM proxy_endpoints
-                WHERE id = ?
+                WHERE id = $1
                 """,
-                (proxy_id,),
+                proxy_id,
             )
-            row = await cursor.fetchone()
 
             if not row:
                 return None
@@ -2680,49 +2395,54 @@ class Database:
         # Build dynamic update query
         updates: List[str] = []
         params: List[Any] = []
+        param_num = 1
 
         if server is not None:
-            updates.append("server = ?")
+            updates.append(f"server = ${param_num}")
             params.append(server)
+            param_num += 1
 
         if port is not None:
-            updates.append("port = ?")
+            updates.append(f"port = ${param_num}")
             params.append(port)
+            param_num += 1
 
         if username is not None:
-            updates.append("username = ?")
+            updates.append(f"username = ${param_num}")
             params.append(username)
+            param_num += 1
 
         if password is not None:
-            updates.append("password_encrypted = ?")
+            updates.append(f"password_encrypted = ${param_num}")
             params.append(encrypt_password(password))
+            param_num += 1
 
         if is_active is not None:
-            updates.append("is_active = ?")
-            params.append(1 if is_active else 0)
+            updates.append(f"is_active = ${param_num}")
+            params.append(is_active)
+            param_num += 1
 
         if not updates:
             return False  # Nothing to update
 
         # Always update the updated_at timestamp
-        updates.append("updated_at = CURRENT_TIMESTAMP")
+        updates.append("updated_at = NOW()")
         params.append(proxy_id)
 
-        query = f"UPDATE proxy_endpoints SET {', '.join(updates)} WHERE id = ?"
+        query = f"UPDATE proxy_endpoints SET {', '.join(updates)} WHERE id = ${param_num}"
 
         async with self.get_connection() as conn:
             try:
-                cursor = await conn.execute(query, params)
-                await conn.commit()
-                updated = cursor.rowcount > 0
+                result = await conn.execute(query, *params)
+                updated = result != "UPDATE 0"
 
                 if updated:
                     logger.info(f"Proxy {proxy_id} updated")
-                result: bool = updated
-                return result
+                result_bool: bool = updated
+                return result_bool
 
             except Exception as e:
-                if "UNIQUE constraint failed" in str(e):
+                if "unique constraint" in str(e).lower() or "duplicate key" in str(e).lower():
                     raise ValueError("Update violates uniqueness constraint")
                 raise
 
@@ -2738,17 +2458,16 @@ class Database:
             True if deleted, False if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
-                "DELETE FROM proxy_endpoints WHERE id = ?",
-                (proxy_id,),
+            result = await conn.execute(
+                "DELETE FROM proxy_endpoints WHERE id = $1",
+                proxy_id,
             )
-            await conn.commit()
-            deleted = cursor.rowcount > 0
+            deleted = result != "DELETE 0"
 
         if deleted:
             logger.info(f"Proxy {proxy_id} deleted")
-        result: bool = deleted
-        return result
+        result_bool: bool = deleted
+        return result_bool
 
     @require_connection
     async def mark_proxy_failed(self, proxy_id: int) -> bool:
@@ -2762,23 +2481,22 @@ class Database:
             True if updated, False if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            result = await conn.execute(
                 """
                 UPDATE proxy_endpoints
                 SET failure_count = failure_count + 1,
-                    last_used = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                    last_used = NOW(),
+                    updated_at = NOW()
+                WHERE id = $1
                 """,
-                (proxy_id,),
+                proxy_id,
             )
-            await conn.commit()
-            updated = cursor.rowcount > 0
+            updated = result != "UPDATE 0"
 
         if updated:
             logger.debug(f"Proxy {proxy_id} marked as failed")
-        result: bool = updated
-        return result
+        result_bool: bool = updated
+        return result_bool
 
     @require_connection
     async def reset_proxy_failures(self) -> int:
@@ -2789,16 +2507,15 @@ class Database:
             Number of proxies updated
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            result = await conn.execute(
                 """
                 UPDATE proxy_endpoints
                 SET failure_count = 0,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = NOW()
                 WHERE failure_count > 0
                 """
             )
-            await conn.commit()
-            count = cursor.rowcount
+            count = self._parse_command_tag(result)
 
         logger.info(f"Reset failure count for {count} proxies")
         result_count: int = count
@@ -2813,16 +2530,15 @@ class Database:
             Dictionary with total, active, inactive counts
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
                 SELECT
                     COUNT(*) as total,
-                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
-                    SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+                    SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
+                    SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as inactive
                 FROM proxy_endpoints
                 """
             )
-            row = await cursor.fetchone()
 
             if row:
                 return {
@@ -2841,9 +2557,8 @@ class Database:
             Number of proxies deleted
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute("DELETE FROM proxy_endpoints")
-            await conn.commit()
-            count = cursor.rowcount
+            result = await conn.execute("DELETE FROM proxy_endpoints")
+            count = self._parse_command_tag(result)
 
         logger.info(f"Cleared all {count} proxies")
         result_count: int = count
@@ -2861,14 +2576,13 @@ class Database:
             User data or None if not found
         """
         async with self.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
                 SELECT u.*
                 FROM users u
                 JOIN user_webhooks w ON u.id = w.user_id
-                WHERE w.webhook_token = ? AND w.is_active = 1
+                WHERE w.webhook_token = $1 AND w.is_active = true
                 """,
-                (token,),
+                token,
             )
-            row = await cursor.fetchone()
             return dict(row) if row else None

@@ -142,13 +142,12 @@ class ErrorCapture:
 class Database:
     """Database configuration."""
 
-    DEFAULT_PATH: Final[str] = os.getenv("DATABASE_PATH", "vfs_bot.db")
-    TEST_PATH: Final[str] = "test.db"
+    DEFAULT_URL: Final[str] = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+    TEST_URL: Final[str] = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
     # Pool size: Default is 10, can be overridden via DB_POOL_SIZE env var
     POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
     CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
     QUERY_TIMEOUT: Final[float] = 30.0
-    BUSY_TIMEOUT_MS: Final[int] = 30000
     DEFAULT_CACHE_TTL: Final[int] = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 
 

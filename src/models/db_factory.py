@@ -33,14 +33,14 @@ class DatabaseFactory:
     @classmethod
     def get_instance(
         cls,
-        db_path: Optional[str] = None,
+        database_url: Optional[str] = None,
         pool_size: Optional[int] = None,
     ) -> Database:
         """
         Get database singleton instance.
 
         Args:
-            db_path: Path to database file (only used on first call)
+            database_url: PostgreSQL connection URL (only used on first call)
             pool_size: Connection pool size (only used on first call)
 
         Returns:
@@ -48,9 +48,7 @@ class DatabaseFactory:
         """
         with cls._lock:
             if cls._instance is None:
-                # Ensure db_path is not None when creating Database instance
-                path = db_path if db_path is not None else "vfs_bot.db"
-                cls._instance = Database(db_path=path, pool_size=pool_size)
+                cls._instance = Database(database_url=database_url, pool_size=pool_size)
                 logger.info("Created new database singleton instance")
             return cls._instance
 

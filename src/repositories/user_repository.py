@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from src.core.exceptions import RecordNotFoundError, ValidationError
 from src.models.database import Database
 from src.repositories.base import BaseRepository
+from src.utils.db_helpers import _parse_command_tag
 from src.utils.validators import validate_email, validate_phone
 
 logger = logging.getLogger(__name__)
@@ -105,16 +106,15 @@ class UserRepository(BaseRepository[User]):
             User entity or None if not found
         """
         async with self.db.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
                 SELECT id, email, phone, first_name, last_name, center_name,
                        visa_category, visa_subcategory, is_active, created_at, updated_at
                 FROM users
-                WHERE id = ?
+                WHERE id = $1
                 """,
-                (id,),
+                id,
             )
-            row = await cursor.fetchone()
 
             if row is None:
                 return None
@@ -132,16 +132,15 @@ class UserRepository(BaseRepository[User]):
             User entity or None if not found
         """
         async with self.db.get_connection() as conn:
-            cursor = await conn.execute(
+            row = await conn.fetchrow(
                 """
                 SELECT id, email, phone, first_name, last_name, center_name,
                        visa_category, visa_subcategory, is_active, created_at, updated_at
                 FROM users
-                WHERE email = ?
+                WHERE email = $1
                 """,
-                (email,),
+                email,
             )
-            row = await cursor.fetchone()
 
             if row is None:
                 return None
@@ -166,13 +165,12 @@ class UserRepository(BaseRepository[User]):
         """
 
         if active_only:
-            query += " WHERE is_active = 1"
+            query += " WHERE is_active = TRUE"
 
-        query += " ORDER BY created_at DESC LIMIT ?"
+        query += " ORDER BY created_at DESC LIMIT $1"
 
         async with self.db.get_connection() as conn:
-            cursor = await conn.execute(query, (limit,))
-            rows = await cursor.fetchall()
+            rows = await conn.fetch(query, limit)
 
             return [self._row_to_user(row) for row in rows]
 
@@ -293,16 +291,14 @@ class UserRepository(BaseRepository[User]):
             True if deleted, False otherwise
         """
         async with self.db.get_connection() as conn:
-            cursor = await conn.execute("DELETE FROM users WHERE id = ?", (id,))
-            await conn.commit()
+            result = await conn.execute("DELETE FROM users WHERE id = $1", id)
 
-            deleted = cursor.rowcount > 0
+            deleted = _parse_command_tag(result) > 0
 
             if deleted:
                 logger.warning(f"Hard deleted user {id}")
 
-            result: bool = deleted
-            return result
+            return deleted
 
     async def get_active_count(self) -> int:
         """
@@ -312,7 +308,6 @@ class UserRepository(BaseRepository[User]):
             Number of active users
         """
         async with self.db.get_connection() as conn:
-            cursor = await conn.execute("SELECT COUNT(*) FROM users WHERE is_active = 1")
-            row = await cursor.fetchone()
+            row = await conn.fetchrow("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
             count: int = row[0] if row else 0
             return count

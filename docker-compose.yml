@@ -1,18 +1,38 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vfs-bot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vfs_bot
+      POSTGRES_USER: vfs_bot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vfs_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   vfs-bot:
     build: .
     container_name: vfs-bot
     restart: unless-stopped
+    depends_on:
+      - postgres
     ports:
       - "8000:8000"
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
       - ./screenshots:/app/screenshots
-      - vfs-bot-data:/app/data
     environment:
+      - DATABASE_URL=postgresql://vfs_bot:${POSTGRES_PASSWORD:-changeme}@postgres:5432/vfs_bot
       - VFS_EMAIL=${VFS_EMAIL}
       - VFS_PASSWORD=${VFS_PASSWORD}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -31,4 +51,4 @@ services:
       start_period: 40s
 
 volumes:
-  vfs-bot-data:
+  postgres-data:
