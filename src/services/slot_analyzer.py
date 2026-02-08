@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,6 +24,7 @@ class SlotPatternAnalyzer:
         self._patterns: Dict[str, Any] = self._load_data()
         self._pending_writes = 0
         self._last_save_time = datetime.now(timezone.utc)
+        self._lock = threading.Lock()  # Protect batch write state
 
     def _load_data(self) -> Dict[str, Any]:
         """Mevcut pattern verilerini yükle."""
@@ -40,8 +42,9 @@ class SlotPatternAnalyzer:
         try:
             with open(self.data_file, "w", encoding="utf-8") as f:
                 json.dump(self._patterns, f, indent=2, ensure_ascii=False)
-            self._pending_writes = 0
-            self._last_save_time = datetime.now(timezone.utc)
+            with self._lock:
+                self._pending_writes = 0
+                self._last_save_time = datetime.now(timezone.utc)
         except Exception as e:
             logger.error(f"Pattern data kaydedilemedi: {e}")
 
@@ -95,7 +98,10 @@ class SlotPatternAnalyzer:
             "duration_seconds": duration_seconds,
         }
         self._patterns["slots"].append(record)
-        self._pending_writes += 1
+        
+        with self._lock:
+            self._pending_writes += 1
+        
         logger.info(f"Slot pattern kaydedildi: {country}/{centre}")
         
         # Check if we should save (batch logic)
@@ -105,12 +111,13 @@ class SlotPatternAnalyzer:
         """Save data if batch size or time interval reached."""
         should_save = False
         
-        if self._pending_writes >= _BATCH_SIZE:
-            should_save = True
-        else:
-            elapsed = (datetime.now(timezone.utc) - self._last_save_time).total_seconds()
-            if elapsed >= _BATCH_INTERVAL and self._pending_writes > 0:
+        with self._lock:
+            if self._pending_writes >= _BATCH_SIZE:
                 should_save = True
+            else:
+                elapsed = (datetime.now(timezone.utc) - self._last_save_time).total_seconds()
+                if elapsed >= _BATCH_INTERVAL and self._pending_writes > 0:
+                    should_save = True
         
         if should_save:
             await asyncio.to_thread(self._save_data_sync)

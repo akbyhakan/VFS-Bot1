@@ -18,6 +18,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
 # Process-level flag for one-time use enforcement
+# NOTE: In multi-worker deployments (Gunicorn/uvicorn --workers > 1), each worker
+# has its own copy of this flag, allowing the admin secret to be used once per worker.
+# For true one-time enforcement across all workers, use external storage (Redis/DB).
 _admin_secret_consumed = False
 
 

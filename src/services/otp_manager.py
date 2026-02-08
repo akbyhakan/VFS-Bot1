@@ -12,6 +12,7 @@ import re
 import threading
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
@@ -518,7 +519,9 @@ class IMAPListener:
 
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._processed_uids: set = set()
+        # Use both deque (for ordering) and set (for fast lookup)
+        self._processed_uids_queue: deque = deque()
+        self._processed_uids_set: set = set()
         self._lock = threading.Lock()
         
         # Health tracking
@@ -650,9 +653,10 @@ class IMAPListener:
             try:
                 # Check if already processed
                 with self._lock:
-                    if num in self._processed_uids:
+                    if num in self._processed_uids_set:
                         continue
-                    self._processed_uids.add(num)
+                    self._processed_uids_set.add(num)
+                    self._processed_uids_queue.append(num)
 
                 # Fetch and process email
                 _, msg_data = mail.fetch(num, "(RFC822)")
@@ -672,24 +676,29 @@ class IMAPListener:
             except Exception as e:
                 logger.warning(f"Error processing email: {e}")
                 with self._lock:
-                    self._processed_uids.discard(num)
+                    self._processed_uids_set.discard(num)
+                    # Remove from queue if present (may not be at end)
+                    try:
+                        self._processed_uids_queue.remove(num)
+                    except ValueError:
+                        pass
 
     def _cleanup_processed_uids(self) -> None:
         """Clean up processed UIDs set to prevent unbounded memory growth."""
         with self._lock:
-            current_size = len(self._processed_uids)
+            current_size = len(self._processed_uids_set)
             if current_size > self._max_processed_uids:
-                # Discard until size is max_processed_uids // 2
+                # Remove oldest UIDs from the front of the deque
                 target_size = self._max_processed_uids // 2
                 to_remove = current_size - target_size
                 
-                # Convert to list and remove oldest (first) items
-                uid_list = list(self._processed_uids)
-                for uid in uid_list[:to_remove]:
-                    self._processed_uids.discard(uid)
+                for _ in range(to_remove):
+                    if self._processed_uids_queue:
+                        oldest_uid = self._processed_uids_queue.popleft()
+                        self._processed_uids_set.discard(oldest_uid)
                 
                 logger.info(
-                    f"Cleaned up processed UIDs: {current_size} -> {len(self._processed_uids)} "
+                    f"Cleaned up processed UIDs: {current_size} -> {len(self._processed_uids_set)} "
                     f"(removed {to_remove} oldest UIDs)"
                 )
 
@@ -706,7 +715,7 @@ class IMAPListener:
                 "last_successful_poll": self._last_successful_poll.isoformat() if self._last_successful_poll else None,
                 "total_reconnects": self._total_reconnects,
                 "consecutive_poll_errors": self._consecutive_poll_errors,
-                "processed_uids_count": len(self._processed_uids),
+                "processed_uids_count": len(self._processed_uids_set),
             }
 
 
