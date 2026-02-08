@@ -47,6 +47,14 @@ ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
 )
 
 
+class DatabaseState:
+    """Database connection state constants."""
+
+    CONNECTED = "connected"
+    DEGRADED = "degraded"
+    DISCONNECTED = "disconnected"
+
+
 def require_connection(func: F) -> F:
     """
     Decorator to ensure database connection exists before method execution.
@@ -101,6 +109,12 @@ class Database:
                 pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size
         self._pool_lock = asyncio.Lock()
+        
+        # State tracking for graceful degradation
+        self._state: str = DatabaseState.DISCONNECTED
+        self._last_successful_query: Optional[datetime] = None
+        self._consecutive_failures: int = 0
+        self._max_failures_before_degraded: int = 3
 
     def _calculate_optimal_pool_size(self) -> int:
         """
@@ -141,6 +155,95 @@ class Database:
             logger.warning(f"Failed to parse command tag: {command_tag}")
             return 0
 
+    @property
+    def state(self) -> str:
+        """
+        Get current database state.
+
+        Returns:
+            Current state (CONNECTED, DEGRADED, or DISCONNECTED)
+        """
+        if self.pool is None:
+            return DatabaseState.DISCONNECTED
+        
+        if self._consecutive_failures >= self._max_failures_before_degraded:
+            return DatabaseState.DEGRADED
+        
+        return DatabaseState.CONNECTED
+
+    async def execute_with_fallback(
+        self,
+        query_func: Callable[[], Awaitable[Any]],
+        fallback_value: Any = None,
+        critical: bool = False,
+    ) -> Any:
+        """
+        Execute a query with fallback support for graceful degradation.
+
+        Args:
+            query_func: Async function that executes the query
+            fallback_value: Value to return on failure (default: None)
+            critical: If True, re-raise exceptions; if False, return fallback_value
+
+        Returns:
+            Query result on success, fallback_value on non-critical failure
+
+        Raises:
+            Exception: If critical=True and query fails
+        """
+        try:
+            result = await query_func()
+            # Success - reset failure counter and update last successful query time
+            self._consecutive_failures = 0
+            self._last_successful_query = datetime.now(timezone.utc)
+            return result
+        except (DatabaseNotConnectedError, asyncpg.exceptions.PostgresError, Exception) as e:
+            # Increment failure counter
+            self._consecutive_failures += 1
+            
+            # Check if we've exceeded the degradation threshold
+            if self._consecutive_failures >= self._max_failures_before_degraded:
+                if self._state != DatabaseState.DEGRADED:
+                    self._state = DatabaseState.DEGRADED
+                    logger.warning(
+                        f"Database entering DEGRADED state after {self._consecutive_failures} "
+                        f"consecutive failures: {e}"
+                    )
+            
+            # If critical, re-raise the exception
+            if critical:
+                raise
+            
+            # Otherwise, log and return fallback value
+            logger.error(
+                f"Database query failed (non-critical), returning fallback value: {e}"
+            )
+            return fallback_value
+
+    async def reconnect(self) -> bool:
+        """
+        Attempt to reconnect to the database.
+
+        Returns:
+            True if reconnection successful, False otherwise
+        """
+        try:
+            # Close existing pool if it exists
+            if self.pool is not None:
+                await self.pool.close()
+                self.pool = None
+            
+            # Attempt to reconnect
+            await self.connect()
+            
+            # Reset failure counter on successful reconnection
+            self._consecutive_failures = 0
+            logger.info("Database reconnection successful")
+            return True
+        except Exception as e:
+            logger.error(f"Database reconnection failed: {e}")
+            return False
+
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
@@ -162,6 +265,10 @@ class Database:
 
                 await self._create_tables()
 
+                # Update state to CONNECTED
+                self._state = DatabaseState.CONNECTED
+                self._consecutive_failures = 0
+
                 logger.info(
                     f"Database connected with pool size {min_pool}-{self.pool_size}: "
                     f"{self.database_url.split('@')[-1] if '@' in self.database_url else 'localhost'}"
@@ -179,6 +286,7 @@ class Database:
             # Close connection pool
             if self.pool:
                 await self.pool.close()
+            self._state = DatabaseState.DISCONNECTED
             logger.info("Database connection pool closed")
 
     async def __aenter__(self) -> "Database":
