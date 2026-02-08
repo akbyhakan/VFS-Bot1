@@ -743,6 +743,7 @@ class Database:
                 "column": "visa_category",
                 "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
                 "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
             },
             {
                 "version": 2,
@@ -751,6 +752,7 @@ class Database:
                 "column": "visa_subcategory",
                 "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
                 "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
             },
             {
                 "version": 3,
@@ -759,6 +761,7 @@ class Database:
                 "column": "gender",
                 "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
                 "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
             },
             {
                 "version": 4,
@@ -767,6 +770,7 @@ class Database:
                 "column": "is_child_with_parent",
                 "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
                 "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
             },
             {
                 "version": 5,
@@ -777,6 +781,7 @@ class Database:
                 # No default value needed - existing cards can have NULL cvv_encrypted,
                 # and new cards will set this value when created
                 "default_sql": None,
+                "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
             },
         ]
 
@@ -859,6 +864,150 @@ class Database:
                     raise
 
             logger.info("All schema migrations completed")
+
+    def _get_migration_by_version(self, version: int) -> Optional[Dict[str, Any]]:
+        """
+        Get migration definition by version number.
+
+        Args:
+            version: Migration version number
+
+        Returns:
+            Migration dict if found, None otherwise
+        """
+        # Note: This needs access to the migrations list from _run_versioned_migrations
+        # We'll need to store migrations as a class variable or redefine them here
+        # For now, redefine the migrations list (should match _run_versioned_migrations)
+        migrations = [
+            {
+                "version": 1,
+                "description": "Add visa_category to appointment_requests",
+                "table": "appointment_requests",
+                "column": "visa_category",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
+                "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
+            },
+            {
+                "version": 2,
+                "description": "Add visa_subcategory to appointment_requests",
+                "table": "appointment_requests",
+                "column": "visa_subcategory",
+                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
+                "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
+            },
+            {
+                "version": 3,
+                "description": "Add gender to appointment_persons",
+                "table": "appointment_persons",
+                "column": "gender",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
+                "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
+            },
+            {
+                "version": 4,
+                "description": "Add is_child_with_parent to appointment_persons",
+                "table": "appointment_persons",
+                "column": "is_child_with_parent",
+                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
+                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
+                "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
+            },
+            {
+                "version": 5,
+                "description": "Add cvv_encrypted to payment_card",
+                "table": "payment_card",
+                "column": "cvv_encrypted",
+                "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
+                "default_sql": None,
+                "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
+            },
+        ]
+        
+        for migration in migrations:
+            if migration["version"] == version:
+                return migration
+        return None
+
+    async def rollback_migration(self, target_version: int) -> None:
+        """
+        Rollback migrations to a target version.
+
+        This method rolls back all migrations with versions greater than target_version.
+        Migrations are rolled back in reverse order (highest version first).
+
+        Args:
+            target_version: Target version to rollback to (exclusive)
+
+        Raises:
+            RuntimeError: If database connection is not established
+            ValueError: If a migration lacks rollback_sql
+        """
+        if self.pool is None:
+            raise RuntimeError("Database connection is not established.")
+
+        async with self.pool.acquire() as conn:
+            # Get applied migrations greater than target version (DESC order)
+            applied_migrations = await conn.fetch(
+                """
+                SELECT version, description
+                FROM schema_migrations
+                WHERE version > $1
+                ORDER BY version DESC
+                """,
+                target_version,
+            )
+
+            if not applied_migrations:
+                logger.info(
+                    f"No migrations to rollback (target version: {target_version})"
+                )
+                return
+
+            # Rollback each migration in reverse order
+            for row in applied_migrations:
+                version = row["version"]
+                description = row["description"]
+
+                # Get migration definition
+                migration = self._get_migration_by_version(version)
+                if migration is None:
+                    raise ValueError(
+                        f"Migration definition not found for version {version}"
+                    )
+
+                # Get rollback SQL
+                rollback_sql = migration.get("rollback_sql")
+                if not rollback_sql:
+                    raise ValueError(
+                        f"Migration v{version} does not have rollback_sql defined"
+                    )
+
+                # Execute rollback in transaction
+                try:
+                    logger.info(f"Rolling back migration v{version}: {description}")
+
+                    async with conn.transaction():
+                        # Execute rollback SQL
+                        await conn.execute(rollback_sql)
+
+                        # Remove migration record
+                        await conn.execute(
+                            "DELETE FROM schema_migrations WHERE version = $1",
+                            version,
+                        )
+
+                    logger.info(f"Migration v{version} rolled back successfully")
+
+                except Exception as e:
+                    logger.error(f"Rollback of migration v{version} failed: {e}")
+                    raise
+
+            logger.info(
+                f"Rollback completed. Current version: {target_version}"
+            )
 
     async def _migrate_schema(self) -> None:
         """Migrate database schema for new columns (legacy method for backward compatibility)."""
