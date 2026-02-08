@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 import secrets
-import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -101,7 +100,7 @@ class Database:
             database_url: PostgreSQL connection URL (defaults to DATABASE_URL env var)
             pool_size: Maximum number of concurrent connections (defaults to
                 DB_POOL_SIZE env var or calculated optimal size)
-        
+
         Raises:
             RuntimeError: If DATABASE_URL is not set and no database_url is provided
         """
@@ -121,7 +120,7 @@ class Database:
                 pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size
         self._pool_lock = asyncio.Lock()
-        
+
         # State tracking for graceful degradation
         # Note: _state is not stored; it's computed by the state property
         self._last_successful_query: Optional[datetime] = None
@@ -177,10 +176,10 @@ class Database:
         """
         if self.pool is None:
             return DatabaseState.DISCONNECTED
-        
+
         if self._consecutive_failures >= self._max_failures_before_degraded:
             return DatabaseState.DEGRADED
-        
+
         return DatabaseState.CONNECTED
 
     async def execute_with_fallback(
@@ -212,22 +211,20 @@ class Database:
         except (DatabaseNotConnectedError, asyncpg.exceptions.PostgresError, Exception) as e:
             # Increment failure counter
             self._consecutive_failures += 1
-            
+
             # Log warning if entering DEGRADED state
             if self._consecutive_failures == self._max_failures_before_degraded:
                 logger.warning(
                     f"Database entering DEGRADED state after {self._consecutive_failures} "
                     f"consecutive failures: {e}"
                 )
-            
+
             # If critical, re-raise the exception
             if critical:
                 raise
-            
+
             # Otherwise, log and return fallback value
-            logger.error(
-                f"Database query failed (non-critical), returning fallback value: {e}"
-            )
+            logger.error(f"Database query failed (non-critical), returning fallback value: {e}")
             return fallback_value
 
     async def reconnect(self) -> bool:
@@ -242,10 +239,10 @@ class Database:
             if self.pool is not None:
                 await self.pool.close()
                 self.pool = None
-            
+
             # Attempt to reconnect
             await self.connect()
-            
+
             # Reset failure counter on successful reconnection
             self._consecutive_failures = 0
             logger.info("Database reconnection successful")
@@ -261,7 +258,7 @@ class Database:
                 # Calculate minimum pool size (at least 2, at most ceiling of half max)
                 # Examples: pool=5 → min=3, pool=4 → min=2, pool=10 → min=5
                 min_pool = max(2, (self.pool_size + 1) // 2)
-                
+
                 # Create connection pool
                 self.pool = await asyncpg.create_pool(
                     self.database_url,
@@ -387,11 +384,11 @@ class Database:
     async def _create_tables(self) -> None:
         """
         Create database tables if they don't exist.
-        
+
         Note: Schema changes should be managed via Alembic migrations.
         Run 'alembic upgrade head' to apply pending migrations.
         This method creates baseline tables for initial setup only.
-        
+
         For production: Use Alembic CLI commands in Makefile:
         - make db-upgrade: Apply pending migrations
         - make db-migrate msg="description": Create new migration
@@ -402,8 +399,7 @@ class Database:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 # Users table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id BIGSERIAL PRIMARY KEY,
                         email TEXT UNIQUE NOT NULL,
@@ -415,12 +411,10 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     )
-                """
-                )
+                """)
 
                 # Personal details table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS personal_details (
                         id BIGSERIAL PRIMARY KEY,
                         user_id BIGINT NOT NULL,
@@ -443,12 +437,10 @@ class Database:
                         updated_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                     )
-                """
-                )
+                """)
 
                 # Appointments table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS appointments (
                         id BIGSERIAL PRIMARY KEY,
                         user_id BIGINT NOT NULL,
@@ -462,12 +454,10 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                     )
-                """
-                )
+                """)
 
                 # Logs table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS logs (
                         id BIGSERIAL PRIMARY KEY,
                         level TEXT NOT NULL,
@@ -476,12 +466,10 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                     )
-                """
-                )
+                """)
 
                 # Payment card table (single card for all payments)
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS payment_card (
                         id BIGSERIAL PRIMARY KEY,
                         card_holder_name TEXT NOT NULL,
@@ -491,23 +479,19 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     )
-                """
-                )
+                """)
 
                 # Admin secret usage tracking table (multi-worker safe)
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS admin_secret_usage (
                         id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
                         consumed BOOLEAN NOT NULL DEFAULT false,
                         consumed_at TIMESTAMPTZ
                     )
-                """
-                )
+                """)
 
                 # Appointment requests table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS appointment_requests (
                         id BIGSERIAL PRIMARY KEY,
                         country_code TEXT NOT NULL,
@@ -521,12 +505,10 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         updated_at TIMESTAMPTZ DEFAULT NOW()
                     )
-                """
-                )
+                """)
 
                 # Appointment persons table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS appointment_persons (
                         id BIGSERIAL PRIMARY KEY,
                         request_id BIGINT NOT NULL,
@@ -545,12 +527,10 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
                     )
-                """
-                )
+                """)
 
                 # Audit log table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS audit_log (
                         id BIGSERIAL PRIMARY KEY,
                         action TEXT NOT NULL,
@@ -564,29 +544,21 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
                     )
-                """
-                )
+                """)
 
                 # Audit log indexes
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)
-                """
-                )
-                await conn.execute(
-                    """
+                """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)
-                """
-                )
-                await conn.execute(
-                    """
+                """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)
-                """
-                )
+                """)
 
                 # Appointment history table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS appointment_history (
                         id BIGSERIAL PRIMARY KEY,
                         user_id BIGINT NOT NULL,
@@ -602,20 +574,16 @@ class Database:
                         updated_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )
-                """
-                )
+                """)
 
                 # Index for faster queries
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status
                     ON appointment_history(user_id, status)
-                """
-                )
+                """)
 
                 # User webhooks table - per-user OTP webhook tokens
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS user_webhooks (
                         id BIGSERIAL PRIMARY KEY,
                         user_id BIGINT NOT NULL UNIQUE,
@@ -624,20 +592,16 @@ class Database:
                         created_at TIMESTAMPTZ DEFAULT NOW(),
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )
-                """
-                )
+                """)
 
                 # Index for faster webhook token lookups
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_user_webhooks_token
                     ON user_webhooks(webhook_token)
-                """
-                )
+                """)
 
                 # Proxy endpoints table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS proxy_endpoints (
                         id BIGSERIAL PRIMARY KEY,
                         server TEXT NOT NULL,
@@ -651,46 +615,37 @@ class Database:
                         updated_at TIMESTAMPTZ DEFAULT NOW(),
                         UNIQUE(server, port, username)
                     )
-                """
-                )
+                """)
 
                 # Index for active proxies lookup
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_proxy_endpoints_active
                     ON proxy_endpoints(is_active)
-                """
-                )
+                """)
 
                 # Token blacklist table
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS token_blacklist (
                         jti VARCHAR(64) PRIMARY KEY,
                         exp TIMESTAMPTZ NOT NULL,
                         created_at TIMESTAMPTZ DEFAULT NOW()
                     )
-                """
-                )
+                """)
 
                 # Index for cleanup
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_token_blacklist_exp
                     ON token_blacklist(exp)
-                """
-                )
+                """)
 
                 # Schema migrations table for versioned migrations
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS schema_migrations (
                         version INTEGER PRIMARY KEY,
                         description TEXT NOT NULL,
                         applied_at TIMESTAMPTZ DEFAULT NOW()
                     )
-                """
-                )
+                """)
 
             # Wrap trigger and index creation in transaction for atomicity
             async with conn.transaction():
@@ -707,8 +662,16 @@ class Database:
 
                 # Create triggers for tables with updated_at column
                 # Table names are validated against a whitelist for security
-                TABLES_WITH_UPDATED_AT = frozenset(['users', 'personal_details', 'payment_card', 
-                                                     'appointment_requests', 'appointment_history', 'proxy_endpoints'])
+                TABLES_WITH_UPDATED_AT = frozenset(
+                    [
+                        "users",
+                        "personal_details",
+                        "payment_card",
+                        "appointment_requests",
+                        "appointment_history",
+                        "proxy_endpoints",
+                    ]
+                )
                 for table in TABLES_WITH_UPDATED_AT:
                     # Table names come from a hardcoded frozenset above - safe from SQL injection
                     # We use f-string here because asyncpg doesn't support parameterized identifiers
@@ -723,10 +686,18 @@ class Database:
 
                 # Add missing critical indexes
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_personal_details_user_id ON personal_details(user_id)")
-                await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)")
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id)"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_personal_details_user_id ON personal_details(user_id)"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)"
+                )
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
 
             logger.info("Database tables created/verified")
@@ -948,19 +919,21 @@ class Database:
             row = await conn.fetchrow("SELECT * FROM personal_details WHERE user_id = $1", user_id)
             if not row:
                 return None
-            
+
             details = dict(row)
-            
+
             # Decrypt passport number if encrypted version exists
             if details.get("passport_number_encrypted"):
                 try:
-                    details["passport_number"] = decrypt_password(details["passport_number_encrypted"])
+                    details["passport_number"] = decrypt_password(
+                        details["passport_number_encrypted"]
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to decrypt passport number for user {user_id}: {e}")
                     # Fall back to old unencrypted value if available
                     if not details.get("passport_number"):
                         details["passport_number"] = None
-            
+
             return details
 
     @require_connection
@@ -987,25 +960,28 @@ class Database:
 
         async with self.get_connection() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM personal_details WHERE user_id = ANY($1::bigint[])",
-                user_ids
+                "SELECT * FROM personal_details WHERE user_id = ANY($1::bigint[])", user_ids
             )
 
             # Map results by user_id
             result = {}
             for row in rows:
                 details = dict(row)
-                
+
                 # Decrypt passport number if encrypted version exists
                 if details.get("passport_number_encrypted"):
                     try:
-                        details["passport_number"] = decrypt_password(details["passport_number_encrypted"])
+                        details["passport_number"] = decrypt_password(
+                            details["passport_number_encrypted"]
+                        )
                     except Exception as e:
-                        logger.warning(f"Failed to decrypt passport number for user {details['user_id']}: {e}")
+                        logger.warning(
+                            f"Failed to decrypt passport number for user {details['user_id']}: {e}"
+                        )
                         # Fall back to old unencrypted value if available
                         if not details.get("passport_number"):
                             details["passport_number"] = None
-                
+
                 result[details["user_id"]] = details
 
             return result
@@ -1019,8 +995,7 @@ class Database:
             List of user dictionaries with personal details
         """
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT
                     u.id, u.email, u.centre as center_name,
                     u.category as visa_category, u.subcategory as visa_subcategory,
@@ -1029,8 +1004,7 @@ class Database:
                 FROM users u
                 LEFT JOIN personal_details p ON u.id = p.user_id
                 ORDER BY u.created_at DESC
-            """
-            )
+            """)
             return [dict(row) for row in rows]
 
     @require_connection
@@ -1052,7 +1026,7 @@ class Database:
         """
         if not isinstance(user_id, int) or user_id <= 0:
             raise ValueError(f"Invalid user_id: {user_id}")
-        
+
         async with self.get_connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -1063,7 +1037,8 @@ class Database:
                 FROM users u
                 LEFT JOIN personal_details p ON u.id = p.user_id
                 WHERE u.id = $1
-                """, user_id
+                """,
+                user_id,
             )
             return dict(row) if row else None
 
@@ -1318,7 +1293,7 @@ class Database:
                     for user in users:
                         # Encrypt password before storing
                         encrypted_password = encrypt_password(user["password"])
-                        
+
                         user_id = await conn.fetchval(
                             """
                             INSERT INTO users (email, password, centre, category, subcategory)
@@ -1374,13 +1349,12 @@ class Database:
             email = update.get("email")
             if email and not validate_email(email):
                 raise ValidationError(f"Invalid email format: {email}", field="email")
-            
+
             # Validate field names against whitelist (excluding 'id')
             for field_name in update.keys():
                 if field_name != "id" and field_name not in ALLOWED_USER_UPDATE_FIELDS:
                     raise ValidationError(
-                        f"Invalid field name for user update: {field_name}",
-                        field=field_name
+                        f"Invalid field name for user update: {field_name}", field=field_name
                     )
 
         updated_count = 0
@@ -1486,7 +1460,13 @@ class Database:
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING id
             """,
-                user_id, centre, category, subcategory, date, time, reference,
+                user_id,
+                centre,
+                category,
+                subcategory,
+                date,
+                time,
+                reference,
             )
             logger.info(f"Appointment added for user {user_id}")
             if appt_id is None:
@@ -1527,7 +1507,9 @@ class Database:
                 INSERT INTO logs (level, message, user_id)
                 VALUES ($1, $2, $3)
             """,
-                level, message, user_id,
+                level,
+                message,
+                user_id,
             )
 
     @require_connection
@@ -1542,9 +1524,7 @@ class Database:
             List of log dictionaries
         """
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM logs ORDER BY created_at DESC LIMIT $1", limit
-            )
+            rows = await conn.fetch("SELECT * FROM logs ORDER BY created_at DESC LIMIT $1", limit)
             return [dict(row) for row in rows]
 
     @require_connection
@@ -1563,7 +1543,8 @@ class Database:
                 VALUES ($1, $2)
                 ON CONFLICT (jti) DO UPDATE SET exp = EXCLUDED.exp
                 """,
-                jti, exp.isoformat(),
+                jti,
+                exp.isoformat(),
             )
 
     @require_connection
@@ -1584,7 +1565,8 @@ class Database:
                 SELECT 1 FROM token_blacklist
                 WHERE jti = $1 AND exp > $2
                 """,
-                jti, now,
+                jti,
+                now,
             )
             return result is not None
 
@@ -1663,7 +1645,7 @@ class Database:
             month = int(expiry_month)
         except ValueError:
             raise ValueError("Invalid expiry month format")
-        
+
         if not (1 <= month <= 12):
             raise ValueError("Expiry month must be between 01 and 12")
 
@@ -2036,7 +2018,9 @@ class Database:
                     SET status = $1, completed_at = $2, updated_at = NOW()
                     WHERE id = $3
                     """,
-                    status, completed_at, request_id,
+                    status,
+                    completed_at,
+                    request_id,
                 )
             else:
                 result = await conn.execute(
@@ -2045,7 +2029,8 @@ class Database:
                     SET status = $1, updated_at = NOW()
                     WHERE id = $2
                     """,
-                    status, request_id,
+                    status,
+                    request_id,
                 )
 
             if result != "UPDATE 0":
@@ -2065,7 +2050,9 @@ class Database:
             True if deleted, False if not found
         """
         async with self.get_connection() as conn:
-            result = await conn.execute("DELETE FROM appointment_requests WHERE id = $1", request_id)
+            result = await conn.execute(
+                "DELETE FROM appointment_requests WHERE id = $1", request_id
+            )
 
             if result != "DELETE 0":
                 logger.info(f"Appointment request {request_id} deleted")
@@ -2227,7 +2214,14 @@ class Database:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING id
                 """,
-                user_id, centre, mission, category, slot_date, slot_time, status, error_message,
+                user_id,
+                centre,
+                mission,
+                category,
+                slot_date,
+                slot_time,
+                status,
+                error_message,
             )
             return history_id or 0
 
@@ -2274,7 +2268,10 @@ class Database:
                 SET status = $1, error_message = $2, updated_at = $3, attempt_count = attempt_count + 1
                 WHERE id = $4
                 """,
-                status, error_message, datetime.now(timezone.utc), history_id,
+                status,
+                error_message,
+                datetime.now(timezone.utc),
+                history_id,
             )
             return True
 
@@ -2310,7 +2307,8 @@ class Database:
                 INSERT INTO user_webhooks (user_id, webhook_token, is_active)
                 VALUES ($1, $2, true)
                 """,
-                user_id, token,
+                user_id,
+                token,
             )
 
         logger.info(f"Webhook created for user {user_id}: {token[:8]}...")
@@ -2394,7 +2392,10 @@ class Database:
                     VALUES ($1, $2, $3, $4, NOW())
                     RETURNING id
                     """,
-                    server, port, username, encrypted_password,
+                    server,
+                    port,
+                    username,
+                    encrypted_password,
                 )
 
                 logger.info(f"Proxy added: {server}:{port} (ID: {proxy_id})")
@@ -2417,15 +2418,13 @@ class Database:
             List of proxy dictionaries with decrypted passwords
         """
         async with self.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT id, server, port, username, password_encrypted, is_active,
                        last_used, failure_count, created_at, updated_at
                 FROM proxy_endpoints
                 WHERE is_active = true
                 ORDER BY failure_count ASC, last_used ASC NULLS FIRST
-                """
-            )
+                """)
 
             proxies = []
             for row in rows:
@@ -2619,14 +2618,12 @@ class Database:
             Number of proxies updated
         """
         async with self.get_connection() as conn:
-            result = await conn.execute(
-                """
+            result = await conn.execute("""
                 UPDATE proxy_endpoints
                 SET failure_count = 0,
                     updated_at = NOW()
                 WHERE failure_count > 0
-                """
-            )
+                """)
             count = self._parse_command_tag(result)
 
         logger.info(f"Reset failure count for {count} proxies")
@@ -2642,15 +2639,13 @@ class Database:
             Dictionary with total, active, inactive counts
         """
         async with self.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
                     SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END) as inactive
                 FROM proxy_endpoints
-                """
-            )
+                """)
 
             if row:
                 return {

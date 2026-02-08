@@ -10,6 +10,7 @@ Use `alembic upgrade head` to apply migrations and `alembic downgrade <target>` 
 """
 
 import os
+
 import pytest
 from cryptography.fernet import Fernet
 
@@ -32,18 +33,18 @@ def unique_encryption_key(monkeypatch):
 async def test_alembic_migration_files_exist():
     """Test that Alembic migration files are present in the repository."""
     alembic_versions_dir = "alembic/versions"
-    
+
     assert os.path.exists(alembic_versions_dir), "alembic/versions directory should exist"
-    
+
     # Check for baseline migration
-    baseline_exists = any(
-        f.startswith("001_baseline") for f in os.listdir(alembic_versions_dir)
-    )
+    baseline_exists = any(f.startswith("001_baseline") for f in os.listdir(alembic_versions_dir))
     assert baseline_exists, "Baseline migration (001_baseline.py) should exist"
-    
+
     # Check that multiple migration files exist (should be at least baseline + feature migrations)
-    migration_files = [f for f in os.listdir(alembic_versions_dir) if f.endswith('.py')]
-    assert len(migration_files) >= 1, f"Expected at least 1 migration file, found {len(migration_files)}"
+    migration_files = [f for f in os.listdir(alembic_versions_dir) if f.endswith(".py")]
+    assert (
+        len(migration_files) >= 1
+    ), f"Expected at least 1 migration file, found {len(migration_files)}"
 
 
 @pytest.mark.asyncio
@@ -64,7 +65,7 @@ async def test_schema_migrations_table_exists(unique_encryption_key):
 @pytest.mark.asyncio
 async def test_migrated_columns_exist(unique_encryption_key):
     """Test that all migrated columns actually exist in the tables.
-    
+
     This verifies that the Alembic migrations have been applied correctly
     by checking for columns that were added via migrations.
     """
@@ -77,7 +78,7 @@ async def test_migrated_columns_exist(unique_encryption_key):
             "SELECT column_name FROM information_schema.columns WHERE table_name='appointment_requests'"
         )
         column_names = [col["column_name"] for col in columns]
-        
+
         assert "visa_category" in column_names, "visa_category column should exist"
         assert "visa_subcategory" in column_names, "visa_subcategory column should exist"
 
@@ -86,17 +87,20 @@ async def test_migrated_columns_exist(unique_encryption_key):
             "SELECT column_name FROM information_schema.columns WHERE table_name='appointment_persons'"
         )
         person_column_names = [col["column_name"] for col in person_columns]
-        
+
         assert "gender" in person_column_names, "gender column should exist"
-        assert "is_child_with_parent" in person_column_names, "is_child_with_parent column should exist"
+        assert (
+            "is_child_with_parent" in person_column_names
+        ), "is_child_with_parent column should exist"
 
         # Check personal_details columns (added by Alembic migration 006)
         personal_columns = await conn.fetch(
             "SELECT column_name FROM information_schema.columns WHERE table_name='personal_details'"
         )
         personal_column_names = [col["column_name"] for col in personal_columns]
-        
-        assert "passport_number_encrypted" in personal_column_names, "passport_number_encrypted column should exist"
+
+        assert (
+            "passport_number_encrypted" in personal_column_names
+        ), "passport_number_encrypted column should exist"
 
     await db.close()
-
