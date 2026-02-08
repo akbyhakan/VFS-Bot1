@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -209,19 +209,33 @@ def get_real_client_ip(request: Request) -> str:
     return client_host if is_valid_ip(client_host) else "unknown"
 
 
-# Determine environment for OpenAPI configuration
-env = get_validated_environment()
-_is_dev = env in ("development", "dev", "local", "testing", "test")
+def create_app(
+    run_security_validation: bool = True,
+    env_override: Optional[str] = None
+) -> FastAPI:
+    """
+    Factory function to create FastAPI application instance.
+    
+    Args:
+        run_security_validation: Whether to run security warnings check (default: True)
+        env_override: Override environment name for testing (default: None)
+    
+    Returns:
+        Configured FastAPI application instance
+    """
+    # Determine environment for OpenAPI configuration
+    env = env_override if env_override is not None else get_validated_environment()
+    _is_dev = env in ("development", "dev", "local", "testing", "test")
 
-# Create FastAPI app with enhanced OpenAPI documentation and lifespan
-app = FastAPI(
-    title="VFS-Bot Dashboard API",
-    version="2.0.0",
-    lifespan=lifespan,
-    docs_url="/docs" if _is_dev else None,
-    redoc_url="/redoc" if _is_dev else None,
-    openapi_url="/openapi.json" if _is_dev else None,
-    description="""
+    # Create FastAPI app with enhanced OpenAPI documentation and lifespan
+    app = FastAPI(
+        title="VFS-Bot Dashboard API",
+        version="2.0.0",
+        lifespan=lifespan,
+        docs_url="/docs" if _is_dev else None,
+        redoc_url="/redoc" if _is_dev else None,
+        openapi_url="/openapi.json" if _is_dev else None,
+        description="""
 ## VFS Global Appointment Booking Bot API
 
 **VFS-Bot** is an automated appointment booking system for VFS Global visa application centers.
@@ -263,143 +277,143 @@ API endpoints are rate-limited to prevent abuse:
 - XSS protection headers
 - CSRF token validation
     """,
-    contact={
-        "name": "VFS-Bot Support",
-        "url": "https://github.com/akbyhakan/VFS-Bot1",
-    },
-    license_info={
-        "name": "MIT",
-        "url": "https://opensource.org/licenses/MIT",
-    },
-    openapi_tags=[
-        {
-            "name": "auth",
-            "description": "Authentication and authorization operations",
+        contact={
+            "name": "VFS-Bot Support",
+            "url": "https://github.com/akbyhakan/VFS-Bot1",
         },
-        {
-            "name": "users",
-            "description": "User management operations",
+        license_info={
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT",
         },
-        {
-            "name": "appointments",
-            "description": "Appointment request and booking operations",
-        },
-        {
-            "name": "payment",
-            "description": "Payment card and transaction management",
-        },
-        {
-            "name": "bot",
-            "description": "Bot control and status operations",
-        },
-        {
-            "name": "proxy",
-            "description": "Proxy server management",
-        },
-        {
-            "name": "webhooks",
-            "description": "Webhook configuration and OTP delivery",
-        },
-        {
-            "name": "SMS Webhook",
-            "description": "Dynamic SMS webhook endpoints for VFS accounts",
-        },
-        {
-            "name": "health",
-            "description": "Service health and monitoring",
-        },
-    ],
-)
+        openapi_tags=[
+            {
+                "name": "auth",
+                "description": "Authentication and authorization operations",
+            },
+            {
+                "name": "users",
+                "description": "User management operations",
+            },
+            {
+                "name": "appointments",
+                "description": "Appointment request and booking operations",
+            },
+            {
+                "name": "payment",
+                "description": "Payment card and transaction management",
+            },
+            {
+                "name": "bot",
+                "description": "Bot control and status operations",
+            },
+            {
+                "name": "proxy",
+                "description": "Proxy server management",
+            },
+            {
+                "name": "webhooks",
+                "description": "Webhook configuration and OTP delivery",
+            },
+            {
+                "name": "SMS Webhook",
+                "description": "Dynamic SMS webhook endpoints for VFS accounts",
+            },
+            {
+                "name": "health",
+                "description": "Service health and monitoring",
+            },
+        ],
+    )
 
-# Run startup security validation
-log_security_warnings(strict=True)
+    # Run startup security validation if enabled
+    if run_security_validation:
+        log_security_warnings(strict=True)
+
+    # Configure middleware (order matters!)
+    # 1. Error handling middleware first (catches all errors)
+    app.add_middleware(ErrorHandlerMiddleware)
+
+    # 2. Security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # 3. Correlation ID middleware for request tracking
+    app.add_middleware(CorrelationMiddleware)
+
+    # 4. Configure CORS
+    allowed_origins_str = os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
+    )
+    allowed_origins = validate_cors_origins(allowed_origins_str)
+
+    if not allowed_origins:
+        if env not in ("development", "dev", "local", "testing", "test"):
+            raise RuntimeError(
+                "CRITICAL: No valid CORS origins configured for production. "
+                "Set CORS_ALLOWED_ORIGINS in .env (e.g., 'https://yourdomain.com'). "
+                "Application cannot start without valid CORS configuration in production."
+            )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Accept",
+            "Accept-Language",
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "X-CSRF-Token",
+        ],
+        expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
+        max_age=3600,  # Cache preflight requests for 1 hour
+    )
+
+    # 5. Add request tracking middleware
+    app.add_middleware(RequestTrackingMiddleware)
+
+    # Initialize rate limiter with improved IP detection
+    limiter = Limiter(key_func=get_real_client_ip)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    # Mount static files
+    static_dir = Path(__file__).parent / "static"
+    dist_dir = static_dir / "dist"
+
+    if dist_dir.exists():
+        # Serve React app static assets
+        app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+
+    # Include routers
+    app.include_router(otp_router)  # OTP webhook routes
+    app.include_router(webhook_router)  # Per-user webhook routes
+    app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
+    app.include_router(auth_router)  # /api/auth/*
+    app.include_router(users_router)  # /api/users/*
+    app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*
+    app.include_router(payment_router)  # /api/payment-card/*, /api/payment/*
+    app.include_router(proxy_router)  # /api/proxy/*
+    app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
+    app.include_router(health_router)  # /health, /ready, /metrics
+    app.include_router(dashboard_router)  # /errors.html
+
+    # WebSocket endpoint (must be added directly, not via router)
+    app.websocket("/ws")(websocket_endpoint)
+
+    # Catch-all route for React SPA - MUST be last!
+    @app.get("/", response_class=HTMLResponse)
+    @app.get("/{full_path:path}", response_class=HTMLResponse)
+    async def serve_frontend(request, full_path: str = ""):
+        """Serve React SPA for all non-API routes."""
+        return await serve_react_app(request, full_path)
+
+    return app
 
 
-# Configure middleware (order matters!)
-# 1. Error handling middleware first (catches all errors)
-app.add_middleware(ErrorHandlerMiddleware)
-
-# 2. Security headers middleware
-app.add_middleware(SecurityHeadersMiddleware)
-
-# 3. Correlation ID middleware for request tracking
-app.add_middleware(CorrelationMiddleware)
-
-# 4. Configure CORS
-allowed_origins_str = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
-)
-allowed_origins = validate_cors_origins(allowed_origins_str)
-
-if not allowed_origins:
-    env = os.getenv("ENV", "production").lower()
-    if env not in ("development", "dev", "local", "testing", "test"):
-        raise RuntimeError(
-            "CRITICAL: No valid CORS origins configured for production. "
-            "Set CORS_ALLOWED_ORIGINS in .env (e.g., 'https://yourdomain.com'). "
-            "Application cannot start without valid CORS configuration in production."
-        )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Accept",
-        "Accept-Language",
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "X-CSRF-Token",
-    ],
-    expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
-    max_age=3600,  # Cache preflight requests for 1 hour
-)
-
-# 5. Add request tracking middleware
-app.add_middleware(RequestTrackingMiddleware)
-
-
-# Initialize rate limiter with improved IP detection
-limiter = Limiter(key_func=get_real_client_ip)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-
-# Mount static files
-static_dir = Path(__file__).parent / "static"
-dist_dir = static_dir / "dist"
-
-if dist_dir.exists():
-    # Serve React app static assets
-    app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
-
-
-# Include routers
-app.include_router(otp_router)  # OTP webhook routes
-app.include_router(webhook_router)  # Per-user webhook routes
-app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
-app.include_router(auth_router)  # /api/auth/*
-app.include_router(users_router)  # /api/users/*
-app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*
-app.include_router(payment_router)  # /api/payment-card/*, /api/payment/*
-app.include_router(proxy_router)  # /api/proxy/*
-app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
-app.include_router(health_router)  # /health, /ready, /metrics
-app.include_router(dashboard_router)  # /errors.html
-
-
-# WebSocket endpoint (must be added directly, not via router)
-app.websocket("/ws")(websocket_endpoint)
-
-
-# Catch-all route for React SPA - MUST be last!
-@app.get("/", response_class=HTMLResponse)
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-async def serve_frontend(request, full_path: str = ""):
-    """Serve React SPA for all non-API routes."""
-    return await serve_react_app(request, full_path)
+# Create module-level app for backward compatibility
+app = create_app()
 
 
 if __name__ == "__main__":
