@@ -234,7 +234,7 @@ class TestDatabaseContextManager:
         from src.models.database import Database
 
         async with Database(database_url=DatabaseConfig.TEST_URL) as db:
-            assert db.conn is not None
+            assert db.pool is not None
 
             # Should be able to use the database
             user_id = await db.add_user(
@@ -256,7 +256,7 @@ class TestDatabaseContextManager:
 
         with pytest.raises(RuntimeError):
             async with Database(database_url=DatabaseConfig.TEST_URL) as db:
-                assert db.conn is not None
+                assert db.pool is not None
                 # Force an exception
                 raise RuntimeError("Test exception")
 

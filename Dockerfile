@@ -26,6 +26,7 @@ RUN apt-get update && \
      apt-get install -y --no-install-recommends libasound2) && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     fonts-liberation \
     fonts-noto-color-emoji \
     fonts-freefont-ttf \

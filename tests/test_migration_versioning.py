@@ -32,7 +32,7 @@ async def test_migration_versioning_fresh_db(unique_encryption_key):
     await db.connect()
 
     # Check that schema_migrations table exists
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         result = await conn.fetchval(
             "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='schema_migrations')"
         )
@@ -62,7 +62,7 @@ async def test_migration_versioning_backward_compatibility(unique_encryption_key
 
     # Simulate an old database by removing schema_migrations table
     # and checking that columns still get marked as applied
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         # Drop schema_migrations table
         await conn.execute("DROP TABLE IF EXISTS schema_migrations")
 
@@ -72,7 +72,7 @@ async def test_migration_versioning_backward_compatibility(unique_encryption_key
     db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         # Check that all migrations are now marked as applied
         migrations = await conn.fetch("SELECT version FROM schema_migrations ORDER BY version")
         
@@ -88,7 +88,7 @@ async def test_migration_idempotency(unique_encryption_key):
     await db.connect()
 
     # Count migrations
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         count1 = await conn.fetchval("SELECT COUNT(*) FROM schema_migrations")
 
     await db.close()
@@ -97,7 +97,7 @@ async def test_migration_idempotency(unique_encryption_key):
     db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         count2 = await conn.fetchval("SELECT COUNT(*) FROM schema_migrations")
 
     # Count should be the same (no new migrations applied)
@@ -112,7 +112,7 @@ async def test_migrated_columns_exist(unique_encryption_key):
     db = Database(database_url=DatabaseConfig.TEST_URL)
     await db.connect()
 
-    async with db.conn.acquire() as conn:
+    async with db.pool.acquire() as conn:
         # Check appointment_requests columns
         columns = await conn.fetch(
             "SELECT column_name FROM information_schema.columns WHERE table_name='appointment_requests'"

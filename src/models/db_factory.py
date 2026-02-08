@@ -73,7 +73,7 @@ class DatabaseFactory:
             Connected database instance
         """
         db = cls.get_instance()
-        if db.conn is None:
+        if db.pool is None:
             await db.connect()
             logger.info("Database connection established")
         return db
