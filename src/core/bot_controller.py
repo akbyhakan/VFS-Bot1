@@ -53,10 +53,16 @@ class BotController:
         """
         Get singleton instance of BotController.
         
+        Uses threading.Lock for thread-safe instance creation (synchronous operation).
+        Async operations within the instance use instance-level asyncio.Lock via
+        _ensure_async_lock() to avoid event loop conflicts.
+        
         Returns:
             BotController instance
         """
         if cls._instance is None:
+            # Synchronous lock is correct here - instance creation is synchronous
+            # and we need thread-safety across multiple threads
             with cls._init_lock:
                 if cls._instance is None:
                     cls._instance = cls()
@@ -68,14 +74,23 @@ class BotController:
         Reset singleton instance (for testing).
         
         Stops any running bot and clears the singleton.
+        Uses threading.Lock to ensure thread-safe reset across multiple threads.
+        The lock is only held during instance nullification; stop_bot() is called
+        before acquiring the lock to avoid blocking.
         """
+        # Get instance reference before acquiring lock
+        instance = cls._instance
+        
+        # Stop bot outside the lock to avoid blocking
+        if instance is not None:
+            try:
+                await instance.stop_bot()
+            except Exception as e:
+                logger.error(f"Error stopping bot during reset: {e}")
+        
+        # Only hold lock during instance nullification (fast operation)
         with cls._init_lock:
-            if cls._instance is not None:
-                try:
-                    await cls._instance.stop_bot()
-                except Exception as e:
-                    logger.error(f"Error stopping bot during reset: {e}")
-                cls._instance = None
+            cls._instance = None
 
     async def configure(
         self, config: Dict[str, Any], db: "Database", notifier: "NotificationService"
