@@ -5,7 +5,6 @@
 import { api } from './api';
 import axios from 'axios';
 import { API_BASE_URL } from '@/utils/constants';
-import { tokenManager } from '@/utils/tokenManager';
 
 export interface ProxyStats {
   total: number;
@@ -39,15 +38,15 @@ export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const token = tokenManager.getToken();
+  // Use cookie-based authentication (HttpOnly cookie sent automatically)
   const response = await axios.post<UploadProxyResponse>(
     `${API_BASE_URL}/api/proxy/upload`,
     formData,
     {
       headers: {
         'Content-Type': 'multipart/form-data',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
+      withCredentials: true,  // Send HttpOnly cookies with request
     }
   );
 

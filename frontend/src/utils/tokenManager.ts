@@ -1,10 +1,19 @@
 /**
- * Secure token manager with memory-first storage
- * Provides token management with remember me support and expiration handling
+ * DEPRECATED: Secure token manager with memory-first storage
  * 
- * NOTE: As of v2.2.0, primary authentication is via HttpOnly cookies for XSS protection.
- * This module is maintained for backward compatibility with API clients and as a fallback
- * mechanism. The browser automatically sends the HttpOnly cookie with each request.
+ * ⚠️ WARNING: This module is DEPRECATED as of v2.2.0
+ * 
+ * Primary authentication is now via HttpOnly cookies for XSS protection.
+ * The browser automatically sends the HttpOnly cookie with each request.
+ * 
+ * This module is maintained for backward compatibility only.
+ * New code should NOT use this module.
+ * 
+ * Migration guide:
+ * - Remove all tokenManager.setToken() calls
+ * - Remove all tokenManager.getToken() calls  
+ * - Remove Authorization headers (cookies are sent automatically)
+ * - Use cookie-based authentication endpoints
  */
 
 import { AUTH_TOKEN_KEY } from './constants';
@@ -18,109 +27,72 @@ class TokenManager {
   private memoryToken: string | null = null;
 
   /**
+   * @deprecated Use HttpOnly cookies instead
    * Set token with optional remember me and expiration
    */
   setToken(token: string, remember: boolean = false, expiresInMs?: number): void {
-    this.memoryToken = token;
-
-    if (remember) {
-      const tokenData: TokenData = {
-        token,
-        expiresAt: expiresInMs ? Date.now() + expiresInMs : undefined,
-      };
-      localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(tokenData));
-      sessionStorage.removeItem(AUTH_TOKEN_KEY); // Clear sessionStorage
-    } else {
-      // Use sessionStorage for session-only tokens (more secure)
-      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-      localStorage.removeItem(AUTH_TOKEN_KEY); // Clear localStorage
-    }
+    console.warn(
+      '[DEPRECATED] tokenManager.setToken() is deprecated. ' +
+      'Authentication now uses HttpOnly cookies for security. ' +
+      'This call is a no-op and tokens are not stored in localStorage/sessionStorage.'
+    );
+    // No-op: Do not store tokens in browser storage anymore
+    // Authentication is handled via HttpOnly cookies
   }
 
   /**
+   * @deprecated Use HttpOnly cookies instead
    * Get token from memory or localStorage/sessionStorage
    */
   getToken(): string | null {
-    // First check memory
-    if (this.memoryToken) {
-      return this.memoryToken;
-    }
-
-    // Then check localStorage (remember me)
-    const stored = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (stored) {
-      try {
-        const tokenData: TokenData = JSON.parse(stored);
-        if (tokenData?.token && typeof tokenData.token === 'string') {
-          // Basic JWT structure validation (three base64url parts separated by dots)
-          const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-          if (!jwtPattern.test(tokenData.token)) {
-            this.clearToken();
-            return null;
-          }
-          
-          if (tokenData.expiresAt && Date.now() > tokenData.expiresAt) {
-            this.clearToken();
-            return null;
-          }
-          this.memoryToken = tokenData.token;
-          return tokenData.token;
-        }
-      } catch {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-      }
-    }
-
-    // Finally check sessionStorage (session-only)
-    const sessionToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
-    if (sessionToken) {
-      // Validate JWT structure for session tokens too
-      const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-      if (!jwtPattern.test(sessionToken)) {
-        sessionStorage.removeItem(AUTH_TOKEN_KEY);
-        return null;
-      }
-      this.memoryToken = sessionToken;
-      return sessionToken;
-    }
-
+    console.warn(
+      '[DEPRECATED] tokenManager.getToken() is deprecated. ' +
+      'Authentication now uses HttpOnly cookies which are sent automatically. ' +
+      'Returning null.'
+    );
+    // No-op: Always return null since tokens are not stored anymore
     return null;
   }
 
   /**
+   * @deprecated Use HttpOnly cookies instead
    * Check if token exists and is valid
    */
   hasToken(): boolean {
-    return this.getToken() !== null;
+    console.warn(
+      '[DEPRECATED] tokenManager.hasToken() is deprecated. ' +
+      'Use server-side authentication check instead (e.g., /api/auth/me endpoint).'
+    );
+    // No-op: Always return false since tokens are not stored
+    return false;
   }
 
   /**
+   * @deprecated Use HttpOnly cookies instead
    * Clear token from all storage
    */
   clearToken(): void {
+    console.warn(
+      '[DEPRECATED] tokenManager.clearToken() is deprecated. ' +
+      'Call /api/auth/logout endpoint to clear HttpOnly cookies.'
+    );
+    // Clean up any legacy tokens that might exist
     this.memoryToken = null;
     localStorage.removeItem(AUTH_TOKEN_KEY);
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
   }
 
   /**
+   * @deprecated Use HttpOnly cookies instead
    * Check if token is expired (if expiration was set)
    */
   isExpired(): boolean {
-    const stored = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!stored) {
-      return !this.memoryToken; // If no localStorage, check memory
-    }
-
-    try {
-      const tokenData: TokenData = JSON.parse(stored);
-      if (tokenData.expiresAt) {
-        return Date.now() > tokenData.expiresAt;
-      }
-      return false;
-    } catch {
-      return true;
-    }
+    console.warn(
+      '[DEPRECATED] tokenManager.isExpired() is deprecated. ' +
+      'Token expiration is handled server-side with HttpOnly cookies.'
+    );
+    // No-op: Always return true since we don't store tokens
+    return true;
   }
 }
 
