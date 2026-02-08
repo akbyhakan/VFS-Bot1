@@ -47,6 +47,14 @@ ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
 )
 
 
+class DatabaseState:
+    """Database connection state constants."""
+
+    CONNECTED = "connected"
+    DEGRADED = "degraded"
+    DISCONNECTED = "disconnected"
+
+
 def require_connection(func: F) -> F:
     """
     Decorator to ensure database connection exists before method execution.
@@ -72,6 +80,55 @@ def require_connection(func: F) -> F:
 
 class Database:
     """PostgreSQL database manager for VFS-Bot with connection pooling."""
+
+    # Define migrations as a class-level constant to avoid duplication
+    MIGRATIONS = [
+        {
+            "version": 1,
+            "description": "Add visa_category to appointment_requests",
+            "table": "appointment_requests",
+            "column": "visa_category",
+            "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
+            "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_category",
+        },
+        {
+            "version": 2,
+            "description": "Add visa_subcategory to appointment_requests",
+            "table": "appointment_requests",
+            "column": "visa_subcategory",
+            "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
+            "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_requests DROP COLUMN IF EXISTS visa_subcategory",
+        },
+        {
+            "version": 3,
+            "description": "Add gender to appointment_persons",
+            "table": "appointment_persons",
+            "column": "gender",
+            "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
+            "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS gender",
+        },
+        {
+            "version": 4,
+            "description": "Add is_child_with_parent to appointment_persons",
+            "table": "appointment_persons",
+            "column": "is_child_with_parent",
+            "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
+            "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
+            "rollback_sql": "ALTER TABLE appointment_persons DROP COLUMN IF EXISTS is_child_with_parent",
+        },
+        {
+            "version": 5,
+            "description": "Add cvv_encrypted to payment_card",
+            "table": "payment_card",
+            "column": "cvv_encrypted",
+            "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
+            "default_sql": None,
+            "rollback_sql": "ALTER TABLE payment_card DROP COLUMN IF EXISTS cvv_encrypted",
+        },
+    ]
 
     def __init__(self, database_url: Optional[str] = None, pool_size: Optional[int] = None):
         """
@@ -101,6 +158,12 @@ class Database:
                 pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size
         self._pool_lock = asyncio.Lock()
+        
+        # State tracking for graceful degradation
+        # Note: _state is not stored; it's computed by the state property
+        self._last_successful_query: Optional[datetime] = None
+        self._consecutive_failures: int = 0
+        self._max_failures_before_degraded: int = 3
 
     def _calculate_optimal_pool_size(self) -> int:
         """
@@ -141,6 +204,93 @@ class Database:
             logger.warning(f"Failed to parse command tag: {command_tag}")
             return 0
 
+    @property
+    def state(self) -> str:
+        """
+        Get current database state.
+
+        Returns:
+            Current state (CONNECTED, DEGRADED, or DISCONNECTED)
+        """
+        if self.pool is None:
+            return DatabaseState.DISCONNECTED
+        
+        if self._consecutive_failures >= self._max_failures_before_degraded:
+            return DatabaseState.DEGRADED
+        
+        return DatabaseState.CONNECTED
+
+    async def execute_with_fallback(
+        self,
+        query_func: Callable[[], Awaitable[Any]],
+        fallback_value: Any = None,
+        critical: bool = False,
+    ) -> Any:
+        """
+        Execute a query with fallback support for graceful degradation.
+
+        Args:
+            query_func: Async function that executes the query
+            fallback_value: Value to return on failure (default: None)
+            critical: If True, re-raise exceptions; if False, return fallback_value
+
+        Returns:
+            Query result on success, fallback_value on non-critical failure
+
+        Raises:
+            Exception: If critical=True and query fails
+        """
+        try:
+            result = await query_func()
+            # Success - reset failure counter and update last successful query time
+            self._consecutive_failures = 0
+            self._last_successful_query = datetime.now(timezone.utc)
+            return result
+        except (DatabaseNotConnectedError, asyncpg.exceptions.PostgresError, Exception) as e:
+            # Increment failure counter
+            self._consecutive_failures += 1
+            
+            # Log warning if entering DEGRADED state
+            if self._consecutive_failures == self._max_failures_before_degraded:
+                logger.warning(
+                    f"Database entering DEGRADED state after {self._consecutive_failures} "
+                    f"consecutive failures: {e}"
+                )
+            
+            # If critical, re-raise the exception
+            if critical:
+                raise
+            
+            # Otherwise, log and return fallback value
+            logger.error(
+                f"Database query failed (non-critical), returning fallback value: {e}"
+            )
+            return fallback_value
+
+    async def reconnect(self) -> bool:
+        """
+        Attempt to reconnect to the database.
+
+        Returns:
+            True if reconnection successful, False otherwise
+        """
+        try:
+            # Close existing pool if it exists
+            if self.pool is not None:
+                await self.pool.close()
+                self.pool = None
+            
+            # Attempt to reconnect
+            await self.connect()
+            
+            # Reset failure counter on successful reconnection
+            self._consecutive_failures = 0
+            logger.info("Database reconnection successful")
+            return True
+        except Exception as e:
+            logger.error(f"Database reconnection failed: {e}")
+            return False
+
     async def connect(self) -> None:
         """Establish database connection pool and create tables."""
         async with self._pool_lock:
@@ -162,6 +312,9 @@ class Database:
 
                 await self._create_tables()
 
+                # Reset failure counter on successful connection
+                self._consecutive_failures = 0
+
                 logger.info(
                     f"Database connected with pool size {min_pool}-{self.pool_size}: "
                     f"{self.database_url.split('@')[-1] if '@' in self.database_url else 'localhost'}"
@@ -179,6 +332,7 @@ class Database:
             # Close connection pool
             if self.pool:
                 await self.pool.close()
+            # Pool is None, so state property will return DISCONNECTED automatically
             logger.info("Database connection pool closed")
 
     async def __aenter__(self) -> "Database":
@@ -626,51 +780,8 @@ class Database:
             "token_blacklist",
         })
 
-        # Define migrations in order (uses ADD COLUMN IF NOT EXISTS - PostgreSQL 9.6+)
-        migrations = [
-            {
-                "version": 1,
-                "description": "Add visa_category to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_category",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_category TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_category = '' WHERE visa_category IS NULL",
-            },
-            {
-                "version": 2,
-                "description": "Add visa_subcategory to appointment_requests",
-                "table": "appointment_requests",
-                "column": "visa_subcategory",
-                "sql": "ALTER TABLE appointment_requests ADD COLUMN IF NOT EXISTS visa_subcategory TEXT",
-                "default_sql": "UPDATE appointment_requests SET visa_subcategory = '' WHERE visa_subcategory IS NULL",
-            },
-            {
-                "version": 3,
-                "description": "Add gender to appointment_persons",
-                "table": "appointment_persons",
-                "column": "gender",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS gender TEXT",
-                "default_sql": "UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL",
-            },
-            {
-                "version": 4,
-                "description": "Add is_child_with_parent to appointment_persons",
-                "table": "appointment_persons",
-                "column": "is_child_with_parent",
-                "sql": "ALTER TABLE appointment_persons ADD COLUMN IF NOT EXISTS is_child_with_parent BOOLEAN",
-                "default_sql": "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL",
-            },
-            {
-                "version": 5,
-                "description": "Add cvv_encrypted to payment_card",
-                "table": "payment_card",
-                "column": "cvv_encrypted",
-                "sql": "ALTER TABLE payment_card ADD COLUMN IF NOT EXISTS cvv_encrypted TEXT",
-                # No default value needed - existing cards can have NULL cvv_encrypted,
-                # and new cards will set this value when created
-                "default_sql": None,
-            },
-        ]
+        # Use class-level migrations constant
+        migrations = self.MIGRATIONS
 
         # Validate all migration table names against whitelist
         for migration in migrations:
@@ -751,6 +862,100 @@ class Database:
                     raise
 
             logger.info("All schema migrations completed")
+
+    def _get_migration_by_version(self, version: int) -> Optional[Dict[str, Any]]:
+        """
+        Get migration definition by version number.
+
+        Args:
+            version: Migration version number
+
+        Returns:
+            Migration dict if found, None otherwise
+        """
+        # Use class-level migrations constant
+        for migration in self.MIGRATIONS:
+            if migration["version"] == version:
+                return migration
+        return None
+
+    async def rollback_migration(self, target_version: int) -> None:
+        """
+        Rollback migrations to a target version.
+
+        This method rolls back all migrations with versions greater than target_version.
+        Migrations are rolled back in reverse order (highest version first).
+
+        Args:
+            target_version: Target version to rollback to (exclusive)
+
+        Raises:
+            RuntimeError: If database connection is not established
+            ValueError: If a migration lacks rollback_sql
+        """
+        if self.pool is None:
+            raise RuntimeError("Database connection is not established.")
+
+        async with self.pool.acquire() as conn:
+            # Get applied migrations greater than target version (DESC order)
+            applied_migrations = await conn.fetch(
+                """
+                SELECT version, description
+                FROM schema_migrations
+                WHERE version > $1
+                ORDER BY version DESC
+                """,
+                target_version,
+            )
+
+            if not applied_migrations:
+                logger.info(
+                    f"No migrations to rollback (target version: {target_version})"
+                )
+                return
+
+            # Rollback each migration in reverse order
+            for row in applied_migrations:
+                version = row["version"]
+                description = row["description"]
+
+                # Get migration definition
+                migration = self._get_migration_by_version(version)
+                if migration is None:
+                    raise ValueError(
+                        f"Migration definition not found for version {version}"
+                    )
+
+                # Get rollback SQL
+                rollback_sql = migration.get("rollback_sql")
+                if not rollback_sql:
+                    raise ValueError(
+                        f"Migration v{version} does not have rollback_sql defined"
+                    )
+
+                # Execute rollback in transaction
+                try:
+                    logger.info(f"Rolling back migration v{version}: {description}")
+
+                    async with conn.transaction():
+                        # Execute rollback SQL
+                        await conn.execute(rollback_sql)
+
+                        # Remove migration record
+                        await conn.execute(
+                            "DELETE FROM schema_migrations WHERE version = $1",
+                            version,
+                        )
+
+                    logger.info(f"Migration v{version} rolled back successfully")
+
+                except Exception as e:
+                    logger.error(f"Rollback of migration v{version} failed: {e}")
+                    raise
+
+            logger.info(
+                f"Rollback completed. Current version: {target_version}"
+            )
 
     async def _migrate_schema(self) -> None:
         """Migrate database schema for new columns (legacy method for backward compatibility)."""

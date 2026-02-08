@@ -9,6 +9,47 @@ import pytest_asyncio
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
+# Try to import testcontainers
+try:
+    from testcontainers.postgres import PostgresContainer
+
+    TESTCONTAINERS_AVAILABLE = True
+except ImportError:
+    TESTCONTAINERS_AVAILABLE = False
+
+
+@pytest_asyncio.fixture
+async def postgres_url() -> AsyncGenerator[str, None]:
+    """
+    Create a PostgreSQL container for integration tests.
+    
+    Yields:
+        PostgreSQL connection URL
+    """
+    if not TESTCONTAINERS_AVAILABLE:
+        pytest.skip("testcontainers not available")
+    
+    # Use testcontainers to create a real PostgreSQL instance
+    with PostgresContainer("postgres:15") as postgres:
+        yield postgres.get_connection_url()
+
+
+@pytest_asyncio.fixture
+async def db(postgres_url: str) -> AsyncGenerator[Database, None]:
+    """
+    Create database instance using testcontainers PostgreSQL.
+    
+    Args:
+        postgres_url: PostgreSQL connection URL from container
+        
+    Yields:
+        Database instance for testing
+    """
+    database = Database(database_url=postgres_url)
+    await database.connect()
+    yield database
+    await database.close()
+
 
 @pytest_asyncio.fixture
 async def integration_db() -> AsyncGenerator[Database, None]:
@@ -24,6 +65,59 @@ async def integration_db() -> AsyncGenerator[Database, None]:
     await db.close()
 
 
+@pytest.mark.integration
+class TestDatabaseIntegrationWithTestcontainers:
+    """Integration tests using testcontainers for real PostgreSQL."""
+
+    @pytest.mark.asyncio
+    async def test_database_connect_and_health_check(self, db: Database):
+        """Test database connection and health check."""
+        # Verify connection is established
+        assert db.pool is not None, "Database pool should be established"
+        
+        # Verify health check passes
+        is_healthy = await db.health_check()
+        assert is_healthy is True, "Database should be healthy"
+
+    @pytest.mark.asyncio
+    async def test_schema_migrations_applied(self, db: Database):
+        """Test that schema migrations are applied correctly."""
+        # Get the count of applied migrations
+        async with db.get_connection() as conn:
+            migration_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM schema_migrations"
+            )
+        
+        # Should have at least 5 migrations applied
+        assert migration_count >= 5, f"Expected >= 5 migrations, got {migration_count}"
+
+    @pytest.mark.asyncio
+    @pytest.mark.slow
+    async def test_connection_pool_under_pressure(self, db: Database):
+        """Test connection pool under concurrent load."""
+        
+        async def health_check_task() -> bool:
+            """Execute a health check."""
+            try:
+                return await db.health_check()
+            except Exception:
+                return False
+        
+        # Create 20 concurrent health check tasks
+        tasks = [health_check_task() for _ in range(20)]
+        results = await asyncio.gather(*tasks)
+        
+        # At least 90% should succeed
+        success_count = sum(1 for r in results if r is True)
+        success_rate = success_count / len(results)
+        
+        assert success_rate >= 0.90, (
+            f"Expected >= 90% success rate, got {success_rate:.1%} "
+            f"({success_count}/{len(results)} successful)"
+        )
+
+
+@pytest.mark.integration
 class TestDatabaseIntegration:
     """Integration tests for database operations."""
 
@@ -225,6 +319,7 @@ class TestDatabaseIntegration:
             assert details_map[user_id]["first_name"].startswith("User")
 
 
+@pytest.mark.integration
 class TestDatabaseContextManager:
     """Tests for database async context manager."""
 
@@ -263,6 +358,7 @@ class TestDatabaseContextManager:
         # Context manager should have closed the connection despite exception
 
 
+@pytest.mark.integration
 class TestCentreFetcherCache:
     """Tests for CentreFetcher cache functionality."""
 
@@ -323,6 +419,7 @@ class TestCentreFetcherCache:
             pass  # Expected
 
 
+@pytest.mark.integration
 class TestDatabaseIdleConnectionCleanup:
     """Tests for database idle connection cleanup."""
 
