@@ -80,9 +80,9 @@ def test_bot_initialization(bot_config, mock_db, mock_notifier):
     # New modular architecture - components are initialized
     assert bot.browser_manager is not None
     assert bot.circuit_breaker is not None
-    assert bot.auth_service is not None
-    assert bot.slot_checker is not None
-    assert bot.error_handler is not None
+    assert bot.services.workflow.auth_service is not None
+    assert bot.services.workflow.slot_checker is not None
+    assert bot.services.workflow.error_handler is not None
 
 
 def test_bot_initialization_with_anti_detection_disabled(bot_config, mock_db, mock_notifier):
@@ -90,7 +90,7 @@ def test_bot_initialization_with_anti_detection_disabled(bot_config, mock_db, mo
     bot_config["anti_detection"]["enabled"] = False
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.anti_detection_enabled is False
+    assert bot.services.anti_detection.enabled is False
 
 
 def test_bot_initialization_with_anti_detection_enabled(bot_config, mock_db, mock_notifier):
@@ -98,10 +98,10 @@ def test_bot_initialization_with_anti_detection_enabled(bot_config, mock_db, moc
     bot_config["anti_detection"]["enabled"] = True
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.anti_detection_enabled is True
-    assert bot.human_sim is not None
-    assert bot.header_manager is not None
-    assert bot.session_manager is not None
+    assert bot.services.anti_detection.enabled is True
+    assert bot.services.anti_detection.human_sim is not None
+    assert bot.services.anti_detection.header_manager is not None
+    assert bot.services.anti_detection.session_manager is not None
 
 
 def test_bot_circuit_breaker_state(bot_config, mock_db, mock_notifier):
@@ -118,29 +118,29 @@ def test_bot_captcha_solver_initialization(bot_config, mock_db, mock_notifier):
     bot_config["captcha"]["api_key"] = "test_api_key"
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.captcha_solver is not None
-    assert bot.captcha_solver.api_key == "test_api_key"
+    assert bot.services.core.captcha_solver is not None
+    assert bot.services.core.captcha_solver.api_key == "test_api_key"
 
 
 def test_bot_centre_fetcher_initialization(bot_config, mock_db, mock_notifier):
     """Test centre fetcher initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.centre_fetcher is not None
+    assert bot.services.core.centre_fetcher is not None
 
 
 def test_bot_error_capture_initialization(bot_config, mock_db, mock_notifier):
     """Test error capture initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.error_capture is not None
+    assert bot.services.core.error_capture is not None
 
 
 def test_bot_rate_limiter_initialization(bot_config, mock_db, mock_notifier):
     """Test rate limiter initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.rate_limiter is not None
+    assert bot.services.core.rate_limiter is not None
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ def test_bot_user_semaphore(bot_config, mock_db, mock_notifier):
     """Test user semaphore initialization."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    assert bot.user_semaphore is not None
+    assert bot.services.core.user_semaphore is not None
     # Semaphore should have a value from RateLimits.CONCURRENT_USERS
 
 
@@ -328,7 +328,7 @@ def test_bot_with_custom_captcha_config(mock_db, mock_notifier):
 
     bot = VFSBot(config, mock_db, mock_notifier)
 
-    assert bot.captcha_solver.api_key == "test_key"
+    assert bot.services.core.captcha_solver.api_key == "test_key"
 
 
 def test_bot_with_custom_session_config(mock_db, mock_notifier):
@@ -353,7 +353,7 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
 
     bot = VFSBot(config, mock_db, mock_notifier)
 
-    assert bot.session_manager is not None
+    assert bot.services.anti_detection.session_manager is not None
 
 
 # Tests for Issue 3.3: Graceful Degradation with User Cache
