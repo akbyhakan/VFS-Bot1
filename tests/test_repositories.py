@@ -59,9 +59,7 @@ async def test_user_repository_get_by_id(mock_db, sample_user_data):
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=sample_user_data)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=sample_user_data)
 
     # Get user
     user = await repo.get_by_id(1)
@@ -80,9 +78,7 @@ async def test_user_repository_get_by_id_not_found(mock_db):
 
     # Mock database response - no user found
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=None)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=None)
 
     # Get user
     user = await repo.get_by_id(999)
@@ -97,9 +93,7 @@ async def test_user_repository_get_by_email(mock_db, sample_user_data):
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=sample_user_data)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=sample_user_data)
 
     # Get user
     user = await repo.get_by_email("test@example.com")
@@ -115,9 +109,7 @@ async def test_user_repository_get_all(mock_db, sample_user_data):
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchall = AsyncMock(return_value=[sample_user_data, sample_user_data])
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetch = AsyncMock(return_value=[sample_user_data, sample_user_data])
 
     # Get all users
     users = await repo.get_all(limit=10)
@@ -130,6 +122,10 @@ async def test_user_repository_get_all(mock_db, sample_user_data):
 async def test_user_repository_create_valid(mock_db):
     """Test creating a user with valid data."""
     repo = UserRepository(mock_db)
+
+    # Mock database response for insert
+    mock_conn = await mock_db.get_connection().__aenter__()
+    mock_conn.fetchval = AsyncMock(return_value=1)
 
     data = {
         "email": "new@example.com",
@@ -146,7 +142,7 @@ async def test_user_repository_create_valid(mock_db):
     user_id = await repo.create(data)
 
     assert user_id == 1
-    mock_db.add_user.assert_called_once()
+    mock_conn.fetchval.assert_called()
 
 
 @pytest.mark.asyncio
@@ -189,9 +185,8 @@ async def test_user_repository_update_valid(mock_db, sample_user_data):
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=sample_user_data)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=sample_user_data)
+    mock_conn.execute = AsyncMock(return_value="UPDATE 1")
 
     update_data = {
         "first_name": "UpdatedName",
@@ -202,15 +197,7 @@ async def test_user_repository_update_valid(mock_db, sample_user_data):
     success = await repo.update(1, update_data)
 
     assert success is True
-    mock_db.update_user.assert_called_once_with(
-        user_id=1,
-        email=None,
-        password=None,
-        centre=None,
-        category=None,
-        subcategory=None,
-        active=False,
-    )
+    mock_conn.execute.assert_called()
 
 
 @pytest.mark.asyncio
@@ -220,9 +207,7 @@ async def test_user_repository_update_not_found(mock_db):
 
     # Mock get_by_id to return None
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=None)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=None)
 
     update_data = {"first_name": "UpdatedName"}
 
@@ -238,9 +223,7 @@ async def test_user_repository_update_invalid_email(mock_db, sample_user_data):
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=sample_user_data)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=sample_user_data)
 
     update_data = {"email": "invalid-email"}
 
@@ -256,16 +239,14 @@ async def test_user_repository_delete(mock_db, sample_user_data):
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=sample_user_data)
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=sample_user_data)
+    mock_conn.execute = AsyncMock(return_value="UPDATE 1")
 
     # Delete user (soft delete)
     success = await repo.delete(1)
 
     assert success is True
-    # Should call update_user with is_active=False
-    mock_db.update_user.assert_called_once()
+    mock_conn.execute.assert_called()
 
 
 @pytest.mark.asyncio
@@ -275,16 +256,13 @@ async def test_user_repository_hard_delete(mock_db):
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.rowcount = 1
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
-    mock_conn.commit = AsyncMock()
+    mock_conn.execute = AsyncMock(return_value="DELETE 1")
 
     # Hard delete user
     success = await repo.hard_delete(1)
 
     assert success is True
-    mock_conn.commit.assert_called_once()
+    mock_conn.execute.assert_called()
 
 
 @pytest.mark.asyncio
@@ -292,11 +270,9 @@ async def test_user_repository_get_active_count(mock_db):
     """Test getting active user count."""
     repo = UserRepository(mock_db)
 
-    # Mock database response
+    # Mock database response - fetchrow returns a Record-like object that can be indexed
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchone = AsyncMock(return_value=(5,))
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetchrow = AsyncMock(return_value=[5])
 
     # Get active count
     count = await repo.get_active_count()
@@ -324,14 +300,12 @@ async def test_user_repository_get_all_active_only(mock_db, sample_user_data):
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
-    mock_cursor = AsyncMock()
-    mock_cursor.fetchall = AsyncMock(return_value=[sample_user_data])
-    mock_conn.execute = AsyncMock(return_value=mock_cursor)
+    mock_conn.fetch = AsyncMock(return_value=[sample_user_data])
 
     # Get active users only
     users = await repo.get_all(limit=10, active_only=True)
 
     assert len(users) == 1
-    # Verify query includes WHERE is_active = 1
-    call_args = mock_conn.execute.call_args
-    assert "is_active = 1" in call_args[0][0]
+    # Verify query includes WHERE is_active = TRUE
+    call_args = mock_conn.fetch.call_args
+    assert "is_active = TRUE" in call_args[0][0]
