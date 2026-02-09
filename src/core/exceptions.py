@@ -132,7 +132,6 @@ class RateLimitError(VFSBotError):
     def __init__(
         self,
         message: str = "Rate limit exceeded",
-        wait_time: Optional[int] = None,
         retry_after: Optional[int] = None,
     ):
         """
@@ -140,12 +139,9 @@ class RateLimitError(VFSBotError):
 
         Args:
             message: Error message
-            wait_time: Recommended wait time in seconds (deprecated, use retry_after)
             retry_after: Recommended wait time in seconds before retry
         """
-        # Support both wait_time (old) and retry_after (new)
-        self.retry_after = retry_after or wait_time
-        self.wait_time = self.retry_after  # Keep for backward compatibility
+        self.retry_after = retry_after
 
         if self.retry_after:
             message += f". Please wait {self.retry_after} seconds."

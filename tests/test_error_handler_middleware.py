@@ -84,7 +84,7 @@ class TestErrorHandlerMiddleware:
     @pytest.mark.asyncio
     async def test_handle_rate_limit_error(self, middleware, mock_request):
         """Test handling RateLimitError."""
-        error = RateLimitError(message="Too many requests", wait_time=60)
+        error = RateLimitError(message="Too many requests", retry_after=60)
         call_next = AsyncMock(side_effect=error)
 
         response = await middleware.dispatch(mock_request, call_next)
@@ -109,13 +109,13 @@ class TestErrorHandlerMiddleware:
 
     def test_handle_rate_limit_error_with_wait_time(self, middleware, mock_request):
         """Test RateLimitError includes Retry-After header."""
-        error = RateLimitError(message="Rate limited", wait_time=120)
+        error = RateLimitError(message="Rate limited", retry_after=120)
         response = middleware._handle_rate_limit_error(error, mock_request)
         assert "Retry-After" in response.headers
         assert response.headers["Retry-After"] == "120"
 
     def test_handle_rate_limit_error_no_wait_time(self, middleware, mock_request):
-        """Test RateLimitError without wait_time."""
+        """Test RateLimitError without retry_after."""
         error = RateLimitError(message="Rate limited")
         response = middleware._handle_rate_limit_error(error, mock_request)
         # Should not have Retry-After header

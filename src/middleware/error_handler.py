@@ -132,15 +132,15 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         logger.warning(f"Rate limit exceeded for {client_host}", extra={"path": request.url.path})
 
         headers = {}
-        if error.wait_time:
-            headers["Retry-After"] = str(error.wait_time)
+        if error.retry_after:
+            headers["Retry-After"] = str(error.retry_after)
 
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={
                 "error": "RateLimitError",
                 "message": error.message,
-                "wait_time": error.wait_time,
+                "retry_after": error.retry_after,
             },
             headers=headers,
         )

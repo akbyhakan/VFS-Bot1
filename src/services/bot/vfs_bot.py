@@ -14,8 +14,6 @@ from ...core.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import UserRepository
 from ..alert_service import AlertSeverity
-from ..captcha_solver import CaptchaSolver
-from ..centre_fetcher import CentreFetcher
 from ..notification import NotificationService
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
@@ -33,9 +31,7 @@ class VFSBot:
         db: Database,
         notifier: NotificationService,
         shutdown_event: Optional[asyncio.Event] = None,
-        captcha_solver: Optional[CaptchaSolver] = None,
-        centre_fetcher: Optional[CentreFetcher] = None,
-        services: Optional[BotServiceContext] = None,
+        services: BotServiceContext,
     ):
         """
         Initialize VFS bot with dependency injection.
@@ -45,11 +41,7 @@ class VFSBot:
             db: Database instance
             notifier: Notification service instance
             shutdown_event: Optional event to signal graceful shutdown
-            captcha_solver: Optional CaptchaSolver instance (created if not provided)
-                DEPRECATED: Use services parameter instead for better testability
-            centre_fetcher: Optional CentreFetcher instance (created if not provided)
-                DEPRECATED: Use services parameter instead for better testability
-            services: Optional pre-created BotServiceContext (created if not provided)
+            services: BotServiceContext with all required services
         """
         # Core initialization
         self.config = config
@@ -79,31 +71,8 @@ class VFSBot:
         self._cached_users_time: float = 0
         self._USERS_CACHE_TTL: float = 300.0  # 5 minutes
 
-        # Emit deprecation warnings for legacy parameters
-        if captcha_solver is not None:
-            warnings.warn(
-                "VFSBot(captcha_solver=...) is deprecated since v2.0. "
-                "Use services=BotServiceContext(...) instead. "
-                "This parameter will be removed in v3.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        if centre_fetcher is not None:
-            warnings.warn(
-                "VFSBot(centre_fetcher=...) is deprecated since v2.0. "
-                "Use services=BotServiceContext(...) instead. "
-                "This parameter will be removed in v3.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        # Initialize services context (either provided or created from config)
-        if services is None:
-            # Backward compatibility: use deprecated parameters if provided
-            self.services = BotServiceFactory.create(config, captcha_solver, centre_fetcher)
-        else:
-            self.services = services
+        # Initialize services context
+        self.services = services
 
         # Initialize browser manager (needs anti-detection services)
         self.browser_manager = BrowserManager(
