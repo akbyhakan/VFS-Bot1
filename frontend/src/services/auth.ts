@@ -36,19 +36,6 @@ export class AuthService {
     localStorage.removeItem(REMEMBER_ME_KEY);
   }
 
-  getToken(): string | null {
-    // Token is not accessible from JavaScript for security (HttpOnly cookie)
-    // Return null to maintain backward compatibility
-    return null;
-  }
-
-  isAuthenticated(): boolean {
-    // Authentication state is managed server-side via HttpOnly cookie
-    // Client-side check is not reliable - use API call to /api/auth/me if needed
-    // For now, return false to force proper server-side validation
-    return false;
-  }
-
   shouldRememberUser(): boolean {
     return localStorage.getItem(REMEMBER_ME_KEY) === 'true';
   }

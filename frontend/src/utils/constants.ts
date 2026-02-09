@@ -1,7 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || '';
 
-export const AUTH_TOKEN_KEY = 'vfs_bot_token';
 export const REMEMBER_ME_KEY = 'vfs_bot_remember';
 
 export const ROUTES = {
