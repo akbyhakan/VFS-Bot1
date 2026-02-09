@@ -68,12 +68,12 @@ describe('useAuth', () => {
     }
   });
 
-  it('should handle logout', () => {
+  it('should handle logout', async () => {
     useAuthStore.setState({ isAuthenticated: true });
     const { result } = renderHook(() => useAuth());
 
-    act(() => {
-      result.current.logout();
+    await act(async () => {
+      await result.current.logout();
     });
 
     expect(authService.logout).toHaveBeenCalled();
