@@ -11,17 +11,19 @@ class StealthConfig:
     """Apply stealth scripts to hide automation detection."""
 
     @staticmethod
-    async def apply_stealth(page: Page) -> None:
+    async def apply_stealth(page: Page, languages: list | None = None) -> None:
         """
         Apply all stealth configurations to a page.
 
         Args:
             page: Playwright page object
+            languages: Optional list of language codes for navigator.languages spoofing.
+                       Defaults to ['tr-TR', 'tr', 'en-US', 'en'] for VFS Turkey.
         """
         try:
             await StealthConfig._override_webdriver(page)
             await StealthConfig._spoof_plugins(page)
-            await StealthConfig._spoof_languages(page)
+            await StealthConfig._spoof_languages(page, languages=languages)
             await StealthConfig._add_chrome_runtime(page)
             await StealthConfig._override_permissions(page)
             logger.info("Stealth configurations applied successfully")
@@ -92,16 +94,24 @@ class StealthConfig:
         )
 
     @staticmethod
-    async def _spoof_languages(page: Page) -> None:
-        """Spoof navigator.languages."""
-        await page.add_init_script(
-            """
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['en-US', 'en'],
-                configurable: true
-            });
+    async def _spoof_languages(page: Page, languages: list | None = None) -> None:
+        """Spoof navigator.languages.
+
+        Args:
+            page: Playwright page object
+            languages: List of language codes to spoof. Defaults to Turkish locale
+                       for VFS Turkey compatibility: ['tr-TR', 'tr', 'en-US', 'en']
         """
-        )
+        if languages is None:
+            languages = ['tr-TR', 'tr', 'en-US', 'en']
+
+        languages_js = ', '.join(f"'{lang}'" for lang in languages)
+        await page.add_init_script(f"""
+            Object.defineProperty(navigator, 'languages', {{
+                get: () => [{languages_js}],
+                configurable: true
+            }});
+        """)
 
     @staticmethod
     async def _add_chrome_runtime(page: Page) -> None:

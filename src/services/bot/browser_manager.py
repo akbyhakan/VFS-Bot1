@@ -148,7 +148,8 @@ class BrowserManager:
             anti_config = self.config.get("anti_detection", {})
 
             if apply_stealth and anti_config.get("stealth_mode", True):
-                await StealthConfig.apply_stealth(page)
+                stealth_languages = anti_config.get("stealth_languages", None)
+                await StealthConfig.apply_stealth(page, languages=stealth_languages)
 
             if apply_fingerprint_bypass and anti_config.get("fingerprint_bypass", True):
                 await FingerprintBypass.apply_all(page)

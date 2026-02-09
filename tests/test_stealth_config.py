@@ -67,14 +67,16 @@ async def test_spoof_plugins(mock_page):
 
 @pytest.mark.asyncio
 async def test_spoof_languages(mock_page):
-    """Test language spoofing."""
+    """Test language spoofing with Turkish default."""
     await StealthConfig._spoof_languages(mock_page)
     mock_page.add_init_script.assert_called_once()
 
-    # Verify the script contains language settings
+    # Verify the script contains Turkish-first language settings
     call_args = mock_page.add_init_script.call_args[0][0]
     assert "navigator" in call_args
     assert "languages" in call_args
+    assert "tr-TR" in call_args
+    assert "tr" in call_args
     assert "en-US" in call_args
     assert "en" in call_args
 
@@ -177,3 +179,32 @@ async def test_chrome_runtime_object_properties(mock_page):
     required_props = ["runtime", "loadTimes", "csi", "app"]
     for prop in required_props:
         assert prop in script
+
+
+@pytest.mark.asyncio
+async def test_spoof_languages_custom(mock_page):
+    """Test language spoofing with custom languages."""
+    custom_langs = ['de-DE', 'de', 'en-US', 'en']
+    await StealthConfig._spoof_languages(mock_page, languages=custom_langs)
+    mock_page.add_init_script.assert_called_once()
+
+    call_args = mock_page.add_init_script.call_args[0][0]
+    assert "de-DE" in call_args
+    assert "de" in call_args
+    assert "en-US" in call_args
+
+
+@pytest.mark.asyncio
+async def test_apply_stealth_with_custom_languages(mock_page):
+    """Test apply_stealth passes languages to _spoof_languages."""
+    custom_langs = ['fr-FR', 'fr', 'en-US', 'en']
+    await StealthConfig.apply_stealth(mock_page, languages=custom_langs)
+
+    # Find the languages script call
+    found_french = False
+    for call in mock_page.add_init_script.call_args_list:
+        script = call[0][0]
+        if "languages" in script and "fr-FR" in script:
+            found_french = True
+            break
+    assert found_french, "Custom French language should be in stealth scripts"
