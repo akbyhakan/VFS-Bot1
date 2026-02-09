@@ -13,13 +13,14 @@ from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
 from src.repositories import AppointmentRequestRepository
 from web.dependencies import (
-    AppointmentRequestCreate,
-    AppointmentRequestResponse,
-    CountryResponse,
-    WebhookUrlsResponse,
     get_appointment_request_repository,
     verify_jwt_token,
 )
+from web.models.appointments import (
+    AppointmentRequestCreate,
+    AppointmentRequestResponse,
+)
+from web.models.common import CountryResponse, WebhookUrlsResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/appointments", tags=["appointments"])

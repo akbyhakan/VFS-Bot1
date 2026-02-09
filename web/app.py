@@ -24,7 +24,6 @@ from src.models.db_factory import DatabaseFactory
 from src.services.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.middleware import SecurityHeadersMiddleware
-from web.middleware.api_redirect import APIVersionRedirectMiddleware
 from web.routes import (
     dashboard_router,
     health_router,
@@ -330,13 +329,10 @@ API endpoints are rate-limited to prevent abuse:
     # 1. Error handling middleware first (catches all errors)
     app.add_middleware(ErrorHandlerMiddleware)
 
-    # 2. API redirect middleware for backward compatibility (before security headers)
-    app.add_middleware(APIVersionRedirectMiddleware)
-
-    # 3. Security headers middleware
+    # 2. Security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # 4. Correlation ID middleware for request tracking
+    # 3. Correlation ID middleware for request tracking
     app.add_middleware(CorrelationMiddleware)
 
     # 4. Configure CORS

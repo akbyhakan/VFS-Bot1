@@ -2,9 +2,6 @@
 
 This package provides a modular structure for VFS appointment booking,
 split into specialized components for better maintainability.
-
-Backward Compatibility:
-    AppointmentBookingService is aliased to BookingOrchestrator for compatibility.
 """
 
 from .selector_utils import (
@@ -21,12 +18,8 @@ from .payment_handler import PaymentHandler
 from .booking_validator import BookingValidator
 from .booking_orchestrator import BookingOrchestrator
 
-# Backward compatibility alias
-AppointmentBookingService = BookingOrchestrator
-
 __all__ = [
     # Main service
-    "AppointmentBookingService",
     "BookingOrchestrator",
     # Components
     "FormFiller",

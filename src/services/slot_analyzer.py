@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 # Batch write constants
 _BATCH_SIZE = 10         # Write to disk every N records (async)
 _BATCH_INTERVAL = 60.0   # Or every 60 seconds (whichever comes first)
-_SYNC_BATCH_SIZE = 5     # Batch size for synchronous method
 
 # Retention limit to prevent unbounded growth
 _MAX_SLOT_RECORDS = 10_000  # Maximum number of slot records to keep
@@ -30,7 +29,6 @@ class SlotPatternAnalyzer:
         self._pending_writes = 0
         self._last_save_time = datetime.now(timezone.utc)
         self._lock = threading.Lock()  # Protect batch write state
-        self._sync_pending_writes = 0  # Counter for sync method batching
 
     def _load_data(self) -> Dict[str, Any]:
         """Load existing pattern data from file."""
@@ -54,7 +52,6 @@ class SlotPatternAnalyzer:
                 json.dump(self._patterns, f, indent=2, ensure_ascii=False)
             with self._lock:
                 self._pending_writes = 0
-                self._sync_pending_writes = 0  # Reset sync counter
                 self._last_save_time = datetime.now(timezone.utc)
         except Exception as e:
             logger.error(f"Failed to save pattern data: {e}")
@@ -77,68 +74,6 @@ class SlotPatternAnalyzer:
                 f"Enforced retention: trimmed {len(slots) - _MAX_SLOT_RECORDS} old slot records "
                 f"(kept {_MAX_SLOT_RECORDS} most recent)"
             )
-
-    def record_slot_found(
-        self,
-        country: str,
-        centre: str,
-        category: str,
-        date: str,
-        time: str,
-        duration_seconds: Optional[int] = None,
-    ) -> None:
-        """
-        Record a found slot (synchronous method - deprecated).
-        
-        .. deprecated::
-            Use :func:`record_slot_found_async` instead for better performance.
-            This synchronous method will be removed in a future version.
-        """
-        # Warn users about deprecation
-        warnings.warn(
-            "record_slot_found() is deprecated. "
-            "Use record_slot_found_async() for better performance with batching.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        
-        now = datetime.now(timezone.utc)
-        record = {
-            "country": country,
-            "centre": centre,
-            "category": category,
-            "slot_date": date,
-            "slot_time": time,
-            "found_at": now.isoformat(),
-            "found_hour": now.hour,
-            "found_weekday": now.strftime("%A"),
-            "duration_seconds": duration_seconds,
-        }
-        self._patterns["slots"].append(record)
-        
-        # Implement batching for sync method
-        with self._lock:
-            self._sync_pending_writes += 1
-            should_save = self._sync_pending_writes >= _SYNC_BATCH_SIZE
-        
-        if should_save:
-            self._save_data_sync()
-        
-        logger.info(f"Slot pattern recorded: {country}/{centre}")
-
-    def flush_sync(self) -> None:
-        """
-        Flush any pending synchronous writes to disk.
-        
-        Use this method to explicitly save buffered records before shutdown
-        or when immediate persistence is required.
-        """
-        with self._lock:
-            pending = self._sync_pending_writes
-        
-        if pending > 0:
-            self._save_data_sync()
-            logger.info(f"Flushed {pending} pending slot records to disk (sync)")
 
     async def record_slot_found_async(
         self,

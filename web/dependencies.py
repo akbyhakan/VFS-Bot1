@@ -29,36 +29,9 @@ from src.repositories import (
     WebhookRepository,
     ProxyRepository,
 )
-
-# Backward compatibility re-exports - Models
-from web.models import *  # noqa: F401,F403
-from web.models.appointments import (  # noqa: F401
-    AppointmentPersonRequest,
-    AppointmentPersonResponse,
-    AppointmentRequestCreate,
-    AppointmentRequestResponse,
-)
-from web.models.auth import LoginRequest, TokenResponse  # noqa: F401
-from web.models.bot import BotCommand, StatusUpdate  # noqa: F401
-from web.models.common import CountryResponse, WebhookUrlsResponse  # noqa: F401
-from web.models.payment import (  # noqa: F401
-    PaymentCardRequest,
-    PaymentCardResponse,
-    PaymentInitiateRequest,
-)
-from web.models.proxy import (  # noqa: F401
-    ProxyCreateRequest,
-    ProxyResponse,
-    ProxyUpdateRequest,
-)
-from web.models.users import UserCreateRequest, UserModel, UserUpdateRequest  # noqa: F401
-
-# Backward compatibility re-exports - State Management
-from web.state.bot_state import ThreadSafeBotState  # noqa: F401
-from web.state.metrics import ThreadSafeMetrics  # noqa: F401
-
-# Backward compatibility re-exports - WebSocket
-from web.websocket.manager import ConnectionManager  # noqa: F401
+from web.state.bot_state import ThreadSafeBotState
+from web.state.metrics import ThreadSafeMetrics
+from web.websocket.manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
 

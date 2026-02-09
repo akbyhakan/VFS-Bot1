@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.services.appointment_booking_service import (
+from src.services.booking import (
     get_selector,
     get_selector_with_fallback,
     resolve_selector,

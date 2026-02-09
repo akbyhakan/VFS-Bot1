@@ -131,14 +131,14 @@ def test_rate_limit_error_default():
     """Test RateLimitError with default message."""
     error = RateLimitError()
     assert error.message == "Rate limit exceeded"
-    assert error.wait_time is None
+    assert error.retry_after is None
     assert error.recoverable is True
 
 
 def test_rate_limit_error_with_wait_time():
     """Test RateLimitError with wait time."""
-    error = RateLimitError(wait_time=60)
-    assert error.wait_time == 60
+    error = RateLimitError(retry_after=60)
+    assert error.retry_after == 60
     assert "wait 60 seconds" in error.message
 
 

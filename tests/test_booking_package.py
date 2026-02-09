@@ -1,7 +1,6 @@
 """Tests for booking package structure and backward compatibility."""
 
 import pytest
-import warnings
 
 
 class TestBookingPackageStructure:
@@ -10,7 +9,6 @@ class TestBookingPackageStructure:
     def test_can_import_from_booking_package(self):
         """Verify all public symbols importable from booking package."""
         from src.services.booking import (
-            AppointmentBookingService,
             BookingOrchestrator,
             FormFiller,
             SlotSelector,
@@ -25,7 +23,6 @@ class TestBookingPackageStructure:
         )
 
         # Verify classes exist
-        assert AppointmentBookingService is not None
         assert BookingOrchestrator is not None
         assert FormFiller is not None
         assert SlotSelector is not None
@@ -42,11 +39,6 @@ class TestBookingPackageStructure:
         assert isinstance(TURKISH_MONTHS, dict)
         assert isinstance(DOUBLE_MATCH_PATTERNS, list)
 
-    def test_appointment_booking_service_is_alias(self):
-        """Verify AppointmentBookingService is an alias for BookingOrchestrator."""
-        from src.services.booking import AppointmentBookingService, BookingOrchestrator
-
-        assert AppointmentBookingService is BookingOrchestrator
 
     def test_booking_orchestrator_initialization(self):
         """Test BookingOrchestrator can be initialized."""
@@ -128,90 +120,6 @@ class TestBookingPackageStructure:
 
         assert len(DOUBLE_MATCH_PATTERNS) == 2
         assert all(isinstance(p, str) for p in DOUBLE_MATCH_PATTERNS)
-
-
-class TestBackwardCompatibility:
-    """Test backward compatibility with old imports."""
-
-    def test_deprecated_module_import_shows_warning(self):
-        """Verify importing from old module shows deprecation warning."""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            
-            # Import from old module
-            from src.services.appointment_booking_service import AppointmentBookingService
-            
-            # Check warning was raised
-            assert len(w) > 0
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "deprecated" in str(w[0].message).lower()
-            assert "booking" in str(w[0].message).lower()
-
-    def test_old_import_provides_same_class(self):
-        """Verify old import provides the same class as new import."""
-        # Suppress deprecation warnings for this test
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            from src.services.appointment_booking_service import AppointmentBookingService as OldService
-            from src.services.booking import AppointmentBookingService as NewService
-
-            assert OldService is NewService
-
-    def test_old_import_get_selector(self):
-        """Verify get_selector importable from old module."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            from src.services.appointment_booking_service import get_selector
-            
-            assert callable(get_selector)
-
-    def test_old_import_get_selector_with_fallback(self):
-        """Verify get_selector_with_fallback importable from old module."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            from src.services.appointment_booking_service import get_selector_with_fallback
-            
-            assert callable(get_selector_with_fallback)
-
-    def test_old_import_resolve_selector(self):
-        """Verify resolve_selector importable from old module."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            from src.services.appointment_booking_service import resolve_selector
-            
-            assert callable(resolve_selector)
-
-    def test_old_import_try_selectors(self):
-        """Verify try_selectors importable from old module."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            from src.services.appointment_booking_service import try_selectors
-            
-            assert callable(try_selectors)
-
-    def test_old_module_all_exports(self):
-        """Verify __all__ in old module contains expected exports."""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            
-            import src.services.appointment_booking_service as old_module
-            
-            expected = [
-                "AppointmentBookingService",
-                "get_selector",
-                "get_selector_with_fallback",
-                "resolve_selector",
-                "try_selectors",
-            ]
-            
-            assert hasattr(old_module, "__all__")
-            assert set(old_module.__all__) == set(expected)
-
 
 class TestComponentIntegration:
     """Test that components work together correctly."""

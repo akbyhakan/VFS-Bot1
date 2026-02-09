@@ -14,7 +14,8 @@ from slowapi.util import get_remote_address
 from src.core.auth import verify_token
 from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
-from web.dependencies import BotCommand, bot_state, broadcast_message, manager, verify_jwt_token
+from web.dependencies import bot_state, broadcast_message, manager, verify_jwt_token
+from web.models.bot import BotCommand
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bot", tags=["bot"])

@@ -11,16 +11,12 @@ from zoneinfo import ZoneInfo
 from playwright.async_api import Page, TimeoutError
 
 from ..constants import Intervals, Timeouts
-from ..utils.masking import mask_email, mask_password
+from ..utils.masking import mask_email
 
 logger = logging.getLogger(__name__)
 
 
-# Re-export masking functions for backward compatibility
-# These are now imported from utils.masking
 __all__ = [
-    "mask_email",
-    "mask_password",
     "mask_sensitive_data",
     "smart_fill",
     "smart_click",

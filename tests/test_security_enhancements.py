@@ -13,7 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.exceptions import ConfigurationError
-from src.core.security import _get_api_key_salt, hash_api_key
+from src.core.security import APIKeyManager
 from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.security.session_manager import SessionManager
 
@@ -34,7 +34,7 @@ class TestAPIKeySaltSecurity:
 
         # Should raise ValueError in production
         with pytest.raises(ValueError, match="API_KEY_SALT environment variable MUST be set"):
-            _get_api_key_salt()
+            APIKeyManager().get_salt()
 
     def test_api_key_salt_warning_in_development(self, monkeypatch, caplog):
         """Test that API_KEY_SALT shows warning in development."""
@@ -51,7 +51,7 @@ class TestAPIKeySaltSecurity:
         monkeypatch.delenv("API_KEY_SALT", raising=False)
 
         # Should work but log warning
-        salt = _get_api_key_salt()
+        salt = APIKeyManager().get_salt()
         assert salt == b"dev-only-insecure-salt-do-not-use-in-prod"
         assert "SECURITY WARNING" in caplog.text
 
@@ -65,7 +65,7 @@ class TestAPIKeySaltSecurity:
         monkeypatch.setenv("API_KEY_SALT", "short")
 
         with pytest.raises(ValueError, match="must be at least 32 characters"):
-            _get_api_key_salt()
+            APIKeyManager().get_salt()
 
     def test_api_key_salt_valid_length(self, monkeypatch):
         """Test that valid API_KEY_SALT is accepted."""
@@ -77,7 +77,7 @@ class TestAPIKeySaltSecurity:
         valid_salt = "a" * 32  # 32 character salt
         monkeypatch.setenv("API_KEY_SALT", valid_salt)
 
-        salt = _get_api_key_salt()
+        salt = APIKeyManager().get_salt()
         assert salt == valid_salt.encode()
 
 

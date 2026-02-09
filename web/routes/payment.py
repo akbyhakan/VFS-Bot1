@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.repositories import PaymentRepository, AppointmentRequestRepository
 from web.dependencies import (
-    PaymentCardRequest,
-    PaymentCardResponse,
-    PaymentInitiateRequest,
     get_payment_repository,
     get_appointment_request_repository,
     verify_jwt_token,
+)
+from web.models.payment import (
+    PaymentCardRequest,
+    PaymentCardResponse,
+    PaymentInitiateRequest,
 )
 
 logger = logging.getLogger(__name__)

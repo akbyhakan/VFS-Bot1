@@ -407,8 +407,8 @@ class BookingWorkflow:
             if slot:
                 await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
 
-                # Record slot pattern for analysis
-                self.slot_analyzer.record_slot_found(
+                # Record slot pattern for analysis (async)
+                await self.slot_analyzer.record_slot_found_async(
                     country=user.get("country", "unknown"),
                     centre=centre,
                     category=user["category"],

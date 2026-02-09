@@ -14,7 +14,7 @@ import pytest
 from cryptography.fernet import Fernet
 
 from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
-from src.core.security import _get_api_key_salt, hash_api_key
+from src.core.security import APIKeyManager
 from src.models.database import ALLOWED_PERSONAL_DETAILS_FIELDS, Database
 from src.utils.encryption import reset_encryption
 from web.dependencies import ThreadSafeBotState
@@ -263,8 +263,8 @@ def test_api_key_hash_with_salt(monkeypatch):
     security_module._API_KEY_SALT = None
 
     api_key = "my-secret-api-key-123"
-    hash1 = hash_api_key(api_key)
-    hash2 = hash_api_key(api_key)
+    hash1 = APIKeyManager()._hash_key(api_key)
+    hash2 = APIKeyManager()._hash_key(api_key)
 
     # Same key should produce same hash
     assert hash1 == hash2
@@ -274,7 +274,7 @@ def test_api_key_hash_with_salt(monkeypatch):
 
     # Different key should produce different hash
     different_key = "different-api-key-456"
-    hash3 = hash_api_key(different_key)
+    hash3 = APIKeyManager()._hash_key(different_key)
     assert hash1 != hash3
 
 
@@ -288,12 +288,12 @@ def test_api_key_hash_different_with_different_salt(monkeypatch):
     # First hash with salt1 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt1-with-enough-characters-to-be-secure-and-valid")
     security_module._API_KEY_SALT = None
-    hash1 = hash_api_key(api_key)
+    hash1 = APIKeyManager()._hash_key(api_key)
 
     # Second hash with salt2 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt2-with-enough-characters-to-be-secure-and-valid")
     security_module._API_KEY_SALT = None
-    hash2 = hash_api_key(api_key)
+    hash2 = APIKeyManager()._hash_key(api_key)
 
     # Hashes should be different
     assert hash1 != hash2
@@ -310,7 +310,7 @@ def test_api_key_hash_uses_default_salt_when_env_not_set(monkeypatch):
     security_module._API_KEY_SALT = None
 
     api_key = "test-key"
-    hash_value = hash_api_key(api_key)
+    hash_value = APIKeyManager()._hash_key(api_key)
 
     # Should still produce a valid hash
     assert len(hash_value) == 64
