@@ -25,7 +25,7 @@ from .retry import (
     get_rate_limit_retry,
     get_slot_check_retry,
 )
-from .security import generate_api_key, hash_api_key, verify_api_key
+from .security import APIKeyManager, generate_api_key, verify_api_key
 from .shutdown import (
     SHUTDOWN_TIMEOUT,
     fast_emergency_cleanup,
@@ -45,8 +45,8 @@ __all__ = [
     "BotController",
     "setup_structured_logging",
     "JSONFormatter",
+    "APIKeyManager",
     "generate_api_key",
-    "hash_api_key",
     "verify_api_key",
     "create_access_token",
     "verify_token",
