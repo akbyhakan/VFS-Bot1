@@ -66,19 +66,20 @@ class TestDatabaseURLMasking:
         url = "not-a-valid-url"
         masked = _mask_database_url(url)
         
-        # Should return safe placeholder
-        assert masked in ["<unparseable-url>", "://***"]
+        # Should return safe placeholder for invalid URLs
+        assert masked == "<unparseable-url>"
 
     def test_mask_url_with_query_parameters(self):
         """Test URL with query parameters containing credentials."""
         url = "postgresql://user:pass@localhost:5432/mydb?password=secret"
         masked = _mask_database_url(url)
         
-        # Query parameters should still be visible (not ideal but acceptable)
         # Main credentials in netloc should be masked
-        assert "user" not in masked or "?password=" in masked
-        assert "pass" not in masked or "?password=" in masked
+        assert "user" not in masked.split('?')[0]  # Check URL part before query params
+        assert "pass" not in masked.split('?')[0]  # Check URL part before query params
         assert "***:***@localhost:5432" in masked
+        # Query parameters are preserved (not ideal but acceptable for this fix)
+        assert "?password=secret" in masked
 
     def test_mask_url_without_port(self):
         """Test URL without explicit port."""

@@ -12,6 +12,7 @@ from .form_filler import FormFiller
 from .slot_selector import SlotSelector
 from .payment_handler import PaymentHandler
 from .booking_validator import BookingValidator
+from ...core.sensitive import SensitiveDict
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,11 @@ class BookingOrchestrator:
             
             try:
                 # Unwrap SensitiveDict at point of use only
-                card_details = card_details_wrapped.to_dict() if hasattr(card_details_wrapped, 'to_dict') else card_details_wrapped
+                if isinstance(card_details_wrapped, SensitiveDict):
+                    card_details = card_details_wrapped.to_dict()
+                else:
+                    # Fallback for non-SensitiveDict (backward compatibility)
+                    card_details = card_details_wrapped
                 
                 # PaymentService will enforce PCI-DSS security controls
                 # It will reject automated payments in production
@@ -179,7 +184,7 @@ class BookingOrchestrator:
                 )
             finally:
                 # Securely wipe card details from memory after use
-                if hasattr(card_details_wrapped, 'wipe'):
+                if isinstance(card_details_wrapped, SensitiveDict):
                     card_details_wrapped.wipe()
                 card_details = None
             

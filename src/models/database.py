@@ -81,9 +81,13 @@ def _mask_database_url(url: str) -> str:
     try:
         parsed = urlparse(url)
         
+        # Handle empty or missing scheme
+        if not parsed.scheme:
+            return "<unparseable-url>"
+        
         # Handle non-network URLs (SQLite, etc.) - show only scheme
         if not parsed.netloc:
-            return f"{parsed.scheme}://***" if parsed.scheme else "<unparseable-url>"
+            return f"{parsed.scheme}://***"
         
         # For network URLs, mask credentials if present
         if parsed.username or parsed.password:
