@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-migrate db-upgrade db-downgrade db-history db-current
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current
 
 help:
 	@echo "Available commands:"
@@ -11,6 +11,7 @@ help:
 	@echo "  make clean        - Clean build artifacts and cache"
 	@echo "  make docker-test  - Run tests in Docker"
 	@echo "  make pre-commit   - Run pre-commit hooks"
+	@echo "  make db-init      - Initialize database (first time setup via Alembic)"
 	@echo "  make db-migrate   - Generate new migration (usage: make db-migrate msg='description')"
 	@echo "  make db-upgrade   - Apply pending migrations"
 	@echo "  make db-downgrade - Rollback last migration"
@@ -56,6 +57,11 @@ pre-commit:
 	pre-commit run --all-files
 
 # Database migration commands (Alembic)
+db-init:
+	@echo "Initializing database schema via Alembic..."
+	alembic upgrade head
+	@echo "Database schema initialized successfully."
+
 db-migrate:
 	alembic revision --autogenerate -m "$(msg)"
 
