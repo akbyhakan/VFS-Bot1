@@ -40,6 +40,7 @@ def main():
     encrypted_vfs_password = cipher.encrypt(vfs_password.encode()).decode()
 
     # Generate secure database password
+    # This password is auto-generated and stored in .env - no manual input needed
     db_password = secrets.token_urlsafe(24)
 
     # Write .env file
@@ -112,8 +113,9 @@ LOG_LEVEL=INFO
     else:
         print("\n⚠️ Windows sisteminde dosya izinleri manuel olarak ayarlanmalıdır")
 
-    print("✅ .env dosyası oluşturuldu")
+    print("\n✅ .env dosyası oluşturuldu")
     print("\n🔒 Güvenlik: VFS şifresi Fernet ile şifrelenerek saklandı")
+    print("🔒 Güvenlik: Veritabanı şifresi otomatik olarak güvenli bir şekilde oluşturuldu")
     print("📝 Sonraki adımlar:")
     print("   1. .env dosyasının .gitignore'da olduğunu doğrulayın")
     print("   2. Dosya izinlerinin kısıtlı olduğundan emin olun (chmod 600)")
@@ -127,7 +129,9 @@ LOG_LEVEL=INFO
     # Display encryption key hash for verification (not the actual key)
     key_hash = hashlib.sha256(encryption_key.encode()).hexdigest()[:16]
     print(f"\n🔑 ENCRYPTION_KEY hash (doğrulama için): {key_hash}")
-    print("   ⚠️ Key'in tamamı .env dosyasında saklanmıştır. Güvenli bir yere yedekleyin.")
+    print("   ⚠️ KRITIK: Encryption key'i asla görüntülemeyin, loglamayın veya paylaşmayın!")
+    print("   📦 Yedekleme için güvenli yöntemler kullanın (şifreli yedekleme, secrets manager)")
+    print("   📁 Key .env dosyasında güvenli bir şekilde saklanmıştır.")
 
 
 if __name__ == "__main__":
