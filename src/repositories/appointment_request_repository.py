@@ -286,8 +286,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
                     )
 
                 logger.info(f"Appointment request created: {request_id}")
-                result_id: int = request_id
-                return result_id
+                return int(request_id)
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
@@ -419,5 +418,4 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} old appointment requests")
 
-            result_count: int = deleted_count
-            return result_count
+            return deleted_count
