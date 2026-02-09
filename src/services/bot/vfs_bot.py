@@ -11,6 +11,7 @@ from playwright.async_api import Page
 
 from ...constants import Intervals, RateLimits, Timeouts
 from ...models.database import Database, DatabaseState
+from ...repositories import UserRepository
 from ..alert_service import AlertSeverity
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
@@ -57,6 +58,9 @@ class VFSBot:
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
+        
+        # Initialize repositories
+        self.user_repo = UserRepository(db)
         
         # Trigger event for immediate slot checks
         self._trigger_event = asyncio.Event()
@@ -376,7 +380,7 @@ class VFSBot:
         """
         # Try to get users from database using fallback mechanism
         users = await self.db.execute_with_fallback(
-            query_func=self.db.get_active_users_with_decrypted_passwords,
+            query_func=self.user_repo.get_all_active_with_passwords,
             fallback_value=None,
             critical=False,
         )

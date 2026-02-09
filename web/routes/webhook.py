@@ -6,10 +6,10 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from src.models.database import Database
+from src.repositories import WebhookRepository, UserRepository
 from src.services.otp_webhook import get_otp_service
 from src.utils.webhook_utils import verify_webhook_signature
-from web.dependencies import get_db, verify_jwt_token
+from web.dependencies import get_webhook_repository, get_user_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
@@ -23,7 +23,8 @@ PHONE_FIELD_PRIORITY = ["phone", "from", "phone_number"]
 async def create_webhook(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    webhook_repo: WebhookRepository = Depends(get_webhook_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Create a unique webhook for a user.
@@ -31,7 +32,8 @@ async def create_webhook(
     Args:
         user_id: User ID
         token_data: Verified token data
-        db: Database instance
+        webhook_repo: WebhookRepository instance
+        user_repo: UserRepository instance
 
     Returns:
         Webhook token and URL
@@ -40,19 +42,18 @@ async def create_webhook(
         HTTPException: If user already has a webhook or creation fails
     """
     try:
-        # Verify user exists
-        async with db.get_connection() as conn:
-            user = await conn.fetchrow("SELECT id FROM users WHERE id = $1", user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
+        # Verify user exists using UserRepository
+        user = await user_repo.get_by_id_with_details(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
         # Check if webhook already exists
-        existing = await db.get_user_webhook(user_id)
+        existing = await webhook_repo.get_by_user(user_id)
         if existing:
             raise HTTPException(status_code=400, detail="User already has a webhook")
 
         # Create webhook
-        token = await db.create_user_webhook(user_id)
+        token = await webhook_repo.create(user_id)
         webhook_url = f"/api/webhook/otp/{token}"
 
         logger.info(f"Webhook created for user {user_id} by {token_data.get('sub', 'unknown')}")
@@ -76,7 +77,7 @@ async def create_webhook(
 async def get_webhook(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    webhook_repo: WebhookRepository = Depends(get_webhook_repository),
 ):
     """
     Get webhook information for a user.
@@ -84,13 +85,13 @@ async def get_webhook(
     Args:
         user_id: User ID
         token_data: Verified token data
-        db: Database instance
+        webhook_repo: WebhookRepository instance
 
     Returns:
         Webhook data or null if not found
     """
     try:
-        webhook = await db.get_user_webhook(user_id)
+        webhook = await webhook_repo.get_by_user(user_id)
 
         if not webhook:
             return {"webhook": None}
@@ -112,7 +113,7 @@ async def get_webhook(
 async def delete_webhook(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    webhook_repo: WebhookRepository = Depends(get_webhook_repository),
 ):
     """
     Delete a user's webhook.
@@ -120,7 +121,7 @@ async def delete_webhook(
     Args:
         user_id: User ID
         token_data: Verified token data
-        db: Database instance
+        webhook_repo: WebhookRepository instance
 
     Returns:
         Success message
@@ -129,7 +130,7 @@ async def delete_webhook(
         HTTPException: If webhook not found
     """
     try:
-        success = await db.delete_user_webhook(user_id)
+        success = await webhook_repo.delete_by_user(user_id)
 
         if not success:
             raise HTTPException(status_code=404, detail="Webhook not found")
@@ -150,7 +151,7 @@ async def receive_otp(
     token: str,
     request: Request,
     body: dict,
-    db: Database = Depends(get_db),
+    webhook_repo: WebhookRepository = Depends(get_webhook_repository),
 ):
     """
     Receive OTP via user-specific webhook.
@@ -159,7 +160,7 @@ async def receive_otp(
         token: Unique webhook token
         request: FastAPI request object
         body: Request body containing OTP data
-        db: Database instance
+        webhook_repo: WebhookRepository instance
 
     Returns:
         Success message with user_id
@@ -186,7 +187,7 @@ async def receive_otp(
 
     try:
         # Find user by webhook token
-        user = await db.get_user_by_webhook_token(token)
+        user = await webhook_repo.get_user_by_token(token)
         if not user:
             raise HTTPException(status_code=404, detail="Invalid webhook token")
 

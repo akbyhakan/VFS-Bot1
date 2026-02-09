@@ -6,9 +6,9 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from src.models.database import Database
+from src.repositories import ProxyRepository
 from src.utils.security.netnut_proxy import NetNutProxyManager
-from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, get_db, verify_jwt_token
+from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, get_proxy_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/proxy", tags=["proxy"])
@@ -55,7 +55,7 @@ class ProxyListResponse(BaseModel):
 async def add_proxy(
     proxy: ProxyCreateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Add a single proxy endpoint.
@@ -63,7 +63,7 @@ async def add_proxy(
     Args:
         proxy: Proxy details
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Created proxy details (password excluded)
@@ -73,16 +73,19 @@ async def add_proxy(
         if not (1 <= proxy.port <= 65535):
             raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
 
+        # Build proxy data dictionary
+        proxy_data = {
+            "server": proxy.server,
+            "port": proxy.port,
+            "username": proxy.username,
+            "password": proxy.password,
+        }
+
         # Add to database
-        proxy_id = await db.add_proxy(
-            server=proxy.server,
-            port=proxy.port,
-            username=proxy.username,
-            password=proxy.password,
-        )
+        proxy_id = await proxy_repo.create(proxy_data)
 
         # Fetch the created proxy
-        created_proxy = await db.get_proxy_by_id(proxy_id)
+        created_proxy = await proxy_repo.get_by_id(proxy_id)
         if not created_proxy:
             raise HTTPException(status_code=500, detail="Failed to retrieve created proxy")
 
@@ -111,21 +114,21 @@ async def add_proxy(
 @router.get("/list")
 async def list_proxies(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Get list of all proxies (passwords excluded).
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         List of all proxies with metadata
     """
     try:
         # Get all active proxies
-        proxies = await db.get_active_proxies()
+        proxies = await proxy_repo.get_active()
 
         # Convert to response format (exclude passwords)
         proxy_list = [
@@ -144,7 +147,7 @@ async def list_proxies(
         ]
 
         # Get stats
-        stats = await db.get_proxy_stats()
+        stats = await proxy_repo.get_stats()
 
         return {
             "proxies": proxy_list,
@@ -160,7 +163,7 @@ async def list_proxies(
 async def get_proxy(
     proxy_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Get a single proxy by ID (password excluded).
@@ -168,13 +171,13 @@ async def get_proxy(
     Args:
         proxy_id: Proxy ID
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Proxy details
     """
     try:
-        proxy = await db.get_proxy_by_id(proxy_id)
+        proxy = await proxy_repo.get_by_id(proxy_id)
 
         if not proxy:
             raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
@@ -203,7 +206,7 @@ async def update_proxy(
     proxy_id: int,
     proxy: ProxyUpdateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Update a proxy endpoint.
@@ -212,7 +215,7 @@ async def update_proxy(
         proxy_id: Proxy ID
         proxy: Update data
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Updated proxy details
@@ -222,21 +225,27 @@ async def update_proxy(
         if proxy.port is not None and not (1 <= proxy.port <= 65535):
             raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
 
+        # Build update data dictionary
+        update_data = {}
+        if proxy.server is not None:
+            update_data["server"] = proxy.server
+        if proxy.port is not None:
+            update_data["port"] = proxy.port
+        if proxy.username is not None:
+            update_data["username"] = proxy.username
+        if proxy.password is not None:
+            update_data["password"] = proxy.password
+        if proxy.is_active is not None:
+            update_data["is_active"] = proxy.is_active
+
         # Update proxy
-        updated = await db.update_proxy(
-            proxy_id=proxy_id,
-            server=proxy.server,
-            port=proxy.port,
-            username=proxy.username,
-            password=proxy.password,
-            is_active=proxy.is_active,
-        )
+        updated = await proxy_repo.update(proxy_id, update_data)
 
         if not updated:
             raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
 
         # Fetch updated proxy
-        updated_proxy = await db.get_proxy_by_id(proxy_id)
+        updated_proxy = await proxy_repo.get_by_id(proxy_id)
         if not updated_proxy:
             raise HTTPException(status_code=500, detail="Failed to retrieve updated proxy")
 
@@ -267,7 +276,7 @@ async def update_proxy(
 async def delete_proxy(
     proxy_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Delete a proxy endpoint.
@@ -275,13 +284,13 @@ async def delete_proxy(
     Args:
         proxy_id: Proxy ID
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Success message
     """
     try:
-        deleted = await db.delete_proxy(proxy_id)
+        deleted = await proxy_repo.delete(proxy_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
@@ -300,20 +309,20 @@ async def delete_proxy(
 @router.delete("/clear-all")
 async def clear_all_proxies(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Delete all proxy endpoints.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Success message with count
     """
     try:
-        count = await db.clear_all_proxies()
+        count = await proxy_repo.clear_all()
 
         logger.info(f"Cleared all {count} proxies")
 
@@ -330,20 +339,20 @@ async def clear_all_proxies(
 @router.post("/reset-failures")
 async def reset_proxy_failures(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Reset failure count for all proxies.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Success message with count
     """
     try:
-        count = await db.reset_proxy_failures()
+        count = await proxy_repo.reset_all_failures()
 
         logger.info(f"Reset failures for {count} proxies")
 
@@ -366,7 +375,7 @@ async def reset_proxy_failures(
 async def upload_proxy_csv(
     file: UploadFile = File(...),
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Upload proxy CSV file and store in database.
@@ -378,7 +387,7 @@ async def upload_proxy_csv(
     Args:
         file: CSV file upload
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Success message with number of proxies loaded
@@ -439,12 +448,13 @@ async def upload_proxy_csv(
 
             # Add to database
             try:
-                await db.add_proxy(
-                    server=server,
-                    port=port,
-                    username=username,
-                    password=password,
-                )
+                proxy_data = {
+                    "server": server,
+                    "port": port,
+                    "username": username,
+                    "password": password,
+                }
+                await proxy_repo.create(proxy_data)
                 count += 1
             except ValueError as e:
                 # Proxy already exists - log but continue
@@ -558,20 +568,20 @@ async def clear_memory_proxies(token_data: Dict[str, Any] = Depends(verify_jwt_t
 @router.get("/stats", response_model=Dict[str, Any])
 async def get_combined_stats(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
     Get combined proxy statistics from both database and in-memory manager.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        proxy_repo: ProxyRepository instance
 
     Returns:
         Combined statistics
     """
     try:
-        db_stats = await db.get_proxy_stats()
+        db_stats = await proxy_repo.get_stats()
         memory_stats = proxy_manager.get_stats()
 
         return {

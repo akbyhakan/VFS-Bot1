@@ -3,7 +3,7 @@
 import hmac
 import logging
 import os
-from typing import Dict
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from slowapi import Limiter

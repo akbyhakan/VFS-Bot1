@@ -11,6 +11,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ra
 from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
 from ...models.database import Database
+from ...repositories import AppointmentRepository
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
@@ -82,6 +83,9 @@ class BookingWorkflow:
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
         self.alert_service = alert_service
+        
+        # Initialize repositories
+        self.appointment_repo = AppointmentRepository(db)
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
@@ -323,15 +327,15 @@ class BookingWorkflow:
             confirmation = await self.booking_service.verify_booking_confirmation(page)
             if confirmation.get("success"):
                 reference = confirmation.get("reference", "UNKNOWN")
-                await self.db.add_appointment(
-                    user["id"],
-                    centre,
-                    user["category"],
-                    user["subcategory"],
-                    slot["date"],
-                    slot["time"],
-                    reference,
-                )
+                await self.appointment_repo.create({
+                    "user_id": user["id"],
+                    "centre": centre,
+                    "category": user["category"],
+                    "subcategory": user["subcategory"],
+                    "appointment_date": slot["date"],
+                    "appointment_time": slot["time"],
+                    "reference_number": reference
+                })
                 await self.notifier.notify_booking_success(
                     centre, slot["date"], slot["time"], reference
                 )

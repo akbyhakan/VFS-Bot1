@@ -11,13 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
-from src.models.database import Database
+from src.repositories import AppointmentRequestRepository
 from web.dependencies import (
     AppointmentRequestCreate,
     AppointmentRequestResponse,
     CountryResponse,
     WebhookUrlsResponse,
-    get_db,
+    get_appointment_request_repository,
     verify_jwt_token,
 )
 
@@ -102,7 +102,7 @@ async def get_country_centres(country_code: str):
 async def create_appointment_request(
     request_data: AppointmentRequestCreate,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Create a new appointment request.
@@ -110,7 +110,7 @@ async def create_appointment_request(
     Args:
         request_data: Appointment request data
         token_data: Verified token data
-        db: Database instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         Created appointment request info
@@ -126,19 +126,19 @@ async def create_appointment_request(
                 ),
             )
 
-        # Convert persons to dict
-        persons_data = [person.dict() for person in request_data.persons]
+        # Build request data dictionary
+        appointment_data = {
+            "country_code": request_data.country_code,
+            "visa_category": request_data.visa_category,
+            "visa_subcategory": request_data.visa_subcategory,
+            "centres": request_data.centres,
+            "preferred_dates": request_data.preferred_dates,
+            "person_count": request_data.person_count,
+            "persons": [person.dict() for person in request_data.persons],
+        }
 
         # Create request in database
-        request_id = await db.create_appointment_request(
-            country_code=request_data.country_code,
-            visa_category=request_data.visa_category,
-            visa_subcategory=request_data.visa_subcategory,
-            centres=request_data.centres,
-            preferred_dates=request_data.preferred_dates,
-            person_count=request_data.person_count,
-            persons=persons_data,
-        )
+        request_id = await appt_req_repo.create(appointment_data)
 
         logger.info(
             f"Appointment request {request_id} created by {token_data.get('sub', 'unknown')}"
@@ -159,7 +159,7 @@ async def create_appointment_request(
 async def get_appointment_requests(
     status: Optional[str] = None,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Get all appointment requests.
@@ -167,13 +167,13 @@ async def get_appointment_requests(
     Args:
         status: Optional status filter
         token_data: Verified token data
-        db: Database instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         List of appointment requests
     """
     try:
-        requests = await db.get_all_appointment_requests(status=status)
+        requests = await appt_req_repo.get_all(status=status)
 
         # Convert to response model
         response_requests = []
@@ -210,7 +210,7 @@ async def get_appointment_requests(
 async def get_appointment_request(
     request_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Get a specific appointment request.
@@ -218,13 +218,13 @@ async def get_appointment_request(
     Args:
         request_id: Request ID
         token_data: Verified token data
-        db: Database instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         Appointment request details
     """
     try:
-        req = await db.get_appointment_request(request_id)
+        req = await appt_req_repo.get_by_id(request_id)
 
         if not req:
             raise HTTPException(status_code=404, detail="Appointment request not found")
@@ -259,7 +259,7 @@ async def get_appointment_request(
 async def delete_appointment_request(
     request_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Delete an appointment request.
@@ -267,13 +267,13 @@ async def delete_appointment_request(
     Args:
         request_id: Request ID
         token_data: Verified token data
-        db: Database instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         Success message
     """
     try:
-        deleted = await db.delete_appointment_request(request_id)
+        deleted = await appt_req_repo.delete(request_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Appointment request not found")
@@ -295,7 +295,7 @@ async def update_appointment_request_status(
     request_id: int,
     status_update: Dict[str, str],
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Update appointment request status.
@@ -304,7 +304,7 @@ async def update_appointment_request_status(
         request_id: Request ID
         status_update: Dict with 'status' key
         token_data: Verified token data
-        db: Database instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         Success message
@@ -327,7 +327,7 @@ async def update_appointment_request_status(
             datetime.now(timezone.utc) if status == AppointmentRequestStatus.COMPLETED else None
         )
 
-        updated = await db.update_appointment_request_status(
+        updated = await appt_req_repo.update_status(
             request_id=request_id, status=status, completed_at=completed_at
         )
 

@@ -36,6 +36,8 @@ async def test_connection_pool_timeout():
     await db.connect()
 
     try:
+        pass  # Placeholder for future timeout tests
+    finally:
         await db.close()
 
 
@@ -43,26 +45,28 @@ async def test_connection_pool_timeout():
 async def test_concurrent_writes(database):
     """Test concurrent write operations don't cause corruption."""
     db = database
+    from src.repositories import UserRepository
+    user_repo = UserRepository(db)
 
     async def add_user(i: int):
-        await db.add_user(
-            email=f"user{i}@example.com",
-            password="testpass123",
-            centre="Istanbul",
-            category="Tourism",
-            subcategory="Short Stay",
-        )
+        await user_repo.create({
+            'email': f"user{i}@example.com",
+            'password': "testpass123",
+            'center_name': "Istanbul",
+            'visa_category': "Tourism",
+            'visa_subcategory': "Short Stay",
+        })
 
     # Create 20 users concurrently
     tasks = [add_user(i) for i in range(20)]
     await asyncio.gather(*tasks)
 
     # Verify all users were created
-    users = await db.get_active_users()  # Use get_active_users instead
+    users = await user_repo.get_all_active()
     assert len(users) >= 20  # At least 20 users created
 
     # Verify email uniqueness
-    emails = [u["email"] for u in users]
+    emails = [u.email for u in users]
     unique_emails = [e for e in emails if e.startswith("user") and e.endswith("@example.com")]
     assert len(set(unique_emails)) == 20  # All test users are unique
 
