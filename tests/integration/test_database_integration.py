@@ -253,9 +253,10 @@ class TestDatabaseIntegration:
             })
             user_ids.append(user_id)
 
+        user_repo = UserRepository(integration_db)
+
         async def read_users() -> list:
             """Read all users."""
-            user_repo = UserRepository(integration_db)
             return await user_repo.get_all_active()
 
         async def add_personal_details(user_id: int) -> None:

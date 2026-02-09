@@ -205,8 +205,9 @@ class TestBookingFlow:
                 user_ids.append(user_id)
 
             # Simulate concurrent booking attempts
+            appointment_repo = AppointmentRepository(db)
+
             async def book_appointment(user_id: int) -> int:
-                appointment_repo = AppointmentRepository(db)
                 return await appointment_repo.create({
                     'user_id': user_id,
                     'centre': "Istanbul",

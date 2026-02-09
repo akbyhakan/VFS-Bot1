@@ -90,9 +90,10 @@ class TestConcurrentLoad:
             write_count = 50
             start_time = time.time()
 
+            user_repo = UserRepository(db)
+
             async def write_user(user_id: int) -> int:
                 """Write a user to database."""
-                user_repo = UserRepository(db)
                 return await user_repo.create({
                     'email': f"load{user_id}@test.com",
                     'password': f"password{user_id}",
@@ -141,9 +142,10 @@ class TestConcurrentLoad:
             read_count = 100
             start_time = time.time()
 
+            user_repo = UserRepository(db)
+
             async def read_users() -> list:
                 """Read all users."""
-                user_repo = UserRepository(db)
                 return await user_repo.get_all_active()
 
             tasks = [read_users() for _ in range(read_count)]
@@ -184,9 +186,10 @@ class TestConcurrentLoad:
             write_count = 25
             read_count = 75
 
+            user_repo = UserRepository(db)
+
             async def write_user(user_id: int) -> int:
                 """Write operation."""
-                user_repo = UserRepository(db)
                 return await user_repo.create({
                     'email': f"mixed{user_id}@test.com",
                     'password': f"password{user_id}",
@@ -197,7 +200,6 @@ class TestConcurrentLoad:
 
             async def read_users() -> list:
                 """Read operation."""
-                user_repo = UserRepository(db)
                 return await user_repo.get_all_active()
 
             # Mix writes and reads
