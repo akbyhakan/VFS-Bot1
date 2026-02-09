@@ -5,12 +5,13 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.models.database import Database
+from src.repositories import PaymentRepository, AppointmentRequestRepository
 from web.dependencies import (
     PaymentCardRequest,
     PaymentCardResponse,
     PaymentInitiateRequest,
-    get_db,
+    get_payment_repository,
+    get_appointment_request_repository,
     verify_jwt_token,
 )
 
@@ -21,20 +22,20 @@ router = APIRouter(prefix="/api", tags=["payment"])
 @router.get("/payment-card", response_model=Optional[PaymentCardResponse])
 async def get_payment_card(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    payment_repo: PaymentRepository = Depends(get_payment_repository),
 ):
     """
     Get saved payment card (masked) - requires authentication.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        payment_repo: PaymentRepository instance
 
     Returns:
         Masked payment card data or None if no card exists
     """
     try:
-        card = await db.get_payment_card_masked()
+        card = await payment_repo.get_masked()
         if not card:
             return None
 
@@ -55,7 +56,7 @@ async def get_payment_card(
 async def save_payment_card(
     card_data: PaymentCardRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    payment_repo: PaymentRepository = Depends(get_payment_repository),
 ):
     """
     Save payment card.
@@ -72,20 +73,26 @@ async def save_payment_card(
     Args:
         card_data: Payment card data (no CVV)
         token_data: Verified token data
-        db: Database instance
+        payment_repo: PaymentRepository instance
 
     Returns:
         Success message with card ID
     """
     try:
-        card_id = await db.save_payment_card(
-            {
-                "card_holder_name": card_data.card_holder_name,
-                "card_number": card_data.card_number,
-                "expiry_month": card_data.expiry_month,
-                "expiry_year": card_data.expiry_year,
-            }
-        )
+        # Build card data dictionary
+        card_dict = {
+            "card_holder_name": card_data.card_holder_name,
+            "card_number": card_data.card_number,
+            "expiry_month": card_data.expiry_month,
+            "expiry_year": card_data.expiry_year,
+        }
+
+        # Check if card exists, update or create
+        existing_card = await payment_repo.get()
+        if existing_card:
+            card_id = await payment_repo.update(card_dict)
+        else:
+            card_id = await payment_repo.create(card_dict)
 
         logger.info(f"Payment card saved/updated by {token_data.get('sub', 'unknown')}")
         return {
@@ -104,20 +111,20 @@ async def save_payment_card(
 @router.delete("/payment-card")
 async def delete_payment_card(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    payment_repo: PaymentRepository = Depends(get_payment_repository),
 ):
     """
     Delete saved payment card - requires authentication.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        payment_repo: PaymentRepository instance
 
     Returns:
         Success message
     """
     try:
-        deleted = await db.delete_payment_card()
+        deleted = await payment_repo.delete()
         if not deleted:
             raise HTTPException(status_code=404, detail="No payment card found")
 
@@ -134,7 +141,8 @@ async def delete_payment_card(
 async def initiate_payment(
     request: PaymentInitiateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    payment_repo: PaymentRepository = Depends(get_payment_repository),
+    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
     Initiate payment.
@@ -145,19 +153,20 @@ async def initiate_payment(
     Args:
         request: Payment initiation data with appointment_id
         token_data: JWT token data
-        db: Database instance
+        payment_repo: PaymentRepository instance
+        appt_req_repo: AppointmentRequestRepository instance
 
     Returns:
         Payment result
     """
     try:
         # Get appointment
-        appointment = await db.get_appointment_request(request.appointment_id)
+        appointment = await appt_req_repo.get_by_id(request.appointment_id)
         if not appointment:
             raise HTTPException(404, "Appointment not found")
 
         # Get saved card
-        card = await db.get_payment_card()
+        card = await payment_repo.get()
         if not card:
             raise HTTPException(404, "No payment card saved")
 

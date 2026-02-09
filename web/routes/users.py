@@ -8,8 +8,8 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from src.core.exceptions import ValidationError
-from src.models.database import Database
-from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, get_db, verify_jwt_token
+from src.repositories import UserRepository
+from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, get_user_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -18,19 +18,19 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 @router.get("", response_model=List[UserModel])
 async def get_users(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Get all users from database - requires authentication.
 
     Args:
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         List of users with their personal details
     """
-    users_data = await db.get_all_users_with_details()
+    users_data = await user_repo.get_all_with_details()
 
     # Convert database records to UserModel format
     users = []
@@ -58,7 +58,7 @@ async def get_users(
 async def create_user(
     user: UserCreateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Create a new user in database - requires authentication.
@@ -66,7 +66,7 @@ async def create_user(
     Args:
         user: User data
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         Created user
@@ -75,33 +75,24 @@ async def create_user(
         HTTPException: If user creation fails
     """
     try:
-        # Create user record
-        user_id = await db.add_user(
-            email=user.email,
-            password=user.password,
-            centre=user.center_name,
-            category=user.visa_category,
-            subcategory=user.visa_subcategory,
-        )
+        # Build user data dictionary
+        user_data = {
+            "email": user.email,
+            "password": user.password,
+            "centre": user.center_name,
+            "category": user.visa_category,
+            "subcategory": user.visa_subcategory,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone": user.phone,
+            "is_active": user.is_active,
+        }
 
-        # Create personal details record
-        await db.add_personal_details(
-            user_id=user_id,
-            details={
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-                "mobile_number": user.phone,
-                "passport_number": "",  # Required field, empty for now
-            },
-        )
-
-        # Set user as active/inactive
-        if not user.is_active:
-            await db.update_user(user_id, active=False)
+        # Create user with repository
+        user_id = await user_repo.create(user_data)
 
         # Get the created user with details
-        created_user = await db.get_user_with_details_by_id(user_id)
+        created_user = await user_repo.get_by_id_with_details(user_id)
 
         if not created_user:
             raise HTTPException(status_code=500, detail="Failed to retrieve created user")
@@ -134,7 +125,7 @@ async def update_user(
     user_id: int,
     user_update: UserUpdateRequest,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Update a user in database - requires authentication.
@@ -143,7 +134,7 @@ async def update_user(
         user_id: User ID
         user_update: Updated user data
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         Updated user
@@ -152,23 +143,25 @@ async def update_user(
         HTTPException: If user not found or update fails
     """
     try:
-        # Update user table fields (including password if provided)
-        user_updated = await db.update_user(
-            user_id=user_id,
-            email=user_update.email,
-            password=user_update.password,
-            centre=user_update.center_name,
-            category=user_update.visa_category,
-            subcategory=user_update.visa_subcategory,
-            active=user_update.is_active,
-        )
+        # Build update data dictionary
+        update_data = {
+            "email": user_update.email,
+            "password": user_update.password,
+            "centre": user_update.center_name,
+            "category": user_update.visa_category,
+            "subcategory": user_update.visa_subcategory,
+            "is_active": user_update.is_active,
+        }
+
+        # Update user
+        user_updated = await user_repo.update(user_id, update_data)
 
         if not user_updated:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Update personal details if provided
         if any([user_update.first_name, user_update.last_name, user_update.phone]):
-            await db.update_personal_details(
+            await user_repo.update_personal_details(
                 user_id=user_id,
                 first_name=user_update.first_name,
                 last_name=user_update.last_name,
@@ -176,7 +169,7 @@ async def update_user(
             )
 
         # Get updated user
-        updated_user = await db.get_user_with_details_by_id(user_id)
+        updated_user = await user_repo.get_by_id_with_details(user_id)
 
         if not updated_user:
             raise HTTPException(status_code=404, detail="User not found after update")
@@ -210,7 +203,7 @@ async def update_user(
 async def delete_user(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Delete a user from database - requires authentication.
@@ -218,7 +211,7 @@ async def delete_user(
     Args:
         user_id: User ID
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         Success message
@@ -228,13 +221,13 @@ async def delete_user(
     """
     try:
         # Get user email before deletion for logging
-        user = await db.get_user_with_details_by_id(user_id)
+        user = await user_repo.get_by_id_with_details(user_id)
 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Delete user (cascades to personal_details due to FOREIGN KEY)
-        deleted = await db.delete_user(user_id)
+        deleted = await user_repo.delete(user_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="User not found")
@@ -254,7 +247,7 @@ async def toggle_user_status(
     user_id: int,
     status_update: Dict[str, bool],
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Toggle user active status - requires authentication.
@@ -263,7 +256,7 @@ async def toggle_user_status(
         user_id: User ID
         status_update: Status update data (is_active)
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         Updated user
@@ -272,32 +265,16 @@ async def toggle_user_status(
         if "is_active" not in status_update:
             raise HTTPException(status_code=400, detail="is_active field required")
 
-        user_updated = await db.update_user(
-            user_id=user_id,
-            active=status_update["is_active"],
-        )
+        update_data = {"is_active": status_update["is_active"]}
+        user_updated = await user_repo.update(user_id, update_data)
 
         if not user_updated:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Efficiently fetch just the updated user with details
-        async with db.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
-                SELECT
-                    u.id, u.email, u.centre as center_name,
-                    u.category as visa_category, u.subcategory as visa_subcategory,
-                    u.active as is_active, u.created_at, u.updated_at,
-                    p.first_name, p.last_name, p.mobile_number as phone
-                FROM users u
-                LEFT JOIN personal_details p ON u.id = p.user_id
-                WHERE u.id = $1
-                """,
-                user_id,
-            )
-            if not row:
-                raise HTTPException(status_code=404, detail="User not found after update")
-            updated_user = dict(row)
+        # Get updated user with details
+        updated_user = await user_repo.get_by_id_with_details(user_id)
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found after update")
 
         logger.info(
             f"User status toggled: {updated_user['email']} -> {status_update['is_active']} "
@@ -328,7 +305,7 @@ async def toggle_user_status(
 async def import_users_csv(
     file: UploadFile = File(...),
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Import users from CSV file - requires authentication.
@@ -339,7 +316,7 @@ async def import_users_csv(
     Args:
         file: CSV file to import
         token_data: Verified token data
-        db: Database instance
+        user_repo: UserRepository instance
 
     Returns:
         Import results with success/failure counts and error messages
@@ -402,26 +379,20 @@ async def import_users_csv(
                     failed += 1
                     continue
 
-                # Create user record
-                user_id = await db.add_user(
-                    email=row["email"].strip(),
-                    password=row["password"].strip(),
-                    centre=row.get("centre", "").strip(),
-                    category=row.get("visa_category", "").strip(),
-                    subcategory=row.get("visa_subcategory", "").strip(),
-                )
+                # Build user data dictionary
+                user_data = {
+                    "email": row["email"].strip(),
+                    "password": row["password"].strip(),
+                    "centre": row.get("centre", "").strip(),
+                    "category": row.get("visa_category", "").strip(),
+                    "subcategory": row.get("visa_subcategory", "").strip(),
+                    "first_name": row.get("first_name", "").strip(),
+                    "last_name": row.get("last_name", "").strip(),
+                    "phone": row.get("phone", "").strip(),
+                }
 
-                # Add personal details
-                await db.add_personal_details(
-                    user_id=user_id,
-                    details={
-                        "first_name": row.get("first_name", "").strip(),
-                        "last_name": row.get("last_name", "").strip(),
-                        "email": row["email"].strip(),
-                        "mobile_number": row.get("phone", "").strip(),
-                        "passport_number": "",  # Empty for now
-                    },
-                )
+                # Create user with repository
+                await user_repo.create(user_data)
 
                 imported += 1
                 logger.info(

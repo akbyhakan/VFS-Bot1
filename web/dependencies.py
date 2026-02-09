@@ -17,6 +17,18 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.auth import verify_token
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
+from src.repositories import (
+    UserRepository,
+    AppointmentRepository,
+    LogRepository,
+    PaymentRepository,
+    AppointmentRequestRepository,
+    AppointmentHistoryRepository,
+    AuditLogRepository,
+    TokenBlacklistRepository,
+    WebhookRepository,
+    ProxyRepository,
+)
 
 # Backward compatibility re-exports - Models
 from web.models import *  # noqa: F401,F403
@@ -126,3 +138,60 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
         message: Message dictionary to broadcast
     """
     await manager.broadcast(message)
+
+
+# Repository dependency functions
+async def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
+    """Get UserRepository instance."""
+    return UserRepository(db)
+
+
+async def get_appointment_repository(db: Database = Depends(get_db)) -> AppointmentRepository:
+    """Get AppointmentRepository instance."""
+    return AppointmentRepository(db)
+
+
+async def get_log_repository(db: Database = Depends(get_db)) -> LogRepository:
+    """Get LogRepository instance."""
+    return LogRepository(db)
+
+
+async def get_payment_repository(db: Database = Depends(get_db)) -> PaymentRepository:
+    """Get PaymentRepository instance."""
+    return PaymentRepository(db)
+
+
+async def get_appointment_request_repository(
+    db: Database = Depends(get_db)
+) -> AppointmentRequestRepository:
+    """Get AppointmentRequestRepository instance."""
+    return AppointmentRequestRepository(db)
+
+
+async def get_appointment_history_repository(
+    db: Database = Depends(get_db)
+) -> AppointmentHistoryRepository:
+    """Get AppointmentHistoryRepository instance."""
+    return AppointmentHistoryRepository(db)
+
+
+async def get_audit_log_repository(db: Database = Depends(get_db)) -> AuditLogRepository:
+    """Get AuditLogRepository instance."""
+    return AuditLogRepository(db)
+
+
+async def get_token_blacklist_repository(
+    db: Database = Depends(get_db)
+) -> TokenBlacklistRepository:
+    """Get TokenBlacklistRepository instance."""
+    return TokenBlacklistRepository(db)
+
+
+async def get_webhook_repository(db: Database = Depends(get_db)) -> WebhookRepository:
+    """Get WebhookRepository instance."""
+    return WebhookRepository(db)
+
+
+async def get_proxy_repository(db: Database = Depends(get_db)) -> ProxyRepository:
+    """Get ProxyRepository instance."""
+    return ProxyRepository(db)
