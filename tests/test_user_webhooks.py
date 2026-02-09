@@ -6,6 +6,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
+from src.repositories import UserRepository
 
 
 @pytest.fixture
@@ -20,13 +21,14 @@ async def db():
 @pytest.fixture
 async def test_user(db):
     """Create a test user."""
-    user_id = await db.add_user(
-        email="test@example.com",
-        password="testpass123",
-        centre="Test Centre",
-        category="Tourist",
-        subcategory="Normal",
-    )
+    user_repo = UserRepository(db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "testpass123",
+        'center_name': "Test Centre",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Normal",
+    })
     return user_id
 
 
@@ -136,20 +138,21 @@ async def test_webhook_cascade_delete(db, test_user):
 async def test_webhook_token_uniqueness(db):
     """Test that webhook tokens are unique."""
     # Create two users
-    user1 = await db.add_user(
-        email="user1@example.com",
-        password="pass1",
-        centre="Centre 1",
-        category="Tourist",
-        subcategory="Normal",
-    )
-    user2 = await db.add_user(
-        email="user2@example.com",
-        password="pass2",
-        centre="Centre 2",
-        category="Tourist",
-        subcategory="Normal",
-    )
+    user_repo = UserRepository(db)
+    user1 = await user_repo.create({
+        'email': "user1@example.com",
+        'password': "pass1",
+        'center_name': "Centre 1",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Normal",
+    })
+    user2 = await user_repo.create({
+        'email': "user2@example.com",
+        'password': "pass2",
+        'center_name': "Centre 2",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Normal",
+    })
 
     # Create webhooks for both
     token1 = await db.create_user_webhook(user1)

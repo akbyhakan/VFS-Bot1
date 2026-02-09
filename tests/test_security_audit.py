@@ -5,6 +5,7 @@ import os
 import pytest
 
 from src.core.env_validator import EnvValidator
+from src.repositories import UserRepository
 
 
 def test_production_requires_hashed_password():
@@ -146,13 +147,14 @@ async def test_password_encryption_in_database(database):
 
     # Add user with password
     plaintext_password = "my_secure_password"
-    user_id = await db.add_user(
-        email="test@example.com",
-        password=plaintext_password,
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': plaintext_password,
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # Read password directly from database
     async with db.get_connection() as conn:

@@ -4,6 +4,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
+from src.repositories import UserRepository
 
 
 @pytest.fixture
@@ -28,13 +29,14 @@ async def test_get_personal_details_batch_empty(temp_db):
 async def test_get_personal_details_batch_single(temp_db):
     """Test batch query with single user."""
     # Create a user
-    user_id = await temp_db.add_user(
-        email="test@example.com",
-        password="testpass123",
-        centre="Istanbul",
-        category="Tourist",
-        subcategory="Single Entry",
-    )
+    user_repo = UserRepository(temp_db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "testpass123",
+        'center_name': "Istanbul",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Single Entry",
+    })
 
     # Add personal details
     details = {
@@ -58,29 +60,30 @@ async def test_get_personal_details_batch_single(temp_db):
 async def test_get_personal_details_batch_multiple(temp_db):
     """Test batch query with multiple users."""
     # Create multiple users
-    user1_id = await temp_db.add_user(
-        email="user1@example.com",
-        password="pass1",
-        centre="Istanbul",
-        category="Tourist",
-        subcategory="Single Entry",
-    )
+    user_repo = UserRepository(temp_db)
+    user1_id = await user_repo.create({
+        'email': "user1@example.com",
+        'password': "pass1",
+        'center_name': "Istanbul",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Single Entry",
+    })
 
-    user2_id = await temp_db.add_user(
-        email="user2@example.com",
-        password="pass2",
-        centre="Ankara",
-        category="Business",
-        subcategory="Multiple Entry",
-    )
+    user2_id = await user_repo.create({
+        'email': "user2@example.com",
+        'password': "pass2",
+        'center_name': "Ankara",
+        'visa_category': "Business",
+        'visa_subcategory': "Multiple Entry",
+    })
 
-    user3_id = await temp_db.add_user(
-        email="user3@example.com",
-        password="pass3",
-        centre="Izmir",
-        category="Student",
-        subcategory="Single Entry",
-    )
+    user3_id = await user_repo.create({
+        'email': "user3@example.com",
+        'password': "pass3",
+        'center_name': "Izmir",
+        'visa_category': "Student",
+        'visa_subcategory': "Single Entry",
+    })
 
     # Add personal details
     await temp_db.add_personal_details(
@@ -126,13 +129,14 @@ async def test_get_personal_details_batch_multiple(temp_db):
 async def test_get_personal_details_batch_missing_users(temp_db):
     """Test batch query with some non-existent users."""
     # Create one user
-    user_id = await temp_db.add_user(
-        email="test@example.com",
-        password="testpass",
-        centre="Istanbul",
-        category="Tourist",
-        subcategory="Single Entry",
-    )
+    user_repo = UserRepository(temp_db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "testpass",
+        'center_name': "Istanbul",
+        'visa_category': "Tourist",
+        'visa_subcategory': "Single Entry",
+    })
 
     await temp_db.add_personal_details(
         user_id,
