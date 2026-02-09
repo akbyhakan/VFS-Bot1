@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
-from src.services.booking import BookingOrchestrator
+from src.services.booking.slot_selector import SlotSelector
 
 
 class MockLocator:
@@ -26,12 +26,8 @@ class TestSelectPreferredTime:
 
     @pytest.fixture
     def service(self):
-        """Create BookingOrchestrator instance with minimal config."""
-        config = {
-            "vfs": {"mission": "nld"},
-            "applicants": [{"first_name": "Test"}],
-        }
-        return BookingOrchestrator(config)
+        """Create SlotSelector instance."""
+        return SlotSelector()
 
     @pytest.fixture
     def mock_page(self):
