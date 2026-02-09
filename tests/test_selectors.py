@@ -412,3 +412,90 @@ class TestCountryAwareSelectorManager:
 
         # Both should resolve to the same selectors
         assert manager_lower.get("login.email_input") == manager_upper.get("login.email_input")
+
+
+# YAML edge case tests (for safe_load type checking)
+class TestYAMLEdgeCases:
+    """Tests for YAML safe_load type checking and edge cases."""
+
+    def test_empty_yaml_file(self, tmp_path):
+        """Test that empty YAML file falls back to defaults."""
+        empty_file = tmp_path / "empty.yaml"
+        empty_file.write_text("")
+
+        manager = SelectorManager(str(empty_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+        assert manager.get("login.email_input") is not None
+
+    def test_yaml_file_with_only_comments(self, tmp_path):
+        """Test that YAML file with only comments falls back to defaults."""
+        comments_file = tmp_path / "comments_only.yaml"
+        comments_file.write_text("# Just a comment\n# Another comment\n")
+
+        manager = SelectorManager(str(comments_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+
+    def test_yaml_file_with_none_value(self, tmp_path):
+        """Test that YAML file that returns None falls back to defaults."""
+        none_file = tmp_path / "none.yaml"
+        # YAML files containing only '~' or 'null' will return None
+        none_file.write_text("~\n")
+
+        manager = SelectorManager(str(none_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+
+    def test_yaml_file_with_list_instead_of_dict(self, tmp_path):
+        """Test that YAML file returning a list falls back to defaults."""
+        list_file = tmp_path / "list.yaml"
+        list_file.write_text("- item1\n- item2\n- item3\n")
+
+        manager = SelectorManager(str(list_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+
+    def test_yaml_file_with_string_instead_of_dict(self, tmp_path):
+        """Test that YAML file returning a string falls back to defaults."""
+        string_file = tmp_path / "string.yaml"
+        string_file.write_text("just a string\n")
+
+        manager = SelectorManager(str(string_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+
+    def test_yaml_file_with_number_instead_of_dict(self, tmp_path):
+        """Test that YAML file returning a number falls back to defaults."""
+        number_file = tmp_path / "number.yaml"
+        number_file.write_text("42\n")
+
+        manager = SelectorManager(str(number_file))
+
+        # Should have loaded default selectors
+        assert manager._selectors["version"] == "default"
+        assert isinstance(manager._selectors, dict)
+
+    def test_valid_dict_yaml_loads_correctly(self, tmp_path):
+        """Test that valid dict YAML loads correctly (sanity check)."""
+        valid_file = tmp_path / "valid.yaml"
+        with open(valid_file, "w") as f:
+            yaml.dump({"version": "test-valid", "login": {"email_input": "input#email"}}, f)
+
+        manager = SelectorManager(str(valid_file))
+
+        # Should have loaded the actual YAML content
+        assert manager._selectors["version"] == "test-valid"
+        assert "login" in manager._selectors
+        assert manager.get("login.email_input") == "input#email"
+

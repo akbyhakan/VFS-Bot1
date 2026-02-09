@@ -495,3 +495,91 @@ async def test_suggest_selector_exception_handling(temp_selectors_file):
             result = await repair.suggest_selector(mock_page, "login.email_input", "Email Input")
 
             assert result is None
+
+
+# YAML edge case tests for _add_to_yaml
+class TestYAMLEdgeCasesInAddToYAML:
+    """Tests for YAML safe_load type checking in _add_to_yaml method."""
+
+    @pytest.fixture
+    def temp_selectors_file(self, tmp_path):
+        """Create a temporary selectors file."""
+        selectors_file = tmp_path / "selectors.yaml"
+        with open(selectors_file, "w") as f:
+            yaml.dump({"version": "1.0", "login": {"email_input": "input#email"}}, f)
+        return selectors_file
+
+    def test_add_to_yaml_with_empty_file(self, tmp_path):
+        """Test that _add_to_yaml handles empty YAML file gracefully."""
+        empty_file = tmp_path / "empty.yaml"
+        empty_file.write_text("")
+
+        repair = AISelectorRepair(str(empty_file))
+        
+        # Should not crash, should log warning and return early
+        repair._add_to_yaml("login.email_input", "input#new-email")
+        
+        # File should remain empty (or unchanged)
+        content = empty_file.read_text()
+        assert content == ""  # Should not be modified
+
+    def test_add_to_yaml_with_none_content(self, tmp_path):
+        """Test that _add_to_yaml handles YAML file that returns None."""
+        none_file = tmp_path / "none.yaml"
+        none_file.write_text("~\n")
+
+        repair = AISelectorRepair(str(none_file))
+        
+        # Should not crash, should log warning and return early
+        repair._add_to_yaml("login.email_input", "input#new-email")
+        
+        # File should remain unchanged (contains None)
+        with open(none_file, "r") as f:
+            loaded = yaml.safe_load(f)
+        assert loaded is None
+
+    def test_add_to_yaml_with_list_content(self, tmp_path):
+        """Test that _add_to_yaml handles YAML file that returns a list."""
+        list_file = tmp_path / "list.yaml"
+        list_file.write_text("- item1\n- item2\n")
+
+        repair = AISelectorRepair(str(list_file))
+        
+        # Should not crash, should log warning and return early
+        repair._add_to_yaml("login.email_input", "input#new-email")
+        
+        # File should remain unchanged (still a list)
+        with open(list_file, "r") as f:
+            loaded = yaml.safe_load(f)
+        assert isinstance(loaded, list)
+
+    def test_add_to_yaml_with_string_content(self, tmp_path):
+        """Test that _add_to_yaml handles YAML file that returns a string."""
+        string_file = tmp_path / "string.yaml"
+        string_file.write_text("just a string\n")
+
+        repair = AISelectorRepair(str(string_file))
+        
+        # Should not crash, should log warning and return early
+        repair._add_to_yaml("login.email_input", "input#new-email")
+        
+        # File should remain unchanged (still a string)
+        with open(string_file, "r") as f:
+            loaded = yaml.safe_load(f)
+        assert isinstance(loaded, str)
+
+    def test_add_to_yaml_with_valid_dict(self, temp_selectors_file):
+        """Test that _add_to_yaml works correctly with valid dict YAML."""
+        repair = AISelectorRepair(str(temp_selectors_file))
+        
+        # Should successfully add to valid YAML
+        repair._add_to_yaml("login.password_input", "input#new-password")
+        
+        # File should be updated
+        with open(temp_selectors_file, "r") as f:
+            loaded = yaml.safe_load(f)
+        
+        assert isinstance(loaded, dict)
+        assert "login" in loaded
+        # The new selector should be added
+        assert "password_input" in loaded["login"]
