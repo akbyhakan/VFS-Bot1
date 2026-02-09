@@ -87,6 +87,7 @@ class TestBookingWorkflowMultiPerson:
         assert reservation["persons"][0]["first_name"] == "John"
         assert reservation["persons"][0]["email"] == "john@example.com"
         assert "payment_card" in reservation
+        # Card details are now wrapped in SensitiveDict
         assert reservation["payment_card"]["number"] == "1234567812345678"
 
     def test_build_reservation_from_request_multi_person(self, mock_dependencies):
@@ -246,3 +247,45 @@ class TestBookingWorkflowMultiPerson:
         assert person["passport_expiry_date"] == "25/12/2028"
         assert person["phone_code"] == "1"
         assert person["is_child_with_parent"] is False
+
+    def test_payment_card_is_sensitive_dict(self, mock_dependencies):
+        """Test that payment card is wrapped in SensitiveDict."""
+        workflow = BookingWorkflow(**mock_dependencies)
+
+        appointment_request = {
+            "id": 1,
+            "person_count": 1,
+            "preferred_dates": ["15/02/2026"],
+            "persons": [
+                {
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "gender": "male",
+                    "birth_date": "15/01/1990",
+                    "passport_number": "U12345678",
+                    "passport_expiry_date": "01/01/2030",
+                    "phone_code": "90",
+                    "phone_number": "5551234567",
+                    "email": "john@example.com",
+                    "is_child_with_parent": False,
+                }
+            ],
+        }
+
+        slot = {"date": "15/02/2026", "time": "10:00"}
+
+        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+
+        # Verify repr and str don't contain actual card number
+        repr_str = repr(reservation["payment_card"])
+        str_str = str(reservation["payment_card"])
+        
+        assert "1234567812345678" not in repr_str
+        assert "1234567812345678" not in str_str
+        assert "MASKED" in repr_str
+        assert "MASKED" in str_str
+        
+        # But direct access still works
+        assert reservation["payment_card"]["number"] == "1234567812345678"
+        assert reservation["payment_card"]["cvv"] == "123"
+        assert reservation["payment_card"]["expiry"] == "12/25"

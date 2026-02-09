@@ -164,15 +164,24 @@ class BookingOrchestrator:
 
             # Use PaymentService for secure payment processing
             user_id = reservation.get("user_id", 0)
-            card_details = reservation.get("payment_card")
+            card_details_wrapped = reservation.get("payment_card")
             
-            # PaymentService will enforce PCI-DSS security controls
-            # It will reject automated payments in production
-            payment_success = await self.payment_service.process_payment(
-                page=page,
-                user_id=user_id,
-                card_details=card_details
-            )
+            try:
+                # Unwrap SensitiveDict at point of use only
+                card_details = card_details_wrapped.to_dict() if hasattr(card_details_wrapped, 'to_dict') else card_details_wrapped
+                
+                # PaymentService will enforce PCI-DSS security controls
+                # It will reject automated payments in production
+                payment_success = await self.payment_service.process_payment(
+                    page=page,
+                    user_id=user_id,
+                    card_details=card_details
+                )
+            finally:
+                # Securely wipe card details from memory after use
+                if hasattr(card_details_wrapped, 'wipe'):
+                    card_details_wrapped.wipe()
+                card_details = None
             
             if not payment_success:
                 logger.error("Payment processing failed")
