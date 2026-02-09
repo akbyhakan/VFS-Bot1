@@ -24,7 +24,7 @@ from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
 
 if TYPE_CHECKING:
-    from ..booking import AppointmentBookingService
+    from ..booking import BookingOrchestrator
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
     from .slot_checker import SlotChecker, SlotInfo
@@ -43,7 +43,7 @@ class BookingWorkflow:
         notifier: NotificationService,
         auth_service: "AuthService",
         slot_checker: "SlotChecker",
-        booking_service: "AppointmentBookingService",
+        booking_service: "BookingOrchestrator",
         waitlist_handler: "WaitlistHandler",
         error_handler: "ErrorHandler",
         slot_analyzer: SlotPatternAnalyzer,
@@ -448,7 +448,7 @@ class BookingWorkflow:
             slot: SlotInfo with date and time
 
         Returns:
-            Reservation dict compatible with AppointmentBookingService
+            Reservation dict compatible with BookingOrchestrator
         """
         persons = []
         for person_data in request["persons"]:
@@ -490,7 +490,7 @@ class BookingWorkflow:
             details: Personal details dictionary from database
 
         Returns:
-            Reservation dictionary compatible with AppointmentBookingService
+            Reservation dictionary compatible with BookingOrchestrator
         """
         # Build person data structure
         person = {
