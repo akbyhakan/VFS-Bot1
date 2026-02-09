@@ -2,6 +2,8 @@
 
 import pytest
 
+from src.repositories import PaymentRepository
+
 
 @pytest.mark.asyncio
 async def test_complete_payment_flow(database):
@@ -9,14 +11,13 @@ async def test_complete_payment_flow(database):
     db = database
 
     # 1. Save card WITHOUT CVV (per PCI-DSS Requirement 3.2)
-    await db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(db)
+    await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     # 2. Retrieve card
     card = await db.get_payment_card()
@@ -38,14 +39,13 @@ async def test_card_without_cvv_field(database):
     db = database
 
     # Save card without CVV
-    card_id = await db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(db)
+    card_id = await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     assert card_id > 0
 
@@ -64,14 +64,13 @@ async def test_masked_card_no_cvv(database):
     db = database
 
     # Save card
-    await db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(db)
+    await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     # Get masked card
     card = await db.get_payment_card_masked()

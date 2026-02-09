@@ -6,6 +6,7 @@ import pytest
 from cryptography.fernet import Fernet
 
 from src.models.database import Database
+from src.repositories import UserRepository, AppointmentRepository
 from src.utils.encryption import PasswordEncryption, reset_encryption
 
 
@@ -45,18 +46,19 @@ async def test_add_user_encrypts_password(test_db, unique_encryption_key):
     email = "test@example.com"
     password = "MyPassword123"
 
-    user_id = await test_db.add_user(
-        email=email,
-        password=password,
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': email,
+        'password': password,
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     assert user_id > 0
 
     # Get user from database
-    users = await test_db.get_active_users()
+    users = await user_repo.get_all_active()
     assert len(users) == 1
 
     user = users[0]
@@ -77,13 +79,14 @@ async def test_get_user_with_decrypted_password(test_db):
     email = "test@example.com"
     password = "MyPassword123"
 
-    user_id = await test_db.add_user(
-        email=email,
-        password=password,
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': email,
+        'password': password,
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # Get user with decrypted password
     user = await test_db.get_user_with_decrypted_password(user_id)
@@ -103,17 +106,18 @@ async def test_get_active_users_with_decrypted_passwords(test_db):
         ("user3@example.com", "password3"),
     ]
 
+    user_repo = UserRepository(test_db)
     for email, password in users_data:
-        await test_db.add_user(
-            email=email,
-            password=password,
-            centre="Istanbul",
-            category="Tourism",
-            subcategory="Short Stay",
-        )
+        await user_repo.create({
+            'email': email,
+            'password': password,
+            'center_name': "Istanbul",
+            'visa_category': "Tourism",
+            'visa_subcategory': "Short Stay",
+        })
 
     # Get all users with decrypted passwords
-    users = await test_db.get_active_users_with_decrypted_passwords()
+    users = await user_repo.get_all_active_with_passwords()
 
     assert len(users) == 3
 
@@ -139,34 +143,36 @@ async def test_concurrent_database_operations(test_db):
     """Test concurrent database operations with connection pool."""
     import asyncio
 
+    user_repo = UserRepository(test_db)
     async def add_user(i):
-        await test_db.add_user(
-            email=f"user{i}@example.com",
-            password=f"password{i}",
-            centre="Istanbul",
-            category="Tourism",
-            subcategory="Short Stay",
-        )
+        await user_repo.create({
+            'email': f"user{i}@example.com",
+            'password': f"password{i}",
+            'center_name': "Istanbul",
+            'visa_category': "Tourism",
+            'visa_subcategory': "Short Stay",
+        })
 
     # Add 10 users concurrently
     tasks = [add_user(i) for i in range(10)]
     await asyncio.gather(*tasks)
 
     # Should have 10 users
-    users = await test_db.get_active_users()
+    users = await user_repo.get_all_active()
     assert len(users) == 10
 
 
 @pytest.mark.asyncio
 async def test_add_personal_details(test_db):
     """Test adding personal details for a user."""
-    user_id = await test_db.add_user(
-        email="test@example.com",
-        password="password",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "password",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     details = {
         "first_name": "John",
@@ -188,23 +194,25 @@ async def test_add_personal_details(test_db):
 @pytest.mark.asyncio
 async def test_add_appointment(test_db):
     """Test adding an appointment."""
-    user_id = await test_db.add_user(
-        email="test@example.com",
-        password="password",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "password",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
-    appointment_id = await test_db.add_appointment(
-        user_id=user_id,
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-        date="2024-12-25",
-        time="10:00",
-        reference="REF123456",
-    )
+    appointment_repo = AppointmentRepository(test_db)
+    appointment_id = await appointment_repo.create({
+        'user_id': user_id,
+        'centre': "Istanbul",
+        'category': "Tourism",
+        'subcategory': "Short Stay",
+        'appointment_date': "2024-12-25",
+        'appointment_time': "10:00",
+        'reference_number': "REF123456",
+    })
 
     assert appointment_id > 0
 
@@ -217,13 +225,14 @@ async def test_add_appointment(test_db):
 @pytest.mark.asyncio
 async def test_add_log(test_db):
     """Test adding log entries."""
-    user_id = await test_db.add_user(
-        email="test@example.com",
-        password="password",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "test@example.com",
+        'password': "password",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     await test_db.add_log("INFO", "Test log message", user_id)
     await test_db.add_log("ERROR", "Test error", user_id)
@@ -461,13 +470,14 @@ async def test_delete_appointment_request(test_db):
 async def test_get_pending_appointment_request_for_user(test_db):
     """Test getting pending appointment request for a user by email."""
     # Create a user
-    user_id = await test_db.add_user(
-        email="testuser@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "testuser@example.com",
+        'password': "password123",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # Create an appointment request with the user's email
     persons = [
@@ -511,13 +521,14 @@ async def test_get_pending_appointment_request_for_user(test_db):
 async def test_get_pending_appointment_request_for_user_multi_person(test_db):
     """Test getting pending appointment request with multiple persons."""
     # Create a user
-    user_id = await test_db.add_user(
-        email="mainuser@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "mainuser@example.com",
+        'password': "password123",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # Create an appointment request with multiple persons
     persons = [
@@ -576,13 +587,14 @@ async def test_get_pending_appointment_request_for_user_multi_person(test_db):
 async def test_get_pending_appointment_request_for_user_no_request(test_db):
     """Test getting pending appointment request when none exists."""
     # Create a user
-    user_id = await test_db.add_user(
-        email="noappointment@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "noappointment@example.com",
+        'password': "password123",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # No appointment request created
     request = await test_db.get_pending_appointment_request_for_user(user_id)
@@ -594,13 +606,14 @@ async def test_get_pending_appointment_request_for_user_no_request(test_db):
 async def test_get_pending_appointment_request_for_user_completed_status(test_db):
     """Test that completed requests are not returned."""
     # Create a user
-    user_id = await test_db.add_user(
-        email="completed@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
+    user_repo = UserRepository(test_db)
+    user_id = await user_repo.create({
+        'email': "completed@example.com",
+        'password': "password123",
+        'center_name': "Istanbul",
+        'visa_category': "Tourism",
+        'visa_subcategory': "Short Stay",
+    })
 
     # Create an appointment request
     persons = [

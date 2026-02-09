@@ -8,6 +8,7 @@ import pytest_asyncio
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
+from src.repositories import UserRepository
 
 # Try to import testcontainers
 try:
@@ -127,13 +128,14 @@ class TestDatabaseIntegration:
 
         async def create_user(i: int) -> int:
             """Create a single user."""
-            return await integration_db.add_user(
-                email=f"user{i}@test.com",
-                password=f"password{i}",
-                centre="Istanbul",
-                category="Schengen",
-                subcategory="Tourism",
-            )
+            user_repo = UserRepository(integration_db)
+            return await user_repo.create({
+                'email': f"user{i}@test.com",
+                'password': f"password{i}",
+                'center_name': "Istanbul",
+                'visa_category': "Schengen",
+                'visa_subcategory': "Tourism",
+            })
 
         # Create 10 users concurrently
         tasks = [create_user(i) for i in range(10)]
@@ -201,13 +203,14 @@ class TestDatabaseIntegration:
         """Test transaction isolation between connections."""
 
         # Create a user
-        user_id = await integration_db.add_user(
-            email="test@example.com",
-            password="testpass",
-            centre="Istanbul",
-            category="Schengen",
-            subcategory="Tourism",
-        )
+        user_repo = UserRepository(integration_db)
+        user_id = await user_repo.create({
+            'email': "test@example.com",
+            'password': "testpass",
+            'center_name': "Istanbul",
+            'visa_category': "Schengen",
+            'visa_subcategory': "Tourism",
+        })
 
         async def read_user() -> dict:
             """Read user in separate connection."""
@@ -238,20 +241,23 @@ class TestDatabaseIntegration:
         """Test concurrent read and write operations."""
 
         # Create initial users
+        user_repo = UserRepository(integration_db)
         user_ids = []
         for i in range(5):
-            user_id = await integration_db.add_user(
-                email=f"concurrent{i}@test.com",
-                password=f"pass{i}",
-                centre="Istanbul",
-                category="Schengen",
-                subcategory="Tourism",
-            )
+            user_id = await user_repo.create({
+                'email': f"concurrent{i}@test.com",
+                'password': f"pass{i}",
+                'center_name': "Istanbul",
+                'visa_category': "Schengen",
+                'visa_subcategory': "Tourism",
+            })
             user_ids.append(user_id)
+
+        user_repo = UserRepository(integration_db)
 
         async def read_users() -> list:
             """Read all users."""
-            return await integration_db.get_active_users()
+            return await user_repo.get_all_active()
 
         async def add_personal_details(user_id: int) -> None:
             """Add personal details for a user."""
@@ -288,15 +294,16 @@ class TestDatabaseIntegration:
         """Test batch retrieval of personal details."""
 
         # Create users with personal details
+        user_repo = UserRepository(integration_db)
         user_ids = []
         for i in range(5):
-            user_id = await integration_db.add_user(
-                email=f"batch{i}@test.com",
-                password=f"pass{i}",
-                centre="Istanbul",
-                category="Schengen",
-                subcategory="Tourism",
-            )
+            user_id = await user_repo.create({
+                'email': f"batch{i}@test.com",
+                'password': f"pass{i}",
+                'center_name': "Istanbul",
+                'visa_category': "Schengen",
+                'visa_subcategory': "Tourism",
+            })
             user_ids.append(user_id)
 
             await integration_db.add_personal_details(
@@ -332,13 +339,14 @@ class TestDatabaseContextManager:
             assert db.pool is not None
 
             # Should be able to use the database
-            user_id = await db.add_user(
-                email="context@test.com",
-                password="password",
-                centre="Istanbul",
-                category="Schengen",
-                subcategory="Tourism",
-            )
+            user_repo = UserRepository(db)
+            user_id = await user_repo.create({
+                'email': "context@test.com",
+                'password': "password",
+                'center_name': "Istanbul",
+                'visa_category': "Schengen",
+                'visa_subcategory': "Tourism",
+            })
             assert user_id > 0
 
         # After context exit, connection should be closed
