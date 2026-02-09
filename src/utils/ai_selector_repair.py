@@ -296,6 +296,10 @@ class AISelectorRepair:
             with open(self.selectors_file, "r", encoding="utf-8") as f:
                 selectors = yaml.safe_load(f)
 
+            if not isinstance(selectors, dict):
+                logger.warning("Selectors file is empty or invalid, cannot update with AI suggestion")
+                return
+
             # Navigate to the path and update
             keys = selector_path.split(".")
             current = selectors
