@@ -90,13 +90,13 @@ class SlotPatternAnalyzer:
         """
         Record a found slot (synchronous method - deprecated).
         
-        .. deprecated:: 2.0
+        .. deprecated::
             Use :func:`record_slot_found_async` instead for better performance.
-            This method will be removed in version 3.0.
+            This synchronous method will be removed in a future version.
         """
         # Warn users about deprecation
         warnings.warn(
-            "record_slot_found() is deprecated and will be removed in version 3.0. "
+            "record_slot_found() is deprecated. "
             "Use record_slot_found_async() for better performance with batching.",
             DeprecationWarning,
             stacklevel=2

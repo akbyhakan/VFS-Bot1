@@ -336,7 +336,7 @@ API endpoints are rate-limited to prevent abuse:
     # 3. Security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # 3. Correlation ID middleware for request tracking
+    # 4. Correlation ID middleware for request tracking
     app.add_middleware(CorrelationMiddleware)
 
     # 4. Configure CORS
