@@ -1,23 +1,22 @@
 """Proxy management routes for VFS-Bot web application."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.repositories import ProxyRepository
-from src.utils.security.netnut_proxy import NetNutProxyManager
-from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, get_proxy_repository, verify_jwt_token
+from web.dependencies import (
+    ProxyCreateRequest,
+    ProxyResponse,
+    ProxyUpdateRequest,
+    get_proxy_repository,
+    verify_jwt_token,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/proxy", tags=["proxy"])
-
-# Global proxy manager instance
-# Note: This is safe for concurrent access as FastAPI handles requests
-# independently. For production use with multiple worker processes,
-# consider using a shared cache (Redis) or database backend.
-proxy_manager = NetNutProxyManager()
 
 
 # Response models
@@ -27,23 +26,6 @@ class ProxyStats(BaseModel):
     total: int
     active: int
     failed: int
-
-
-class ProxyInfo(BaseModel):
-    """Proxy information response model."""
-
-    endpoint: str
-    host: str
-    port: int
-    username: str
-    status: str
-
-
-class ProxyListResponse(BaseModel):
-    """Proxy list response model."""
-
-    proxies: List[ProxyInfo]
-    stats: ProxyStats
 
 
 # ================================================================================
@@ -493,135 +475,25 @@ async def upload_proxy_csv(
         raise HTTPException(status_code=500, detail="Failed to upload proxy file")
 
 
-# ================================================================================
-# Legacy In-Memory Manager Endpoints (Kept for backwards compatibility)
-# ================================================================================
-
-
-@router.get("/memory/list", response_model=ProxyListResponse)
-async def get_memory_proxy_list(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
-    """
-    Get list of all proxies from in-memory manager (legacy).
-    
-    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
-    suitable for multi-worker deployments. Use the database-backed endpoints instead:
-    - GET /proxy/list for retrieving proxies
-    
-    This endpoint is maintained for backward compatibility only and may be removed
-    in a future version.
-
-    Args:
-        token_data: Verified token data
-
-    Returns:
-        List of proxies with statistics
-    """
-    logger.warning(
-        "⚠️ DEPRECATED: /proxy/memory/list endpoint is deprecated. "
-        "Use /proxy/list instead for multi-worker compatible operations."
-    )
-    try:
-        proxies = proxy_manager.get_proxy_list()
-        stats = proxy_manager.get_stats()
-
-        return ProxyListResponse(
-            proxies=[ProxyInfo(**p) for p in proxies],
-            stats=ProxyStats(**stats),
-        )
-
-    except Exception as e:
-        logger.error(f"Failed to get proxy list: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve proxy list")
-
-
-@router.get("/memory/stats", response_model=ProxyStats)
-async def get_memory_proxy_stats(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
-    """
-    Get proxy statistics from in-memory manager (legacy).
-    
-    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
-    suitable for multi-worker deployments. Use the database-backed endpoints instead:
-    - GET /proxy/stats for combined statistics
-    
-    This endpoint is maintained for backward compatibility only and may be removed
-    in a future version.
-
-    Args:
-        token_data: Verified token data
-
-    Returns:
-        Proxy statistics (total, active, failed)
-    """
-    logger.warning(
-        "⚠️ DEPRECATED: /proxy/memory/stats endpoint is deprecated. "
-        "Use /proxy/stats instead for multi-worker compatible operations."
-    )
-    try:
-        stats = proxy_manager.get_stats()
-        return ProxyStats(**stats)
-
-    except Exception as e:
-        logger.error(f"Failed to get proxy stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve proxy statistics")
-
-
-@router.delete("/memory/clear")
-async def clear_memory_proxies(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
-    """
-    Clear all proxies from in-memory manager (legacy).
-    
-    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
-    suitable for multi-worker deployments. Use the database-backed endpoints instead:
-    - DELETE /proxy/clear-all for clearing all proxies
-    
-    This endpoint is maintained for backward compatibility only and may be removed
-    in a future version.
-
-    Args:
-        token_data: Verified token data
-
-    Returns:
-        Success message
-    """
-    logger.warning(
-        "⚠️ DEPRECATED: /proxy/memory/clear endpoint is deprecated. "
-        "Use /proxy/clear-all instead for multi-worker compatible operations."
-    )
-    try:
-        proxy_manager.clear_all()
-        logger.info("Cleared all in-memory proxies via API")
-
-        return {"message": "All in-memory proxies cleared successfully"}
-
-    except Exception as e:
-        logger.error(f"Failed to clear proxies: {e}")
-        raise HTTPException(status_code=500, detail="Failed to clear proxies")
-
-
-@router.get("/stats", response_model=Dict[str, Any])
-async def get_combined_stats(
+@router.get("/stats")
+async def get_proxy_stats(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
-    Get combined proxy statistics from both database and in-memory manager.
+    Get proxy statistics from the database.
 
     Args:
         token_data: Verified token data
         proxy_repo: ProxyRepository instance
 
     Returns:
-        Combined statistics
+        Database statistics
     """
     try:
         db_stats = await proxy_repo.get_stats()
-        memory_stats = proxy_manager.get_stats()
-
-        return {
-            "database": db_stats,
-            "memory": memory_stats,
-        }
+        return db_stats
 
     except Exception as e:
-        logger.error(f"Failed to get combined stats: {e}")
+        logger.error(f"Failed to get stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
