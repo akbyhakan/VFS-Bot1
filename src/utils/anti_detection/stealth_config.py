@@ -101,9 +101,19 @@ class StealthConfig:
             page: Playwright page object
             languages: List of language codes to spoof. Defaults to Turkish locale
                        for VFS Turkey compatibility: ['tr-TR', 'tr', 'en-US', 'en']
+        
+        Raises:
+            ValueError: If language codes contain invalid characters
         """
         if languages is None:
             languages = ['tr-TR', 'tr', 'en-US', 'en']
+
+        # Validate language codes to prevent JavaScript injection
+        import re
+        lang_pattern = re.compile(r'^[a-zA-Z]{2}(-[a-zA-Z]{2,4})?$')
+        for lang in languages:
+            if not lang_pattern.match(lang):
+                raise ValueError(f"Invalid language code: {lang}. Must match pattern 'xx' or 'xx-YY'")
 
         languages_js = ', '.join(f"'{lang}'" for lang in languages)
         await page.add_init_script(f"""
