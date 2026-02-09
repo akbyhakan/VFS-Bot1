@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import uuid
+from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, NamedTuple, Optional, cast
@@ -27,53 +28,264 @@ SUPPORTED_JWT_ALGORITHMS = frozenset({
 })
 
 
+class RateLimiterBackend(ABC):
+    """Abstract base class for rate limiter backends."""
+
+    @abstractmethod
+    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """
+        Check if identifier is rate limited.
+
+        Args:
+            identifier: Unique identifier (e.g., username, IP)
+            max_attempts: Maximum attempts allowed in window
+            window_seconds: Time window in seconds
+
+        Returns:
+            True if rate limited
+        """
+        pass
+
+    @abstractmethod
+    def record_attempt(self, identifier: str, window_seconds: int) -> None:
+        """
+        Record an authentication attempt.
+
+        Args:
+            identifier: Unique identifier
+            window_seconds: Time window for attempt expiry
+        """
+        pass
+
+    @abstractmethod
+    def clear_attempts(self, identifier: str) -> None:
+        """
+        Clear all attempts for an identifier.
+
+        Args:
+            identifier: Unique identifier to clear
+        """
+        pass
+
+    @abstractmethod
+    def cleanup_stale_entries(self, window_seconds: int) -> int:
+        """
+        Remove all stale entries outside the window.
+
+        Args:
+            window_seconds: Time window in seconds
+
+        Returns:
+            Number of identifiers cleaned up
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        pass
+
+
+class InMemoryBackend(RateLimiterBackend):
+    """In-memory rate limiter backend (single-worker only)."""
+
+    MAX_IDENTIFIERS_BEFORE_CLEANUP = 10000
+
+    def __init__(self):
+        """Initialize in-memory backend."""
+        self._attempts: Dict[str, list] = defaultdict(list)
+        self._lock = threading.Lock()
+
+    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """Check if identifier is rate limited."""
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(seconds=window_seconds)
+
+            # Clean old attempts
+            self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
+
+            # Check rate limit status
+            is_limited = len(self._attempts[identifier]) >= max_attempts
+
+            # Clean up empty lists to prevent unbounded memory growth
+            if not self._attempts[identifier]:
+                del self._attempts[identifier]
+
+            return is_limited
+
+    def record_attempt(self, identifier: str, window_seconds: int) -> None:
+        """Record an authentication attempt."""
+        with self._lock:
+            self._attempts[identifier].append(datetime.now(timezone.utc))
+
+            # Trigger cleanup when dict grows beyond threshold
+            if len(self._attempts) > self.MAX_IDENTIFIERS_BEFORE_CLEANUP:
+                now = datetime.now(timezone.utc)
+                cutoff = now - timedelta(seconds=window_seconds)
+                stale_keys = [
+                    k for k, v in self._attempts.items()
+                    if not any(t > cutoff for t in v)
+                ]
+                for key in stale_keys:
+                    del self._attempts[key]
+
+    def clear_attempts(self, identifier: str) -> None:
+        """Clear all attempts for an identifier."""
+        with self._lock:
+            if identifier in self._attempts:
+                del self._attempts[identifier]
+
+    def cleanup_stale_entries(self, window_seconds: int) -> int:
+        """Remove all stale entries outside the window."""
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(seconds=window_seconds)
+
+            stale_keys = []
+            for identifier, attempts in self._attempts.items():
+                # Filter to only recent attempts
+                recent = [t for t in attempts if t > cutoff]
+                if not recent:
+                    stale_keys.append(identifier)
+                else:
+                    self._attempts[identifier] = recent
+
+            for key in stale_keys:
+                del self._attempts[key]
+
+            return len(stale_keys)
+
+    @property
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        return False
+
+
+class RedisBackend(RateLimiterBackend):
+    """Redis-based distributed rate limiter backend."""
+
+    def __init__(self, redis_client: Any):
+        """
+        Initialize Redis backend.
+
+        Args:
+            redis_client: Redis client instance
+        """
+        self._redis = redis_client
+
+    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """Check if identifier is rate limited using Redis sorted set."""
+        key = f"auth_rl:{identifier}"
+        now = time.time()
+        cutoff = now - window_seconds
+
+        # Remove old attempts and count current
+        self._redis.zremrangebyscore(key, 0, cutoff)
+        count = self._redis.zcard(key)
+
+        return count >= max_attempts
+
+    def record_attempt(self, identifier: str, window_seconds: int) -> None:
+        """Record an authentication attempt in Redis."""
+        key = f"auth_rl:{identifier}"
+        now = time.time()
+
+        # Add attempt with timestamp as score
+        self._redis.zadd(key, {str(uuid.uuid4()): now})
+
+        # Set TTL to window_seconds to auto-expire
+        self._redis.expire(key, window_seconds)
+
+    def clear_attempts(self, identifier: str) -> None:
+        """Clear all attempts for an identifier."""
+        key = f"auth_rl:{identifier}"
+        self._redis.delete(key)
+
+    def cleanup_stale_entries(self, window_seconds: int) -> int:
+        """
+        Remove stale entries from Redis.
+
+        Note: Redis auto-expires keys with TTL, so this is mostly a no-op.
+        Returns 0 as cleanup is handled by Redis TTL.
+        """
+        # Redis handles cleanup via EXPIRE, so no manual cleanup needed
+        return 0
+
+    @property
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        return True
+
+
 class AuthRateLimiter:
     """
     Rate limiter for authentication endpoints to prevent brute-force attacks.
-    
-    **IMPORTANT: Multi-Worker Deployment Limitation**
-    This implementation uses in-memory storage and is NOT safe for multi-worker
-    deployments (e.g., `uvicorn --workers N`). Each worker maintains its own
-    separate state, which makes rate limiting ineffective across workers.
-    
-    For production deployments with multiple workers, consider:
-    - Using a shared cache backend like Redis
-    - Implementing distributed rate limiting
-    - Running with a single worker and scaling horizontally with a load balancer
-    
-    Future versions will support distributed backends via the `is_distributed`
-    property.
+
+    Supports both in-memory (single worker) and Redis (multi-worker) backends.
     """
 
-    # Maximum number of identifiers to track before triggering cleanup
-    MAX_IDENTIFIERS_BEFORE_CLEANUP = 10000
-
-    def __init__(self, max_attempts: int = 5, window_seconds: int = 60):
+    def __init__(
+        self,
+        max_attempts: int = 5,
+        window_seconds: int = 60,
+        backend: Optional[RateLimiterBackend] = None
+    ):
         """
         Initialize rate limiter.
 
         Args:
             max_attempts: Maximum authentication attempts allowed in window
             window_seconds: Time window in seconds
+            backend: Optional backend instance (auto-detects if None)
         """
-        self._attempts: Dict[str, list] = defaultdict(list)
-        self._lock = threading.Lock()
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
+
+        if backend is not None:
+            self._backend = backend
+        else:
+            # Auto-detect backend
+            self._backend = self._auto_detect_backend()
+
+    def _auto_detect_backend(self) -> RateLimiterBackend:
+        """
+        Auto-detect and initialize appropriate backend.
+
+        Tries to connect to Redis if REDIS_URL is set, falls back to in-memory.
+
+        Returns:
+            RateLimiterBackend instance
+        """
+        redis_url = os.getenv("REDIS_URL")
+
+        if redis_url:
+            try:
+                import redis
+                client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
+                # Test connection
+                client.ping()
+                logger.info(f"AuthRateLimiter using Redis backend: {redis_url}")
+                return RedisBackend(client)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to connect to Redis ({redis_url}), falling back to in-memory: {e}"
+                )
+
+        # Fallback to in-memory
+        logger.info("AuthRateLimiter using in-memory backend")
+        return InMemoryBackend()
 
     @property
     def is_distributed(self) -> bool:
         """
         Check if rate limiter is using distributed storage.
-        
+
         Returns:
-            False for in-memory implementation, True for distributed backends
-            
-        Note:
-            This property is provided for future Redis/distributed backend support.
-            Current implementation always returns False.
+            True if using distributed backend (e.g., Redis)
         """
-        return False
+        return self._backend.is_distributed
 
     def is_rate_limited(self, identifier: str) -> bool:
         """
@@ -85,23 +297,7 @@ class AuthRateLimiter:
         Returns:
             True if rate limited
         """
-        with self._lock:
-            now = datetime.now(timezone.utc)
-            cutoff = now - timedelta(seconds=self.window_seconds)
-
-            # Clean old attempts
-            self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
-
-            # Check rate limit status
-            is_limited = len(self._attempts[identifier]) >= self.max_attempts
-
-            # Clean up empty lists to prevent unbounded memory growth
-            # Safe to delete here as we've already captured the rate limit status
-            # and won't access this identifier again in this call
-            if not self._attempts[identifier]:
-                del self._attempts[identifier]
-
-            return is_limited
+        return self._backend.is_rate_limited(identifier, self.max_attempts, self.window_seconds)
 
     def record_attempt(self, identifier: str) -> None:
         """
@@ -110,47 +306,7 @@ class AuthRateLimiter:
         Args:
             identifier: Unique identifier (e.g., username, IP address)
         """
-        with self._lock:
-            self._attempts[identifier].append(datetime.now(timezone.utc))
-            
-            # Trigger cleanup when dict grows beyond a threshold
-            if len(self._attempts) > self.MAX_IDENTIFIERS_BEFORE_CLEANUP:
-                now = datetime.now(timezone.utc)
-                cutoff = now - timedelta(seconds=self.window_seconds)
-                stale_keys = [
-                    k for k, v in self._attempts.items()
-                    if not any(t > cutoff for t in v)
-                ]
-                for key in stale_keys:
-                    del self._attempts[key]
-
-    def cleanup_stale_entries(self) -> int:
-        """
-        Remove all stale entries that have no attempts within the current window.
-        
-        Should be called periodically to prevent unbounded memory growth
-        from identifiers that recorded attempts but never called is_rate_limited again.
-        
-        Returns:
-            Number of identifiers cleaned up
-        """
-        with self._lock:
-            now = datetime.now(timezone.utc)
-            cutoff = now - timedelta(seconds=self.window_seconds)
-            
-            stale_keys = []
-            for identifier, attempts in self._attempts.items():
-                # Filter to only recent attempts
-                recent = [t for t in attempts if t > cutoff]
-                if not recent:
-                    stale_keys.append(identifier)
-                else:
-                    self._attempts[identifier] = recent
-            
-            for key in stale_keys:
-                del self._attempts[key]
-            
-            return len(stale_keys)
+        self._backend.record_attempt(identifier, self.window_seconds)
 
     def clear_attempts(self, identifier: str) -> None:
         """
@@ -159,9 +315,16 @@ class AuthRateLimiter:
         Args:
             identifier: Unique identifier to clear
         """
-        with self._lock:
-            if identifier in self._attempts:
-                del self._attempts[identifier]
+        self._backend.clear_attempts(identifier)
+
+    def cleanup_stale_entries(self) -> int:
+        """
+        Remove all stale entries that have no attempts within the current window.
+
+        Returns:
+            Number of identifiers cleaned up
+        """
+        return self._backend.cleanup_stale_entries(self.window_seconds)
 
 
 # Global rate limiter instance
@@ -172,15 +335,6 @@ _rate_limiter_lock = threading.Lock()
 def get_auth_rate_limiter() -> AuthRateLimiter:
     """
     Get or create auth rate limiter singleton.
-    
-    **WARNING: Multi-Worker Limitation**
-    The rate limiter uses in-memory storage and is not shared across
-    multiple worker processes. In multi-worker deployments (e.g.,
-    `uvicorn --workers N`), each worker maintains separate state,
-    reducing the effectiveness of rate limiting.
-    
-    For production multi-worker deployments, consider using a distributed
-    rate limiting solution with Redis or similar shared storage.
 
     Returns:
         AuthRateLimiter instance
@@ -196,17 +350,17 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
             _auth_rate_limiter = AuthRateLimiter(
                 max_attempts=max_attempts, window_seconds=window_seconds
             )
-            
-            # Log warning if running in multi-worker environment
+
+            # Check for multi-worker environment and log error if not using distributed backend
             workers = os.getenv("WEB_CONCURRENCY") or os.getenv("UVICORN_WORKERS")
             if workers:
                 try:
                     worker_count = int(workers)
-                    if worker_count > 1:
-                        logger.warning(
-                            f"⚠️ Auth rate limiter running with {worker_count} workers. "
-                            "In-memory rate limiting is NOT shared across workers. "
-                            "Consider using Redis-backed rate limiting for production."
+                    if worker_count > 1 and not _auth_rate_limiter.is_distributed:
+                        logger.error(
+                            f"🚨 SECURITY RISK: Auth rate limiter running with {worker_count} workers "
+                            "but using in-memory backend. Rate limiting is NOT shared across workers. "
+                            "Set REDIS_URL environment variable to enable distributed rate limiting."
                         )
                 except (ValueError, TypeError):
                     # Invalid worker count - log debug message but don't fail

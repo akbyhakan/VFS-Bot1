@@ -130,8 +130,9 @@ class TestAuthRateLimiter:
         limiter.record_attempt("user2")
         limiter.record_attempt("user3")
 
-        # Check that attempts are recorded
-        assert len(limiter._attempts) == 3
+        # Check that attempts are recorded (access backend's internal state)
+        if hasattr(limiter._backend, '_attempts'):
+            assert len(limiter._backend._attempts) == 3
 
         # Wait for window to expire
         time.sleep(1.1)
@@ -142,7 +143,8 @@ class TestAuthRateLimiter:
         limiter.is_rate_limited("user3")
 
         # After cleanup, empty lists should be removed from memory
-        assert len(limiter._attempts) == 0
+        if hasattr(limiter._backend, '_attempts'):
+            assert len(limiter._backend._attempts) == 0
 
     def test_timezone_aware_datetime(self):
         """Test that rate limiter uses timezone-aware datetime."""
@@ -151,9 +153,45 @@ class TestAuthRateLimiter:
         # Record an attempt
         limiter.record_attempt("user1")
 
-        # Check that the stored timestamp is timezone-aware
-        assert len(limiter._attempts["user1"]) == 1
-        stored_time = limiter._attempts["user1"][0]
-        # Timezone-aware datetime should have tzinfo
-        assert stored_time.tzinfo is not None
-        assert stored_time.tzinfo == timezone.utc
+        # For in-memory backend, check stored timestamp
+        if hasattr(limiter._backend, '_attempts'):
+            assert len(limiter._backend._attempts["user1"]) == 1
+            stored_time = limiter._backend._attempts["user1"][0]
+            # Timezone-aware datetime should have tzinfo
+            assert stored_time.tzinfo is not None
+            assert stored_time.tzinfo == timezone.utc
+
+    def test_is_distributed_false_for_in_memory(self):
+        """Test that is_distributed returns False when using InMemoryBackend."""
+        limiter = AuthRateLimiter(max_attempts=5, window_seconds=60)
+        # Without REDIS_URL, should use InMemoryBackend
+        assert limiter.is_distributed is False
+
+    def test_backend_auto_detection_fallback(self):
+        """Test that backend gracefully falls back to InMemoryBackend on Redis failure."""
+        import os
+        from unittest.mock import patch
+
+        # Mock REDIS_URL to an invalid URL
+        with patch.dict(os.environ, {"REDIS_URL": "redis://invalid-host:9999/0"}):
+            limiter = AuthRateLimiter(max_attempts=5, window_seconds=60)
+            # Should fall back to InMemoryBackend without raising
+            assert limiter.is_distributed is False
+            # Should still work
+            assert not limiter.is_rate_limited("test")
+
+    def test_cleanup_stale_entries_through_backend(self):
+        """Test that cleanup_stale_entries works correctly through the backend."""
+        limiter = AuthRateLimiter(max_attempts=5, window_seconds=1)
+
+        # Record attempts for multiple users
+        limiter.record_attempt("user1")
+        limiter.record_attempt("user2")
+        limiter.record_attempt("user3")
+
+        # Wait for entries to become stale
+        time.sleep(1.1)
+
+        # Cleanup should remove all stale entries
+        cleaned = limiter.cleanup_stale_entries()
+        assert cleaned == 3
