@@ -41,12 +41,7 @@ class APIKeyManager:
 
     def get_salt(self) -> bytes:
         """Get API key salt from environment variable - REQUIRED in production."""
-        global _API_KEY_SALT
         with self._lock:
-            # Check if global variable was reset for testing
-            if _API_KEY_SALT is None:
-                self._salt = None
-
             if self._salt is None:
                 self._load_salt()
             # After _load_salt, _salt should be set, but we need to handle type checker
@@ -56,7 +51,6 @@ class APIKeyManager:
 
     def _load_salt(self) -> None:
         """Load salt from environment (must be called with lock held)."""
-        global _API_KEY_SALT
         salt_env = os.getenv("API_KEY_SALT")
         env = os.getenv("ENV", "production").lower()
 
@@ -82,7 +76,6 @@ class APIKeyManager:
             )
 
         self._salt = salt_env.encode()
-        _API_KEY_SALT = self._salt  # Keep global in sync
         logger.info("API_KEY_SALT loaded successfully")
 
     def _hash_key(self, api_key: str) -> str:
@@ -207,17 +200,6 @@ class APIKeyManager:
             )
 
 
-# Backward compatibility - keep old global variables and functions
-API_KEYS: Dict[str, Dict[str, Any]] = {}
-_API_KEY_SALT: Optional[bytes] = None
-
-
-def _get_api_key_salt() -> bytes:
-    """Get API key salt from environment variable - REQUIRED in production."""
-    manager = APIKeyManager()
-    return manager.get_salt()
-
-
 def generate_api_key() -> str:
     """
     Generate a new API key.
@@ -228,34 +210,10 @@ def generate_api_key() -> str:
     return secrets.token_urlsafe(32)
 
 
-def hash_api_key(api_key: str) -> str:
-    """
-    Hash API key for storage using HMAC-SHA256 with salt.
-
-    Args:
-        api_key: API key to hash
-
-    Returns:
-        HMAC-SHA256 hash of the API key
-    """
-    manager = APIKeyManager()
-    return manager._hash_key(api_key)
-
-
 def load_api_keys() -> None:
     """Load API keys from environment or file."""
     manager = APIKeyManager()
     manager.load_keys()
-
-    # Backward compatibility: sync to global API_KEYS dict
-    master_key = os.getenv("DASHBOARD_API_KEY")
-    if master_key:
-        key_hash = hash_api_key(master_key)
-        API_KEYS[key_hash] = {
-            "name": "master",
-            "created": datetime.now(timezone.utc).isoformat(),
-            "scopes": ["read", "write", "admin"],
-        }
 
 
 async def verify_api_key(
