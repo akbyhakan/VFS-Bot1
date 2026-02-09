@@ -328,13 +328,13 @@ class BookingWorkflow:
             if confirmation.get("success"):
                 reference = confirmation.get("reference", "UNKNOWN")
                 await self.appointment_repo.create({
-                    'user_id': user["id"],
-                    'centre': centre,
-                    'category': user["category"],
-                    'subcategory': user["subcategory"],
-                    'appointment_date': slot["date"],
-                    'appointment_time': slot["time"],
-                    'reference_number': reference
+                    "user_id": user["id"],
+                    "centre": centre,
+                    "category": user["category"],
+                    "subcategory": user["subcategory"],
+                    "appointment_date": slot["date"],
+                    "appointment_time": slot["time"],
+                    "reference_number": reference
                 })
                 await self.notifier.notify_booking_success(
                     centre, slot["date"], slot["time"], reference
