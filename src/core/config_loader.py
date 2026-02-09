@@ -46,18 +46,8 @@ def _is_production_environment(env: str) -> bool:
 
 def load_env_variables() -> None:
     """Load environment variables from .env file."""
-    # Try project root first (correct location)
+    # Load from project root
     env_path = Path(__file__).parent.parent.parent / ".env"
-    
-    # Fallback to old location for backward compatibility
-    if not env_path.exists():
-        old_env_path = Path(__file__).parent.parent / ".env"
-        if old_env_path.exists():
-            env_path = old_env_path
-            logger.warning(
-                f"Using .env from deprecated location: {old_env_path}. "
-                "Please move it to project root."
-            )
     
     if env_path.exists():
         load_dotenv(env_path)
@@ -259,7 +249,3 @@ def get_config_selector(group: str, name: str, default: str = "") -> str:
             return selector
 
     return default
-
-
-# Backward compatibility alias
-get_selector = get_config_selector

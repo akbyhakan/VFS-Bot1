@@ -12,7 +12,8 @@ from slowapi.util import get_remote_address
 from src.core.auth import create_access_token
 from src.core.security import generate_api_key
 from src.models.database import Database
-from web.dependencies import LoginRequest, TokenResponse, get_db, verify_jwt_token
+from web.dependencies import get_db, verify_jwt_token
+from web.models.auth import LoginRequest, TokenResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])

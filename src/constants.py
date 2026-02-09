@@ -57,12 +57,6 @@ class Retries:
     BACKOFF_MIN_SECONDS: Final[int] = 4
     BACKOFF_MAX_SECONDS: Final[int] = 10
 
-    # Aliases for backward compatibility
-    MAX_PROCESS_USER_ATTEMPTS: Final[int] = MAX_PROCESS_USER
-    EXPONENTIAL_MULTIPLIER: Final[int] = BACKOFF_MULTIPLIER
-    EXPONENTIAL_MIN: Final[int] = BACKOFF_MIN_SECONDS
-    EXPONENTIAL_MAX: Final[int] = BACKOFF_MAX_SECONDS
-
 
 class RateLimits:
     """Rate limiting configuration."""
@@ -115,13 +109,6 @@ class CircuitBreaker:
     HALF_OPEN_MAX_CALLS: Final[int] = 3
     BACKOFF_BASE_SECONDS: Final[int] = 60
     BACKOFF_MAX_SECONDS: Final[int] = 600
-
-    # Aliases for backward compatibility
-    MAX_CONSECUTIVE_ERRORS: Final[int] = FAIL_THRESHOLD
-    MAX_TOTAL_ERRORS_PER_HOUR: Final[int] = MAX_ERRORS_PER_HOUR
-    ERROR_TRACKING_WINDOW: Final[int] = ERROR_WINDOW_SECONDS
-    BACKOFF_BASE: Final[int] = BACKOFF_BASE_SECONDS
-    BACKOFF_MAX: Final[int] = BACKOFF_MAX_SECONDS
 
 
 class OTP:
