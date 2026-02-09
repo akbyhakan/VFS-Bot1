@@ -7,6 +7,7 @@ from cryptography.fernet import Fernet
 
 from src.constants import Database as DbConstants
 from src.models.database import Database
+from src.repositories import PaymentRepository
 from src.utils.encryption import reset_encryption
 
 
@@ -41,14 +42,13 @@ async def test_card_stored_without_cvv(test_db):
     Card holder must enter CVV at payment time.
     """
     # Save card WITHOUT CVV
-    card_id = await test_db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(test_db)
+    card_id = await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     assert card_id > 0
 
@@ -75,14 +75,13 @@ async def test_masked_card_no_cvv(test_db):
     Test that masked card endpoint doesn't expose CVV.
     """
     # Save card
-    await test_db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(test_db)
+    await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     # Get masked card
     card = await test_db.get_payment_card_masked()
@@ -137,14 +136,13 @@ async def test_card_number_encryption(test_db):
     card_number = "4111111111111111"
 
     # Save card
-    await test_db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": card_number,
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(test_db)
+    await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": card_number,
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     # Query the database directly to check encryption
     async with test_db.get_connection() as conn:
@@ -165,24 +163,21 @@ async def test_card_update(test_db):
     Test that updating a card works correctly.
     """
     # Create initial card
-    card_id = await test_db.save_payment_card(
-        {
-            "card_holder_name": "Test User",
-            "card_number": "4111111111111111",
-            "expiry_month": "12",
-            "expiry_year": "2025",
-        }
-    )
+    payment_repo = PaymentRepository(test_db)
+    card_id = await payment_repo.create({
+        "card_holder_name": "Test User",
+        "card_number": "4111111111111111",
+        "expiry_month": "12",
+        "expiry_year": "2025",
+    })
 
     # Update card
-    updated_id = await test_db.save_payment_card(
-        {
-            "card_holder_name": "Updated User",
-            "card_number": "4111111111111111",
-            "expiry_month": "01",
-            "expiry_year": "2026",
-        }
-    )
+    updated_id = await payment_repo.create({
+        "card_holder_name": "Updated User",
+        "card_number": "4111111111111111",
+        "expiry_month": "01",
+        "expiry_year": "2026",
+    })
 
     # Should update the same card
     assert updated_id == card_id
