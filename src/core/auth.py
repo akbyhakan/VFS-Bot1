@@ -199,13 +199,20 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
             
             # Log warning if running in multi-worker environment
             workers = os.getenv("WEB_CONCURRENCY") or os.getenv("UVICORN_WORKERS")
-            if workers and int(workers) > 1:
-                logger.warning(
-                    f"⚠️ Auth rate limiter running with {workers} workers. "
-                    "In-memory rate limiting is NOT shared across workers. "
-                    "Consider using Redis-backed rate limiting for production."
-                )
+            if workers:
+                try:
+                    worker_count = int(workers)
+                    if worker_count > 1:
+                        logger.warning(
+                            f"⚠️ Auth rate limiter running with {worker_count} workers. "
+                            "In-memory rate limiting is NOT shared across workers. "
+                            "Consider using Redis-backed rate limiting for production."
+                        )
+                except (ValueError, TypeError):
+                    # Invalid worker count - log debug message but don't fail
+                    logger.debug(f"Invalid worker count in environment: {workers}")
         return _auth_rate_limiter
+
 
 
 class TokenBlacklist:

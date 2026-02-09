@@ -509,7 +509,7 @@ class TestYAMLEdgeCasesInAddToYAML:
             yaml.dump({"version": "1.0", "login": {"email_input": "input#email"}}, f)
         return selectors_file
 
-    def test_add_to_yaml_with_empty_file(self, tmp_path):
+    def test_add_to_yaml_with_empty_file(self, tmp_path, caplog):
         """Test that _add_to_yaml handles empty YAML file gracefully."""
         empty_file = tmp_path / "empty.yaml"
         empty_file.write_text("")
@@ -522,8 +522,11 @@ class TestYAMLEdgeCasesInAddToYAML:
         # File should remain empty (or unchanged)
         content = empty_file.read_text()
         assert content == ""  # Should not be modified
+        
+        # Verify warning was logged
+        assert "Selectors file is empty or invalid" in caplog.text
 
-    def test_add_to_yaml_with_none_content(self, tmp_path):
+    def test_add_to_yaml_with_none_content(self, tmp_path, caplog):
         """Test that _add_to_yaml handles YAML file that returns None."""
         none_file = tmp_path / "none.yaml"
         none_file.write_text("~\n")
@@ -537,8 +540,11 @@ class TestYAMLEdgeCasesInAddToYAML:
         with open(none_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert loaded is None
+        
+        # Verify warning was logged
+        assert "Selectors file is empty or invalid" in caplog.text
 
-    def test_add_to_yaml_with_list_content(self, tmp_path):
+    def test_add_to_yaml_with_list_content(self, tmp_path, caplog):
         """Test that _add_to_yaml handles YAML file that returns a list."""
         list_file = tmp_path / "list.yaml"
         list_file.write_text("- item1\n- item2\n")
@@ -552,8 +558,11 @@ class TestYAMLEdgeCasesInAddToYAML:
         with open(list_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert isinstance(loaded, list)
+        
+        # Verify warning was logged
+        assert "Selectors file is empty or invalid" in caplog.text
 
-    def test_add_to_yaml_with_string_content(self, tmp_path):
+    def test_add_to_yaml_with_string_content(self, tmp_path, caplog):
         """Test that _add_to_yaml handles YAML file that returns a string."""
         string_file = tmp_path / "string.yaml"
         string_file.write_text("just a string\n")
@@ -567,6 +576,9 @@ class TestYAMLEdgeCasesInAddToYAML:
         with open(string_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert isinstance(loaded, str)
+        
+        # Verify warning was logged
+        assert "Selectors file is empty or invalid" in caplog.text
 
     def test_add_to_yaml_with_valid_dict(self, temp_selectors_file):
         """Test that _add_to_yaml works correctly with valid dict YAML."""
