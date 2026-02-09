@@ -1,11 +1,11 @@
 """Shared dependencies, models, and utilities for VFS-Bot web application.
 
-This module provides dependency injection functions and backward compatibility
-re-exports for the modular web package structure.
+This module provides dependency injection functions and re-exports for the modular
+web package structure.
 
 Note: Since v2.1, models have been moved to web.models/, state management to
 web.state/, and WebSocket management to web.websocket/. This file maintains
-backward compatibility by re-exporting all these components.
+re-exports of all these components.
 """
 
 import logging
@@ -52,7 +52,6 @@ async def verify_jwt_token(
     Verify JWT token from HttpOnly cookie or Authorization header.
     
     Cookie-based authentication is preferred for security (XSS protection).
-    Authorization header is kept for backward compatibility with API clients.
 
     Args:
         request: FastAPI request object
@@ -70,7 +69,7 @@ async def verify_jwt_token(
     # First, try to get token from HttpOnly cookie (primary method)
     token = request.cookies.get("access_token")
     
-    # Fallback to Authorization header (backward compatibility)
+    # Fallback to Authorization header
     if not token:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):

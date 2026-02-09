@@ -38,9 +38,9 @@ class UserModel(BaseModel):
 
     id: int
     email: EmailStr
-    phone: str = ""  # Default to empty string for backward compatibility
-    first_name: str = ""  # Default to empty string for backward compatibility
-    last_name: str = ""  # Default to empty string for backward compatibility
+    phone: str = ""
+    first_name: str = ""
+    last_name: str = ""
     center_name: str
     visa_category: str
     visa_subcategory: str
