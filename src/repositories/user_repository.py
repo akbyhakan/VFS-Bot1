@@ -253,7 +253,7 @@ class UserRepository(BaseRepository[User]):
                 data.get("visa_subcategory", ""),
             )
             if user_id is None:
-                raise RuntimeError("Failed to fetch user ID after insert")
+                raise RuntimeError("Failed to create user: INSERT did not return an ID")
 
         # Add personal details if provided
         personal_details = {}
@@ -476,7 +476,7 @@ class UserRepository(BaseRepository[User]):
             )
             logger.info(f"Personal details added for user {user_id}")
             if personal_id is None:
-                raise RuntimeError("Failed to fetch ID after insert")
+                raise RuntimeError("Failed to insert personal details: no ID returned")
             return int(personal_id)
 
     async def get_personal_details(self, user_id: int) -> Optional[Dict[str, Any]]:
@@ -690,9 +690,7 @@ class UserRepository(BaseRepository[User]):
         if not updates:
             return True
 
-        updates.append(f"updated_at = ${param_num}")
-        params.append(datetime.now(timezone.utc))
-        param_num += 1
+        updates.append("updated_at = NOW()")
         params.append(user_id)
 
         async with self.db.get_connection() as conn:

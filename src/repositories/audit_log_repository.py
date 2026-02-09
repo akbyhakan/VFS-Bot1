@@ -173,7 +173,7 @@ class AuditLogRepository(BaseRepository[AuditLogEntry]):
                 data.get("success", True),
             )
             if audit_id is None:
-                raise RuntimeError("Failed to fetch ID after insert")
+                raise RuntimeError("Failed to create audit log entry: no ID returned")
             logger.debug(f"Audit log entry added: {data.get('action')}")
             return int(audit_id)
 
