@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -45,6 +46,117 @@ class AISelectorRepair:
         else:
             logger.debug("GEMINI_API_KEY not set, AI repair disabled")
 
+    @staticmethod
+    def _sanitize_html_for_llm(html_content: str) -> str:
+        """
+        Sanitize HTML before sending to external LLM to prevent data leakage.
+        
+        Removes sensitive data:
+        - Script and style contents
+        - Input/textarea values
+        - Meta tag content
+        - Data attributes
+        - Inline event handlers
+        - Hidden inputs with sensitive names
+        
+        Args:
+            html_content: Raw HTML content
+            
+        Returns:
+            Sanitized HTML safe for LLM processing
+        """
+        # Remove script and style blocks entirely
+        # Using a simple state machine approach to avoid regex pitfalls with HTML
+        # This is more robust than regex for security-critical HTML parsing
+        
+        # Remove script tags and their contents
+        result = []
+        in_script = False
+        i = 0
+        while i < len(html_content):
+            # Check for script tag start
+            if html_content[i:i+7].lower() == '<script':
+                in_script = True
+                # Find the end of the opening tag
+                while i < len(html_content) and html_content[i] != '>':
+                    i += 1
+                i += 1  # Skip the '>'
+                continue
+            # Check for script tag end
+            if in_script and html_content[i:i+9].lower() == '</script>':
+                in_script = False
+                i += 9
+                continue
+            # Add character if not in script
+            if not in_script:
+                result.append(html_content[i])
+            i += 1
+        
+        html_content = ''.join(result)
+        
+        # Remove style tags and their contents using same approach
+        result = []
+        in_style = False
+        i = 0
+        while i < len(html_content):
+            # Check for style tag start
+            if html_content[i:i+6].lower() == '<style':
+                in_style = True
+                # Find the end of the opening tag
+                while i < len(html_content) and html_content[i] != '>':
+                    i += 1
+                i += 1  # Skip the '>'
+                continue
+            # Check for style tag end
+            if in_style and html_content[i:i+8].lower() == '</style>':
+                in_style = False
+                i += 8
+                continue
+            # Add character if not in style
+            if not in_style:
+                result.append(html_content[i])
+            i += 1
+        
+        html_content = ''.join(result)
+        
+        # Replace input and textarea values
+        html_content = re.sub(r'(<input[^>]*)\svalue\s*=\s*["\'][^"\']*["\']', 
+                             r'\1 value="[redacted]"', html_content, flags=re.IGNORECASE)
+        html_content = re.sub(r'<textarea[^>]*>.*?</textarea>', 
+                             '<textarea>[redacted]</textarea>', 
+                             html_content, flags=re.DOTALL | re.IGNORECASE)
+        
+        # Replace meta content
+        html_content = re.sub(r'(<meta[^>]*)\scontent\s*=\s*["\'][^"\']*["\']', 
+                             r'\1 content="[redacted]"', html_content, flags=re.IGNORECASE)
+        
+        # Remove data-* attributes
+        html_content = re.sub(r'\sdata-[a-zA-Z0-9_-]+\s*=\s*["\'][^"\']*["\']', 
+                             '', html_content, flags=re.IGNORECASE)
+        
+        # Remove inline event handlers
+        event_handlers = [
+            'onclick', 'onload', 'onchange', 'onsubmit', 'onmouseover', 
+            'onmouseout', 'onfocus', 'onblur', 'onerror', 'onkeyup', 'onkeydown'
+        ]
+        for handler in event_handlers:
+            html_content = re.sub(rf'\s{handler}\s*=\s*["\'][^"\']*["\']', 
+                                 '', html_content, flags=re.IGNORECASE)
+        
+        # Remove hidden inputs with sensitive names
+        sensitive_patterns = ['token', 'csrf', 'session', 'nonce', 'secret', 'key']
+        for pattern in sensitive_patterns:
+            html_content = re.sub(
+                rf'<input[^>]*type\s*=\s*["\']hidden["\'][^>]*name\s*=\s*["\'][^"\']*{pattern}[^"\']*["\'][^>]*>',
+                '', html_content, flags=re.IGNORECASE | re.DOTALL
+            )
+            html_content = re.sub(
+                rf'<input[^>]*name\s*=\s*["\'][^"\']*{pattern}[^"\']*["\'][^>]*type\s*=\s*["\']hidden["\'][^>]*>',
+                '', html_content, flags=re.IGNORECASE | re.DOTALL
+            )
+        
+        return html_content
+
     async def suggest_selector(
         self, page: Page, selector_path: str, element_description: str
     ) -> Optional[str]:
@@ -71,6 +183,9 @@ class AISelectorRepair:
             # Extract current page HTML (first 50KB to avoid token limits)
             html_content = await page.content()
             html_content = html_content[:50000]  # Limit to 50KB
+            
+            # Sanitize HTML to remove sensitive data before sending to LLM
+            html_content = self._sanitize_html_for_llm(html_content)
 
             # Build prompt
             prompt = self._build_prompt(selector_path, element_description, html_content)

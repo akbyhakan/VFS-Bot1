@@ -58,13 +58,24 @@ def setup_signal_handlers():
             logger.warning("Second signal received, attempting fast cleanup before exit...")
             # Attempt fast cleanup on second signal
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
+                # Try to get the running loop if inside an async context
+                try:
+                    loop = asyncio.get_running_loop()
                     # Schedule cleanup to run in the existing loop
                     asyncio.ensure_future(fast_emergency_cleanup())
-                else:
-                    # Run cleanup in a new loop if current one is not running
-                    asyncio.run(fast_emergency_cleanup())
+                except RuntimeError:
+                    # No running loop - we're in a sync context, try to get or create one
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # Schedule cleanup to run in the existing loop
+                            asyncio.ensure_future(fast_emergency_cleanup())
+                        else:
+                            # Run cleanup in a new loop if current one is not running
+                            asyncio.run(fast_emergency_cleanup())
+                    except Exception:
+                        # If all else fails, run cleanup in a new loop
+                        asyncio.run(fast_emergency_cleanup())
             except Exception as e:
                 logger.error(f"Emergency cleanup failed: {e}")
             finally:

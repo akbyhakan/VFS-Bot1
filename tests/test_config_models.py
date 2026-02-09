@@ -242,3 +242,69 @@ class TestAppConfig:
         assert config.captcha.provider == "test_provider"
         assert config.captcha.api_key == "test_key"
         assert config.notifications.telegram_enabled is True
+
+
+class TestCaptchaConfigRepr:
+    """Tests for CaptchaConfig __repr__ masking."""
+
+    def test_repr_masks_api_key(self):
+        """Test that repr masks the API key."""
+        config = CaptchaConfig(api_key="secret_key_12345")
+        repr_str = repr(config)
+        
+        assert "secret_key_12345" not in repr_str
+        assert "***" in repr_str
+        assert "CaptchaConfig" in repr_str
+
+    def test_repr_shows_empty_when_no_key(self):
+        """Test that repr shows <empty> when no API key."""
+        config = CaptchaConfig()
+        repr_str = repr(config)
+        
+        assert "<empty>" in repr_str
+        assert "***" not in repr_str
+
+    def test_str_same_as_repr(self):
+        """Test that str() produces same output as repr()."""
+        config = CaptchaConfig(api_key="secret")
+        assert str(config) == repr(config)
+
+
+class TestNotificationConfigRepr:
+    """Tests for NotificationConfig __repr__ masking."""
+
+    def test_repr_masks_bot_token(self):
+        """Test that repr masks telegram bot token."""
+        config = NotificationConfig(telegram_bot_token="secret_token_123")
+        repr_str = repr(config)
+        
+        assert "secret_token_123" not in repr_str
+        assert "***" in repr_str
+
+    def test_repr_masks_email_password(self):
+        """Test that repr masks email password."""
+        config = NotificationConfig(email_password="secret_pass_123")
+        repr_str = repr(config)
+        
+        assert "secret_pass_123" not in repr_str
+        assert "***" in repr_str
+
+    def test_repr_shows_empty_when_no_secrets(self):
+        """Test that repr shows <empty> when no secrets."""
+        config = NotificationConfig()
+        repr_str = repr(config)
+        
+        assert repr_str.count("<empty>") == 2  # bot_token and email_password
+
+    def test_repr_does_not_mask_non_sensitive_fields(self):
+        """Test that repr does not mask non-sensitive fields."""
+        config = NotificationConfig(
+            telegram_chat_id="123456",
+            email_sender="sender@test.com",
+            email_receiver="receiver@test.com"
+        )
+        repr_str = repr(config)
+        
+        assert "123456" in repr_str
+        assert "sender@test.com" in repr_str
+        assert "receiver@test.com" in repr_str

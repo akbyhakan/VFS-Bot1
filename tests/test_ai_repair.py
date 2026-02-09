@@ -10,6 +10,126 @@ import yaml
 from src.utils.ai_selector_repair import AISelectorRepair
 
 
+class TestHTMLSanitization:
+    """Tests for HTML sanitization before sending to LLM."""
+
+    def test_sanitize_removes_script_contents(self):
+        """Test that script tags and contents are removed."""
+        html = '<script>alert("secret data")</script><div>content</div>'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "secret data" not in sanitized
+        assert "<script>" not in sanitized  # Entire tag removed
+        assert "<div>content</div>" in sanitized
+
+    def test_sanitize_removes_style_contents(self):
+        """Test that style tags and contents are removed."""
+        html = '<style>.secret { color: red; }</style><div>content</div>'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert ".secret" not in sanitized
+        assert "<style>" not in sanitized  # Entire tag removed
+
+    def test_sanitize_redacts_input_values(self):
+        """Test that input values are redacted."""
+        html = '<input type="text" value="sensitive_data" name="user">'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "sensitive_data" not in sanitized
+        assert "[redacted]" in sanitized
+
+    def test_sanitize_redacts_textarea_contents(self):
+        """Test that textarea contents are redacted."""
+        html = '<textarea>sensitive text data</textarea>'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "sensitive text data" not in sanitized
+        assert "[redacted]" in sanitized
+
+    def test_sanitize_redacts_meta_content(self):
+        """Test that meta tag content is redacted."""
+        html = '<meta name="csrf-token" content="secret_csrf_token">'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "secret_csrf_token" not in sanitized
+        assert "[redacted]" in sanitized
+
+    def test_sanitize_removes_data_attributes(self):
+        """Test that data-* attributes are removed."""
+        html = '<div data-user-id="12345" data-session="xyz">content</div>'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "data-user-id" not in sanitized
+        assert "data-session" not in sanitized
+        assert "12345" not in sanitized
+        assert "xyz" not in sanitized
+
+    def test_sanitize_removes_event_handlers(self):
+        """Test that inline event handlers are removed."""
+        html = '<button onclick="alert(\'test\')" onload="init()">Click</button>'
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert "onclick" not in sanitized
+        assert "onload" not in sanitized
+        assert "alert" not in sanitized
+
+    def test_sanitize_removes_hidden_inputs_with_token(self):
+        """Test that hidden inputs with sensitive names are removed."""
+        html = '''
+            <input type="hidden" name="csrf_token" value="secret">
+            <input type="hidden" name="session_id" value="xyz">
+            <input type="hidden" name="user_nonce" value="abc">
+            <input type="text" name="username">
+        '''
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        assert 'name="csrf_token"' not in sanitized
+        assert 'name="session_id"' not in sanitized
+        assert 'name="user_nonce"' not in sanitized
+        assert 'name="username"' in sanitized  # Regular input should remain
+
+    def test_sanitize_complex_html(self):
+        """Test sanitization of complex HTML with multiple sensitive elements."""
+        html = '''
+            <html>
+            <head>
+                <script>var secret = "token123";</script>
+                <style>.hidden { display: none; }</style>
+                <meta name="csrf" content="csrf_token_value">
+            </head>
+            <body>
+                <form>
+                    <input type="text" name="username" value="john_doe">
+                    <input type="password" name="password" value="secret_password">
+                    <input type="hidden" name="csrf_token" value="hidden_csrf">
+                    <textarea>User comment here</textarea>
+                    <button onclick="submit()">Submit</button>
+                </form>
+                <div data-user-id="12345" data-analytics="track">Content</div>
+            </body>
+            </html>
+        '''
+        sanitized = AISelectorRepair._sanitize_html_for_llm(html)
+        
+        # Verify sensitive data is removed
+        assert "secret = " not in sanitized or "token123" not in sanitized
+        assert ".hidden" not in sanitized
+        assert "csrf_token_value" not in sanitized
+        assert "john_doe" not in sanitized
+        assert "secret_password" not in sanitized
+        assert "hidden_csrf" not in sanitized
+        assert "User comment here" not in sanitized
+        assert "data-user-id" not in sanitized
+        assert "data-analytics" not in sanitized
+        assert "onclick" not in sanitized
+        
+        # Verify structure remains
+        assert "<form>" in sanitized
+        assert 'name="username"' in sanitized
+        assert 'name="password"' in sanitized
+        assert "<button>" in sanitized
+
+
 @pytest.fixture
 def temp_selectors_file(tmp_path):
     """Create a temporary selectors file."""

@@ -15,7 +15,7 @@ from src.models.database import Database
 from web.dependencies import LoginRequest, TokenResponse, get_db, verify_jwt_token
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
 

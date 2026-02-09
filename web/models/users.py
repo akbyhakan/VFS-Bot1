@@ -2,13 +2,13 @@
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class UserCreateRequest(BaseModel):
     """User creation request."""
 
-    email: str
+    email: EmailStr
     password: str  # VFS password for login
     phone: str
     first_name: str
@@ -22,7 +22,7 @@ class UserCreateRequest(BaseModel):
 class UserUpdateRequest(BaseModel):
     """User update request."""
 
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     password: Optional[str] = None  # VFS password
     phone: Optional[str] = None
     first_name: Optional[str] = None
@@ -37,7 +37,7 @@ class UserModel(BaseModel):
     """User response model."""
 
     id: int
-    email: str
+    email: EmailStr
     phone: str = ""  # Default to empty string for backward compatibility
     first_name: str = ""  # Default to empty string for backward compatibility
     last_name: str = ""  # Default to empty string for backward compatibility

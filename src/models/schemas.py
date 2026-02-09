@@ -3,13 +3,13 @@
 from datetime import datetime
 from typing import List, Optional, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserCreate(BaseModel):
     """User creation schema."""
 
-    email: str
+    email: EmailStr
     password: str = Field(..., min_length=8)
     centre: str
     category: str
@@ -20,7 +20,7 @@ class UserResponse(BaseModel):
     """User response schema."""
 
     id: int
-    email: str
+    email: EmailStr
     centre: str
     active: bool
     created_at: datetime

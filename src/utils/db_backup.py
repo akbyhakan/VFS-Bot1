@@ -11,9 +11,45 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
+
+
+def _mask_database_url(url: str) -> str:
+    """
+    Mask username and password in database URL for safe logging.
+    
+    Args:
+        url: Database URL potentially containing credentials
+        
+    Returns:
+        URL with credentials masked
+        
+    Example:
+        postgresql://user:pass@host/db -> postgresql://***:***@host/db
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.username or parsed.password:
+            # Reconstruct netloc with masked credentials
+            masked_netloc = ""
+            if parsed.username:
+                masked_netloc = "***"
+            if parsed.password:
+                masked_netloc += ":***"
+            if parsed.hostname:
+                masked_netloc += f"@{parsed.hostname}"
+            if parsed.port:
+                masked_netloc += f":{parsed.port}"
+            
+            # Reconstruct URL with masked netloc
+            masked_parsed = parsed._replace(netloc=masked_netloc)
+            return urlunparse(masked_parsed)
+        return url
+    except Exception:
+        # If parsing fails, mask the entire URL for safety
+        return "***"
 
 
 class DatabaseBackup:
@@ -51,7 +87,7 @@ class DatabaseBackup:
         self._backup_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(
-            f"Database backup initialized: {self._database_url} -> {backup_dir} "
+            f"Database backup initialized: {_mask_database_url(self._database_url)} -> {backup_dir} "
             f"(retention: {retention_days}d, interval: {interval_hours}h)"
         )
 
@@ -373,7 +409,7 @@ class DatabaseBackup:
                 total_size += size
 
         return {
-            "database_url": self._database_url,
+            "database_url": _mask_database_url(self._database_url),
             "backup_dir": str(self._backup_dir),
             "retention_days": self._retention_days,
             "interval_hours": self._interval_hours,
