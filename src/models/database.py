@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import warnings
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -696,3 +697,52 @@ class Database:
                 await conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
 
             logger.info("Database tables created/verified")
+
+    # =========================================================================
+    # DEPRECATED METHODS - Backward Compatibility Wrappers
+    # =========================================================================
+    # These methods delegate to repositories and will be removed in v3.0
+    # Please update your code to use repositories directly
+    
+    @require_connection
+    async def add_user(self, email: str, password: str, centre: str, category: str, subcategory: str) -> int:
+        """DEPRECATED: Use UserRepository.create() instead."""
+        warnings.warn("Database.add_user() is deprecated. Use UserRepository.create()", DeprecationWarning, stacklevel=2)
+        from src.repositories import UserRepository
+        return await UserRepository(self).create({'email': email, 'password': password, 'center_name': centre, 'visa_category': category, 'visa_subcategory': subcategory})
+    
+    @require_connection
+    async def get_active_users(self):
+        """DEPRECATED: Use UserRepository.get_all_active() instead."""
+        warnings.warn("Database.get_active_users() is deprecated. Use UserRepository.get_all_active()", DeprecationWarning, stacklevel=2)
+        from src.repositories import UserRepository
+        users = await UserRepository(self).get_all_active()
+        return [u.to_dict() for u in users]
+    
+    @require_connection
+    async def get_active_users_with_decrypted_passwords(self):
+        """DEPRECATED: Use UserRepository.get_all_active_with_passwords() instead."""
+        warnings.warn("Database.get_active_users_with_decrypted_passwords() is deprecated. Use UserRepository.get_all_active_with_passwords()", DeprecationWarning, stacklevel=2)
+        from src.repositories import UserRepository
+        return await UserRepository(self).get_all_active_with_passwords()
+    
+    @require_connection
+    async def add_users_batch(self, users):
+        """DEPRECATED: Use UserRepository.create_batch() instead."""
+        warnings.warn("Database.add_users_batch() is deprecated. Use UserRepository.create_batch()", DeprecationWarning, stacklevel=2)
+        from src.repositories import UserRepository
+        return await UserRepository(self).create_batch(users)
+    
+    @require_connection
+    async def add_appointment(self, user_id, centre, category, subcategory, appointment_date, appointment_time, reference_number):
+        """DEPRECATED: Use AppointmentRepository.create() instead."""
+        warnings.warn("Database.add_appointment() is deprecated. Use AppointmentRepository.create()", DeprecationWarning, stacklevel=2)
+        from src.repositories import AppointmentRepository
+        return await AppointmentRepository(self).create({'user_id': user_id, 'centre': centre, 'category': category, 'subcategory': subcategory, 'appointment_date': appointment_date, 'appointment_time': appointment_time, 'reference_number': reference_number})
+    
+    @require_connection
+    async def save_payment_card(self, card_data):
+        """DEPRECATED: Use PaymentRepository.create() instead."""
+        warnings.warn("Database.save_payment_card() is deprecated. Use PaymentRepository.create()", DeprecationWarning, stacklevel=2)
+        from src.repositories import PaymentRepository
+        return await PaymentRepository(self).create(card_data)
