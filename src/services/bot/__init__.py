@@ -8,7 +8,6 @@ Public API:
 - BrowserManager: Browser lifecycle management
 - AuthService: Authentication and login handling
 - SlotChecker: Slot availability checking
-- CircuitBreakerService: Fault tolerance and error tracking
 - ErrorHandler: Error capture and screenshot handling
 - SlotInfo: Type definition for slot information
 - Service contexts: AntiDetectionContext, CoreServicesContext, WorkflowServicesContext,
@@ -18,7 +17,6 @@ Public API:
 from .auth_service import AuthService
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
-from .circuit_breaker_service import CircuitBreakerService, CircuitBreakerStats
 from .error_handler import ErrorHandler
 from .service_context import (
     AntiDetectionContext,
@@ -38,8 +36,6 @@ __all__ = [
     "BookingWorkflow",
     "SlotChecker",
     "SlotInfo",
-    "CircuitBreakerService",
-    "CircuitBreakerStats",
     "ErrorHandler",
     "AntiDetectionContext",
     "CoreServicesContext",

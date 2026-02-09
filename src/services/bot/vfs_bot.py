@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
 
-from ...constants import Intervals, RateLimits, Timeouts
+from ...constants import CircuitBreaker as CircuitBreakerConfig, Intervals, RateLimits, Timeouts
+from ...core.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import UserRepository
 from ..alert_service import AlertSeverity
@@ -18,7 +19,6 @@ from ..centre_fetcher import CentreFetcher
 from ..notification import NotificationService
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
-from .circuit_breaker_service import CircuitBreakerService
 from .service_context import BotServiceContext, BotServiceFactory
 
 logger = logging.getLogger(__name__)
@@ -112,8 +112,17 @@ class VFSBot:
             self.services.anti_detection.proxy_manager,
         )
 
-        # Initialize circuit breaker
-        self.circuit_breaker = CircuitBreakerService()
+        # Initialize circuit breaker with configuration
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=CircuitBreakerConfig.FAIL_THRESHOLD,
+            timeout_seconds=CircuitBreakerConfig.RESET_TIMEOUT_SECONDS,
+            name="BotCircuitBreaker",
+            half_open_threshold=CircuitBreakerConfig.HALF_OPEN_SUCCESS_THRESHOLD,
+            max_errors_per_hour=CircuitBreakerConfig.MAX_ERRORS_PER_HOUR,
+            error_tracking_window=CircuitBreakerConfig.ERROR_WINDOW_SECONDS,
+            backoff_base=CircuitBreakerConfig.BACKOFF_BASE_SECONDS,
+            backoff_max=CircuitBreakerConfig.BACKOFF_MAX_SECONDS,
+        )
 
         # Initialize booking workflow after all dependencies are ready
         self.booking_workflow = BookingWorkflow(
@@ -159,12 +168,12 @@ class VFSBot:
         # Save checkpoint if there was an error
         if exc_type is not None:
             try:
-                stats = await self.circuit_breaker.get_stats()
+                stats = self.circuit_breaker.get_stats()
                 await self.services.workflow.error_handler.save_checkpoint(
                     {
                         "running": self.running,
-                        "circuit_breaker_open": stats["is_open"],
-                        "consecutive_errors": stats["consecutive_errors"],
+                        "circuit_breaker_open": stats["state"] == CircuitState.OPEN.value,
+                        "consecutive_errors": stats["failure_count"],
                         "total_errors_count": stats["total_errors_in_window"],
                     }
                 )
@@ -442,19 +451,19 @@ class VFSBot:
                 # The TokenSyncService ensures proactive token refresh before expiry.
 
                 # Check circuit breaker
-                if not await self.circuit_breaker.is_available():
+                if not await self.circuit_breaker.can_execute():
                     wait_time = await self.circuit_breaker.get_wait_time()
-                    stats = await self.circuit_breaker.get_stats()
+                    stats = self.circuit_breaker.get_stats()
                     logger.warning(
                         f"Circuit breaker OPEN - waiting {wait_time}s before retry "
-                        f"(consecutive errors: {stats['consecutive_errors']})"
+                        f"(consecutive errors: {stats['failure_count']})"
                     )
 
                     # Send alert for circuit breaker open (WARNING severity)
                     await self._send_alert_safe(
                         message=(
                             f"Circuit breaker OPEN - consecutive errors: "
-                            f"{stats['consecutive_errors']}, waiting {wait_time}s"
+                            f"{stats['failure_count']}, waiting {wait_time}s"
                         ),
                         severity=AlertSeverity.WARNING,
                         metadata={"stats": stats, "wait_time": wait_time},
@@ -521,6 +530,15 @@ class VFSBot:
                 if errors_in_batch > 0:
                     logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
                     await self.circuit_breaker.record_failure()
+                    
+                    # Record circuit breaker trip in metrics if it just opened
+                    if self.circuit_breaker.state == CircuitState.OPEN:
+                        try:
+                            from ...utils.metrics import get_metrics
+                            metrics = await get_metrics()
+                            await metrics.record_circuit_breaker_trip()
+                        except Exception as e:
+                            logger.debug(f"Failed to record circuit breaker trip metric: {e}")
 
                     # Send alert for batch errors (ERROR severity)
                     await self._send_alert_safe(
@@ -551,6 +569,15 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self.circuit_breaker.record_failure()
+                
+                # Record circuit breaker trip in metrics if it just opened
+                if self.circuit_breaker.state == CircuitState.OPEN:
+                    try:
+                        from ...utils.metrics import get_metrics
+                        metrics = await get_metrics()
+                        await metrics.record_circuit_breaker_trip()
+                    except Exception as e:
+                        logger.debug(f"Failed to record circuit breaker trip metric: {e}")
 
                 # Send alert for bot loop error (ERROR severity)
                 await self._send_alert_safe(
@@ -560,7 +587,7 @@ class VFSBot:
                 )
 
                 # If circuit breaker open, wait longer
-                if not await self.circuit_breaker.is_available():
+                if not await self.circuit_breaker.can_execute():
                     wait_time = await self.circuit_breaker.get_wait_time()
                     if await self._wait_or_shutdown(wait_time):
                         logger.info("Shutdown requested during error recovery wait")
