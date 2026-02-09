@@ -265,23 +265,54 @@ def upgrade() -> None:
     """)
     
     # Create triggers for tables with updated_at column
-    tables_with_updated_at = [
-        'users',
-        'personal_details',
-        'payment_card',
-        'appointment_requests',
-        'appointment_history',
-        'proxy_endpoints'
-    ]
+    # Using explicit SQL statements for safety (no string interpolation)
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+        CREATE TRIGGER update_users_updated_at
+            BEFORE UPDATE ON users
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
     
-    for table in tables_with_updated_at:
-        op.execute(f"""
-            DROP TRIGGER IF EXISTS update_{table}_updated_at ON {table};
-            CREATE TRIGGER update_{table}_updated_at
-                BEFORE UPDATE ON {table}
-                FOR EACH ROW
-                EXECUTE FUNCTION update_updated_at_column();
-        """)
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_personal_details_updated_at ON personal_details;
+        CREATE TRIGGER update_personal_details_updated_at
+            BEFORE UPDATE ON personal_details
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
+    
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_payment_card_updated_at ON payment_card;
+        CREATE TRIGGER update_payment_card_updated_at
+            BEFORE UPDATE ON payment_card
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
+    
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_appointment_requests_updated_at ON appointment_requests;
+        CREATE TRIGGER update_appointment_requests_updated_at
+            BEFORE UPDATE ON appointment_requests
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
+    
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_appointment_history_updated_at ON appointment_history;
+        CREATE TRIGGER update_appointment_history_updated_at
+            BEFORE UPDATE ON appointment_history
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
+    
+    op.execute("""
+        DROP TRIGGER IF EXISTS update_proxy_endpoints_updated_at ON proxy_endpoints;
+        CREATE TRIGGER update_proxy_endpoints_updated_at
+            BEFORE UPDATE ON proxy_endpoints
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    """)
 
 
 def downgrade() -> None:
