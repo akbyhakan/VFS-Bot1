@@ -65,12 +65,20 @@ class AISelectorRepair:
         Returns:
             Sanitized HTML safe for LLM processing
         """
-        # Remove script and style block contents
-        # Use more robust regex to handle whitespace in closing tags
-        html_content = re.sub(r'<script[^>]*>.*?</\s*script\s*>', '<script></script>', 
-                             html_content, flags=re.DOTALL | re.IGNORECASE)
-        html_content = re.sub(r'<style[^>]*>.*?</\s*style\s*>', '<style></style>', 
-                             html_content, flags=re.DOTALL | re.IGNORECASE)
+        # Remove script and style blocks entirely (including tags)
+        # This is safer than trying to match all possible tag variations
+        html_content = re.sub(
+            r'<script\b[^>]*>.*?</script\s*>',
+            '', 
+            html_content, 
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        html_content = re.sub(
+            r'<style\b[^>]*>.*?</style\s*>',
+            '', 
+            html_content, 
+            flags=re.DOTALL | re.IGNORECASE
+        )
         
         # Replace input and textarea values
         html_content = re.sub(r'(<input[^>]*)\svalue\s*=\s*["\'][^"\']*["\']', 

@@ -14,21 +14,21 @@ class TestHTMLSanitization:
     """Tests for HTML sanitization before sending to LLM."""
 
     def test_sanitize_removes_script_contents(self):
-        """Test that script tag contents are removed."""
+        """Test that script tags and contents are removed."""
         html = '<script>alert("secret data")</script><div>content</div>'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
         
         assert "secret data" not in sanitized
-        assert "<script></script>" in sanitized
+        assert "<script>" not in sanitized  # Entire tag removed
         assert "<div>content</div>" in sanitized
 
     def test_sanitize_removes_style_contents(self):
-        """Test that style tag contents are removed."""
+        """Test that style tags and contents are removed."""
         html = '<style>.secret { color: red; }</style><div>content</div>'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
         
         assert ".secret" not in sanitized
-        assert "<style></style>" in sanitized
+        assert "<style>" not in sanitized  # Entire tag removed
 
     def test_sanitize_redacts_input_values(self):
         """Test that input values are redacted."""
