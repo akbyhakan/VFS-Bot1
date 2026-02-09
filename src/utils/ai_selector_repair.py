@@ -65,20 +65,59 @@ class AISelectorRepair:
         Returns:
             Sanitized HTML safe for LLM processing
         """
-        # Remove script and style blocks entirely (including tags)
-        # This is safer than trying to match all possible tag variations
-        html_content = re.sub(
-            r'<script\b[^>]*>.*?</script\s*>',
-            '', 
-            html_content, 
-            flags=re.DOTALL | re.IGNORECASE
-        )
-        html_content = re.sub(
-            r'<style\b[^>]*>.*?</style\s*>',
-            '', 
-            html_content, 
-            flags=re.DOTALL | re.IGNORECASE
-        )
+        # Remove script and style blocks entirely
+        # Using a simple state machine approach to avoid regex pitfalls with HTML
+        # This is more robust than regex for security-critical HTML parsing
+        
+        # Remove script tags and their contents
+        result = []
+        in_script = False
+        i = 0
+        while i < len(html_content):
+            # Check for script tag start
+            if html_content[i:i+7].lower() == '<script':
+                in_script = True
+                # Find the end of the opening tag
+                while i < len(html_content) and html_content[i] != '>':
+                    i += 1
+                i += 1  # Skip the '>'
+                continue
+            # Check for script tag end
+            if in_script and html_content[i:i+9].lower() == '</script>':
+                in_script = False
+                i += 9
+                continue
+            # Add character if not in script
+            if not in_script:
+                result.append(html_content[i])
+            i += 1
+        
+        html_content = ''.join(result)
+        
+        # Remove style tags and their contents using same approach
+        result = []
+        in_style = False
+        i = 0
+        while i < len(html_content):
+            # Check for style tag start
+            if html_content[i:i+6].lower() == '<style':
+                in_style = True
+                # Find the end of the opening tag
+                while i < len(html_content) and html_content[i] != '>':
+                    i += 1
+                i += 1  # Skip the '>'
+                continue
+            # Check for style tag end
+            if in_style and html_content[i:i+8].lower() == '</style>':
+                in_style = False
+                i += 8
+                continue
+            # Add character if not in style
+            if not in_style:
+                result.append(html_content[i])
+            i += 1
+        
+        html_content = ''.join(result)
         
         # Replace input and textarea values
         html_content = re.sub(r'(<input[^>]*)\svalue\s*=\s*["\'][^"\']*["\']', 
