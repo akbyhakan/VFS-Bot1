@@ -259,8 +259,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 if card_id is None:
                     raise RuntimeError("Failed to get inserted card ID")
                 logger.info(f"Payment card created with ID: {card_id}")
-                result_id: int = card_id
-                return result_id
+                return int(card_id)
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
