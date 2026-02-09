@@ -56,6 +56,12 @@ class VFSSettings(BaseSettings):
         default=30.0, gt=0, description="Database connection timeout in seconds"
     )
 
+    # Redis Configuration
+    redis_url: Optional[str] = Field(
+        default=None,
+        description="Redis URL for distributed rate limiting (leave empty for in-memory)"
+    )
+
     # CORS Configuration
     cors_allowed_origins: str = Field(
         default="http://localhost:3000,http://localhost:5173",

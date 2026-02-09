@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, AsyncIterator, Awaitable, Callable, Optional, TypeVar
+from urllib.parse import urlparse, urlunparse
 
 import asyncpg
 
@@ -51,6 +52,61 @@ ALLOWED_USER_UPDATE_FIELDS = frozenset(
         "active",
     }
 )
+
+
+def _mask_database_url(url: str) -> str:
+    """
+    Safely mask credentials in database URL for logging.
+    
+    This function prevents credential exposure in logs by:
+    - Masking username/password if present in netloc
+    - Showing only scheme and hostname for network URLs
+    - Masking entire path for file-based URLs (SQLite, etc.)
+    - Handling malformed URLs gracefully
+    
+    Args:
+        url: Database connection URL (e.g., postgresql://user:pass@host:5432/db)
+        
+    Returns:
+        Masked URL safe for logging
+        
+    Examples:
+        >>> _mask_database_url("postgresql://user:pass@localhost:5432/mydb")
+        'postgresql://***:***@localhost:5432/mydb'
+        >>> _mask_database_url("sqlite:///path/to/db.sqlite")
+        'sqlite://***'
+        >>> _mask_database_url("invalid-url")
+        '<unparseable-url>'
+    """
+    try:
+        parsed = urlparse(url)
+        
+        # Handle empty or missing scheme
+        if not parsed.scheme:
+            return "<unparseable-url>"
+        
+        # Handle non-network URLs (SQLite, etc.) - show only scheme
+        if not parsed.netloc:
+            return f"{parsed.scheme}://***"
+        
+        # For network URLs, mask credentials if present
+        if parsed.username or parsed.password:
+            # Rebuild netloc with masked credentials
+            host_port = parsed.hostname or "unknown"
+            if parsed.port:
+                host_port = f"{host_port}:{parsed.port}"
+            masked_netloc = f"***:***@{host_port}"
+        else:
+            # No credentials, keep original netloc
+            masked_netloc = parsed.netloc
+        
+        # Rebuild URL with masked netloc
+        masked = parsed._replace(netloc=masked_netloc)
+        return urlunparse(masked)
+        
+    except Exception:
+        # If parsing fails entirely, return safe placeholder
+        return "<unparseable-url>"
 
 
 class DatabaseState:
@@ -270,7 +326,7 @@ class Database:
 
                 logger.info(
                     f"Database connected with pool size {min_pool}-{self.pool_size}: "
-                    f"{self.database_url.split('@')[-1] if '@' in self.database_url else 'localhost'}"
+                    f"{_mask_database_url(self.database_url)}"
                 )
 
                 # Verify Alembic migration status (advisory only)

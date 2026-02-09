@@ -37,3 +37,4 @@ cryptography>=41.0.0
 pycryptodome>=3.20.0
 cachetools>=5.3.0
 google-generativeai>=0.3.0  # Optional: AI-powered selector repair
+redis[hiredis]>=5.0.0  # Required for distributed rate limiting in multi-worker deployments

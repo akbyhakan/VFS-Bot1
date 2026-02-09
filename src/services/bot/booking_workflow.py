@@ -10,6 +10,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ra
 
 from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
+from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository
 from ...utils.anti_detection.human_simulator import HumanSimulator
@@ -472,9 +473,9 @@ class BookingWorkflow:
             "persons": persons,
         }
 
-        # Add payment card from config
+        # Add payment card from config (wrapped in SensitiveDict)
         if "payment" in self.config and "card" in self.config["payment"]:
-            reservation["payment_card"] = self.config["payment"]["card"]
+            reservation["payment_card"] = SensitiveDict(self.config["payment"]["card"])
 
         return reservation
 
@@ -516,8 +517,8 @@ class BookingWorkflow:
             "persons": [person],
         }
 
-        # Add payment card info if available in config
+        # Add payment card info if available in config (wrapped in SensitiveDict)
         if "payment" in self.config and "card" in self.config["payment"]:
-            reservation["payment_card"] = self.config["payment"]["card"]
+            reservation["payment_card"] = SensitiveDict(self.config["payment"]["card"])
 
         return reservation

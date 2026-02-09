@@ -12,6 +12,7 @@ from .form_filler import FormFiller
 from .slot_selector import SlotSelector
 from .payment_handler import PaymentHandler
 from .booking_validator import BookingValidator
+from ...core.sensitive import SensitiveDict
 
 logger = logging.getLogger(__name__)
 
@@ -164,15 +165,28 @@ class BookingOrchestrator:
 
             # Use PaymentService for secure payment processing
             user_id = reservation.get("user_id", 0)
-            card_details = reservation.get("payment_card")
+            card_details_wrapped = reservation.get("payment_card")
             
-            # PaymentService will enforce PCI-DSS security controls
-            # It will reject automated payments in production
-            payment_success = await self.payment_service.process_payment(
-                page=page,
-                user_id=user_id,
-                card_details=card_details
-            )
+            try:
+                # Unwrap SensitiveDict at point of use only
+                if isinstance(card_details_wrapped, SensitiveDict):
+                    card_details = card_details_wrapped.to_dict()
+                else:
+                    # Fallback for non-SensitiveDict (backward compatibility)
+                    card_details = card_details_wrapped
+                
+                # PaymentService will enforce PCI-DSS security controls
+                # It will reject automated payments in production
+                payment_success = await self.payment_service.process_payment(
+                    page=page,
+                    user_id=user_id,
+                    card_details=card_details
+                )
+            finally:
+                # Securely wipe card details from memory after use
+                if isinstance(card_details_wrapped, SensitiveDict):
+                    card_details_wrapped.wipe()
+                card_details = None
             
             if not payment_success:
                 logger.error("Payment processing failed")
