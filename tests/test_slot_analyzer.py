@@ -213,3 +213,170 @@ class TestSlotPatternAnalyzer:
         assert "En İyi Saatler" in report
         assert "En İyi Günler" in report
         assert "En Aktif Merkezler" in report
+
+
+class TestSlotRetention:
+    """Tests for slot pattern retention enforcement."""
+
+    @pytest.fixture
+    def temp_data_file(self, tmp_path):
+        """Create a temporary data file."""
+        return tmp_path / "slot_patterns.json"
+
+    def test_enforce_retention_trims_excess_slots(self, temp_data_file):
+        """Test that retention enforcement trims excess slots."""
+        from src.services.slot_analyzer import _MAX_SLOT_RECORDS
+        
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        # Add more than max records
+        now = datetime.now()
+        for i in range(_MAX_SLOT_RECORDS + 100):
+            analyzer._patterns["slots"].append(
+                {
+                    "country": "nld",
+                    "centre": "Amsterdam",
+                    "category": "Tourism",
+                    "slot_date": "2024-01-15",
+                    "slot_time": "10:00",
+                    "found_at": (now - timedelta(days=i)).isoformat(),
+                    "found_hour": 9,
+                    "found_weekday": "Monday",
+                }
+            )
+        
+        # Save data - should trigger retention
+        analyzer._save_data_sync()
+        
+        # Verify retention was enforced
+        assert len(analyzer._patterns["slots"]) == _MAX_SLOT_RECORDS
+
+    def test_retention_keeps_most_recent(self, temp_data_file):
+        """Test that retention keeps the most recent records."""
+        from src.services.slot_analyzer import _MAX_SLOT_RECORDS
+        
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        # Add records with identifiable timestamps
+        now = datetime.now()
+        for i in range(_MAX_SLOT_RECORDS + 10):
+            analyzer._patterns["slots"].append(
+                {
+                    "country": "nld",
+                    "centre": f"Centre_{i}",  # Unique identifier
+                    "category": "Tourism",
+                    "slot_date": "2024-01-15",
+                    "slot_time": "10:00",
+                    "found_at": (now - timedelta(days=_MAX_SLOT_RECORDS + 10 - i)).isoformat(),
+                    "found_hour": 9,
+                    "found_weekday": "Monday",
+                }
+            )
+        
+        # Save and enforce retention
+        analyzer._save_data_sync()
+        
+        # First 10 oldest should be removed
+        remaining_centres = [slot["centre"] for slot in analyzer._patterns["slots"]]
+        assert f"Centre_0" not in remaining_centres
+        assert f"Centre_9" not in remaining_centres
+        assert f"Centre_10" in remaining_centres
+        assert f"Centre_{_MAX_SLOT_RECORDS + 9}" in remaining_centres
+
+    def test_retention_on_load(self, temp_data_file):
+        """Test that retention is enforced when loading data."""
+        from src.services.slot_analyzer import _MAX_SLOT_RECORDS
+        
+        # Create file with excess records
+        now = datetime.now()
+        data = {
+            "slots": [
+                {
+                    "country": "nld",
+                    "centre": "Amsterdam",
+                    "category": "Tourism",
+                    "slot_date": "2024-01-15",
+                    "slot_time": "10:00",
+                    "found_at": (now - timedelta(days=i)).isoformat(),
+                    "found_hour": 9,
+                    "found_weekday": "Monday",
+                }
+                for i in range(_MAX_SLOT_RECORDS + 50)
+            ],
+            "stats": {},
+        }
+        temp_data_file.write_text(json.dumps(data))
+        
+        # Load data - should trigger retention
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        # Verify retention was enforced
+        assert len(analyzer._patterns["slots"]) == _MAX_SLOT_RECORDS
+
+
+class TestSyncBatching:
+    """Tests for synchronous method batching."""
+
+    @pytest.fixture
+    def temp_data_file(self, tmp_path):
+        """Create a temporary data file."""
+        return tmp_path / "slot_patterns.json"
+
+    def test_record_slot_found_deprecation_warning(self, temp_data_file):
+        """Test that record_slot_found emits deprecation warning."""
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        with pytest.warns(DeprecationWarning, match="record_slot_found.*deprecated"):
+            analyzer.record_slot_found(
+                country="nld",
+                centre="Amsterdam",
+                category="Tourism",
+                date="2024-01-15",
+                time="10:00",
+            )
+
+    def test_sync_batching_behavior(self, temp_data_file):
+        """Test that sync method batches writes."""
+        from src.services.slot_analyzer import _SYNC_BATCH_SIZE
+        
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        # Add records less than batch size - should not write yet
+        for i in range(_SYNC_BATCH_SIZE - 1):
+            with pytest.warns(DeprecationWarning):
+                analyzer.record_slot_found(
+                    country="nld",
+                    centre="Amsterdam",
+                    category="Tourism",
+                    date="2024-01-15",
+                    time="10:00",
+                )
+        
+        # File might exist from the batch write, but check pending count
+        assert analyzer._sync_pending_writes == _SYNC_BATCH_SIZE - 1
+        
+    def test_flush_sync(self, temp_data_file):
+        """Test that flush_sync writes pending records."""
+        analyzer = SlotPatternAnalyzer(str(temp_data_file))
+        
+        # Add one record
+        with pytest.warns(DeprecationWarning):
+            analyzer.record_slot_found(
+                country="nld",
+                centre="Amsterdam",
+                category="Tourism",
+                date="2024-01-15",
+                time="10:00",
+            )
+        
+        # Explicitly flush
+        analyzer.flush_sync()
+        
+        # Verify pending writes cleared
+        assert analyzer._sync_pending_writes == 0
+        
+        # Verify data was written
+        assert temp_data_file.exists()
+        with open(temp_data_file, "r") as f:
+            data = json.load(f)
+        assert len(data["slots"]) == 1
