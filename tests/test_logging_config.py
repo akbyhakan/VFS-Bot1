@@ -91,36 +91,36 @@ class TestJSONFormatter:
         assert "ValueError: Test error" in data["exception"]
 
 
-class TestSetupLogging:
+class TestSetupStructuredLogging:
     """Tests for setup_structured_logging function."""
 
-    def test_setup_logging_default(self):
+    def test_setup_structured_logging_default(self):
         """Test setup_structured_logging with default parameters."""
         setup_structured_logging()
         root_logger = logging.getLogger()
         assert root_logger.level == logging.INFO
         assert len(root_logger.handlers) > 0
 
-    def test_setup_logging_with_level(self):
+    def test_setup_structured_logging_with_level(self):
         """Test setup_structured_logging with custom level."""
         setup_structured_logging(level="DEBUG")
         root_logger = logging.getLogger()
         assert root_logger.level == logging.DEBUG
 
-    def test_setup_logging_with_json_format(self):
+    def test_setup_structured_logging_with_json_format(self):
         """Test setup_structured_logging with JSON format."""
         # Verify it doesn't crash and sets up logging
         setup_structured_logging(level="INFO", json_format=True)
         root_logger = logging.getLogger()
         assert root_logger.level == logging.INFO
 
-    def test_setup_logging_with_text_format(self):
+    def test_setup_structured_logging_with_text_format(self):
         """Test setup_structured_logging with text format."""
         setup_structured_logging(level="INFO", json_format=False)
         root_logger = logging.getLogger()
         assert root_logger.level == logging.INFO
 
-    def test_setup_logging_removes_existing_handlers(self):
+    def test_setup_structured_logging_removes_existing_handlers(self):
         """Test that setup_structured_logging removes existing handlers."""
         root_logger = logging.getLogger()
         _ = len(root_logger.handlers)
@@ -129,7 +129,7 @@ class TestSetupLogging:
         # Should have exactly one handler after setup
         assert len(root_logger.handlers) == 1
 
-    def test_setup_logging_error_level(self):
+    def test_setup_structured_logging_error_level(self):
         """Test setup_structured_logging with ERROR level."""
         setup_structured_logging(level="ERROR")
         root_logger = logging.getLogger()
