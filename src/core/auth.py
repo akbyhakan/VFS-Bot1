@@ -28,7 +28,22 @@ SUPPORTED_JWT_ALGORITHMS = frozenset({
 
 
 class AuthRateLimiter:
-    """Rate limiter for authentication endpoints to prevent brute-force attacks."""
+    """
+    Rate limiter for authentication endpoints to prevent brute-force attacks.
+    
+    **IMPORTANT: Multi-Worker Deployment Limitation**
+    This implementation uses in-memory storage and is NOT safe for multi-worker
+    deployments (e.g., `uvicorn --workers N`). Each worker maintains its own
+    separate state, which makes rate limiting ineffective across workers.
+    
+    For production deployments with multiple workers, consider:
+    - Using a shared cache backend like Redis
+    - Implementing distributed rate limiting
+    - Running with a single worker and scaling horizontally with a load balancer
+    
+    Future versions will support distributed backends via the `is_distributed`
+    property.
+    """
 
     # Maximum number of identifiers to track before triggering cleanup
     MAX_IDENTIFIERS_BEFORE_CLEANUP = 10000
@@ -45,6 +60,20 @@ class AuthRateLimiter:
         self._lock = threading.Lock()
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
+
+    @property
+    def is_distributed(self) -> bool:
+        """
+        Check if rate limiter is using distributed storage.
+        
+        Returns:
+            False for in-memory implementation, True for distributed backends
+            
+        Note:
+            This property is provided for future Redis/distributed backend support.
+            Current implementation always returns False.
+        """
+        return False
 
     def is_rate_limited(self, identifier: str) -> bool:
         """
@@ -143,6 +172,15 @@ _rate_limiter_lock = threading.Lock()
 def get_auth_rate_limiter() -> AuthRateLimiter:
     """
     Get or create auth rate limiter singleton.
+    
+    **WARNING: Multi-Worker Limitation**
+    The rate limiter uses in-memory storage and is not shared across
+    multiple worker processes. In multi-worker deployments (e.g.,
+    `uvicorn --workers N`), each worker maintains separate state,
+    reducing the effectiveness of rate limiting.
+    
+    For production multi-worker deployments, consider using a distributed
+    rate limiting solution with Redis or similar shared storage.
 
     Returns:
         AuthRateLimiter instance
@@ -158,7 +196,23 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
             _auth_rate_limiter = AuthRateLimiter(
                 max_attempts=max_attempts, window_seconds=window_seconds
             )
+            
+            # Log warning if running in multi-worker environment
+            workers = os.getenv("WEB_CONCURRENCY") or os.getenv("UVICORN_WORKERS")
+            if workers:
+                try:
+                    worker_count = int(workers)
+                    if worker_count > 1:
+                        logger.warning(
+                            f"⚠️ Auth rate limiter running with {worker_count} workers. "
+                            "In-memory rate limiting is NOT shared across workers. "
+                            "Consider using Redis-backed rate limiting for production."
+                        )
+                except (ValueError, TypeError):
+                    # Invalid worker count - log debug message but don't fail
+                    logger.debug(f"Invalid worker count in environment: {workers}")
         return _auth_rate_limiter
+
 
 
 class TokenBlacklist:

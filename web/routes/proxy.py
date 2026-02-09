@@ -502,6 +502,13 @@ async def upload_proxy_csv(
 async def get_memory_proxy_list(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Get list of all proxies from in-memory manager (legacy).
+    
+    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
+    suitable for multi-worker deployments. Use the database-backed endpoints instead:
+    - GET /proxy/list for retrieving proxies
+    
+    This endpoint is maintained for backward compatibility only and may be removed
+    in a future version.
 
     Args:
         token_data: Verified token data
@@ -509,6 +516,10 @@ async def get_memory_proxy_list(token_data: Dict[str, Any] = Depends(verify_jwt_
     Returns:
         List of proxies with statistics
     """
+    logger.warning(
+        "⚠️ DEPRECATED: /proxy/memory/list endpoint is deprecated. "
+        "Use /proxy/list instead for multi-worker compatible operations."
+    )
     try:
         proxies = proxy_manager.get_proxy_list()
         stats = proxy_manager.get_stats()
@@ -527,6 +538,13 @@ async def get_memory_proxy_list(token_data: Dict[str, Any] = Depends(verify_jwt_
 async def get_memory_proxy_stats(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Get proxy statistics from in-memory manager (legacy).
+    
+    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
+    suitable for multi-worker deployments. Use the database-backed endpoints instead:
+    - GET /proxy/stats for combined statistics
+    
+    This endpoint is maintained for backward compatibility only and may be removed
+    in a future version.
 
     Args:
         token_data: Verified token data
@@ -534,6 +552,10 @@ async def get_memory_proxy_stats(token_data: Dict[str, Any] = Depends(verify_jwt
     Returns:
         Proxy statistics (total, active, failed)
     """
+    logger.warning(
+        "⚠️ DEPRECATED: /proxy/memory/stats endpoint is deprecated. "
+        "Use /proxy/stats instead for multi-worker compatible operations."
+    )
     try:
         stats = proxy_manager.get_stats()
         return ProxyStats(**stats)
@@ -547,6 +569,13 @@ async def get_memory_proxy_stats(token_data: Dict[str, Any] = Depends(verify_jwt
 async def clear_memory_proxies(token_data: Dict[str, Any] = Depends(verify_jwt_token)):
     """
     Clear all proxies from in-memory manager (legacy).
+    
+    **DEPRECATED**: This endpoint uses a global in-memory proxy manager that is not
+    suitable for multi-worker deployments. Use the database-backed endpoints instead:
+    - DELETE /proxy/clear-all for clearing all proxies
+    
+    This endpoint is maintained for backward compatibility only and may be removed
+    in a future version.
 
     Args:
         token_data: Verified token data
@@ -554,6 +583,10 @@ async def clear_memory_proxies(token_data: Dict[str, Any] = Depends(verify_jwt_t
     Returns:
         Success message
     """
+    logger.warning(
+        "⚠️ DEPRECATED: /proxy/memory/clear endpoint is deprecated. "
+        "Use /proxy/clear-all instead for multi-worker compatible operations."
+    )
     try:
         proxy_manager.clear_all()
         logger.info("Cleared all in-memory proxies via API")

@@ -75,8 +75,17 @@ class CountryAwareSelectorManager:
                 return
 
             with open(self.selectors_file, "r", encoding="utf-8") as f:
-                self._selectors = yaml.safe_load(f)
+                loaded = yaml.safe_load(f)
 
+            if not isinstance(loaded, dict):
+                logger.warning(
+                    f"Selectors file {self.selectors_file} returned {type(loaded).__name__} "
+                    f"instead of dict. Using default selectors."
+                )
+                self._selectors = self._get_default_selectors()
+                return
+
+            self._selectors = loaded
             version = self._selectors.get("version", "unknown")
             logger.info(f"Selectors loaded (version: {version}) for country: {self.country_code}")
 
