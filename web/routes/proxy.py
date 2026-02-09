@@ -11,7 +11,7 @@ from src.utils.security.netnut_proxy import NetNutProxyManager
 from web.dependencies import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest, get_proxy_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/proxy", tags=["proxy"])
+router = APIRouter(prefix="/proxy", tags=["proxy"])
 
 # Global proxy manager instance
 # Note: This is safe for concurrent access as FastAPI handles requests

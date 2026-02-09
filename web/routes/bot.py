@@ -17,7 +17,7 @@ from src.core.security import verify_api_key
 from web.dependencies import BotCommand, bot_state, broadcast_message, manager, verify_jwt_token
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api", tags=["bot"])
+router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
 
 # Error message constants

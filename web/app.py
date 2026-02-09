@@ -22,17 +22,13 @@ from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.models.db_factory import DatabaseFactory
 from src.services.otp_webhook_routes import router as otp_router
+from web.api_versioning import setup_versioned_routes
 from web.middleware import SecurityHeadersMiddleware
+from web.middleware.api_redirect import APIVersionRedirectMiddleware
 from web.routes import (
-    appointments_router,
-    auth_router,
-    bot_router,
     dashboard_router,
     health_router,
-    payment_router,
-    proxy_router,
     sms_webhook_router,
-    users_router,
     webhook_router,
 )
 from web.routes.bot import websocket_endpoint
@@ -334,7 +330,10 @@ API endpoints are rate-limited to prevent abuse:
     # 1. Error handling middleware first (catches all errors)
     app.add_middleware(ErrorHandlerMiddleware)
 
-    # 2. Security headers middleware
+    # 2. API redirect middleware for backward compatibility (before security headers)
+    app.add_middleware(APIVersionRedirectMiddleware)
+
+    # 3. Security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
 
     # 3. Correlation ID middleware for request tracking
@@ -387,18 +386,15 @@ API endpoints are rate-limited to prevent abuse:
         # Serve React app static assets
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
-    # Include routers
+    # Include non-versioned routers (webhooks, health, etc.)
     app.include_router(otp_router)  # OTP webhook routes
     app.include_router(webhook_router)  # Per-user webhook routes
     app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
-    app.include_router(auth_router)  # /api/auth/*
-    app.include_router(users_router)  # /api/users/*
-    app.include_router(appointments_router)  # /api/appointment-requests/*, /api/countries/*
-    app.include_router(payment_router)  # /api/payment-card/*, /api/payment/*
-    app.include_router(proxy_router)  # /api/proxy/*
-    app.include_router(bot_router)  # /api/bot/*, /api/logs, /api/errors/*
     app.include_router(health_router)  # /health, /ready, /metrics
     app.include_router(dashboard_router)  # /errors.html
+    
+    # Setup versioned API routes (v1)
+    setup_versioned_routes(app)
 
     # WebSocket endpoint (must be added directly, not via router)
     app.websocket("/ws")(websocket_endpoint)

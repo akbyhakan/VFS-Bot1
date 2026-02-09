@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from typing import Any, Dict, Optional
 
 from playwright.async_api import Page
@@ -94,11 +95,11 @@ class CloudflareHandler:
 
         try:
             # Wait for page to change or timeout
-            start_time = asyncio.get_event_loop().time()
+            start_time = time.monotonic()
 
             while True:
                 # Check if we've waited too long
-                elapsed = asyncio.get_event_loop().time() - start_time
+                elapsed = time.monotonic() - start_time
                 if elapsed > self.max_wait_time:
                     logger.warning("Waiting Room timeout")
                     return False
@@ -136,10 +137,10 @@ class CloudflareHandler:
             else:
                 # Wait for auto-solve
                 logger.info("Waiting for Turnstile auto-solve")
-                start_time = asyncio.get_event_loop().time()
+                start_time = time.monotonic()
 
                 while True:
-                    elapsed = asyncio.get_event_loop().time() - start_time
+                    elapsed = time.monotonic() - start_time
                     if elapsed > self.max_wait_time:
                         logger.warning("Turnstile timeout")
                         return False
@@ -174,10 +175,10 @@ class CloudflareHandler:
 
         try:
             # Wait for page to change
-            start_time = asyncio.get_event_loop().time()
+            start_time = time.monotonic()
 
             while True:
-                elapsed = asyncio.get_event_loop().time() - start_time
+                elapsed = time.monotonic() - start_time
                 if elapsed > self.max_wait_time:
                     logger.warning("Browser Check timeout")
                     return False

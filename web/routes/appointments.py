@@ -22,7 +22,7 @@ from web.dependencies import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api", tags=["appointments"])
+router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 
 @lru_cache(maxsize=1)

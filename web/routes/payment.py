@@ -16,7 +16,7 @@ from web.dependencies import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api", tags=["payment"])
+router = APIRouter(prefix="/payment", tags=["payment"])
 
 
 @router.get("/payment-card", response_model=Optional[PaymentCardResponse])

@@ -12,7 +12,7 @@ from src.repositories import UserRepository
 from web.dependencies import UserCreateRequest, UserModel, UserUpdateRequest, get_user_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("", response_model=List[UserModel])

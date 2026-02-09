@@ -21,6 +21,18 @@ class CaptchaConfig:
             manual_timeout=data.get("manual_timeout", 120),
         )
 
+    def __repr__(self) -> str:
+        """Mask sensitive api_key in repr."""
+        masked_key = "***" if self.api_key else "<empty>"
+        return (
+            f"CaptchaConfig(provider={self.provider!r}, "
+            f"api_key={masked_key!r}, manual_timeout={self.manual_timeout})"
+        )
+
+    def __str__(self) -> str:
+        """Mask sensitive api_key in str."""
+        return self.__repr__()
+
 
 @dataclass
 class VFSConfig:
@@ -98,6 +110,25 @@ class NotificationConfig:
             smtp_server=email.get("smtp_server", "smtp.gmail.com"),
             smtp_port=email.get("smtp_port", 587),
         )
+
+    def __repr__(self) -> str:
+        """Mask sensitive telegram_bot_token and email_password in repr."""
+        masked_token = "***" if self.telegram_bot_token else "<empty>"
+        masked_password = "***" if self.email_password else "<empty>"
+        return (
+            f"NotificationConfig(telegram_enabled={self.telegram_enabled}, "
+            f"telegram_bot_token={masked_token!r}, "
+            f"telegram_chat_id={self.telegram_chat_id!r}, "
+            f"email_enabled={self.email_enabled}, "
+            f"email_sender={self.email_sender!r}, "
+            f"email_password={masked_password!r}, "
+            f"email_receiver={self.email_receiver!r}, "
+            f"smtp_server={self.smtp_server!r}, smtp_port={self.smtp_port})"
+        )
+
+    def __str__(self) -> str:
+        """Mask sensitive fields in str."""
+        return self.__repr__()
 
 
 @dataclass
