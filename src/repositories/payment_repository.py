@@ -181,13 +181,18 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
     def _validate_card_data(self, data: Dict[str, Any]) -> None:
         """
-        Validate payment card data.
+        Validate payment card data using defensive validation (defense-in-depth).
+
+        Validation rules:
+        - Required fields: card_holder_name, card_number, expiry_month, expiry_year
+        - Card number: Must be 13-19 digits (standard credit card length)
+        - Expiry month: Must be 01-12 (two-digit format)
 
         Args:
             data: Card data to validate
 
         Raises:
-            ValueError: If card data is invalid
+            ValueError: If card data is invalid or missing required fields
         """
         required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
         for field in required_fields:
@@ -213,13 +218,49 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
     async def create(self, data: Dict[str, Any]) -> int:
         """
-        Create new payment card.
+        Create or update payment card (upsert).
+        
+        Since only one payment card is stored at a time, this method
+        updates the existing card if one exists, otherwise creates a new one.
 
         Args:
             data: Payment card data
 
         Returns:
-            Created card ID
+            Card ID (existing or newly created)
+
+        Raises:
+            ValueError: If card data is invalid
+        """
+        return await self._upsert(data)
+
+    async def update(self, data: Dict[str, Any]) -> int:
+        """
+        Update payment card (alias for create - maintains backward compatibility).
+        
+        Since only one payment card is stored at a time, this is functionally
+        identical to create().
+
+        Args:
+            data: Payment card data
+
+        Returns:
+            Card ID
+
+        Raises:
+            ValueError: If card data is invalid
+        """
+        return await self._upsert(data)
+
+    async def _upsert(self, data: Dict[str, Any]) -> int:
+        """
+        Internal method to create or update payment card.
+
+        Args:
+            data: Payment card data
+
+        Returns:
+            Card ID
 
         Raises:
             ValueError: If card data is invalid
@@ -273,68 +314,6 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                     raise RuntimeError("Failed to get inserted card ID")
                 logger.info(f"Payment card created with ID: {card_id}")
                 return int(card_id)
-
-    async def update(self, id: int, data: Dict[str, Any]) -> bool:
-        """
-        Update payment card.
-
-        Args:
-            id: Card ID
-            data: Update data
-
-        Returns:
-            True if updated, False otherwise
-        """
-        try:
-            # Validate card data
-            self._validate_card_data(data)
-
-            # Encrypt sensitive data (card number only)
-            card_number_encrypted = encrypt_password(data["card_number"])
-
-            async with self.db.get_connection() as conn:
-                # Check if a card already exists
-                existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
-
-                if existing:
-                    # Update existing card
-                    await conn.execute(
-                        """
-                        UPDATE payment_card
-                        SET card_holder_name = $1,
-                            card_number_encrypted = $2,
-                            expiry_month = $3,
-                            expiry_year = $4,
-                            updated_at = NOW()
-                        WHERE id = $5
-                        """,
-                        data["card_holder_name"],
-                        card_number_encrypted,
-                        data["expiry_month"],
-                        data["expiry_year"],
-                        existing["id"],
-                    )
-                    logger.info("Payment card updated")
-                else:
-                    # Insert new card
-                    await conn.fetchval(
-                        """
-                        INSERT INTO payment_card
-                        (card_holder_name, card_number_encrypted, expiry_month,
-                         expiry_year)
-                        VALUES ($1, $2, $3, $4)
-                        RETURNING id
-                        """,
-                        data["card_holder_name"],
-                        card_number_encrypted,
-                        data["expiry_month"],
-                        data["expiry_year"],
-                    )
-                    logger.info("Payment card created")
-                return True
-        except Exception as e:
-            logger.error(f"Failed to update payment card: {e}")
-            return False
 
     async def delete(self, id: int = 0) -> bool:
         """

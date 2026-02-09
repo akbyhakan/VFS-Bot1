@@ -397,8 +397,8 @@ class ProxyRepository(BaseRepository[Proxy]):
                 WHERE failure_count > 0
                 """
             )
-            # Extract count from result string like "UPDATE 5"
-            count = int(result.split()[-1]) if result and result.split()[-1].isdigit() else 0
+            # Use helper to parse result count
+            count = _parse_command_tag(result)
 
             if count > 0:
                 logger.info(f"Reset failures for {count} proxies")

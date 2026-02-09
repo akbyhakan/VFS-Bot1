@@ -87,12 +87,8 @@ async def save_payment_card(
             "expiry_year": card_data.expiry_year,
         }
 
-        # Check if card exists, update or create
-        existing_card = await payment_repo.get()
-        if existing_card:
-            card_id = await payment_repo.update(card_dict)
-        else:
-            card_id = await payment_repo.create(card_dict)
+        # Repository handles upsert logic (create or update)
+        card_id = await payment_repo.create(card_dict)
 
         logger.info(f"Payment card saved/updated by {token_data.get('sub', 'unknown')}")
         return {
