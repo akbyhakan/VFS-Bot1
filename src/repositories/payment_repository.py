@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from src.models.database import Database
 from src.repositories.base import BaseRepository
+from src.utils.encryption import encrypt_password, decrypt_password
 
 logger = logging.getLogger(__name__)
 
@@ -72,19 +73,30 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         Returns:
             PaymentCard entity or None if not found
         """
-        card_dict = await self.db.get_payment_card()
-        if card_dict is None or card_dict.get("id") != id:
-            return None
+        async with self.db.get_connection() as conn:
+            row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
 
-        return PaymentCard(
-            id=card_dict["id"],
-            card_holder_name=card_dict["card_holder_name"],
-            card_number=card_dict.get("card_number"),
-            expiry_month=card_dict.get("expiry_month"),
-            expiry_year=card_dict.get("expiry_year"),
-            created_at=card_dict.get("created_at"),
-            updated_at=card_dict.get("updated_at"),
-        )
+            if not row or row["id"] != id:
+                return None
+
+            card = dict(row)
+
+            # Decrypt card number
+            try:
+                card["card_number"] = decrypt_password(card["card_number_encrypted"])
+            except Exception as e:
+                logger.error(f"Failed to decrypt card data: {e}")
+                raise ValueError("Failed to decrypt card data")
+
+            return PaymentCard(
+                id=card["id"],
+                card_holder_name=card["card_holder_name"],
+                card_number=card.get("card_number"),
+                expiry_month=card.get("expiry_month"),
+                expiry_year=card.get("expiry_year"),
+                created_at=card.get("created_at"),
+                updated_at=card.get("updated_at"),
+            )
 
     async def get(self) -> Optional[PaymentCard]:
         """
@@ -93,19 +105,30 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         Returns:
             PaymentCard entity or None if not found
         """
-        card_dict = await self.db.get_payment_card()
-        if card_dict is None:
-            return None
+        async with self.db.get_connection() as conn:
+            row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
 
-        return PaymentCard(
-            id=card_dict["id"],
-            card_holder_name=card_dict["card_holder_name"],
-            card_number=card_dict.get("card_number"),
-            expiry_month=card_dict.get("expiry_month"),
-            expiry_year=card_dict.get("expiry_year"),
-            created_at=card_dict.get("created_at"),
-            updated_at=card_dict.get("updated_at"),
-        )
+            if not row:
+                return None
+
+            card = dict(row)
+
+            # Decrypt card number
+            try:
+                card["card_number"] = decrypt_password(card["card_number_encrypted"])
+            except Exception as e:
+                logger.error(f"Failed to decrypt card data: {e}")
+                raise ValueError("Failed to decrypt card data")
+
+            return PaymentCard(
+                id=card["id"],
+                card_holder_name=card["card_holder_name"],
+                card_number=card.get("card_number"),
+                expiry_month=card.get("expiry_month"),
+                expiry_year=card.get("expiry_year"),
+                created_at=card.get("created_at"),
+                updated_at=card.get("updated_at"),
+            )
 
     async def get_masked(self) -> Optional[PaymentCard]:
         """
@@ -114,19 +137,32 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         Returns:
             PaymentCard entity or None if not found
         """
-        card_dict = await self.db.get_payment_card_masked()
-        if card_dict is None:
-            return None
+        async with self.db.get_connection() as conn:
+            row = await conn.fetchrow("SELECT * FROM payment_card LIMIT 1")
 
-        return PaymentCard(
-            id=card_dict["id"],
-            card_holder_name=card_dict["card_holder_name"],
-            card_number_masked=card_dict.get("card_number_masked"),
-            expiry_month=card_dict.get("expiry_month"),
-            expiry_year=card_dict.get("expiry_year"),
-            created_at=card_dict.get("created_at"),
-            updated_at=card_dict.get("updated_at"),
-        )
+            if not row:
+                return None
+
+            card = dict(row)
+
+            # Decrypt card number to get last 4 digits, then mask
+            try:
+                card_number = decrypt_password(card["card_number_encrypted"])
+                last_four = card_number[-4:]
+                card["card_number_masked"] = f"**** **** **** {last_four}"
+            except Exception as e:
+                logger.error(f"Failed to decrypt card number: {e}")
+                card["card_number_masked"] = "**** **** **** ****"
+
+            return PaymentCard(
+                id=card["id"],
+                card_holder_name=card["card_holder_name"],
+                card_number_masked=card.get("card_number_masked"),
+                expiry_month=card.get("expiry_month"),
+                expiry_year=card.get("expiry_year"),
+                created_at=card.get("created_at"),
+                updated_at=card.get("updated_at"),
+            )
 
     async def get_all(self, limit: int = 100) -> List[PaymentCard]:
         """
@@ -145,21 +181,90 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
     async def create(self, data: Dict[str, Any]) -> int:
         """
-        Create new payment card (delegates to Database.save_payment_card).
+        Create new payment card.
 
         Args:
             data: Payment card data
 
         Returns:
             Created card ID
+
+        Raises:
+            ValueError: If card data is invalid
         """
-        return await self.db.save_payment_card(card_data=data)
+        required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing required field: {field}")
+
+        # Defensive validation (defense-in-depth)
+        card_number = data["card_number"]
+        expiry_month = data["expiry_month"]
+
+        # Validate card_number: only digits, length 13-19
+        if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
+            raise ValueError("Card number must be 13-19 digits")
+
+        # Validate expiry_month: must be 01-12
+        try:
+            month = int(expiry_month)
+        except ValueError:
+            raise ValueError("Invalid expiry month format")
+
+        if not (1 <= month <= 12):
+            raise ValueError("Expiry month must be between 01 and 12")
+
+        # Encrypt sensitive data (card number only)
+        card_number_encrypted = encrypt_password(data["card_number"])
+
+        async with self.db.get_connection() as conn:
+            # Check if a card already exists
+            existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
+
+            if existing:
+                # Update existing card
+                await conn.execute(
+                    """
+                    UPDATE payment_card
+                    SET card_holder_name = $1,
+                        card_number_encrypted = $2,
+                        expiry_month = $3,
+                        expiry_year = $4,
+                        updated_at = NOW()
+                    WHERE id = $5
+                    """,
+                    data["card_holder_name"],
+                    card_number_encrypted,
+                    data["expiry_month"],
+                    data["expiry_year"],
+                    existing["id"],
+                )
+                logger.info("Payment card updated")
+                return int(existing["id"])
+            else:
+                # Insert new card
+                card_id = await conn.fetchval(
+                    """
+                    INSERT INTO payment_card
+                    (card_holder_name, card_number_encrypted, expiry_month,
+                     expiry_year)
+                    VALUES ($1, $2, $3, $4)
+                    RETURNING id
+                    """,
+                    data["card_holder_name"],
+                    card_number_encrypted,
+                    data["expiry_month"],
+                    data["expiry_year"],
+                )
+                if card_id is None:
+                    raise RuntimeError("Failed to get inserted card ID")
+                logger.info(f"Payment card created with ID: {card_id}")
+                result_id: int = card_id
+                return result_id
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
-        Update payment card (delegates to Database.save_payment_card).
-
-        Note: save_payment_card handles both create and update.
+        Update payment card.
 
         Args:
             id: Card ID
@@ -169,15 +274,78 @@ class PaymentRepository(BaseRepository[PaymentCard]):
             True if updated, False otherwise
         """
         try:
-            await self.db.save_payment_card(card_data=data)
-            return True
+            required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
+            for field in required_fields:
+                if field not in data:
+                    raise ValueError(f"Missing required field: {field}")
+
+            # Defensive validation (defense-in-depth)
+            card_number = data["card_number"]
+            expiry_month = data["expiry_month"]
+
+            # Validate card_number: only digits, length 13-19
+            if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
+                raise ValueError("Card number must be 13-19 digits")
+
+            # Validate expiry_month: must be 01-12
+            try:
+                month = int(expiry_month)
+            except ValueError:
+                raise ValueError("Invalid expiry month format")
+
+            if not (1 <= month <= 12):
+                raise ValueError("Expiry month must be between 01 and 12")
+
+            # Encrypt sensitive data (card number only)
+            card_number_encrypted = encrypt_password(data["card_number"])
+
+            async with self.db.get_connection() as conn:
+                # Check if a card already exists
+                existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
+
+                if existing:
+                    # Update existing card
+                    await conn.execute(
+                        """
+                        UPDATE payment_card
+                        SET card_holder_name = $1,
+                            card_number_encrypted = $2,
+                            expiry_month = $3,
+                            expiry_year = $4,
+                            updated_at = NOW()
+                        WHERE id = $5
+                        """,
+                        data["card_holder_name"],
+                        card_number_encrypted,
+                        data["expiry_month"],
+                        data["expiry_year"],
+                        existing["id"],
+                    )
+                    logger.info("Payment card updated")
+                else:
+                    # Insert new card
+                    await conn.fetchval(
+                        """
+                        INSERT INTO payment_card
+                        (card_holder_name, card_number_encrypted, expiry_month,
+                         expiry_year)
+                        VALUES ($1, $2, $3, $4)
+                        RETURNING id
+                        """,
+                        data["card_holder_name"],
+                        card_number_encrypted,
+                        data["expiry_month"],
+                        data["expiry_year"],
+                    )
+                    logger.info("Payment card created")
+                return True
         except Exception as e:
             logger.error(f"Failed to update payment card: {e}")
             return False
 
     async def delete(self, id: int = 0) -> bool:
         """
-        Delete payment card (delegates to Database.delete_payment_card).
+        Delete payment card.
 
         Args:
             id: Card ID (not used as only one card exists)
@@ -185,4 +353,12 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         Returns:
             True if deleted, False otherwise
         """
-        return await self.db.delete_payment_card()
+        async with self.db.get_connection() as conn:
+            existing = await conn.fetchrow("SELECT id FROM payment_card LIMIT 1")
+
+            if not existing:
+                return False
+
+            await conn.execute("DELETE FROM payment_card WHERE id = $1", existing["id"])
+            logger.info("Payment card deleted")
+            return True
