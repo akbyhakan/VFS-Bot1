@@ -13,7 +13,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: authService.isAuthenticated(),
+  isAuthenticated: false,
   isLoading: false,
   error: null,
 
@@ -35,8 +35,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   checkAuth: () => {
-    const isAuthenticated = authService.isAuthenticated();
-    set({ isAuthenticated });
+    // Authentication state is managed server-side via HttpOnly cookie
+    // Client-side check is not reliable - this is a no-op for now
+    // Proper authentication check should use API call to /api/auth/me
   },
 
   clearError: () => {

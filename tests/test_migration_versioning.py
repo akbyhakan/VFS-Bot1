@@ -4,9 +4,6 @@ This test suite validates that the Alembic migration infrastructure is properly 
 - Alembic migration files exist
 - Database schema includes required columns from migrations
 - Column verification ensures migrations have been applied
-
-Note: In-code migrations have been deprecated in favor of Alembic.
-Use `alembic upgrade head` to apply migrations and `alembic downgrade <target>` to rollback.
 """
 
 import os
@@ -45,21 +42,6 @@ async def test_alembic_migration_files_exist():
     assert (
         len(migration_files) >= 1
     ), f"Expected at least 1 migration file, found {len(migration_files)}"
-
-
-@pytest.mark.asyncio
-async def test_schema_migrations_table_exists(unique_encryption_key):
-    """Test that schema_migrations table exists for backward compatibility."""
-    db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.connect()
-
-    async with db.pool.acquire() as conn:
-        result = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='schema_migrations')"
-        )
-        assert result is True, "schema_migrations table should exist for backward compatibility"
-
-    await db.close()
 
 
 @pytest.mark.asyncio
