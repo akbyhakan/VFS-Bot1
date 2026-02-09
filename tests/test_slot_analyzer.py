@@ -90,7 +90,7 @@ class TestSlotPatternAnalyzer:
         await analyzer.record_slot_found_async(
             country="nld", centre="Amsterdam", category="Tourism", date="2024-01-15", time="10:00"
         )
-        
+
         # Flush to ensure data is written to file
         await analyzer.flush()
 
