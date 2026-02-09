@@ -8,7 +8,6 @@ vi.mock('@/services/auth', () => ({
   authService: {
     login: vi.fn(),
     logout: vi.fn(),
-    isAuthenticated: vi.fn(),
   },
 }));
 
@@ -38,7 +37,6 @@ describe('useAuth', () => {
   it('should handle successful login', async () => {
     const mockTokenResponse = { access_token: 'token123', token_type: 'bearer' };
     vi.mocked(authService.login).mockResolvedValue(mockTokenResponse);
-    vi.mocked(authService.isAuthenticated).mockReturnValue(true);
 
     const { result } = renderHook(() => useAuth());
 
@@ -83,15 +81,14 @@ describe('useAuth', () => {
   });
 
   it('should check authentication status', () => {
-    vi.mocked(authService.isAuthenticated).mockReturnValue(true);
     const { result } = renderHook(() => useAuth());
 
     act(() => {
       result.current.checkAuth();
     });
 
-    expect(authService.isAuthenticated).toHaveBeenCalled();
-    expect(result.current.isAuthenticated).toBe(true);
+    // checkAuth is now a no-op, so state should remain unchanged
+    expect(result.current.isAuthenticated).toBe(false);
   });
 
   it('should clear error', () => {
