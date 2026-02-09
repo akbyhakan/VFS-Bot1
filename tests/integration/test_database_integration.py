@@ -81,18 +81,6 @@ class TestDatabaseIntegrationWithTestcontainers:
         assert is_healthy is True, "Database should be healthy"
 
     @pytest.mark.asyncio
-    async def test_schema_migrations_applied(self, db: Database):
-        """Test that schema migrations are applied correctly."""
-        # Get the count of applied migrations
-        async with db.get_connection() as conn:
-            migration_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM schema_migrations"
-            )
-        
-        # Should have at least 5 migrations applied
-        assert migration_count >= 5, f"Expected >= 5 migrations, got {migration_count}"
-
-    @pytest.mark.asyncio
     @pytest.mark.slow
     async def test_connection_pool_under_pressure(self, db: Database):
         """Test connection pool under concurrent load."""

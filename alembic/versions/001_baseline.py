@@ -6,7 +6,6 @@ Create Date: 2026-02-08 14:22:00.000000
 
 This migration creates the complete initial database schema.
 All tables, indexes, triggers, and functions are defined here.
-This replaces the _create_tables() method from database.py.
 """
 from typing import Sequence, Union
 
@@ -229,15 +228,6 @@ def upgrade() -> None:
         )
     """)
     
-    # Create schema_migrations table
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-            version INTEGER PRIMARY KEY,
-            description TEXT NOT NULL,
-            applied_at TIMESTAMPTZ DEFAULT NOW()
-        )
-    """)
-    
     # Create indexes
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)")
@@ -318,7 +308,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop all tables in reverse order (respecting foreign key dependencies)."""
     # Drop tables in reverse order to respect FK dependencies
-    op.execute("DROP TABLE IF EXISTS schema_migrations CASCADE")
     op.execute("DROP TABLE IF EXISTS token_blacklist CASCADE")
     op.execute("DROP TABLE IF EXISTS proxy_endpoints CASCADE")
     op.execute("DROP TABLE IF EXISTS user_webhooks CASCADE")
