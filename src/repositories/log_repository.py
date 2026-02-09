@@ -92,7 +92,7 @@ class LogRepository(BaseRepository[LogEntry]):
 
     async def get_all(self, limit: int = 100) -> List[LogEntry]:
         """
-        Get all log entries (delegates to Database.get_logs).
+        Get all log entries.
 
         Args:
             limit: Maximum number of logs to return
@@ -100,35 +100,32 @@ class LogRepository(BaseRepository[LogEntry]):
         Returns:
             List of log entry entities
         """
-        log_dicts = await self.db.get_logs(limit=limit)
-        return [
-            LogEntry(
-                id=log["id"],
-                level=log["level"],
-                message=log["message"],
-                user_id=log.get("user_id"),
-                created_at=log.get("created_at"),
-            )
-            for log in log_dicts
-        ]
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch("SELECT * FROM logs ORDER BY created_at DESC LIMIT $1", limit)
+            return [self._row_to_log_entry(row) for row in rows]
 
     async def create(self, data: Dict[str, Any]) -> int:
         """
-        Create new log entry (delegates to Database.add_log).
+        Create new log entry.
 
         Args:
             data: Log entry data (level, message, user_id)
 
         Returns:
-            Created log entry ID (returns 0 as Database.add_log returns None)
+            Created log entry ID
         """
-        await self.db.add_log(
-            level=data.get("level", LogLevel.INFO.value),
-            message=data["message"],
-            user_id=data.get("user_id"),
-        )
-        # Database.add_log doesn't return an ID, so we return 0
-        return 0
+        async with self.db.get_connection() as conn:
+            log_id = await conn.fetchval(
+                """
+                INSERT INTO logs (level, message, user_id)
+                VALUES ($1, $2, $3)
+                RETURNING id
+            """,
+                data.get("level", LogLevel.INFO.value),
+                data["message"],
+                data.get("user_id"),
+            )
+            return int(log_id) if log_id is not None else 0
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """

@@ -153,7 +153,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def create(self, data: Dict[str, Any]) -> int:
         """
-        Create new appointment (delegates to Database.add_appointment).
+        Create new appointment.
 
         Args:
             data: Appointment data
@@ -161,15 +161,27 @@ class AppointmentRepository(BaseRepository[Appointment]):
         Returns:
             Created appointment ID
         """
-        return await self.db.add_appointment(
-            user_id=data["user_id"],
-            centre=data["centre"],
-            category=data["category"],
-            subcategory=data["subcategory"],
-            date=data.get("appointment_date"),
-            time=data.get("appointment_time"),
-            reference=data.get("reference_number"),
-        )
+        async with self.db.get_connection() as conn:
+            appt_id = await conn.fetchval(
+                """
+                INSERT INTO appointments
+                (user_id, centre, category, subcategory, appointment_date,
+                 appointment_time, reference_number)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            """,
+                data["user_id"],
+                data["centre"],
+                data["category"],
+                data["subcategory"],
+                data.get("appointment_date"),
+                data.get("appointment_time"),
+                data.get("reference_number"),
+            )
+            logger.info(f"Appointment added for user {data['user_id']}")
+            if appt_id is None:
+                raise RuntimeError("Failed to fetch ID after insert")
+            return int(appt_id)
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """

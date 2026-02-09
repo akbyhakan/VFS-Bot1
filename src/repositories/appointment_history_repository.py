@@ -1,6 +1,7 @@
 """Appointment history repository implementation."""
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from src.models.database import Database
@@ -139,7 +140,7 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         self, user_id: int, limit: int = 50, status: Optional[str] = None
     ) -> List[AppointmentHistory]:
         """
-        Get appointment history for a user (delegates to Database.get_appointment_history).
+        Get appointment history for a user.
 
         Args:
             user_id: User ID
@@ -149,16 +150,25 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         Returns:
             List of appointment history entities
         """
-        history_dicts = await self.db.get_appointment_history(
-            user_id=user_id,
-            limit=limit,
-            status=status,
-        )
-        return [self._dict_to_appointment_history(hist) for hist in history_dicts]
+        query = "SELECT * FROM appointment_history WHERE user_id = $1"
+        params: List[Any] = [user_id]
+        param_num = 2
+
+        if status:
+            query += f" AND status = ${param_num}"
+            params.append(status)
+            param_num += 1
+
+        query += f" ORDER BY created_at DESC LIMIT ${param_num}"
+        params.append(limit)
+
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch(query, *params)
+            return [self._dict_to_appointment_history(dict(row)) for row in rows]
 
     async def create(self, data: Dict[str, Any]) -> int:
         """
-        Create new appointment history record (delegates to Database.add_appointment_history).
+        Create new appointment history record.
 
         Args:
             data: Appointment history data
@@ -166,16 +176,24 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         Returns:
             Created history record ID
         """
-        return await self.db.add_appointment_history(
-            user_id=data["user_id"],
-            centre=data["centre"],
-            mission=data["mission"],
-            status=data["status"],
-            category=data.get("category"),
-            slot_date=data.get("slot_date"),
-            slot_time=data.get("slot_time"),
-            error_message=data.get("error_message"),
-        )
+        async with self.db.get_connection() as conn:
+            history_id = await conn.fetchval(
+                """
+                INSERT INTO appointment_history
+                (user_id, centre, mission, category, slot_date, slot_time, status, error_message)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
+                """,
+                data["user_id"],
+                data["centre"],
+                data["mission"],
+                data.get("category"),
+                data.get("slot_date"),
+                data.get("slot_time"),
+                data["status"],
+                data.get("error_message"),
+            )
+            return int(history_id) if history_id is not None else 0
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
@@ -229,7 +247,7 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         self, id: int, status: str, error_message: Optional[str] = None
     ) -> bool:
         """
-        Update appointment history status (delegates to Database.update_appointment_status).
+        Update appointment history status.
 
         Args:
             id: History record ID
@@ -239,11 +257,19 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
         Returns:
             True if updated, False otherwise
         """
-        return await self.db.update_appointment_status(
-            history_id=id,
-            status=status,
-            error_message=error_message,
-        )
+        async with self.db.get_connection() as conn:
+            await conn.execute(
+                """
+                UPDATE appointment_history
+                SET status = $1, error_message = $2, updated_at = $3, attempt_count = attempt_count + 1
+                WHERE id = $4
+                """,
+                status,
+                error_message,
+                datetime.now(timezone.utc),
+                id,
+            )
+            return True
 
     async def delete(self, id: int) -> bool:
         """
