@@ -20,7 +20,7 @@ from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
 from ..adaptive_scheduler import AdaptiveScheduler
 from ..alert_service import AlertChannel, AlertConfig, AlertService
-from ..booking import AppointmentBookingService
+from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
 from ..country_profile_loader import CountryProfileLoader
@@ -109,7 +109,7 @@ class WorkflowServicesContext:
 
     auth_service: AuthService
     slot_checker: SlotChecker
-    booking_service: AppointmentBookingService
+    booking_service: BookingOrchestrator
     waitlist_handler: WaitlistHandler
     error_handler: ErrorHandler
     payment_service: Optional[Any] = None  # PaymentService type (optional import)
@@ -340,7 +340,7 @@ class BotServiceFactory:
             logger.warning(f"AlertService not available: {e}")
 
         # Create booking service
-        booking_service = AppointmentBookingService(
+        booking_service = BookingOrchestrator(
             config, core.captcha_solver, anti_detection.human_sim, payment_service
         )
 

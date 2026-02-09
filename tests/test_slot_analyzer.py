@@ -56,11 +56,12 @@ class TestSlotPatternAnalyzer:
 
         assert analyzer._patterns == {"slots": [], "stats": {}}
 
-    def test_record_slot_found(self, temp_data_file):
+    @pytest.mark.asyncio
+    async def test_record_slot_found(self, temp_data_file):
         """Test recording a found slot."""
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
 
-        analyzer.record_slot_found(
+        await analyzer.record_slot_found_async(
             country="nld",
             centre="Amsterdam",
             category="Tourism",
@@ -81,13 +82,17 @@ class TestSlotPatternAnalyzer:
         assert "found_hour" in slot
         assert "found_weekday" in slot
 
-    def test_record_slot_found_saves_to_file(self, temp_data_file):
+    @pytest.mark.asyncio
+    async def test_record_slot_found_saves_to_file(self, temp_data_file):
         """Test that recording a slot saves to file."""
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
 
-        analyzer.record_slot_found(
+        await analyzer.record_slot_found_async(
             country="nld", centre="Amsterdam", category="Tourism", date="2024-01-15", time="10:00"
         )
+
+        # Flush to ensure data is written to file
+        await analyzer.flush()
 
         # Verify file was created and contains data
         assert temp_data_file.exists()
@@ -313,70 +318,3 @@ class TestSlotRetention:
         # Verify retention was enforced
         assert len(analyzer._patterns["slots"]) == _MAX_SLOT_RECORDS
 
-
-class TestSyncBatching:
-    """Tests for synchronous method batching."""
-
-    @pytest.fixture
-    def temp_data_file(self, tmp_path):
-        """Create a temporary data file."""
-        return tmp_path / "slot_patterns.json"
-
-    def test_record_slot_found_deprecation_warning(self, temp_data_file):
-        """Test that record_slot_found emits deprecation warning."""
-        analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
-        with pytest.warns(DeprecationWarning, match="record_slot_found.*deprecated"):
-            analyzer.record_slot_found(
-                country="nld",
-                centre="Amsterdam",
-                category="Tourism",
-                date="2024-01-15",
-                time="10:00",
-            )
-
-    def test_sync_batching_behavior(self, temp_data_file):
-        """Test that sync method batches writes."""
-        from src.services.slot_analyzer import _SYNC_BATCH_SIZE
-        
-        analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
-        # Add records less than batch size - should not write yet
-        for i in range(_SYNC_BATCH_SIZE - 1):
-            with pytest.warns(DeprecationWarning):
-                analyzer.record_slot_found(
-                    country="nld",
-                    centre="Amsterdam",
-                    category="Tourism",
-                    date="2024-01-15",
-                    time="10:00",
-                )
-        
-        # File might exist from the batch write, but check pending count
-        assert analyzer._sync_pending_writes == _SYNC_BATCH_SIZE - 1
-        
-    def test_flush_sync(self, temp_data_file):
-        """Test that flush_sync writes pending records."""
-        analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
-        # Add one record
-        with pytest.warns(DeprecationWarning):
-            analyzer.record_slot_found(
-                country="nld",
-                centre="Amsterdam",
-                category="Tourism",
-                date="2024-01-15",
-                time="10:00",
-            )
-        
-        # Explicitly flush
-        analyzer.flush_sync()
-        
-        # Verify pending writes cleared
-        assert analyzer._sync_pending_writes == 0
-        
-        # Verify data was written
-        assert temp_data_file.exists()
-        with open(temp_data_file, "r") as f:
-            data = json.load(f)
-        assert len(data["slots"]) == 1

@@ -3,7 +3,6 @@ import asyncio
 import json
 import logging
 import threading
-import warnings
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
