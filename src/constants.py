@@ -1,6 +1,5 @@
 """Unified constants and configuration values for VFS-Bot."""
 
-import os
 from typing import Final
 
 
@@ -68,9 +67,9 @@ class RateLimits:
     LOGIN_WINDOW_SECONDS: Final[int] = 300
     LOGIN_LOCKOUT_SECONDS: Final[int] = 900
 
-    # Authentication rate limiting (brute-force protection) - window in seconds
-    AUTH_RATE_LIMIT_ATTEMPTS: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_ATTEMPTS", "5"))
-    AUTH_RATE_LIMIT_WINDOW: Final[int] = int(os.getenv("AUTH_RATE_LIMIT_WINDOW", "60"))
+    # Authentication rate limiting (brute-force protection)
+    AUTH_RATE_LIMIT_ATTEMPTS: Final[int] = 5
+    AUTH_RATE_LIMIT_WINDOW: Final[int] = 60
 
 
 class Security:
@@ -129,15 +128,19 @@ class ErrorCapture:
 
 
 class Database:
-    """Database configuration."""
+    """Database configuration defaults.
 
-    DEFAULT_URL: Final[str] = os.getenv("DATABASE_URL") or ""
-    TEST_URL: Final[str] = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
-    # Pool size: Default is 10, can be overridden via DB_POOL_SIZE env var
-    POOL_SIZE: Final[int] = int(os.getenv("DB_POOL_SIZE", "10"))
-    CONNECTION_TIMEOUT: Final[float] = float(os.getenv("DB_CONNECTION_TIMEOUT", "30.0"))
+    NOTE: These are compile-time defaults only. Runtime configuration
+    should be obtained via VFSSettings (src/core/settings.py) which
+    provides environment variable parsing, validation, and type coercion.
+    """
+
+    DEFAULT_URL: Final[str] = "postgresql://localhost:5432/vfs_bot"
+    TEST_URL: Final[str] = "postgresql://localhost:5432/vfs_bot_test"
+    POOL_SIZE: Final[int] = 10
+    CONNECTION_TIMEOUT: Final[float] = 30.0
     QUERY_TIMEOUT: Final[float] = 30.0
-    DEFAULT_CACHE_TTL: Final[int] = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
+    DEFAULT_CACHE_TTL: Final[int] = 3600
 
 
 class Pools:
