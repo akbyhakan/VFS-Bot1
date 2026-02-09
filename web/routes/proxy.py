@@ -352,12 +352,7 @@ async def reset_proxy_failures(
         Success message with count
     """
     try:
-        # Get all proxies and reset failures individually
-        proxies = await proxy_repo.get_active()
-        count = 0
-        for proxy in proxies:
-            await proxy_repo.reset_failures(proxy["id"])
-            count += 1
+        count = await proxy_repo.reset_all_failures()
 
         logger.info(f"Reset failures for {count} proxies")
 

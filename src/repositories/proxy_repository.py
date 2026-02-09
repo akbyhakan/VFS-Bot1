@@ -381,6 +381,30 @@ class ProxyRepository(BaseRepository[Proxy]):
 
             return updated
 
+    async def reset_all_failures(self) -> int:
+        """
+        Reset failure count for all proxies.
+
+        Returns:
+            Number of proxies updated
+        """
+        async with self.db.get_connection() as conn:
+            result = await conn.execute(
+                """
+                UPDATE proxy_endpoints
+                SET failure_count = 0,
+                    updated_at = NOW()
+                WHERE failure_count > 0
+                """
+            )
+            # Extract count from result string like "UPDATE 5"
+            count = int(result.split()[-1]) if result and result.split()[-1].isdigit() else 0
+
+            if count > 0:
+                logger.info(f"Reset failures for {count} proxies")
+
+            return count
+
     async def get_stats(self) -> Dict[str, Any]:
         """
         Get proxy statistics.

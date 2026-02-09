@@ -6,10 +6,10 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from src.repositories import WebhookRepository
+from src.repositories import WebhookRepository, UserRepository
 from src.services.otp_webhook import get_otp_service
 from src.utils.webhook_utils import verify_webhook_signature
-from web.dependencies import get_webhook_repository, verify_jwt_token
+from web.dependencies import get_webhook_repository, get_user_repository, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
@@ -24,6 +24,7 @@ async def create_webhook(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     webhook_repo: WebhookRepository = Depends(get_webhook_repository),
+    user_repo: UserRepository = Depends(get_user_repository),
 ):
     """
     Create a unique webhook for a user.
@@ -32,6 +33,7 @@ async def create_webhook(
         user_id: User ID
         token_data: Verified token data
         webhook_repo: WebhookRepository instance
+        user_repo: UserRepository instance
 
     Returns:
         Webhook token and URL
@@ -40,16 +42,10 @@ async def create_webhook(
         HTTPException: If user already has a webhook or creation fails
     """
     try:
-        # Verify user exists (using repository's internal db connection)
-        from web.dependencies import get_db
-        from fastapi import Depends as FastAPIDepends
-        
-        # We need to check if user exists - get db instance
-        db = webhook_repo.db
-        async with db.get_connection() as conn:
-            user = await conn.fetchrow("SELECT id FROM users WHERE id = $1", user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
+        # Verify user exists using UserRepository
+        user = await user_repo.get_by_id_with_details(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
         # Check if webhook already exists
         existing = await webhook_repo.get_by_user(user_id)

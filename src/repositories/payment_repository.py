@@ -179,15 +179,12 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         card = await self.get()
         return [card] if card else []
 
-    async def create(self, data: Dict[str, Any]) -> int:
+    def _validate_card_data(self, data: Dict[str, Any]) -> None:
         """
-        Create new payment card.
+        Validate payment card data.
 
         Args:
-            data: Payment card data
-
-        Returns:
-            Created card ID
+            data: Card data to validate
 
         Raises:
             ValueError: If card data is invalid
@@ -213,6 +210,22 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
         if not (1 <= month <= 12):
             raise ValueError("Expiry month must be between 01 and 12")
+
+    async def create(self, data: Dict[str, Any]) -> int:
+        """
+        Create new payment card.
+
+        Args:
+            data: Payment card data
+
+        Returns:
+            Created card ID
+
+        Raises:
+            ValueError: If card data is invalid
+        """
+        # Validate card data
+        self._validate_card_data(data)
 
         # Encrypt sensitive data (card number only)
         card_number_encrypted = encrypt_password(data["card_number"])
@@ -273,27 +286,8 @@ class PaymentRepository(BaseRepository[PaymentCard]):
             True if updated, False otherwise
         """
         try:
-            required_fields = ["card_holder_name", "card_number", "expiry_month", "expiry_year"]
-            for field in required_fields:
-                if field not in data:
-                    raise ValueError(f"Missing required field: {field}")
-
-            # Defensive validation (defense-in-depth)
-            card_number = data["card_number"]
-            expiry_month = data["expiry_month"]
-
-            # Validate card_number: only digits, length 13-19
-            if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
-                raise ValueError("Card number must be 13-19 digits")
-
-            # Validate expiry_month: must be 01-12
-            try:
-                month = int(expiry_month)
-            except ValueError:
-                raise ValueError("Invalid expiry month format")
-
-            if not (1 <= month <= 12):
-                raise ValueError("Expiry month must be between 01 and 12")
+            # Validate card data
+            self._validate_card_data(data)
 
             # Encrypt sensitive data (card number only)
             card_number_encrypted = encrypt_password(data["card_number"])

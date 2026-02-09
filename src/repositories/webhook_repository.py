@@ -131,30 +131,26 @@ class WebhookRepository(BaseRepository[Webhook]):
 
             return [self._row_to_webhook(row) for row in rows]
 
-    async def create(self, data: Dict[str, Any]) -> int:
+    async def create(self, user_id: int) -> str:
         """
         Create a unique webhook token for a user.
 
         Args:
-            data: Webhook data (must include user_id)
+            user_id: User ID
 
         Returns:
-            Webhook ID (returns -1 and raises ValueError if user already has webhook)
+            Generated webhook token
 
         Raises:
-            ValueError: If user already has a webhook or user_id not provided
+            ValueError: If user already has a webhook
         """
-        user_id = data.get("user_id")
-        if user_id is None:
-            raise ValueError("user_id is required")
-
         # Check if user already has a webhook
         existing = await self.get_by_user(user_id)
         if existing:
             raise ValueError("User already has a webhook")
 
         # Generate unique token
-        token = data.get("webhook_token", secrets.token_urlsafe(32))
+        token = secrets.token_urlsafe(32)
 
         async with self.db.get_connection() as conn:
             webhook_id = await conn.fetchval(
@@ -168,7 +164,7 @@ class WebhookRepository(BaseRepository[Webhook]):
             )
 
         logger.info(f"Webhook created for user {user_id}: {token[:8]}...")
-        return int(webhook_id) if webhook_id else 0
+        return token
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """
