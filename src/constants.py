@@ -99,7 +99,6 @@ class CircuitBreaker:
     """Circuit breaker configuration."""
 
     FAIL_THRESHOLD: Final[int] = 5
-    FAILURE_THRESHOLD: Final[int] = 5  # Alias for compatibility
     TIMEOUT_SECONDS: Final[float] = 60.0
     HALF_OPEN_SUCCESS_THRESHOLD: Final[int] = 3
     MAX_ERRORS_PER_HOUR: Final[int] = 20
@@ -221,9 +220,3 @@ class LogEmoji:
     CALENDAR: Final[str] = "📅"
     PAYMENT: Final[str] = "💳"
 
-
-class RateLimitDefaults:
-    """Default values for rate limiting - used by rate_limiter.py."""
-
-    MAX_REQUESTS: int = 60
-    TIME_WINDOW: int = 60
