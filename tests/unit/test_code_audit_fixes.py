@@ -262,8 +262,12 @@ class TestGrafanaPasswordNotHardcoded:
         content = compose_path.read_text()
         # Should NOT contain hardcoded password
         assert "vfsbot_grafana" not in content, "Grafana password should not be hardcoded"
-        # Should use environment variable
+        # Should use environment variable with proper syntax
         assert "GRAFANA_ADMIN_PASSWORD" in content, "Should use GRAFANA_ADMIN_PASSWORD env var"
+        # Verify it's using the environment variable syntax, not just referencing it
+        assert "${GRAFANA_ADMIN_PASSWORD" in content, "Should use ${GRAFANA_ADMIN_PASSWORD...} syntax"
+        # Verify the :? syntax requiring the variable
+        assert ":?" in content, "Should use :? syntax to require environment variable"
 
     def test_monitoring_compose_no_version_key(self):
         """Test that docker-compose.monitoring.yml doesn't have deprecated version key."""
@@ -342,6 +346,34 @@ class TestStartupValidatorGrafana:
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
         assert len(grafana_warnings) > 0, "Should detect default Grafana password"
 
+    def test_grafana_placeholder_patterns_detected(self, production_env_vars):
+        """Test that placeholder patterns in Grafana password are detected."""
+        test_patterns = [
+            "CHANGE_ME_generate_secure_grafana_password",
+            "my_password_change_me",
+            "ChangeMeNow",
+        ]
+        
+        from src.core.startup_validator import validate_production_security
+        
+        for password in test_patterns:
+            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            warnings = validate_production_security()
+            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+            assert len(grafana_warnings) > 0, f"Should detect placeholder pattern in '{password}'"
+
+    def test_grafana_common_defaults_detected(self, production_env_vars):
+        """Test that common default passwords are detected."""
+        common_defaults = ["admin", "password", "grafana"]
+        
+        from src.core.startup_validator import validate_production_security
+        
+        for password in common_defaults:
+            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            warnings = validate_production_security()
+            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+            assert len(grafana_warnings) > 0, f"Should detect common default password '{password}'"
+
     def test_grafana_secure_password_passes(self, production_env_vars):
         """Test that secure Grafana password passes validation."""
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
@@ -351,6 +383,17 @@ class TestStartupValidatorGrafana:
 
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
         assert len(grafana_warnings) == 0, "Secure Grafana password should not trigger warning"
+
+    def test_grafana_secure_with_vfsbot_substring_passes(self, production_env_vars):
+        """Test that password containing 'vfsbot' as part of secure string passes."""
+        # This ensures we're using exact match for 'vfsbot_grafana', not substring
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "secure_vfsbot_integration_key_xyz789"
+
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
+
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) == 0, "Secure password with 'vfsbot' substring should pass"
 
 
 if __name__ == "__main__":
