@@ -443,13 +443,13 @@ class TestLogoutTokenRevocation:
         from unittest.mock import MagicMock, patch
         
         # We'll test the behavior directly by mocking the revoke_token function
-        with patch("web.routes.auth.revoke_token") as mock_revoke:
+        with patch("web.routes.auth.revoke_token", new_callable=AsyncMock) as mock_revoke:
             # Import the auth module AFTER patching
             from web.routes.auth import router
             from web.routes.auth import logout
             
-            # revoke_token is now async, so the mock should be an AsyncMock
-            mock_revoke.return_value = AsyncMock(return_value=True)()
+            # Set the return value for the async mock
+            mock_revoke.return_value = True
             
             # Verify the import was successful and the function is updated
             assert mock_revoke is not None
