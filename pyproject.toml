@@ -1,3 +1,22 @@
+[project]
+name = "vfs-bot"
+version = "2.0.0"
+description = "VFS Global Appointment Booking Bot with automated slot checking and booking"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "akbyhakan", email = "247059625+akbyhakan@users.noreply.github.com"}
+]
+keywords = ["vfs", "appointment", "booking", "automation", "bot"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Utilities",
+]
+
 [tool.black]
 line-length = 100
 target-version = ['py312']
