@@ -289,6 +289,9 @@ class TestCORSValidation:
 
         monkeypatch.setenv("ENV", "production")
         # These should NOT be blocked as they don't start with localhost.
+        # These are legitimate production domains that happen to contain 'localhost' substring
+        # CodeQL alert py/incomplete-url-substring-sanitization is expected and correct here
+        # as we're testing that substring matching doesn't cause false positives
         origins = validate_cors_origins("https://mylocalhost.com,https://notlocalhost.example.com")
         assert "https://mylocalhost.com" in origins
         assert "https://notlocalhost.example.com" in origins
