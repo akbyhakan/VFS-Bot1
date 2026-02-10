@@ -466,7 +466,12 @@ class Database:
         try:
             async with self.get_connection(timeout=5.0) as conn:
                 result = await conn.fetchval("SELECT 1")
-                return result is not None
+                if result is not None:
+                    # Reset failure counter — connection is proven healthy
+                    self._consecutive_failures = 0
+                    self._last_successful_query = datetime.now(timezone.utc)
+                    return True
+                return False
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False

@@ -59,8 +59,13 @@ async def lifespan(app: FastAPI):
     logger.info("FastAPI application starting up...")
     try:
         # Ensure database is connected
-        await DatabaseFactory.ensure_connected()
+        db = await DatabaseFactory.ensure_connected()
         logger.info("Database connection established via DatabaseFactory")
+        
+        # Initialize persistent token blacklist with database
+        from src.core.auth import init_token_blacklist
+        init_token_blacklist(db)
+        logger.info("Token blacklist initialized with database persistence")
     except Exception as e:
         logger.error(f"Failed to connect database during startup: {e}")
         raise

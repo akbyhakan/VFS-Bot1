@@ -9,6 +9,8 @@ from typing import Any, Dict, Literal, Optional
 
 import aiosmtplib
 
+from src.utils.decorators import retry_async
+
 logger = logging.getLogger(__name__)
 
 # Type aliases for better type hints
@@ -118,6 +120,7 @@ class NotificationService:
         else:
             logger.warning("No notification channels enabled")
 
+    @retry_async(max_retries=2, delay=1.0, backoff=2.0, exceptions=(ConnectionError, TimeoutError, OSError, Exception))
     async def send_telegram(self, title: str, message: str) -> bool:
         """
         Send Telegram notification.
@@ -155,6 +158,7 @@ class NotificationService:
             logger.error(f"Telegram notification failed: {e}")
             return False
 
+    @retry_async(max_retries=2, delay=1.0, backoff=2.0, exceptions=(ConnectionError, TimeoutError, OSError, Exception))
     async def send_email(self, subject: str, body: str) -> bool:
         """
         Send email notification.

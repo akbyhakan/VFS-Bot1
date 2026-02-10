@@ -11,7 +11,7 @@ import jwt
 from jwt.exceptions import InvalidTokenError as JWTError
 from loguru import logger
 
-from .token_blacklist import get_token_blacklist
+from .token_blacklist import check_blacklisted, get_token_blacklist
 
 # Supported JWT algorithms whitelist
 SUPPORTED_JWT_ALGORITHMS = frozenset({
@@ -166,7 +166,7 @@ def create_access_token(
     return str(encoded_jwt)
 
 
-def _check_token_blacklist(payload: Dict[str, Any]) -> None:
+async def _check_token_blacklist(payload: Dict[str, Any]) -> None:
     """
     Check if token is blacklisted.
 
@@ -177,7 +177,7 @@ def _check_token_blacklist(payload: Dict[str, Any]) -> None:
         HTTPException: If token is blacklisted
     """
     jti = payload.get("jti")
-    if jti and get_token_blacklist().is_blacklisted(jti):
+    if jti and await check_blacklisted(jti):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked",
@@ -185,7 +185,7 @@ def _check_token_blacklist(payload: Dict[str, Any]) -> None:
         )
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+async def verify_token(token: str) -> Dict[str, Any]:
     """
     Verify and decode JWT token with key rotation support.
 
@@ -210,7 +210,7 @@ def verify_token(token: str) -> Dict[str, Any]:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
         # Check if token is blacklisted using helper
-        _check_token_blacklist(payload)
+        await _check_token_blacklist(payload)
 
         return cast(dict[str, Any], payload)
     except JWTError as primary_error:
@@ -222,7 +222,7 @@ def verify_token(token: str) -> Dict[str, Any]:
                 payload = jwt.decode(token, previous_key, algorithms=[algorithm])
 
                 # Check blacklist for old key tokens too using helper
-                _check_token_blacklist(payload)
+                await _check_token_blacklist(payload)
 
                 # Check if token exceeds rotation max age
                 rotation_max_hours = int(os.getenv("API_SECRET_KEY_ROTATION_MAX_HOURS", "72"))
@@ -261,7 +261,7 @@ def verify_token(token: str) -> Dict[str, Any]:
         )
 
 
-def revoke_token(token: str) -> bool:
+async def revoke_token(token: str) -> bool:
     """
     Revoke a JWT token by adding it to the blacklist.
 
@@ -299,8 +299,15 @@ def revoke_token(token: str) -> bool:
         # Convert exp to datetime
         exp_dt = datetime.fromtimestamp(exp, tz=timezone.utc)
 
-        # Add to blacklist
-        get_token_blacklist().add(jti, exp_dt)
+        # Add to blacklist (use async method if available)
+        blacklist = get_token_blacklist()
+        if hasattr(blacklist, 'add_async'):
+            # PersistentTokenBlacklist
+            await blacklist.add_async(jti, exp_dt)
+        else:
+            # Regular TokenBlacklist
+            blacklist.add(jti, exp_dt)
+        
         logger.info(f"Token {jti[:8]}... revoked successfully")
         return True
 

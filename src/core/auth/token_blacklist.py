@@ -121,7 +121,9 @@ class PersistentTokenBlacklist(TokenBlacklist):
         # Persist to database if available
         if self._use_db and self._db:
             try:
-                await self._db.add_blacklisted_token(jti, exp)
+                from src.repositories import TokenBlacklistRepository
+                repo = TokenBlacklistRepository(self._db)
+                await repo.add(jti, exp)
             except Exception as e:
                 logger.warning(f"Failed to persist blacklisted token: {e}")
 
@@ -134,7 +136,9 @@ class PersistentTokenBlacklist(TokenBlacklist):
         # Check database if available
         if self._use_db and self._db:
             try:
-                return bool(await self._db.is_token_blacklisted(jti))
+                from src.repositories import TokenBlacklistRepository
+                repo = TokenBlacklistRepository(self._db)
+                return await repo.is_blacklisted(jti)
             except Exception as e:
                 logger.warning(f"Failed to check blacklist in database: {e}")
 
@@ -146,7 +150,9 @@ class PersistentTokenBlacklist(TokenBlacklist):
             return 0
 
         try:
-            tokens = await self._db.get_active_blacklisted_tokens()
+            from src.repositories import TokenBlacklistRepository
+            repo = TokenBlacklistRepository(self._db)
+            tokens = await repo.get_active()
             for jti, exp in tokens:
                 self.add(jti, exp)
             logger.info(f"Loaded {len(tokens)} blacklisted tokens from database")
@@ -184,7 +190,9 @@ class PersistentTokenBlacklist(TokenBlacklist):
             if db_cleanup_counter >= 6 and self._use_db and self._db:
                 db_cleanup_counter = 0
                 try:
-                    deleted = await self._db.cleanup_expired_tokens()
+                    from src.repositories import TokenBlacklistRepository
+                    repo = TokenBlacklistRepository(self._db)
+                    deleted = await repo.cleanup_expired()
                     if deleted > 0:
                         logger.info(
                             f"Database token cleanup: removed {deleted} expired tokens"
@@ -210,3 +218,52 @@ def get_token_blacklist() -> TokenBlacklist:
         if _token_blacklist is None:
             _token_blacklist = TokenBlacklist()
         return _token_blacklist
+
+
+def init_token_blacklist(db: Any) -> None:
+    """
+    Initialize token blacklist with database persistence.
+
+    This function should be called during application startup after the database
+    connection is established. It creates a PersistentTokenBlacklist that will
+    load existing blacklisted tokens from the database asynchronously.
+
+    Args:
+        db: Database instance with token blacklist support
+    """
+    global _token_blacklist
+    with _blacklist_lock:
+        logger.info("Initializing persistent token blacklist with database")
+        _token_blacklist = PersistentTokenBlacklist(db=db)
+    
+    # Schedule loading of existing blacklisted tokens from database
+    # This will be executed when the event loop is running
+    asyncio.create_task(_load_blacklist_from_db())
+
+
+async def _load_blacklist_from_db() -> None:
+    """Helper to load blacklist from database asynchronously."""
+    global _token_blacklist
+    if isinstance(_token_blacklist, PersistentTokenBlacklist):
+        count = await _token_blacklist.load_from_database()
+        logger.info(f"Loaded {count} blacklisted tokens from database")
+
+
+async def check_blacklisted(jti: str) -> bool:
+    """
+    Check if a token is blacklisted (async-aware).
+
+    This is a convenience function that uses async methods when available,
+    falling back to sync methods for in-memory blacklist.
+
+    Args:
+        jti: JWT ID to check
+
+    Returns:
+        True if token is blacklisted
+    """
+    blacklist = get_token_blacklist()
+    if isinstance(blacklist, PersistentTokenBlacklist):
+        return await blacklist.is_blacklisted_async(jti)
+    else:
+        return blacklist.is_blacklisted(jti)

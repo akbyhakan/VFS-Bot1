@@ -41,6 +41,11 @@ services:
     build: .
     container_name: vfs-bot
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     depends_on:
       postgres:
         condition: service_healthy
