@@ -152,8 +152,7 @@ class BotController:
                 # Initialize selector health monitoring if enabled
                 if self._config.get("selector_health_check", {}).get("enabled", True):
                     try:
-                        from src.utils.selector_watcher import SelectorHealthCheck
-                        from src.utils.selectors import CountryAwareSelectorManager
+                        from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 
                         selector_manager = CountryAwareSelectorManager()
                         self._bot.health_checker = SelectorHealthCheck(

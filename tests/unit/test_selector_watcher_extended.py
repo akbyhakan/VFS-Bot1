@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 
 
-from src.utils.selector_watcher import SelectorHealthCheck
+from src.selector import SelectorHealthCheck
 
 
 @pytest.fixture

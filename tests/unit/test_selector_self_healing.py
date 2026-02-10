@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, mock_open, patch
 
 import pytest
 
-from src.services.selector_self_healing import SelectorSelfHealing
+from src.selector import SelectorSelfHealing
 
 
 class TestSelectorSelfHealing:

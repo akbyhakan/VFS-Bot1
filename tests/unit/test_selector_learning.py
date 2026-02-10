@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.utils.selector_learning import SelectorLearner
+from src.selector import SelectorLearner
 
 
 @pytest.fixture

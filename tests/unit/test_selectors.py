@@ -7,8 +7,8 @@ import pytest
 import yaml
 
 from src.core.exceptions import SelectorNotFoundError
-from src.utils.selectors import CountryAwareSelectorManager as SelectorManager
-from src.utils.selectors import get_selector_manager
+from src.selector import CountryAwareSelectorManager as SelectorManager
+from src.selector import get_selector_manager
 
 
 @pytest.fixture
@@ -269,7 +269,7 @@ class TestCountryAwareSelectorManager:
 
     def test_country_specific_selector_priority(self, temp_country_selectors_file):
         """Test that country-specific selectors take priority over defaults."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager = CountryAwareSelectorManager(
             country_code="fra", selectors_file=str(temp_country_selectors_file)
@@ -285,7 +285,7 @@ class TestCountryAwareSelectorManager:
 
     def test_default_country_uses_defaults(self, temp_country_selectors_file):
         """Test that 'default' country code uses only default selectors."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager = CountryAwareSelectorManager(
             country_code="default", selectors_file=str(temp_country_selectors_file)
@@ -297,7 +297,7 @@ class TestCountryAwareSelectorManager:
 
     def test_fallback_to_default_when_no_country_override(self, temp_country_selectors_file):
         """Test fallback to default when country has no override."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager = CountryAwareSelectorManager(
             country_code="nld", selectors_file=str(temp_country_selectors_file)
@@ -313,7 +313,7 @@ class TestCountryAwareSelectorManager:
 
     def test_combined_fallbacks(self, temp_country_selectors_file):
         """Test that country and global fallbacks are combined."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager = CountryAwareSelectorManager(
             country_code="fra", selectors_file=str(temp_country_selectors_file)
@@ -332,7 +332,7 @@ class TestCountryAwareSelectorManager:
 
     def test_no_duplicate_selectors_in_fallback(self, temp_country_selectors_file):
         """Test that duplicate selectors are not included twice."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         # Create a case where country and default have the same selector
         manager = CountryAwareSelectorManager(
@@ -346,7 +346,7 @@ class TestCountryAwareSelectorManager:
 
     def test_separate_metrics_per_country(self, temp_country_selectors_file):
         """Test that each country uses its own metrics file."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager_fra = CountryAwareSelectorManager(
             country_code="fra", selectors_file=str(temp_country_selectors_file)
@@ -365,7 +365,7 @@ class TestCountryAwareSelectorManager:
         """Test that get_selector_manager returns cached instances."""
         # Clear cache first
         from src.utils import selectors
-        from src.utils.selectors import get_selector_manager
+        from src.selector import get_selector_manager
 
         selectors._selector_managers.clear()
 
@@ -381,14 +381,14 @@ class TestCountryAwareSelectorManager:
 
     def test_backward_compatibility_alias(self):
         """Test that SelectorManager is an alias for CountryAwareSelectorManager."""
-        from src.utils.selectors import CountryAwareSelectorManager
-        from src.utils.selectors import CountryAwareSelectorManager as SelectorManager
+        from src.selector import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager as SelectorManager
 
         assert SelectorManager is CountryAwareSelectorManager
 
     def test_country_fallbacks_method(self, temp_country_selectors_file):
         """Test get_fallbacks with country-specific fallbacks."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager = CountryAwareSelectorManager(
             country_code="fra", selectors_file=str(temp_country_selectors_file)
@@ -401,7 +401,7 @@ class TestCountryAwareSelectorManager:
 
     def test_country_code_case_insensitive(self, temp_country_selectors_file):
         """Test that country codes are case-insensitive."""
-        from src.utils.selectors import CountryAwareSelectorManager
+        from src.selector import CountryAwareSelectorManager
 
         manager_lower = CountryAwareSelectorManager(
             country_code="fra", selectors_file=str(temp_country_selectors_file)

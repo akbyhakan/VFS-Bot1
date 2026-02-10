@@ -47,7 +47,7 @@ class CountryAwareSelectorManager:
 
         # Import and initialize learning system with country-specific metrics
         try:
-            from src.utils.selector_learning import SelectorLearner
+            from src.selector.learning import SelectorLearner
 
             metrics_file = f"data/selector_metrics_{self.country_code}.json"
             self.learner = SelectorLearner(metrics_file=metrics_file)
@@ -58,7 +58,7 @@ class CountryAwareSelectorManager:
 
         # Import and initialize AI repair system
         try:
-            from src.utils.ai_selector_repair import AISelectorRepair
+            from src.selector.ai_repair import AISelectorRepair
 
             self.ai_repair = AISelectorRepair(selectors_file)
         except Exception as e:

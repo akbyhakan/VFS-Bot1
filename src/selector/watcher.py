@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from playwright.async_api import Browser, Page
 
 from src.services.notification import NotificationService
-from src.utils.selectors import CountryAwareSelectorManager
+from src.selector.manager import CountryAwareSelectorManager
 
 logger = logging.getLogger(__name__)
 

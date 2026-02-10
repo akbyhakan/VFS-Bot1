@@ -66,8 +66,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         # Note: The health checker will be started within the bot's browser context
         # when the browser is available. See VFSBot.start() for implementation.
         if config.get("selector_health_check", {}).get("enabled", True):
-            from src.utils.selector_watcher import SelectorHealthCheck
-            from src.utils.selectors import CountryAwareSelectorManager
+            from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 
             selector_manager = CountryAwareSelectorManager()
             bot.health_checker = SelectorHealthCheck(

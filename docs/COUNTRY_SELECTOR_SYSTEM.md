@@ -81,7 +81,7 @@ The system supports all 21 VFS Global Schengen countries:
 ### Basic Usage
 
 ```python
-from src.utils.selectors import get_selector_manager
+from src.selector import get_selector_manager
 
 # Get selector manager for France
 manager = get_selector_manager("fra")
@@ -96,7 +96,7 @@ all_selectors = manager.get_with_fallback("login.email_input")
 ### Integration with VFS Service
 
 ```python
-from src.utils.selectors import get_selector_manager
+from src.selector import get_selector_manager
 
 class VFSService:
     def __init__(self, config: Dict[str, Any]):
@@ -112,7 +112,7 @@ class VFSService:
 The old API still works:
 
 ```python
-from src.utils.selectors import SelectorManager
+from src.selector import SelectorManager
 
 # This still works (uses default country)
 manager = SelectorManager()
@@ -193,7 +193,7 @@ No changes needed! The system is fully backward compatible:
 
 ```python
 # Old code still works
-from src.utils.selectors import SelectorManager
+from src.selector import SelectorManager
 manager = SelectorManager()
 ```
 
