@@ -319,7 +319,7 @@ class TestBackupEncryption:
 
 
 class TestBackupUtilEncryption:
-    """Tests for db_backup_util.py encryption."""
+    """Tests for merged db_backup.py encryption (was db_backup_util.py)."""
 
     @pytest.fixture
     def temp_backup_dir(self):
@@ -332,49 +332,43 @@ class TestBackupUtilEncryption:
         """Generate a test encryption key."""
         return Fernet.generate_key().decode()
 
-    def test_sync_backup_creates_encrypted_file(self, temp_backup_dir, encryption_key):
-        """Test sync create_backup produces encrypted output."""
-        from src.utils.db_backup_util import DatabaseBackup
+    @pytest.mark.asyncio
+    async def test_async_backup_creates_encrypted_file(self, temp_backup_dir, encryption_key):
+        """Test async create_backup produces encrypted output."""
+        from src.utils.db_backup import DatabaseBackup
 
         os.environ["ENCRYPTION_KEY"] = encryption_key
-        backup_util = DatabaseBackup(
+        backup_service = DatabaseBackup(
             database_url="postgresql://test:test@localhost:5432/test",
             backup_dir=temp_backup_dir,
         )
 
-        # Mock pg_dump
-        with patch("subprocess.run") as mock_run:
+        # Mock pg_dump using async subprocess
+        with patch.object(backup_service, "_perform_backup") as mock_backup:
             # Simulate successful pg_dump
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stderr = ""
+            async def create_temp_sql(db_url, path):
+                temp_path = Path(path)
+                temp_path.write_text("-- Test SQL backup")
 
-            def side_effect(cmd, **kwargs):
-                # Find the -f flag and create the temp SQL file
-                for i, arg in enumerate(cmd):
-                    if arg == "-f" and i + 1 < len(cmd):
-                        temp_sql = Path(cmd[i + 1])
-                        temp_sql.write_text("-- Test SQL")
-                return mock_result
+            mock_backup.side_effect = create_temp_sql
 
-            mock_run.side_effect = side_effect
-
-            backup_path = backup_util.create_backup()
+            backup_path = await backup_service.create_backup()
 
             assert backup_path is not None
-            assert backup_path.name.endswith(".sql.enc")
-            assert backup_path.exists()
+            assert backup_path.endswith(".sql.enc")
+            assert Path(backup_path).exists()
 
             # Verify temp SQL was deleted
-            temp_sql = backup_path.with_suffix('.sql')
+            temp_sql = Path(backup_path).with_suffix('.sql')
             assert not temp_sql.exists()
 
-    def test_sync_restore_decrypts(self, temp_backup_dir, encryption_key):
-        """Test sync restore_backup handles encrypted files."""
-        from src.utils.db_backup_util import DatabaseBackup
+    @pytest.mark.asyncio
+    async def test_async_restore_decrypts(self, temp_backup_dir, encryption_key):
+        """Test async restore_from_backup handles encrypted files."""
+        from src.utils.db_backup import DatabaseBackup
 
         os.environ["ENCRYPTION_KEY"] = encryption_key
-        backup_util = DatabaseBackup(
+        backup_service = DatabaseBackup(
             database_url="postgresql://test:test@localhost:5432/test",
             backup_dir=temp_backup_dir,
         )
@@ -388,26 +382,24 @@ class TestBackupUtilEncryption:
         encrypted_path.write_bytes(encrypted_data)
 
         # Mock subprocess and create_backup
-        with patch("subprocess.run") as mock_run, \
-             patch.object(backup_util, "create_backup") as mock_create:
+        with patch.object(backup_service, "_perform_restore") as mock_restore, \
+             patch.object(backup_service, "create_backup") as mock_create:
 
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_run.return_value = mock_result
+            mock_restore.return_value = None
+            mock_create.return_value = str(Path(temp_backup_dir) / "pre_restore.sql.enc")
 
-            mock_create.return_value = Path(temp_backup_dir) / "pre_restore.sql.enc"
-
-            result = backup_util.restore_backup(encrypted_path)
+            result = await backup_service.restore_from_backup(str(encrypted_path))
 
             assert result is True
-            assert mock_run.called
+            assert mock_restore.called
 
-    def test_sync_cleanup_handles_both_extensions(self, temp_backup_dir, encryption_key):
-        """Test sync cleanup handles .sql and .sql.enc."""
-        from src.utils.db_backup_util import DatabaseBackup
+    @pytest.mark.asyncio
+    async def test_async_cleanup_handles_both_extensions(self, temp_backup_dir, encryption_key):
+        """Test async cleanup handles .sql and .sql.enc with max_backups."""
+        from src.utils.db_backup import DatabaseBackup
 
         os.environ["ENCRYPTION_KEY"] = encryption_key
-        backup_util = DatabaseBackup(
+        backup_service = DatabaseBackup(
             database_url="postgresql://test:test@localhost:5432/test",
             backup_dir=temp_backup_dir,
             max_backups=2,
@@ -415,10 +407,10 @@ class TestBackupUtilEncryption:
 
         # Create multiple backups
         backups = [
-            Path(temp_backup_dir) / "vfs_bot_20260210_120000.sql.enc",
-            Path(temp_backup_dir) / "vfs_bot_20260210_110000.sql",
-            Path(temp_backup_dir) / "vfs_bot_20260210_100000.sql.enc",
-            Path(temp_backup_dir) / "vfs_bot_20260210_090000.sql",
+            Path(temp_backup_dir) / "vfs_bot_backup_20260210_120000.sql.enc",
+            Path(temp_backup_dir) / "vfs_bot_backup_20260210_110000.sql",
+            Path(temp_backup_dir) / "vfs_bot_backup_20260210_100000.sql.enc",
+            Path(temp_backup_dir) / "vfs_bot_backup_20260210_090000.sql",
         ]
 
         import time
@@ -429,37 +421,39 @@ class TestBackupUtilEncryption:
             os.utime(backup, (mtime, mtime))
 
         # Run cleanup
-        backup_util._cleanup_old_backups()
+        deleted = await backup_service.cleanup_old_backups()
 
         # Should keep 2 newest, delete 2 oldest
         assert backups[0].exists()  # newest encrypted
         assert backups[1].exists()  # 2nd newest
         assert not backups[2].exists()  # 3rd - deleted
         assert not backups[3].exists()  # oldest - deleted
+        assert deleted == 2
 
-    def test_sync_list_backups_both_extensions(self, temp_backup_dir, encryption_key):
+    @pytest.mark.asyncio
+    async def test_async_list_backups_both_extensions(self, temp_backup_dir, encryption_key):
         """Test list_backups returns both encrypted and legacy files."""
-        from src.utils.db_backup_util import DatabaseBackup
+        from src.utils.db_backup import DatabaseBackup
 
         os.environ["ENCRYPTION_KEY"] = encryption_key
-        backup_util = DatabaseBackup(
+        backup_service = DatabaseBackup(
             database_url="postgresql://test:test@localhost:5432/test",
             backup_dir=temp_backup_dir,
         )
 
         # Create both types
-        enc_backup = Path(temp_backup_dir) / "vfs_bot_20260210_120000.sql.enc"
+        enc_backup = Path(temp_backup_dir) / "vfs_bot_backup_20260210_120000.sql.enc"
         enc_backup.write_text("encrypted")
 
-        sql_backup = Path(temp_backup_dir) / "vfs_bot_20260210_110000.sql"
+        sql_backup = Path(temp_backup_dir) / "vfs_bot_backup_20260210_110000.sql"
         sql_backup.write_text("plain")
 
-        backups = backup_util.list_backups()
+        backups = await backup_service.list_backups()
 
         assert len(backups) == 2
-        backup_names = [b.name for b in backups]
-        assert "vfs_bot_20260210_120000.sql.enc" in backup_names
-        assert "vfs_bot_20260210_110000.sql" in backup_names
+        backup_names = [b["filename"] for b in backups]
+        assert "vfs_bot_backup_20260210_120000.sql.enc" in backup_names
+        assert "vfs_bot_backup_20260210_110000.sql" in backup_names
 
 
 if __name__ == "__main__":

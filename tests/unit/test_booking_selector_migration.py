@@ -7,7 +7,7 @@ from src.services.booking import (
     get_selector_with_fallback,
     resolve_selector,
 )
-from src.utils.selectors import get_selector_manager
+from src.selector import get_selector_manager
 
 
 class TestBookingSelectorMigration:

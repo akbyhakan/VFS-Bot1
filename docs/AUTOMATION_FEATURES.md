@@ -237,7 +237,7 @@ Automatically detects and fixes broken CSS/XPath selectors when website structur
 
 **Usage Example:**
 ```python
-from src.services.selector_self_healing import SelectorSelfHealing
+from src.selector import SelectorSelfHealing
 
 healing = SelectorSelfHealing()
 

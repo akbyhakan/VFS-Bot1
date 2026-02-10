@@ -33,6 +33,7 @@ class DatabaseBackup:
         backup_dir: str = "data/backups",
         retention_days: int = 7,
         interval_hours: int = 6,
+        max_backups: Optional[int] = None,
     ):
         """
         Initialize database backup service.
@@ -42,20 +43,23 @@ class DatabaseBackup:
             backup_dir: Directory to store backup files
             retention_days: Number of days to keep backups (default: 7)
             interval_hours: Hours between scheduled backups (default: 6)
+            max_backups: Maximum number of backups to retain (if set, overrides retention_days)
         """
         self._database_url = database_url or os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
         self._backup_dir = Path(backup_dir)
         self._retention_days = retention_days
         self._interval_hours = interval_hours
+        self._max_backups = max_backups
         self._running = False
         self._task: Optional[asyncio.Task] = None
 
         # Ensure backup directory exists
         self._backup_dir.mkdir(parents=True, exist_ok=True)
 
+        retention_info = f"{max_backups} backups" if max_backups else f"{retention_days}d"
         logger.info(
             f"Database backup initialized: {_mask_database_url(self._database_url)} -> {backup_dir} "
-            f"(retention: {retention_days}d, interval: {interval_hours}h)"
+            f"(retention: {retention_info}, interval: {interval_hours}h)"
         )
 
     def _get_encryption_key(self) -> bytes:
@@ -145,23 +149,32 @@ class DatabaseBackup:
             logger.error(f"File decryption failed: {e}", exc_info=True)
             raise
 
-    def _generate_backup_path(self) -> Path:
+    def _generate_backup_path(self, suffix: Optional[str] = None) -> Path:
         """
         Generate timestamped backup file path.
+
+        Args:
+            suffix: Optional suffix to add to filename (e.g., "pre_migration")
 
         Returns:
             Path object for new backup file
         """
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"vfs_bot_backup_{timestamp}.sql.enc"
+        if suffix:
+            filename = f"vfs_bot_backup_{timestamp}_{suffix}.sql.enc"
+        else:
+            filename = f"vfs_bot_backup_{timestamp}.sql.enc"
         return self._backup_dir / filename
 
-    async def create_backup(self) -> str:
+    async def create_backup(self, suffix: Optional[str] = None) -> str:
         """
         Create a backup of the database.
 
         Uses pg_dump for online backup without locking the database.
         Encrypts the backup file using Fernet encryption.
+
+        Args:
+            suffix: Optional suffix to add to backup filename (e.g., "pre_migration")
 
         Returns:
             Path to created backup file
@@ -169,7 +182,7 @@ class DatabaseBackup:
         Raises:
             Exception: On backup failure
         """
-        backup_path = self._generate_backup_path()
+        backup_path = self._generate_backup_path(suffix=suffix)
         temp_sql_path = backup_path.with_suffix('.sql')  # Temporary unencrypted file
 
         logger.info(f"Creating database backup: {backup_path}")
@@ -252,7 +265,10 @@ class DatabaseBackup:
 
     async def cleanup_old_backups(self) -> int:
         """
-        Remove backups older than retention period.
+        Remove backups based on retention policy.
+        
+        If max_backups is set, keeps only the N most recent backups.
+        Otherwise, removes backups older than retention_days.
         
         Handles both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
@@ -262,15 +278,32 @@ class DatabaseBackup:
         if not self._backup_dir.exists():
             return 0
 
-        cutoff_time = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
         deleted_count = 0
 
-        logger.debug(f"Cleaning up backups older than {self._retention_days} days")
-
         try:
-            # Check both encrypted and legacy unencrypted backups
+            # Collect both encrypted and legacy backups
+            all_backups = []
             for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
-                for backup_file in self._backup_dir.glob(pattern):
+                all_backups.extend(self._backup_dir.glob(pattern))
+            
+            if self._max_backups is not None:
+                # Count-based cleanup: keep only N most recent backups
+                logger.debug(f"Cleaning up backups exceeding limit of {self._max_backups}")
+                
+                # Sort by modification time (newest first)
+                backups_sorted = sorted(all_backups, key=lambda p: p.stat().st_mtime, reverse=True)
+                
+                # Remove backups exceeding the limit
+                for backup_file in backups_sorted[self._max_backups:]:
+                    logger.info(f"Deleting old backup (count limit): {backup_file}")
+                    backup_file.unlink()
+                    deleted_count += 1
+            else:
+                # Time-based cleanup: remove backups older than retention_days
+                cutoff_time = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
+                logger.debug(f"Cleaning up backups older than {self._retention_days} days")
+                
+                for backup_file in all_backups:
                     # Get file modification time
                     mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc)
 
@@ -494,6 +527,23 @@ class DatabaseBackup:
         except Exception as e:
             logger.error(f"Error listing backups: {e}", exc_info=True)
             return backups
+
+    def get_backup_size(self) -> int:
+        """
+        Get total size of all backups in bytes.
+
+        Returns:
+            Total size of all backup files
+        """
+        total_size = 0
+
+        if self._backup_dir.exists():
+            # Collect both encrypted and legacy backups
+            for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
+                for backup_file in self._backup_dir.glob(pattern):
+                    total_size += backup_file.stat().st_size
+
+        return total_size
 
     def get_stats(self) -> Dict[str, Any]:
         """

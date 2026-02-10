@@ -8,7 +8,7 @@ from typing import Optional
 
 from loguru import logger
 
-from ...constants import RateLimitDefaults
+from ...constants import RateLimits
 
 
 class RateLimiter:
@@ -99,8 +99,8 @@ def get_rate_limiter() -> RateLimiter:
         with _limiter_lock:
             if _global_limiter is None:  # Double-checked locking
                 _global_limiter = RateLimiter(
-                    max_requests=RateLimitDefaults.MAX_REQUESTS,
-                    time_window=RateLimitDefaults.TIME_WINDOW,
+                    max_requests=RateLimits.MAX_REQUESTS,
+                    time_window=RateLimits.TIME_WINDOW_SECONDS,
                 )
     return _global_limiter
 

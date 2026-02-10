@@ -347,7 +347,7 @@ def get_config_selector(group: str, name: str, default: str = "") -> str:
 
     Note: This function is for reading selectors from YAML config files.
     For runtime selector management with AI repair and learning, use
-    CountryAwareSelectorManager from src/utils/selectors.py instead.
+    CountryAwareSelectorManager from src.selector instead.
 
     Args:
         group: Selector group (e.g., 'login', 'appointment')

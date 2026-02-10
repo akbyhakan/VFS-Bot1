@@ -5,8 +5,8 @@ import pytest
 
 # Add parent directory to path for imports
 
-from src.utils.selector_watcher import SelectorHealthCheck
-from src.utils.selectors import CountryAwareSelectorManager
+from src.selector import SelectorHealthCheck
+from src.selector import CountryAwareSelectorManager
 
 
 class TestSelectorHealthCheck:

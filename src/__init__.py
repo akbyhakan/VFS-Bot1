@@ -29,8 +29,8 @@ if TYPE_CHECKING:
     from .utils.security import RateLimiter as RateLimiter
     from .utils.security import SessionManager as SessionManager
     from .utils.security import get_rate_limiter as get_rate_limiter
-    from .utils.selectors import SelectorManager as SelectorManager
-    from .utils.selectors import get_selector_manager as get_selector_manager
+    from .selector import SelectorManager as SelectorManager
+    from .selector import get_selector_manager as get_selector_manager
 
 __all__ = [
     # Core
@@ -81,8 +81,8 @@ _LAZY_MODULE_MAP = {
     "CentreFetcher": ("src.services.centre_fetcher", "CentreFetcher"),
     "NotificationService": ("src.services.notification", "NotificationService"),
     # Utils
-    "SelectorManager": ("src.utils.selectors", "SelectorManager"),
-    "get_selector_manager": ("src.utils.selectors", "get_selector_manager"),
+    "SelectorManager": ("src.selector", "SelectorManager"),
+    "get_selector_manager": ("src.selector", "get_selector_manager"),
     # Anti-detection
     "CloudflareHandler": ("src.utils.anti_detection", "CloudflareHandler"),
     "FingerprintBypass": ("src.utils.anti_detection", "FingerprintBypass"),
