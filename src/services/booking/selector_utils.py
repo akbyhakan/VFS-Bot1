@@ -6,7 +6,7 @@ from loguru import logger
 from playwright.async_api import Page
 
 from ...core.exceptions import SelectorNotFoundError
-from ...utils.selectors import get_selector_manager
+from src.selector import get_selector_manager
 
 
 # Turkish month name to number mapping for date parsing

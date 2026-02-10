@@ -54,7 +54,7 @@ class SlotChecker:
         self.error_capture = error_capture or ErrorCapture()
         
         # Initialize SelectorManager for country-aware selectors
-        from ...utils.selectors import get_selector_manager
+        from src.selector import get_selector_manager
         country = config.get("vfs", {}).get("mission", "default")
         self._selector_manager = get_selector_manager(country)
     
