@@ -210,8 +210,13 @@ async def logout(
         try:
             revoke_token(token)
             logger.info(f"Token revoked during logout for user: {token_data.get('sub', 'unknown')}")
-        except Exception as e:
-            logger.warning(f"Failed to revoke token during logout: {e}")
+        except HTTPException as e:
+            # Log the specific error but continue with logout
+            # Cookie is still cleared even if token revocation fails
+            logger.error(
+                f"Failed to revoke token during logout for user {token_data.get('sub', 'unknown')}: "
+                f"{e.detail}"
+            )
     
     # Clear the access_token cookie
     response.delete_cookie(key="access_token", path="/")

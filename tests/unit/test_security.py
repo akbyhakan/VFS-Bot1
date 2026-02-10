@@ -267,6 +267,14 @@ class TestCORSValidation:
         origins = validate_cors_origins("http://localhost.evil.com")
         assert origins == []
 
+    def test_cors_reverse_localhost_subdomain_blocked_in_production(self, monkeypatch):
+        """Test that reverse localhost subdomain (evil.localhost) is blocked in production."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "production")
+        origins = validate_cors_origins("http://evil.localhost")
+        assert origins == []
+
     def test_cors_ipv6_localhost_allowed_in_development(self, monkeypatch):
         """Test that IPv6 localhost is allowed in development."""
         from web.app import validate_cors_origins
