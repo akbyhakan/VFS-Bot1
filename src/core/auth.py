@@ -65,32 +65,6 @@ class RateLimiterBackend(ABC):
     """Abstract base class for rate limiter backends."""
 
     @abstractmethod
-    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
-        """
-        Check if identifier is rate limited.
-
-        Args:
-            identifier: Unique identifier (e.g., username, IP)
-            max_attempts: Maximum attempts allowed in window
-            window_seconds: Time window in seconds
-
-        Returns:
-            True if rate limited
-        """
-        pass
-
-    @abstractmethod
-    def record_attempt(self, identifier: str, window_seconds: int) -> None:
-        """
-        Record an authentication attempt.
-
-        Args:
-            identifier: Unique identifier
-            window_seconds: Time window for attempt expiry
-        """
-        pass
-
-    @abstractmethod
     def clear_attempts(self, identifier: str) -> None:
         """
         Clear all attempts for an identifier.
@@ -148,40 +122,6 @@ class InMemoryBackend(RateLimiterBackend):
         """Initialize in-memory backend."""
         self._attempts: Dict[str, list] = defaultdict(list)
         self._lock = threading.Lock()
-
-    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
-        """Check if identifier is rate limited."""
-        with self._lock:
-            now = datetime.now(timezone.utc)
-            cutoff = now - timedelta(seconds=window_seconds)
-
-            # Clean old attempts
-            self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
-
-            # Check rate limit status
-            is_limited = len(self._attempts[identifier]) >= max_attempts
-
-            # Clean up empty lists to prevent unbounded memory growth
-            if not self._attempts[identifier]:
-                del self._attempts[identifier]
-
-            return is_limited
-
-    def record_attempt(self, identifier: str, window_seconds: int) -> None:
-        """Record an authentication attempt."""
-        with self._lock:
-            self._attempts[identifier].append(datetime.now(timezone.utc))
-
-            # Trigger cleanup when dict grows beyond threshold
-            if len(self._attempts) > self.MAX_IDENTIFIERS_BEFORE_CLEANUP:
-                now = datetime.now(timezone.utc)
-                cutoff = now - timedelta(seconds=window_seconds)
-                stale_keys = [
-                    k for k, v in self._attempts.items()
-                    if not any(t > cutoff for t in v)
-                ]
-                for key in stale_keys:
-                    del self._attempts[key]
 
     def clear_attempts(self, identifier: str) -> None:
         """Clear all attempts for an identifier."""
@@ -245,32 +185,6 @@ class RedisBackend(RateLimiterBackend):
         self._redis = redis_client
         # Register Lua script for atomic rate limiting
         self._rate_limit_script = self._redis.register_script(_RATE_LIMIT_LUA_SCRIPT)
-
-    def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
-        """Check if identifier is rate limited using atomic Redis pipeline."""
-        key = f"auth_rl:{identifier}"
-        now = time.time()
-        cutoff = now - window_seconds
-
-        # Use pipeline for atomic check
-        pipe = self._redis.pipeline(transaction=True)
-        pipe.zremrangebyscore(key, 0, cutoff)
-        pipe.zcard(key)
-        results = pipe.execute()
-
-        count = results[1]  # zcard result
-        return count >= max_attempts
-
-    def record_attempt(self, identifier: str, window_seconds: int) -> None:
-        """Record an authentication attempt atomically in Redis."""
-        key = f"auth_rl:{identifier}"
-        now = time.time()
-
-        # Use pipeline for atomic record
-        pipe = self._redis.pipeline(transaction=True)
-        pipe.zadd(key, {str(uuid.uuid4()): now})
-        pipe.expire(key, window_seconds)
-        pipe.execute()
 
     def clear_attempts(self, identifier: str) -> None:
         """Clear all attempts for an identifier."""
@@ -447,37 +361,6 @@ class AuthRateLimiter:
             True if using distributed backend (e.g., Redis)
         """
         return self._backend.is_distributed
-
-    def is_rate_limited(self, identifier: str) -> bool:
-        """
-        Check if identifier is rate limited.
-
-        .. note::
-            This method has a race condition when used with record_attempt() in 
-            distributed environments. Consider using check_and_record_attempt() instead
-            for atomic check-and-record operations.
-
-        Args:
-            identifier: Unique identifier (e.g., username, IP address)
-
-        Returns:
-            True if rate limited
-        """
-        return self._backend.is_rate_limited(identifier, self.max_attempts, self.window_seconds)
-
-    def record_attempt(self, identifier: str) -> None:
-        """
-        Record an authentication attempt.
-
-        .. note::
-            This method has a race condition when used with is_rate_limited() in 
-            distributed environments. Consider using check_and_record_attempt() instead
-            for atomic check-and-record operations.
-
-        Args:
-            identifier: Unique identifier (e.g., username, IP address)
-        """
-        self._backend.record_attempt(identifier, self.window_seconds)
 
     def check_and_record_attempt(self, identifier: str) -> bool:
         """
