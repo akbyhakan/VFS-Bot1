@@ -1,19 +1,17 @@
 """Helper utilities for common bot operations."""
 
 import asyncio
-import logging
 import random
 import re
 from datetime import datetime, timezone
 from typing import Literal, Optional
 from zoneinfo import ZoneInfo
 
+from loguru import logger
 from playwright.async_api import Page, TimeoutError
 
 from ..constants import Intervals, Timeouts
 from ..utils.masking import mask_email
-
-logger = logging.getLogger(__name__)
 
 
 __all__ = [

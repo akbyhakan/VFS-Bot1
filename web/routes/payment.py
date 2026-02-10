@@ -1,14 +1,14 @@
 """Payment and payment card routes for VFS-Bot web application."""
 
-import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 
-from src.repositories import PaymentRepository, AppointmentRequestRepository
+from src.repositories import AppointmentRequestRepository, PaymentRepository
 from web.dependencies import (
-    get_payment_repository,
     get_appointment_request_repository,
+    get_payment_repository,
     verify_jwt_token,
 )
 from web.models.payment import (
@@ -16,8 +16,6 @@ from web.models.payment import (
     PaymentCardResponse,
     PaymentInitiateRequest,
 )
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payment", tags=["payment"])
 
 

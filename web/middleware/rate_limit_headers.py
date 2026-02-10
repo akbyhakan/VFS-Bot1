@@ -1,13 +1,11 @@
 """Rate limiting headers middleware for API responses."""
 
-import logging
 from typing import Callable, Optional
 
 from fastapi import Request, Response
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-
-logger = logging.getLogger(__name__)
 
 
 class RateLimitHeadersMiddleware(BaseHTTPMiddleware):

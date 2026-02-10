@@ -2,7 +2,6 @@
 
 import hashlib
 import hmac
-import logging
 import os
 import secrets
 from datetime import datetime, timezone
@@ -11,8 +10,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 security = HTTPBearer()
 

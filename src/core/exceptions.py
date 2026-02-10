@@ -269,12 +269,6 @@ class VFSSlotNotFoundError(VFSApiError):
         super().__init__(message, recoverable)
 
 
-class SlotNotAvailableError(VFSSlotNotFoundError):
-    """Alias for VFSSlotNotFoundError - No appointment slots available."""
-
-    pass
-
-
 class VFSSessionExpiredError(VFSApiError):
     """VFS session or token has expired."""
 

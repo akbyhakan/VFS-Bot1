@@ -1,6 +1,5 @@
 """Configuration loader with YAML and environment variable support."""
 
-import logging
 import os
 import re
 import threading
@@ -10,10 +9,9 @@ from typing import Any, Dict, Optional, Tuple
 
 import yaml
 from dotenv import load_dotenv
+from loguru import logger
 
 from src.core.config_version_checker import check_config_version
-
-logger = logging.getLogger(__name__)
 
 # Critical environment variables that must be set in production
 CRITICAL_ENV_VARS: frozenset[str] = frozenset({

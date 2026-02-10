@@ -2,7 +2,6 @@
 
 import asyncio
 import ipaddress
-import logging
 import os
 import re
 from contextlib import asynccontextmanager
@@ -14,6 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -33,8 +33,6 @@ from web.routes import (
 )
 from web.routes.bot import websocket_endpoint
 from web.routes.dashboard import serve_react_app
-
-logger = logging.getLogger(__name__)
 
 
 def _is_valid_ip(ip_str: str) -> bool:

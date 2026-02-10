@@ -8,32 +8,30 @@ web.state/, and WebSocket management to web.websocket/. This file maintains
 re-exports of all these components.
 """
 
-import logging
 from typing import Any, AsyncIterator, Dict
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from loguru import logger
 
 from src.core.auth import verify_token
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
 from src.repositories import (
-    UserRepository,
+    AppointmentHistoryRepository,
     AppointmentRepository,
+    AppointmentRequestRepository,
+    AuditLogRepository,
     LogRepository,
     PaymentRepository,
-    AppointmentRequestRepository,
-    AppointmentHistoryRepository,
-    AuditLogRepository,
-    TokenBlacklistRepository,
-    WebhookRepository,
     ProxyRepository,
+    TokenBlacklistRepository,
+    UserRepository,
+    WebhookRepository,
 )
 from web.state.bot_state import ThreadSafeBotState
 from web.state.metrics import ThreadSafeMetrics
 from web.websocket.manager import ConnectionManager
-
-logger = logging.getLogger(__name__)
 
 security_scheme = HTTPBearer()
 
