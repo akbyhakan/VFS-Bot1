@@ -288,25 +288,31 @@ class AuthRateLimiter:
                 f"⚠️ WARNING: Rate limiting is NOT shared across workers in fallback mode!"
             )
             
-            # Try to send notification asynchronously
-            try:
-                # Try to get a running event loop first
-                try:
-                    loop = asyncio.get_running_loop()
-                    # If we're in a running loop, create a task
-                    loop.create_task(
-                        self._send_fallback_notification(message)
-                    )
-                except RuntimeError:
-                    # No running loop, try to run the coroutine synchronously
-                    try:
-                        asyncio.run(self._send_fallback_notification(message))
-                    except Exception as run_err:
-                        logger.error(f"Failed to send Redis fallback notification: {run_err}")
-            except Exception as notify_err:
-                logger.error(f"Failed to schedule Redis fallback notification: {notify_err}")
+            # Try to send notification using helper method
+            self._schedule_notification(message)
         except Exception as e:
             logger.error(f"Failed to initialize notification for Redis fallback: {e}")
+    
+    def _schedule_notification(self, message: str) -> None:
+        """
+        Helper to schedule notification in event loop if available.
+        
+        Args:
+            message: Notification message to send
+        """
+        try:
+            # Try to get a running event loop
+            loop = asyncio.get_running_loop()
+            # If we're in a running loop, create a task
+            loop.create_task(self._send_fallback_notification(message))
+        except RuntimeError:
+            # No running loop, try to run the coroutine synchronously
+            try:
+                asyncio.run(self._send_fallback_notification(message))
+            except Exception as run_err:
+                logger.error(f"Failed to send Redis fallback notification: {run_err}")
+        except Exception as notify_err:
+            logger.error(f"Failed to schedule Redis fallback notification: {notify_err}")
     
     async def _send_fallback_notification(self, message: str) -> None:
         """

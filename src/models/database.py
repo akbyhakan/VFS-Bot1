@@ -124,7 +124,22 @@ class Database:
         self._max_failures_before_degraded: int = 3
 
     def _get_container_cpu_count(self) -> Optional[int]:
-        """Read CPU count from cgroups (v2 first, then v1) for container environments."""
+        """
+        Read CPU count from cgroups for container-aware resource detection.
+
+        Attempts to detect CPU quota limits in the following order:
+        1. cgroups v2: Reads /sys/fs/cgroup/cpu.max
+        2. cgroups v1: Reads /sys/fs/cgroup/cpu/cpu.cfs_quota_us and cpu.cfs_period_us
+        
+        Returns:
+            int: Number of CPUs available to the container (minimum 1)
+            None: If running outside a container or cgroups files not found
+        
+        Examples:
+            - Container with 2 CPU limit: returns 2
+            - Container with 0.5 CPU limit: returns 1 (minimum enforced)
+            - No container/quota: returns None (falls back to os.cpu_count())
+        """
         # cgroups v2
         try:
             quota_path = Path("/sys/fs/cgroup/cpu.max")
