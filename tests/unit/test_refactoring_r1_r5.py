@@ -388,7 +388,7 @@ class TestR5SignalHandlerSimplification:
                 # The old pattern had a finally block with sys.exit that ran immediately
                 # after create_task, preventing cleanup from executing.
                 # Verify no finally block with exit exists in handle_signal
-                assert 'finally:' not in func_str or 'sys.exit' not in func_str, \
+                assert not ('finally:' in func_str and 'sys.exit' in func_str), \
                     "handle_signal should not have a finally block with sys.exit"
                 break
 
