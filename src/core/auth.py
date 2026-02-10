@@ -17,6 +17,7 @@ from jose import JWTError, jwt
 
 from ..constants import RateLimits
 from ..core.exceptions import ValidationError
+from ..utils.masking import _mask_database_url
 
 logger = logging.getLogger(__name__)
 
@@ -176,27 +177,30 @@ class RedisBackend(RateLimiterBackend):
         self._redis = redis_client
 
     def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
-        """Check if identifier is rate limited using Redis sorted set."""
+        """Check if identifier is rate limited using atomic Redis pipeline."""
         key = f"auth_rl:{identifier}"
         now = time.time()
         cutoff = now - window_seconds
 
-        # Remove old attempts and count current
-        self._redis.zremrangebyscore(key, 0, cutoff)
-        count = self._redis.zcard(key)
+        # Use pipeline for atomic check
+        pipe = self._redis.pipeline(transaction=True)
+        pipe.zremrangebyscore(key, 0, cutoff)
+        pipe.zcard(key)
+        results = pipe.execute()
 
+        count = results[1]  # zcard result
         return count >= max_attempts
 
     def record_attempt(self, identifier: str, window_seconds: int) -> None:
-        """Record an authentication attempt in Redis."""
+        """Record an authentication attempt atomically in Redis."""
         key = f"auth_rl:{identifier}"
         now = time.time()
 
-        # Add attempt with timestamp as score
-        self._redis.zadd(key, {str(uuid.uuid4()): now})
-
-        # Set TTL to window_seconds to auto-expire
-        self._redis.expire(key, window_seconds)
+        # Use pipeline for atomic record
+        pipe = self._redis.pipeline(transaction=True)
+        pipe.zadd(key, {str(uuid.uuid4()): now})
+        pipe.expire(key, window_seconds)
+        pipe.execute()
 
     def clear_attempts(self, identifier: str) -> None:
         """Clear all attempts for an identifier."""
@@ -266,11 +270,11 @@ class AuthRateLimiter:
                 client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
-                logger.info(f"AuthRateLimiter using Redis backend: {redis_url}")
+                logger.info(f"AuthRateLimiter using Redis backend: {_mask_database_url(redis_url)}")
                 return RedisBackend(client)
             except Exception as e:
                 logger.warning(
-                    f"Failed to connect to Redis ({redis_url}), falling back to in-memory: {e}"
+                    f"Failed to connect to Redis ({_mask_database_url(redis_url)}), falling back to in-memory: {e}"
                 )
 
         # Fallback to in-memory
