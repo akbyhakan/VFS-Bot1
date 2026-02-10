@@ -2,7 +2,10 @@
 # - ==  : Strict pin for critical/stable packages
 # - ~=  : Compatible release (allows patch updates within same minor)
 # - >=,<: Range pin where specific range is needed
-# For reproducible deployments, generate a lockfile: pip freeze > requirements.lock
+# For reproducible deployments, generate a lockfile:
+#   pip install -r requirements.txt && pip freeze > requirements.lock
+# Then update Dockerfile to use: COPY requirements.lock . && RUN pip install -r requirements.lock
+# See: make lock
 
 playwright>=1.48.0,<2.0.0
 fastapi==0.109.1
