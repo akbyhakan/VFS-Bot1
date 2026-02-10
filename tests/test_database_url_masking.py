@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.models.database import _mask_database_url
+from src.utils.masking import _mask_database_url
 
 
 class TestDatabaseURLMasking:
@@ -78,8 +78,9 @@ class TestDatabaseURLMasking:
         assert "user" not in masked.split('?')[0]  # Check URL part before query params
         assert "pass" not in masked.split('?')[0]  # Check URL part before query params
         assert "***:***@localhost:5432" in masked
-        # Query parameters are preserved (not ideal but acceptable for this fix)
-        assert "?password=secret" in masked
+        # Query parameters with sensitive values should be masked
+        assert "secret" not in masked
+        assert "password=***" in masked
 
     def test_mask_url_without_port(self):
         """Test URL without explicit port."""
@@ -116,3 +117,36 @@ class TestDatabaseURLMasking:
         assert "secret" not in masked
         assert "***:***@localhost:3306" in masked
         assert "mysql://" in masked
+
+    def test_mask_url_with_multiple_sensitive_query_params(self):
+        """Test URL with multiple sensitive query parameters."""
+        url = "postgresql://user:pass@localhost:5432/mydb?password=secret&sslpassword=xxx&sslmode=require"
+        masked = _mask_database_url(url)
+        
+        # Main credentials should be masked
+        assert "user" not in masked.split('?')[0]
+        assert "pass" not in masked.split('?')[0]
+        assert "***:***@localhost:5432" in masked
+        
+        # Sensitive query parameters should be masked
+        assert "secret" not in masked
+        assert "xxx" not in masked
+        assert "password=***" in masked
+        assert "sslpassword=***" in masked
+        
+        # Non-sensitive parameters should be preserved
+        assert "sslmode=require" in masked
+
+    def test_mask_url_with_non_sensitive_query_params(self):
+        """Test URL with only non-sensitive query parameters."""
+        url = "postgresql://user:pass@localhost:5432/mydb?sslmode=require&connect_timeout=10"
+        masked = _mask_database_url(url)
+        
+        # Main credentials should be masked
+        assert "user" not in masked.split('?')[0]
+        assert "pass" not in masked.split('?')[0]
+        assert "***:***@localhost:5432" in masked
+        
+        # Non-sensitive parameters should be preserved
+        assert "sslmode=require" in masked
+        assert "connect_timeout=10" in masked
