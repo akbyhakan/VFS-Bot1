@@ -194,8 +194,8 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
     return value
 
 
-# TTL-based cache for selectors (60 seconds default)
-_SELECTORS_CACHE_TTL = 60  # seconds
+# TTL-based cache for selectors (configurable via environment variable)
+_SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
 _selectors_cache: Optional[Tuple[float, Dict[str, Dict[str, Any]]]] = None
 
 
