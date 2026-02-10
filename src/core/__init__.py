@@ -4,6 +4,7 @@ from .auth import create_access_token, hash_password, verify_password, verify_to
 from .bot_controller import BotController
 from .config_loader import load_config
 from .config_validator import ConfigValidator
+from .config_version_checker import CURRENT_CONFIG_VERSION, check_config_version
 from .env_validator import EnvValidator
 from .exceptions import (
     AuthenticationError,
@@ -77,4 +78,6 @@ __all__ = [
     "graceful_shutdown_with_timeout",
     "safe_shutdown_cleanup",
     "fast_emergency_cleanup",
+    "check_config_version",
+    "CURRENT_CONFIG_VERSION",
 ]
