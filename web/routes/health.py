@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -72,10 +73,17 @@ async def health_check() -> Dict[str, Any]:
 
     # Check notification service health
     notification_health = await check_notification_health()
+    
+    # Check Redis health
+    redis_health = await check_redis()
 
     # Determine overall status based on component health
+    # Redis unhealthy results in degraded status (not unhealthy) since it can fallback
     if db_healthy and bot_healthy and circuit_breaker_healthy:
-        overall_status = "healthy"
+        if redis_health.get("status") == "unhealthy":
+            overall_status = "degraded"
+        else:
+            overall_status = "healthy"
     elif db_healthy:
         overall_status = "degraded"
     else:
@@ -90,6 +98,7 @@ async def health_check() -> Dict[str, Any]:
             "database": {
                 "status": "healthy" if db_healthy else "unhealthy",
             },
+            "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
                 "running": bot_state.get("running", False),
@@ -142,6 +151,7 @@ async def readiness_probe(response: Response) -> Dict[str, Any]:
     # Check critical services
     checks = {
         "database": await check_database(),
+        "redis": await check_redis(),
         "encryption": await check_encryption(),
     }
 
@@ -198,6 +208,9 @@ async def detailed_health_check() -> Dict[str, Any]:
 
         # Check external services
         external_services = await check_external_services()
+        
+        # Check Redis health
+        redis_health = await check_redis()
 
         return {
             "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -209,6 +222,7 @@ async def detailed_health_check() -> Dict[str, Any]:
                 "database": {
                     "status": "healthy" if db_healthy else "unhealthy",
                 },
+                "redis": redis_health,
                 "bot": {
                     "status": "healthy" if bot_healthy else "degraded",
                     "running": bot_state.get("running", False),
@@ -244,6 +258,9 @@ async def detailed_health_check() -> Dict[str, Any]:
 
     # Check external services
     external_services = await check_external_services()
+    
+    # Check Redis health
+    redis_health = await check_redis()
 
     return {
         "status": "healthy" if (db_healthy and bot_healthy) else "unhealthy",
@@ -267,6 +284,7 @@ async def detailed_health_check() -> Dict[str, Any]:
             "database": {
                 "status": "healthy" if db_healthy else "unhealthy",
             },
+            "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
                 "running": bot_state.get("running", False),
@@ -306,8 +324,6 @@ async def check_database_health() -> bool:
 
 async def check_database() -> Dict[str, Any]:
     """Check database connectivity with latency measurement."""
-    import time
-
     try:
         from src.models.db_factory import DatabaseFactory
 
@@ -324,6 +340,52 @@ async def check_database() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return {"status": "unhealthy", "error": str(e), "latency_ms": 0}
+
+
+async def check_redis() -> Dict[str, Any]:
+    """
+    Check Redis connectivity and health.
+    
+    Returns:
+        Dictionary with Redis status, backend info, and optional latency
+    """
+    redis_url = os.getenv("REDIS_URL")
+    
+    if not redis_url:
+        return {
+            "status": "not_configured",
+            "backend": "in-memory"
+        }
+    
+    try:
+        import redis
+        
+        start_time = time.time()
+        client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
+        
+        # Test connection with PING
+        result = client.ping()
+        latency_ms = (time.time() - start_time) * 1000
+        
+        if result:
+            return {
+                "status": "healthy",
+                "backend": "redis",
+                "latency_ms": round(latency_ms, 2)
+            }
+        else:
+            return {
+                "status": "unhealthy",
+                "backend": "redis",
+                "error": "PING returned False"
+            }
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "backend": "redis",
+            "error": str(e)
+        }
 
 
 async def check_encryption() -> Dict[str, Any]:

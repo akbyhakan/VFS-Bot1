@@ -466,6 +466,7 @@ Response:
   "version": "2.1.0",
   "components": {
     "database": true,
+    "redis": {"status": "healthy"},
     "bot": true,
     "notifications": true
   }
@@ -872,6 +873,7 @@ Response:
   "uptime_seconds": 3600.5,
   "components": {
     "database": {"status": "healthy"},
+    "redis": {"status": "healthy"},
     "bot": {
       "status": "healthy",
       "running": true,

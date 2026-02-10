@@ -307,6 +307,21 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop all tables in reverse order (respecting foreign key dependencies)."""
+    import os
+    
+    # Safety check: Prevent accidental data loss in production
+    env = os.getenv("ENVIRONMENT", "").lower()
+    allow_downgrade = os.getenv("ALLOW_DANGEROUS_DOWNGRADE", "").lower()
+    
+    if env in ("production", "prod", "live"):
+        if allow_downgrade != "yes-i-know-what-i-am-doing":
+            raise RuntimeError(
+                "🚨 BLOCKED: Baseline downgrade in production environment! "
+                "This would DROP ALL TABLES and DELETE ALL DATA. "
+                "If you are absolutely sure, set environment variable: "
+                "ALLOW_DANGEROUS_DOWNGRADE=yes-i-know-what-i-am-doing"
+            )
+    
     # Drop tables in reverse order to respect FK dependencies
     op.execute("DROP TABLE IF EXISTS token_blacklist CASCADE")
     op.execute("DROP TABLE IF EXISTS proxy_endpoints CASCADE")
