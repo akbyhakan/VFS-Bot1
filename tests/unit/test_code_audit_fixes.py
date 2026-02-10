@@ -276,9 +276,9 @@ class TestGrafanaPasswordNotHardcoded:
             pytest.skip("docker-compose.monitoring.yml not found")
 
         content = compose_path.read_text()
-        lines = content.strip().split("\n")
-        # First non-empty line should not be version
-        first_line = lines[0].strip()
+        lines = content.split("\n")
+        # Find first non-empty line
+        first_line = next((line.strip() for line in lines if line.strip()), "")
         assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
 
     def test_monitoring_compose_localhost_binding(self):
@@ -299,8 +299,9 @@ class TestGrafanaPasswordNotHardcoded:
             pytest.skip("docker-compose.dev.yml not found")
 
         content = compose_path.read_text()
-        lines = content.strip().split("\n")
-        first_line = lines[0].strip()
+        lines = content.split("\n")
+        # Find first non-empty line
+        first_line = next((line.strip() for line in lines if line.strip()), "")
         assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
 
 
