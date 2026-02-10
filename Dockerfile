@@ -89,7 +89,7 @@ USER vfsbot
 EXPOSE 8000
 
 # Health check using httpx (available in requirements.txt)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()" || exit 1
 
 # Entrypoint for automatic migrations
