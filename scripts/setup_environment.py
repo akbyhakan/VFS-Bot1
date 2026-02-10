@@ -25,11 +25,9 @@ def main():
     api_key_salt = secrets.token_urlsafe(32)  # 43 character output
     vfs_encryption_key = secrets.token_urlsafe(32)  # 43 character output
     
-    # Generate secure database password
-    # This password is auto-generated and stored in .env - no manual input needed
+    # Generate secure passwords for services
+    # These passwords are auto-generated and stored in .env - no manual input needed
     db_password = secrets.token_urlsafe(24)
-    
-    # Generate secure Redis password
     redis_password = secrets.token_urlsafe(24)
 
     # Get user input

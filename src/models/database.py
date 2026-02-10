@@ -134,7 +134,7 @@ class Database:
 
         Formula when both are set::
 
-            pool_size = min(DB_MAX_CONNECTIONS // DB_WORKER_COUNT, 20)
+            pool_size = min(int(DB_MAX_CONNECTIONS * 0.8) // DB_WORKER_COUNT, 20)
 
         Returns:
             Optimal pool size (min: 5, max: 20)
