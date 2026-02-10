@@ -515,10 +515,18 @@ class TestR6RuntimeSafetyFixes:
                 func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
                 func_str = '\n'.join(func_lines)
                 
-                # Should NOT raise RuntimeError when bot fails
-                assert 'raise RuntimeError' not in func_str or \
-                       ('raise RuntimeError' not in func_str.split('if start_result["status"] != "success"')[1].split('run_web_mode')[0] if 'if start_result["status"] != "success"' in func_str else True), \
-                    "run_both_mode should not raise RuntimeError when bot fails before starting web"
+                # Check that RuntimeError is not raised between bot failure check and web start
+                # The old code raised RuntimeError immediately on bot failure, preventing web from starting
+                if 'if start_result["status"] != "success"' in func_str and 'run_web_mode' in func_str:
+                    # Extract the section between the failure check and web start
+                    parts = func_str.split('if start_result["status"] != "success"')
+                    if len(parts) > 1:
+                        after_check = parts[1]
+                        web_parts = after_check.split('run_web_mode')
+                        if len(web_parts) > 0:
+                            section_before_web = web_parts[0]
+                            assert 'raise RuntimeError' not in section_before_web, \
+                                "run_both_mode should not raise RuntimeError when bot fails before starting web"
                 
                 # Should start web_task regardless of bot status
                 assert 'run_web_mode' in func_str, \
@@ -540,16 +548,20 @@ class TestR6RuntimeSafetyFixes:
         assert 'def _escape_markdown(' in content, \
             "NotificationService should have _escape_markdown method"
         
-        # Should be a static method
-        assert '@staticmethod' in content.split('def _escape_markdown(')[0].split('\n')[-1], \
-            "_escape_markdown should be a static method"
-        
         tree = ast.parse(content)
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == 'NotificationService':
                 # Find _escape_markdown method
                 for method in node.body:
                     if isinstance(method, ast.FunctionDef) and method.name == '_escape_markdown':
+                        # Check if it's a static method using AST decorator inspection
+                        has_staticmethod = any(
+                            isinstance(dec, ast.Name) and dec.id == 'staticmethod'
+                            for dec in method.decorator_list
+                        )
+                        assert has_staticmethod, \
+                            "_escape_markdown should be a static method"
+                        
                         method_lines = content.split('\n')[method.lineno-1:method.end_lineno]
                         method_str = '\n'.join(method_lines)
                         
