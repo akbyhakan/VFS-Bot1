@@ -414,6 +414,126 @@ class VFSBot:
             except Exception as e:
                 logger.error(f"Error during database reconnection: {e}")
 
+    async def _record_circuit_breaker_trip(self) -> None:
+        """
+        Record circuit breaker trip metric when circuit breaker opens.
+        
+        This method checks if the circuit breaker is in OPEN state and records
+        the trip metric. Failures to record metrics are logged but do not raise exceptions.
+        """
+        if self.circuit_breaker.state == CircuitState.OPEN:
+            try:
+                from ...utils.metrics import get_metrics
+                metrics = await get_metrics()
+                await metrics.record_circuit_breaker_trip()
+            except Exception as e:
+                logger.debug(f"Failed to record circuit breaker trip metric: {e}")
+
+    async def _handle_circuit_breaker_open(self) -> bool:
+        """
+        Handle circuit breaker open state with logging, alerting, and waiting.
+        
+        Returns:
+            True if shutdown was requested during wait, False otherwise
+        """
+        wait_time = await self.circuit_breaker.get_wait_time()
+        stats = self.circuit_breaker.get_stats()
+        logger.warning(
+            f"Circuit breaker OPEN - waiting {wait_time}s before retry "
+            f"(consecutive errors: {stats['failure_count']})"
+        )
+
+        # Send alert for circuit breaker open (WARNING severity)
+        await self._send_alert_safe(
+            message=(
+                f"Circuit breaker OPEN - consecutive errors: "
+                f"{stats['failure_count']}, waiting {wait_time}s"
+            ),
+            severity=AlertSeverity.WARNING,
+            metadata={"stats": stats, "wait_time": wait_time},
+        )
+
+        if await self._wait_or_shutdown(wait_time):
+            logger.info("Shutdown requested during circuit breaker wait")
+            return True
+        # Don't unconditionally reset - let the next successful iteration close it
+        # Unconditional reset could cause premature recovery if underlying
+        # issues persist
+        # Circuit will be closed by record_success() if the next attempt succeeds
+        logger.info(
+            "Circuit breaker wait time elapsed - attempting next iteration "
+            "(circuit will close on success)"
+        )
+        return False
+
+    async def _process_batch(self, users: List[Dict[str, Any]]) -> None:
+        """
+        Process batch of users with parallel processing and error handling.
+        
+        Creates tasks for each user, executes them in parallel with semaphore control,
+        analyzes results, and updates circuit breaker state. Sends alerts on batch errors.
+        
+        Args:
+            users: List of user dictionaries to process
+        """
+        # Process users in parallel with semaphore limit
+        # Create named tasks for tracking
+        tasks = []
+        for user in users:
+            task = asyncio.create_task(
+                self._process_user_with_semaphore(user),
+                name=f"vfs_booking_user_{user.get('id', 'unknown')}",
+            )
+            self._active_booking_tasks.add(task)
+            task.add_done_callback(self._active_booking_tasks.discard)
+            tasks.append(task)
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Check results and update circuit breaker
+        errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
+        if errors_in_batch > 0:
+            logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
+            await self.circuit_breaker.record_failure()
+            
+            # Record circuit breaker trip in metrics if it just opened
+            await self._record_circuit_breaker_trip()
+
+            # Send alert for batch errors (ERROR severity)
+            await self._send_alert_safe(
+                message=(
+                    f"Batch processing errors: {errors_in_batch}/"
+                    f"{len(users)} users failed"
+                ),
+                severity=AlertSeverity.ERROR,
+                metadata={"errors": errors_in_batch, "total_users": len(users)},
+            )
+        else:
+            # Successful batch - reset consecutive errors
+            await self.circuit_breaker.record_success()
+
+    async def _wait_adaptive_interval(self) -> bool:
+        """
+        Wait for adaptive interval before next check.
+        
+        Uses the adaptive scheduler to determine optimal wait time based on
+        current system state and activity patterns.
+        
+        Returns:
+            True if shutdown was requested during wait, False otherwise
+        """
+        check_interval = self.services.automation.scheduler.get_optimal_interval()
+        mode_info = self.services.automation.scheduler.get_mode_info()
+        logger.info(
+            f"Adaptive mode: {mode_info['mode']} "
+            f"({mode_info['description']}), "
+            f"Waiting {check_interval}s before next check..."
+        )
+        if await self._wait_or_shutdown(check_interval):
+            logger.info("Shutdown requested during interval wait")
+            return True
+        return False
+
     async def run_bot_loop(self) -> None:
         """Main bot loop to check for slots with circuit breaker and parallel processing."""
         while self.running and not self.shutdown_event.is_set():
@@ -424,34 +544,8 @@ class VFSBot:
 
                 # Check circuit breaker
                 if not await self.circuit_breaker.can_execute():
-                    wait_time = await self.circuit_breaker.get_wait_time()
-                    stats = self.circuit_breaker.get_stats()
-                    logger.warning(
-                        f"Circuit breaker OPEN - waiting {wait_time}s before retry "
-                        f"(consecutive errors: {stats['failure_count']})"
-                    )
-
-                    # Send alert for circuit breaker open (WARNING severity)
-                    await self._send_alert_safe(
-                        message=(
-                            f"Circuit breaker OPEN - consecutive errors: "
-                            f"{stats['failure_count']}, waiting {wait_time}s"
-                        ),
-                        severity=AlertSeverity.WARNING,
-                        metadata={"stats": stats, "wait_time": wait_time},
-                    )
-
-                    if await self._wait_or_shutdown(wait_time):
-                        logger.info("Shutdown requested during circuit breaker wait")
+                    if await self._handle_circuit_breaker_open():
                         break
-                    # Don't unconditionally reset - let the next successful iteration close it
-                    # Unconditional reset could cause premature recovery if underlying
-                    # issues persist
-                    # Circuit will be closed by record_success() if the next attempt succeeds
-                    logger.info(
-                        "Circuit breaker wait time elapsed - attempting next iteration "
-                        "(circuit will close on success)"
-                    )
                     continue
 
                 # Check if browser needs restart for memory management
@@ -470,71 +564,15 @@ class VFSBot:
 
                 if not users:
                     logger.info("No active users to process")
-                    # Use adaptive scheduler for intelligent interval
-                    check_interval = self.services.automation.scheduler.get_optimal_interval()
-                    mode_info = self.services.automation.scheduler.get_mode_info()
-                    logger.info(
-                        f"Adaptive mode: {mode_info['mode']} "
-                        f"({mode_info['description']}), "
-                        f"Interval: {check_interval}s"
-                    )
-                    if await self._wait_or_shutdown(check_interval):
-                        logger.info("Shutdown requested during interval wait")
+                    if await self._wait_adaptive_interval():
                         break
                     continue
 
-                # Process users in parallel with semaphore limit
-                # Create named tasks for tracking
-                tasks = []
-                for user in users:
-                    task = asyncio.create_task(
-                        self._process_user_with_semaphore(user),
-                        name=f"vfs_booking_user_{user.get('id', 'unknown')}",
-                    )
-                    self._active_booking_tasks.add(task)
-                    task.add_done_callback(self._active_booking_tasks.discard)
-                    tasks.append(task)
+                # Process users in batch
+                await self._process_batch(users)
 
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-
-                # Check results and update circuit breaker
-                errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
-                if errors_in_batch > 0:
-                    logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
-                    await self.circuit_breaker.record_failure()
-                    
-                    # Record circuit breaker trip in metrics if it just opened
-                    if self.circuit_breaker.state == CircuitState.OPEN:
-                        try:
-                            from ...utils.metrics import get_metrics
-                            metrics = await get_metrics()
-                            await metrics.record_circuit_breaker_trip()
-                        except Exception as e:
-                            logger.debug(f"Failed to record circuit breaker trip metric: {e}")
-
-                    # Send alert for batch errors (ERROR severity)
-                    await self._send_alert_safe(
-                        message=(
-                            f"Batch processing errors: {errors_in_batch}/"
-                            f"{len(users)} users failed"
-                        ),
-                        severity=AlertSeverity.ERROR,
-                        metadata={"errors": errors_in_batch, "total_users": len(users)},
-                    )
-                else:
-                    # Successful batch - reset consecutive errors
-                    await self.circuit_breaker.record_success()
-
-                # Wait before next check - use adaptive scheduler
-                check_interval = self.services.automation.scheduler.get_optimal_interval()
-                mode_info = self.services.automation.scheduler.get_mode_info()
-                logger.info(
-                    f"Adaptive mode: {mode_info['mode']} "
-                    f"({mode_info['description']}), "
-                    f"Waiting {check_interval}s before next check..."
-                )
-                if await self._wait_or_shutdown(check_interval):
-                    logger.info("Shutdown requested during interval wait")
+                # Wait before next check
+                if await self._wait_adaptive_interval():
                     break
 
             except Exception as e:
@@ -543,13 +581,7 @@ class VFSBot:
                 await self.circuit_breaker.record_failure()
                 
                 # Record circuit breaker trip in metrics if it just opened
-                if self.circuit_breaker.state == CircuitState.OPEN:
-                    try:
-                        from ...utils.metrics import get_metrics
-                        metrics = await get_metrics()
-                        await metrics.record_circuit_breaker_trip()
-                    except Exception as e:
-                        logger.debug(f"Failed to record circuit breaker trip metric: {e}")
+                await self._record_circuit_breaker_trip()
 
                 # Send alert for bot loop error (ERROR severity)
                 await self._send_alert_safe(
