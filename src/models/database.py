@@ -5,6 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Optional, TypeVar
 from urllib.parse import urlparse
 
@@ -122,6 +123,35 @@ class Database:
         self._consecutive_failures: int = 0
         self._max_failures_before_degraded: int = 3
 
+    def _get_container_cpu_count(self) -> Optional[int]:
+        """Read CPU count from cgroups (v2 first, then v1) for container environments."""
+        # cgroups v2
+        try:
+            quota_path = Path("/sys/fs/cgroup/cpu.max")
+            if quota_path.exists():
+                content = quota_path.read_text().strip()
+                parts = content.split()
+                if parts[0] != "max":
+                    quota = int(parts[0])
+                    period = int(parts[1])
+                    return max(1, quota // period)
+        except (ValueError, IndexError, OSError):
+            pass
+        
+        # cgroups v1
+        try:
+            quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+            period_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+            if quota_path.exists() and period_path.exists():
+                quota = int(quota_path.read_text().strip())
+                period = int(period_path.read_text().strip())
+                if quota > 0:
+                    return max(1, quota // period)
+        except (ValueError, OSError):
+            pass
+        
+        return None
+
     def _calculate_optimal_pool_size(self) -> int:
         """
         Calculate optimal pool size based on system resources.
@@ -155,7 +185,7 @@ class Database:
                     "falling back to CPU-based calculation"
                 )
 
-        cpu_count = os.cpu_count() or 4
+        cpu_count = self._get_container_cpu_count() or os.cpu_count() or 4
         # Use 2x CPU count as a reasonable default
         optimal_size = cpu_count * 2
         # Clamp between 5 and 20
