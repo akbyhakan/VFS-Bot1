@@ -364,10 +364,10 @@ class TestCountryAwareSelectorManager:
     def test_factory_function_caching(self, temp_country_selectors_file):
         """Test that get_selector_manager returns cached instances."""
         # Clear cache first
-        from src.utils import selectors
         from src.selector import get_selector_manager
+        from src.selector import manager
 
-        selectors._selector_managers.clear()
+        manager._selector_managers.clear()
 
         manager1 = get_selector_manager("fra")
         manager2 = get_selector_manager("fra")
