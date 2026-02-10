@@ -12,16 +12,7 @@ if TYPE_CHECKING:
     from .schemas import UserCreate as UserCreate
     from .schemas import UserResponse as UserResponse
 
-__all__ = [
-    "Database",
-    "UserCreate",
-    "UserResponse",
-    "AppointmentCreate",
-    "AppointmentResponse",
-    "BotConfig",
-    "NotificationConfig",
-]
-
+# Explicit lazy-loading map: name -> (module_path, attribute_name)
 _LAZY_MODULE_MAP = {
     "Database": ("src.models.database", "Database"),
     "UserCreate": ("src.models.schemas", "UserCreate"),
@@ -31,6 +22,9 @@ _LAZY_MODULE_MAP = {
     "BotConfig": ("src.models.schemas", "BotConfig"),
     "NotificationConfig": ("src.models.schemas", "NotificationConfig"),
 }
+
+# Auto-derive __all__ from _LAZY_MODULE_MAP to prevent manual sync issues
+__all__ = list(_LAZY_MODULE_MAP.keys())
 
 
 def __getattr__(name: str):

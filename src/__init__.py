@@ -32,38 +32,6 @@ if TYPE_CHECKING:
     from .selector import SelectorManager as SelectorManager
     from .selector import get_selector_manager as get_selector_manager
 
-__all__ = [
-    # Core
-    "load_config",
-    "ConfigValidator",
-    "EnvValidator",
-    "setup_structured_logging",
-    "JSONFormatter",
-    # Models
-    "Database",
-    # Services
-    "VFSBot",
-    "CaptchaSolver",
-    "CaptchaProvider",
-    "CentreFetcher",
-    "NotificationService",
-    # Utils
-    "SelectorManager",
-    "get_selector_manager",
-    # Anti-detection
-    "CloudflareHandler",
-    "FingerprintBypass",
-    "HumanSimulator",
-    "StealthConfig",
-    "TLSHandler",
-    # Security
-    "HeaderManager",
-    "ProxyManager",
-    "SessionManager",
-    "RateLimiter",
-    "get_rate_limiter",
-]
-
 # Explicit lazy-loading map: name -> (module_path, attribute_name)
 _LAZY_MODULE_MAP = {
     # Core
@@ -96,6 +64,9 @@ _LAZY_MODULE_MAP = {
     "RateLimiter": ("src.utils.security", "RateLimiter"),
     "get_rate_limiter": ("src.utils.security", "get_rate_limiter"),
 }
+
+# Auto-derive __all__ from _LAZY_MODULE_MAP to prevent manual sync issues
+__all__ = list(_LAZY_MODULE_MAP.keys())
 
 
 def __getattr__(name: str):
