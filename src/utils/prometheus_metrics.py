@@ -1,12 +1,9 @@
 """Prometheus metrics integration for VFS-Bot."""
 
-import logging
-
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
+from loguru import logger
 
 from src.core.enums import MetricsStatus, SlotCheckStatus
-
-logger = logging.getLogger(__name__)
 
 # Slot checking metrics
 SLOT_CHECKS_TOTAL = Counter(

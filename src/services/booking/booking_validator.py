@@ -1,15 +1,13 @@
 """Booking validation utilities for VFS booking system."""
 
-import logging
 import re
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from .selector_utils import DOUBLE_MATCH_PATTERNS
 from ...core.exceptions import SelectorNotFoundError
-
-logger = logging.getLogger(__name__)
 
 
 class BookingValidator:

@@ -1,10 +1,10 @@
 """VFS authentication service for login and OTP handling."""
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays, Timeouts
@@ -14,8 +14,6 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import safe_navigate, smart_click, smart_fill
 from ..captcha_solver import CaptchaSolver
-
-logger = logging.getLogger(__name__)
 
 
 class AuthService:

@@ -1,11 +1,10 @@
 """Feature flags for graceful degradation and A/B testing."""
 
-import logging
 import os
 from enum import Enum
 from typing import Dict, Set
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class FeatureFlag(str, Enum):

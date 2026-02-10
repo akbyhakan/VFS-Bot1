@@ -5,12 +5,10 @@ Requirements:
     - curl-cffi: Required for Cloudflare bypass. Install with: pip install curl-cffi
 """
 
-import logging
 from typing import Any, Optional
 
 from curl_cffi.requests import AsyncSession
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class TLSHandler:

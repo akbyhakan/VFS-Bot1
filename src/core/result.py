@@ -3,12 +3,11 @@
 Provides a type-safe way to handle success and failure cases without exceptions.
 """
 
-import logging
 from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 T = TypeVar("T")
 E = TypeVar("E")

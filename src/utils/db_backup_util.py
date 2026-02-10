@@ -1,6 +1,5 @@
 """Database backup utility for PostgreSQL databases."""
 
-import logging
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -8,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class DatabaseBackup:
