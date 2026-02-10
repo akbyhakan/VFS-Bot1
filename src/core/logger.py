@@ -18,7 +18,11 @@ correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextV
 
 
 class CorrelationIdFilter(logging.Filter):
-    """Add correlation ID to log records."""
+    """
+    Add correlation ID to log records.
+    
+    Legacy - kept for backward compatibility with stdlib logging consumers.
+    """
 
     def filter(self, record):
         record.correlation_id = correlation_id_ctx.get() or "N/A"
@@ -26,7 +30,11 @@ class CorrelationIdFilter(logging.Filter):
 
 
 class JSONFormatter(logging.Formatter):
-    """Format log records as JSON - kept for backward compatibility."""
+    """
+    Format log records as JSON.
+    
+    Legacy - kept for backward compatibility with stdlib logging consumers.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON string."""

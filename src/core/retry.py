@@ -1,7 +1,8 @@
 """Retry strategies for different exception types."""
 
-import logging
+import logging as stdlib_logging
 
+from loguru import logger
 from tenacity import (
     before_sleep_log,
     retry,
@@ -14,7 +15,8 @@ from tenacity import (
 
 from .exceptions import CaptchaError, LoginError, NetworkError, RateLimitError, SlotCheckError
 
-logger = logging.getLogger(__name__)
+# Stdlib logger needed for tenacity's before_sleep_log
+_stdlib_logger = stdlib_logging.getLogger(__name__)
 
 
 def get_login_retry():
@@ -28,7 +30,7 @@ def get_login_retry():
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=5, max=30) + wait_random(0, 3),
         retry=retry_if_exception_type((LoginError, NetworkError)),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )
 
@@ -44,7 +46,7 @@ def get_captcha_retry():
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=2, max=15) + wait_random(0, 2),
         retry=retry_if_exception_type(CaptchaError),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )
 
@@ -60,7 +62,7 @@ def get_slot_check_retry():
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=3, max=20) + wait_random(0, 2),
         retry=retry_if_exception_type((SlotCheckError, NetworkError)),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )
 
@@ -76,7 +78,7 @@ def get_network_retry():
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=2, min=2, max=60) + wait_random(0, 5),
         retry=retry_if_exception_type(NetworkError),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )
 
@@ -92,6 +94,6 @@ def get_rate_limit_retry():
         stop=stop_after_attempt(3),
         wait=wait_fixed(60) + wait_random(0, 10),  # Wait 60 seconds + random jitter
         retry=retry_if_exception_type(RateLimitError),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )

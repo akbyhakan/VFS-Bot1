@@ -1,13 +1,12 @@
 """Per-endpoint rate limiting for VFS API calls."""
 
 import asyncio
-import logging
 import time
 from typing import Dict, Optional
 
-from .rate_limiter import RateLimiter
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from .rate_limiter import RateLimiter
 
 
 class EndpointRateLimiter:
@@ -20,6 +19,10 @@ class EndpointRateLimiter:
     - Booking: Restrictive (10 req/60s)
     - Centres/categories: Light (5 req/60s)
     - Default: Standard (60 req/60s)
+    
+    NOTE: This rate limiter is designed for single-process VFS API call throttling.
+    For distributed/multi-worker deployments, see src/core/auth.py which provides
+    Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
     """
 
     def __init__(

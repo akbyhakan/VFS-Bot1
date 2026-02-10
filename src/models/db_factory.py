@@ -1,12 +1,11 @@
 """Database factory with singleton pattern for connection management."""
 
-import logging
 from threading import RLock
 from typing import Optional
 
-from src.models.database import Database
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from src.models.database import Database
 
 
 class DatabaseFactory:

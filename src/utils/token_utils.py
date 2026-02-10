@@ -1,8 +1,6 @@
 """Token utility functions for handling token expiry calculations."""
 
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def calculate_effective_expiry(expires_in: int, buffer_minutes: int, min_expiry: int = 1) -> int:

@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import logging
 import os
 import stat
 import tempfile
@@ -11,14 +10,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
+from loguru import logger
+
 try:
     import jwt as jwt_module
 except ImportError:
     jwt_module = None  # type: ignore[assignment]
 
 from src.utils.encryption import decrypt_password, encrypt_password
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

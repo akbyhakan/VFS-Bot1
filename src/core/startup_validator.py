@@ -1,10 +1,9 @@
 """Startup security validator - prevents running with insecure defaults."""
 
-import logging
 import os
 from typing import List
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # Known dangerous default values that should never be used in production
 # These are exact placeholder values from .env.example
@@ -69,12 +68,38 @@ def validate_production_security() -> List[str]:
                 f"(minimum {min_length} characters required)."
             )
 
-    # Check DATABASE_URL
+    # Check DATABASE_URL for dangerous defaults (substring match)
     database_url = os.getenv("DATABASE_URL", "")
-    if not database_url or database_url in DANGEROUS_DEFAULTS:
+    if not database_url:
         warnings.append(
-            "DATABASE_URL is empty or contains placeholder value. "
-            "Set a valid database connection string."
+            "DATABASE_URL is empty. Set a valid database connection string."
+        )
+    elif database_url in DANGEROUS_DEFAULTS or any(
+        pattern in database_url for pattern in ("CHANGE_ME", "change_me", "changeme")
+    ):
+        warnings.append(
+            "DATABASE_URL contains a default/placeholder password. "
+            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
+        )
+
+    # Check POSTGRES_PASSWORD
+    postgres_password = os.getenv("POSTGRES_PASSWORD", "")
+    if postgres_password and any(
+        pattern in postgres_password for pattern in ("CHANGE_ME", "change_me", "changeme")
+    ):
+        warnings.append(
+            "POSTGRES_PASSWORD contains a default/placeholder value. "
+            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
+        )
+
+    # Check REDIS_PASSWORD
+    redis_password = os.getenv("REDIS_PASSWORD", "")
+    if redis_password and any(
+        pattern in redis_password for pattern in ("CHANGE_ME", "change_me", "changeme")
+    ):
+        warnings.append(
+            "REDIS_PASSWORD contains a default/placeholder value. "
+            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
         )
 
     return warnings

@@ -7,9 +7,10 @@ Main entry point for the application.
 
 import argparse
 import asyncio
-import logging
 import os
 import sys
+
+from loguru import logger
 
 from src.core.config_loader import load_config
 from src.core.config_validator import ConfigValidator
@@ -44,7 +45,6 @@ def main() -> None:
     # Setup structured logging
     json_logging = os.getenv("JSON_LOGGING", "true").lower() == "true"
     setup_structured_logging(args.log_level, json_format=json_logging)
-    logger = logging.getLogger(__name__)
 
     # Setup signal handlers for graceful shutdown
     setup_signal_handlers()

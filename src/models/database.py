@@ -1,7 +1,6 @@
 """Database operations for VFS-Bot using PostgreSQL."""
 
 import asyncio
-import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -10,14 +9,13 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Optional, TypeVar
 from urllib.parse import urlparse
 
 import asyncpg
+from loguru import logger
 
 from src.core.exceptions import (
     DatabaseNotConnectedError,
     DatabasePoolTimeoutError,
 )
 from src.utils.masking import _mask_database_url
-
-logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 

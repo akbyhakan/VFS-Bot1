@@ -651,6 +651,102 @@ class TestStartupValidatorStrictMode:
             elif "VFS_ENCRYPTION_KEY" in os.environ:
                 del os.environ["VFS_ENCRYPTION_KEY"]
 
+    def test_database_url_change_me_substring_detection(self):
+        """Test that DATABASE_URL with CHANGE_ME substring is detected."""
+        from src.core.startup_validator import validate_production_security
+
+        old_env = os.getenv("ENV")
+        old_db_url = os.getenv("DATABASE_URL")
+
+        try:
+            # Set production environment with CHANGE_ME in DATABASE_URL
+            os.environ["ENV"] = "production"
+            os.environ["DATABASE_URL"] = "postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot"
+
+            # Should detect the placeholder password
+            warnings = validate_production_security()
+            
+            # Find the DATABASE_URL warning
+            db_warnings = [w for w in warnings if "DATABASE_URL" in w]
+            assert len(db_warnings) > 0, "Should detect CHANGE_ME in DATABASE_URL"
+            assert "placeholder" in db_warnings[0].lower()
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_db_url:
+                os.environ["DATABASE_URL"] = old_db_url
+            elif "DATABASE_URL" in os.environ:
+                del os.environ["DATABASE_URL"]
+
+    def test_postgres_password_change_me_detection(self):
+        """Test that POSTGRES_PASSWORD with CHANGE_ME is detected."""
+        from src.core.startup_validator import validate_production_security
+
+        old_env = os.getenv("ENV")
+        old_pg_pass = os.getenv("POSTGRES_PASSWORD")
+
+        try:
+            # Set production environment with CHANGE_ME in POSTGRES_PASSWORD
+            os.environ["ENV"] = "production"
+            os.environ["POSTGRES_PASSWORD"] = "CHANGE_ME_TO_SECURE_PASSWORD"
+
+            # Should detect the placeholder password
+            warnings = validate_production_security()
+            
+            # Find the POSTGRES_PASSWORD warning
+            pg_warnings = [w for w in warnings if "POSTGRES_PASSWORD" in w]
+            assert len(pg_warnings) > 0, "Should detect CHANGE_ME in POSTGRES_PASSWORD"
+            assert "placeholder" in pg_warnings[0].lower()
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_pg_pass:
+                os.environ["POSTGRES_PASSWORD"] = old_pg_pass
+            elif "POSTGRES_PASSWORD" in os.environ:
+                del os.environ["POSTGRES_PASSWORD"]
+
+    def test_redis_password_change_me_detection(self):
+        """Test that REDIS_PASSWORD with CHANGE_ME is detected."""
+        from src.core.startup_validator import validate_production_security
+
+        old_env = os.getenv("ENV")
+        old_redis_pass = os.getenv("REDIS_PASSWORD")
+
+        try:
+            # Set production environment with CHANGE_ME in REDIS_PASSWORD
+            os.environ["ENV"] = "production"
+            os.environ["REDIS_PASSWORD"] = "change_me_redis"
+
+            # Should detect the placeholder password
+            warnings = validate_production_security()
+            
+            # Find the REDIS_PASSWORD warning
+            redis_warnings = [w for w in warnings if "REDIS_PASSWORD" in w]
+            assert len(redis_warnings) > 0, "Should detect change_me in REDIS_PASSWORD"
+            assert "placeholder" in redis_warnings[0].lower()
+
+        finally:
+            # Restore original values
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
+            if old_redis_pass:
+                os.environ["REDIS_PASSWORD"] = old_redis_pass
+            elif "REDIS_PASSWORD" in os.environ:
+                del os.environ["REDIS_PASSWORD"]
+
 
 class TestOpenAPISecurityConfig:
     """Test OpenAPI docs security configuration."""

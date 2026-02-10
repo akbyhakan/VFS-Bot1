@@ -1,10 +1,9 @@
 """Secure memory handling utilities for sensitive data."""
 
 import ctypes
-import logging
 from typing import Union
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def secure_zero_memory(data: Union[bytearray, bytes, str]) -> None:

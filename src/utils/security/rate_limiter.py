@@ -1,19 +1,24 @@
 """Rate limiting for API requests."""
 
 import asyncio
-import logging
 import threading
 import time
 from collections import deque
 from typing import Optional
 
-from ...constants import RateLimitDefaults
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from ...constants import RateLimitDefaults
 
 
 class RateLimiter:
-    """Token bucket rate limiter for API calls."""
+    """
+    Token bucket rate limiter for API calls.
+    
+    NOTE: This rate limiter is designed for single-process VFS API call throttling.
+    For distributed/multi-worker deployments, see src/core/auth.py which provides
+    Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
+    """
 
     def __init__(self, max_requests: int = 60, time_window: int = 60):
         """

@@ -5,12 +5,13 @@ Handles graceful shutdown, signal handling, and resource cleanup.
 """
 
 import asyncio
-import logging
 import os
 import signal
 import sys
 import threading
 from typing import Optional
+
+from loguru import logger
 
 from .exceptions import ShutdownTimeoutError
 
@@ -46,7 +47,6 @@ def setup_signal_handlers():
     Signals the shutdown event to allow running tasks to complete gracefully.
     If tasks don't complete within timeout, forces exit.
     """
-    logger = logging.getLogger(__name__)
 
     def handle_signal(signum, frame):
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
@@ -93,7 +93,6 @@ async def fast_emergency_cleanup() -> None:
     Only attempts to close database connection to prevent corruption.
     Uses a very short timeout (5 seconds).
     """
-    logger = logging.getLogger(__name__)
     logger.warning("Executing fast emergency cleanup...")
 
     # Try to close DatabaseFactory instance (used by web mode)
@@ -121,7 +120,6 @@ async def graceful_shutdown(
         signal_name: Name of signal that triggered shutdown (optional)
         timeout: Maximum time to wait for tasks to complete (default: 30 seconds)
     """
-    logger = logging.getLogger(__name__)
     logger.info(
         f"Initiating graceful shutdown{f' (signal: {signal_name})' if signal_name else ''}..."
     )
@@ -164,7 +162,6 @@ async def force_cleanup_critical_resources(db: Optional["Database"] = None) -> N
     Args:
         db: Database instance to close
     """
-    logger = logging.getLogger(__name__)
     logger.warning("Forcing cleanup of critical resources...")
 
     try:
@@ -199,7 +196,6 @@ async def graceful_shutdown_with_timeout(
     Raises:
         ShutdownTimeoutError: If graceful shutdown times out (raised but caught)
     """
-    logger = logging.getLogger(__name__)
 
     try:
         await asyncio.wait_for(
@@ -237,7 +233,6 @@ async def safe_shutdown_cleanup(
         cleanup_task: Cleanup task to cancel
         shutdown_event: Shutdown event to clear
     """
-    logger = logging.getLogger(__name__)
 
     # Stop cleanup service
     if cleanup_service is not None:

@@ -3,12 +3,11 @@
 import asyncio
 import hashlib
 import json
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 @dataclass

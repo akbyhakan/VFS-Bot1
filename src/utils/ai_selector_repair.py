@@ -1,15 +1,13 @@
 """AI-powered selector auto-repair using Google Gemini."""
 
-import logging
 import os
 import re
 from pathlib import Path
 from typing import Optional
 
 import yaml
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class AISelectorRepair:
