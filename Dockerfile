@@ -61,8 +61,8 @@ ENV PATH=/home/vfsbot/.local/bin:$PATH
 # Set Playwright browsers path to vfsbot-accessible location
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/vfsbot/.cache/ms-playwright
 
-# Install Playwright Chromium as root and set ownership
-RUN playwright install chromium && \
+# Install Playwright Chromium using system Python with the user packages path
+RUN PYTHONPATH=/home/vfsbot/.local/lib/python3.12/site-packages python3 -m playwright install chromium && \
     chown -R vfsbot:vfsbot /home/vfsbot/.local /home/vfsbot/.cache
 
 # Copy application code
