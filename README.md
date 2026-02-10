@@ -495,6 +495,33 @@ Global rate limiting prevents overloading VFS servers:
 - Default: 60 requests per 60 seconds
 - Automatic backoff when limit reached
 - Configurable via `RateLimiter` class
+
+### Graceful Degradation & Cache Strategy
+
+VFS-Bot implements a multi-tier caching strategy for resilience when the database becomes unavailable:
+
+| Scenario | Behavior |
+|----------|----------|
+| Database healthy | Fresh data fetched, cache updated |
+| Database down, cache fresh (< `USERS_CACHE_TTL` seconds) | Cached data used, warning logged |
+| Database down, cache expired | Empty user list returned, error logged, bot waits for recovery |
+
+**Configuration:**
+- `USERS_CACHE_TTL=300` — Cache validity period in seconds (default: 5 minutes)
+- The bot automatically attempts database reconnection when in DEGRADED state
+- Circuit breaker prevents cascading failures
+
+**Cache Invalidation:**
+- Cache is refreshed on every successful database query
+- Cache expires automatically after `USERS_CACHE_TTL` seconds
+- No manual invalidation needed — the system is self-healing
+
+**Backup Encryption:**
+- Database backups are automatically encrypted at rest using Fernet (symmetric encryption)
+- Backups use `.sql.enc` extension for encrypted files
+- Both `BACKUP_ENCRYPTION_KEY` and `ENCRYPTION_KEY` environment variables are supported
+- Restores transparently decrypt backup files before feeding to `psql`
+- Legacy unencrypted `.sql` backups remain compatible for cleanup and listing
 ```
 
 ## 🧪 Testing

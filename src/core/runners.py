@@ -49,7 +49,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         from src.utils.db_backup import get_backup_service
         backup_service = get_backup_service()
         await backup_service.start_scheduled_backups()
-        logger.info("Database backup service started (pg_dump)")
+        logger.info("Database backup service started (pg_dump, encrypted)")
     except Exception as e:
         logger.warning(f"Failed to start backup service (non-critical): {e}")
 
