@@ -116,7 +116,7 @@ def get_validated_environment() -> str:
 # Comprehensive localhost detection pattern
 _LOCALHOST_PATTERN = re.compile(
     r'^https?://'
-    r'(localhost(\.|:|/|$)|127\.0\.0\.1|\[?::1\]?|0\.0\.0\.0)'
+    r'(localhost(\.|:|/|$)|127\.0\.0\.1|(\[::1\]|::1)|0\.0\.0\.0)'
     r'(:\d+)?'
     r'(/.*)?$',
     re.IGNORECASE
@@ -125,11 +125,15 @@ _LOCALHOST_PATTERN = re.compile(
 
 def _is_localhost_origin(origin: str) -> bool:
     """Check if origin is a localhost variant (including IPv6)."""
-    # Also check for localhost subdomains like localhost.evil.com
-    if 'localhost.' in origin.lower():
-        return True
+    # Check for localhost subdomains like localhost.evil.com
+    # Extract hostname after protocol to avoid false positives
+    if '://' in origin:
+        # Extract the part after protocol
+        after_protocol = origin.split('://', 1)[1]
+        # Check if hostname starts with localhost.
+        if after_protocol.lower().startswith('localhost.'):
+            return True
     return bool(_LOCALHOST_PATTERN.match(origin))
-
 
 
 def validate_cors_origins(origins_str: str) -> List[str]:

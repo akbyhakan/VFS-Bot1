@@ -447,7 +447,7 @@ class TestLogoutTokenRevocation:
     def test_logout_extracts_token_from_cookie_logic(self):
         """Test the logic for extracting token from cookie."""
         # This test verifies that the logout endpoint has logic
-        # to extract tokens from both cookies and Authorization headers
+        # to extract tokens using the extract_raw_token helper
         from web.routes.auth import logout
         import inspect
         
@@ -456,10 +456,9 @@ class TestLogoutTokenRevocation:
         assert 'request' in sig.parameters
         assert 'token_data' in sig.parameters
         
-        # Verify the source code contains token extraction logic
+        # Verify the source code uses the helper function and calls revoke_token
         source = inspect.getsource(logout)
-        assert 'request.cookies.get("access_token")' in source
-        assert 'Authorization' in source
+        assert 'extract_raw_token' in source
         assert 'revoke_token' in source
 
 

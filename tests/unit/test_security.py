@@ -275,6 +275,16 @@ class TestCORSValidation:
         origins = validate_cors_origins("http://[::1]:3000")
         assert "http://[::1]:3000" in origins
 
+    def test_cors_legitimate_domains_not_blocked(self, monkeypatch):
+        """Test that legitimate domains containing 'localhost' substring are not blocked."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "production")
+        # These should NOT be blocked as they don't start with localhost.
+        origins = validate_cors_origins("https://mylocalhost.com,https://notlocalhost.example.com")
+        assert "https://mylocalhost.com" in origins
+        assert "https://notlocalhost.example.com" in origins
+
 
 class TestXForwardedFor:
     """Tests for X-Forwarded-For IP detection."""

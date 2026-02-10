@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 from src.core.auth import create_access_token, revoke_token
 from src.core.security import generate_api_key
 from src.models.database import Database
-from web.dependencies import get_db, verify_jwt_token
+from web.dependencies import extract_raw_token, get_db, verify_jwt_token
 from web.models.auth import LoginRequest, TokenResponse
 
 logger = logging.getLogger(__name__)
@@ -203,12 +203,8 @@ async def logout(
         Success message
     """
     # Revoke the JWT token to prevent reuse via Authorization header
-    # Extract the raw token from cookie or Authorization header
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+    # Use shared helper to extract token consistently
+    token = extract_raw_token(request)
     
     if token:
         try:
