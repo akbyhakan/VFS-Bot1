@@ -78,6 +78,10 @@ RUN chown -R vfsbot:vfsbot /app
 RUN mkdir -p /app/logs /app/screenshots && \
     chown -R vfsbot:vfsbot /app/logs /app/screenshots
 
+# Copy and set up entrypoint script
+COPY scripts/docker-entrypoint.sh /app/scripts/docker-entrypoint.sh
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+
 # Switch to non-root user
 USER vfsbot
 
@@ -88,5 +92,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()" || exit 1
 
+# Entrypoint for automatic migrations
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+
 # Default command
-CMD ["python", "main.py", "--mode", "both"]
+CMD ["--mode", "both"]
