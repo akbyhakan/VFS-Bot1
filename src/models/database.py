@@ -111,7 +111,13 @@ class Database:
         if pool_size is None:
             env_pool_size = os.getenv("DB_POOL_SIZE")
             if env_pool_size:
-                pool_size = int(env_pool_size)
+                try:
+                    pool_size = int(env_pool_size)
+                    if pool_size < 1:
+                        raise ValueError(f"DB_POOL_SIZE must be >= 1, got: {pool_size}")
+                except ValueError as e:
+                    logger.warning(f"Invalid DB_POOL_SIZE: {e}. Using calculated optimal size")
+                    pool_size = self._calculate_optimal_pool_size()
             else:
                 pool_size = self._calculate_optimal_pool_size()
         self.pool_size = pool_size

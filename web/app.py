@@ -437,8 +437,10 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
+    from src.core.runners import parse_safe_port
+
     # Security: Default to localhost only. Set UVICORN_HOST=0.0.0.0 to bind to all interfaces.
     # Note: This is more secure by default. For production, use a proper WSGI server.
     host = os.getenv("UVICORN_HOST", "127.0.0.1")
-    port = int(os.getenv("UVICORN_PORT", "8000"))
+    port = parse_safe_port()
     uvicorn.run(app, host=host, port=port)

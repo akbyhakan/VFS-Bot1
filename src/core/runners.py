@@ -23,6 +23,29 @@ from .shutdown import (
 )
 
 
+def parse_safe_port(env_var: str = "UVICORN_PORT", default: int = 8000) -> int:
+    """Parse port from environment variable with validation.
+    
+    Args:
+        env_var: Environment variable name to read
+        default: Default port if env var is missing or invalid
+        
+    Returns:
+        Valid port number (1-65535)
+    """
+    raw = os.getenv(env_var)
+    if raw is None:
+        return default
+    try:
+        port = int(raw)
+        if not (1 <= port <= 65535):
+            raise ValueError(f"Port must be 1-65535, got: {port}")
+        return port
+    except ValueError as e:
+        logger.warning(f"Invalid {env_var}: {e}. Using default {default}")
+        return default
+
+
 async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
@@ -153,7 +176,7 @@ async def run_web_mode(
 
         # Run uvicorn server with configurable host and port
         host = os.getenv("UVICORN_HOST", "127.0.0.1")
-        port = int(os.getenv("UVICORN_PORT", "8000"))
+        port = parse_safe_port()
         config_uvicorn = uvicorn.Config(app, host=host, port=port, log_level="info")
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
@@ -221,12 +244,15 @@ async def run_both_mode(config: dict) -> None:
         logger.info("Starting bot via BotController...")
         start_result = await controller.start_bot()
         if start_result["status"] != "success":
-            logger.error(f"Failed to start bot: {start_result['message']}")
-            raise RuntimeError(
-                f"Critical: Unable to start bot in both mode - {start_result['message']}"
+            logger.error(
+                f"Bot failed to start: {start_result['message']}. "
+                f"Web dashboard will start in degraded mode."
             )
+        else:
+            logger.info("Bot started successfully via BotController")
 
         # Run web mode (with cleanup service enabled, skip its shutdown)
+        # Web starts regardless of bot status for diagnostics
         web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True))
 
         # Wait for web task to complete

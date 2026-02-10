@@ -74,6 +74,23 @@ class NotificationService:
             logger.error(f"Failed to create Telegram bot: {e}")
             return None
 
+    @staticmethod
+    def _escape_markdown(text: str) -> str:
+        """
+        Escape Telegram Markdown special characters.
+        
+        Args:
+            text: Text to escape
+            
+        Returns:
+            Escaped text safe for Markdown parse_mode
+        """
+        # Escape Markdown special characters: * _ ` [ ] ( )
+        special_chars = ['*', '_', '`', '[', ']', '(', ')']
+        for char in special_chars:
+            text = text.replace(char, '\\' + char)
+        return text
+
     async def send_notification(
         self, title: str, message: str, priority: NotificationPriority = "normal"
     ) -> None:
@@ -125,7 +142,10 @@ class NotificationService:
             if bot is None:
                 return False
 
-            full_message = f"🤖 *{title}*\n\n{message}"
+            # Escape markdown special characters to prevent injection
+            escaped_title = self._escape_markdown(title)
+            escaped_message = self._escape_markdown(message)
+            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
             await bot.send_message(chat_id=chat_id, text=full_message, parse_mode="Markdown")
 
@@ -353,7 +373,10 @@ The bot will retry automatically.
             if bot is None:
                 return False
 
-            full_message = f"🤖 *{title}*\n\n{message}"
+            # Escape markdown special characters to prevent injection
+            escaped_title = self._escape_markdown(title)
+            escaped_message = self._escape_markdown(message)
+            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
             with open(photo_file, "rb") as photo:
                 await bot.send_photo(
