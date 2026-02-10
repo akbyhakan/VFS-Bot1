@@ -5,7 +5,6 @@ import logging
 import os
 import random
 import time
-import warnings
 from typing import Any, Dict, List, Optional
 
 from playwright.async_api import Page
@@ -31,8 +30,8 @@ class VFSBot:
         config: Dict[str, Any],
         db: Database,
         notifier: NotificationService,
+        services: Optional[BotServiceContext] = None,
         shutdown_event: Optional[asyncio.Event] = None,
-        services: BotServiceContext,
     ):
         """
         Initialize VFS bot with dependency injection.
@@ -51,16 +50,16 @@ class VFSBot:
         self.running = False
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
-        
+
         # Initialize repositories
         self.user_repo = UserRepository(db)
-        
+
         # Trigger event for immediate slot checks
         self._trigger_event = asyncio.Event()
-        
+
         # Health checker task reference
         self._health_task: Optional[asyncio.Task] = None
-        
+
         # Track if stop() has been called to make it idempotent
         self._stopped: bool = False
 
@@ -70,11 +69,11 @@ class VFSBot:
         # User cache for graceful degradation (Issue 3.3)
         self._cached_users: List[Dict[str, Any]] = []
         self._cached_users_time: float = 0
-        self._USERS_CACHE_TTL: float = float(
-            os.getenv("USERS_CACHE_TTL", "300.0")
-        )
+        self._USERS_CACHE_TTL: float = float(os.getenv("USERS_CACHE_TTL", "300.0"))
 
         # Initialize services context
+        if services is None:
+            services = BotServiceFactory.create_services(config, db, notifier)
         self.services = services
 
         # Initialize browser manager (needs anti-detection services)
@@ -197,7 +196,7 @@ class VFSBot:
         if self._stopped:
             logger.debug("stop() called but bot is already stopped")
             return
-        
+
         self._stopped = True
         self.running = False
 
@@ -252,13 +251,13 @@ class VFSBot:
 
         # Clean up browser resources
         await self.cleanup()
-        
+
         # Notify bot stopped with error handling
         try:
             await self.notifier.notify_bot_stopped()
         except Exception as e:
             logger.warning(f"Failed to send bot stopped notification: {e}")
-        
+
         logger.info("VFS-Bot stopped")
 
     async def _send_alert_safe(
@@ -285,11 +284,11 @@ class VFSBot:
             )
         except Exception as e:
             logger.debug(f"Alert delivery failed: {e}")
-    
+
     def _handle_task_exception(self, task: asyncio.Task) -> None:
         """
         Handle exceptions from background tasks.
-        
+
         Args:
             task: The completed task to check for exceptions
         """
@@ -297,21 +296,23 @@ class VFSBot:
             # Check if task raised an exception
             exception = task.exception()
             if exception:
-                logger.error(f"Background task failed with exception: {exception}", exc_info=exception)
+                logger.error(
+                    f"Background task failed with exception: {exception}", exc_info=exception
+                )
         except asyncio.CancelledError:
             # Task was cancelled, this is normal during shutdown
             logger.debug("Background task was cancelled")
         except Exception as e:
             # Error getting exception from task
             logger.error(f"Error handling task exception: {e}")
-    
+
     async def _wait_or_shutdown(self, seconds: float) -> bool:
         """
         Wait for the specified duration or until shutdown/trigger is requested.
-        
+
         Args:
             seconds: Number of seconds to wait
-            
+
         Returns:
             True if shutdown was requested during wait, False on normal timeout or trigger
         """
@@ -319,13 +320,11 @@ class VFSBot:
             # Wait for either shutdown or trigger event
             shutdown_task = asyncio.create_task(self.shutdown_event.wait())
             trigger_task = asyncio.create_task(self._trigger_event.wait())
-            
+
             done, pending = await asyncio.wait(
-                [shutdown_task, trigger_task],
-                timeout=seconds,
-                return_when=asyncio.FIRST_COMPLETED
+                [shutdown_task, trigger_task], timeout=seconds, return_when=asyncio.FIRST_COMPLETED
             )
-            
+
             # Cancel pending tasks
             for task in pending:
                 task.cancel()
@@ -333,7 +332,7 @@ class VFSBot:
                     await task
                 except asyncio.CancelledError:
                     pass
-            
+
             # Check which event was triggered
             if shutdown_task in done:
                 # Shutdown was requested
@@ -352,10 +351,10 @@ class VFSBot:
     async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
         """
         Get active users with fallback support for graceful degradation.
-        
+
         Uses execute_with_fallback() to implement caching layer.
         On DB failure, returns cached users if available.
-        
+
         Returns:
             List of active users with decrypted passwords
         """
@@ -365,13 +364,13 @@ class VFSBot:
             fallback_value=None,
             critical=False,
         )
-        
+
         if users is not None:
             # Success - update cache
             self._cached_users = users
             self._cached_users_time = time.time()
             return users
-        
+
         # DB failure - check if cache is still fresh
         cache_age = time.time() - self._cached_users_time
         if cache_age < self._USERS_CACHE_TTL and self._cached_users:
@@ -380,7 +379,7 @@ class VFSBot:
                 f"count: {len(self._cached_users)})"
             )
             return self._cached_users
-        
+
         # Cache expired or empty
         logger.error(
             f"Database unavailable and cache expired (age: {cache_age:.1f}s) - "
@@ -391,15 +390,15 @@ class VFSBot:
     async def _ensure_db_connection(self) -> None:
         """
         Ensure database connection is healthy and attempt reconnection if needed.
-        
+
         Checks database state and calls reconnect() if degraded or disconnected.
         Sends alert on successful reconnection.
         """
         db_state = self.db.state
-        
+
         if db_state in (DatabaseState.DEGRADED, DatabaseState.DISCONNECTED):
             logger.warning(f"Database in {db_state} state - attempting reconnection")
-            
+
             try:
                 reconnected = await self.db.reconnect()
                 if reconnected:
@@ -417,13 +416,14 @@ class VFSBot:
     async def _record_circuit_breaker_trip(self) -> None:
         """
         Record circuit breaker trip metric when circuit breaker opens.
-        
+
         This method checks if the circuit breaker is in OPEN state and records
         the trip metric. Failures to record metrics are logged but do not raise exceptions.
         """
         if self.circuit_breaker.state == CircuitState.OPEN:
             try:
                 from ...utils.metrics import get_metrics
+
                 metrics = await get_metrics()
                 await metrics.record_circuit_breaker_trip()
             except Exception as e:
@@ -432,7 +432,7 @@ class VFSBot:
     async def _handle_circuit_breaker_open(self) -> bool:
         """
         Handle circuit breaker open state with logging, alerting, and waiting.
-        
+
         Returns:
             True if shutdown was requested during wait, False otherwise
         """
@@ -469,10 +469,10 @@ class VFSBot:
     async def _process_batch(self, users: List[Dict[str, Any]]) -> None:
         """
         Process batch of users with parallel processing and error handling.
-        
+
         Creates tasks for each user, executes them in parallel with semaphore control,
         analyzes results, and updates circuit breaker state. Sends alerts on batch errors.
-        
+
         Args:
             users: List of user dictionaries to process
         """
@@ -495,15 +495,14 @@ class VFSBot:
         if errors_in_batch > 0:
             logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
             await self.circuit_breaker.record_failure()
-            
+
             # Record circuit breaker trip in metrics if it just opened
             await self._record_circuit_breaker_trip()
 
             # Send alert for batch errors (ERROR severity)
             await self._send_alert_safe(
                 message=(
-                    f"Batch processing errors: {errors_in_batch}/"
-                    f"{len(users)} users failed"
+                    f"Batch processing errors: {errors_in_batch}/" f"{len(users)} users failed"
                 ),
                 severity=AlertSeverity.ERROR,
                 metadata={"errors": errors_in_batch, "total_users": len(users)},
@@ -515,10 +514,10 @@ class VFSBot:
     async def _wait_adaptive_interval(self) -> bool:
         """
         Wait for adaptive interval before next check.
-        
+
         Uses the adaptive scheduler to determine optimal wait time based on
         current system state and activity patterns.
-        
+
         Returns:
             True if shutdown was requested during wait, False otherwise
         """
@@ -579,7 +578,7 @@ class VFSBot:
                 logger.error(f"Error in bot loop: {e}", exc_info=True)
                 await self.notifier.notify_error("Bot Loop Error", str(e))
                 await self.circuit_breaker.record_failure()
-                
+
                 # Record circuit breaker trip in metrics if it just opened
                 await self._record_circuit_breaker_trip()
 
