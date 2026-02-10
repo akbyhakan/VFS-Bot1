@@ -1,15 +1,14 @@
 """NetNut proxy manager with CSV support."""
 
 import csv
-import logging
 import random
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from loguru import logger
+
 if TYPE_CHECKING:
     from src.models.database import Database
-
-logger = logging.getLogger(__name__)
 
 
 def mask_proxy_password(proxy_endpoint: str) -> str:

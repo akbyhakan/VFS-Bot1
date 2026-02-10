@@ -2,11 +2,11 @@
 
 import asyncio
 import functools
-import logging
+import logging as _stdlib_logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
@@ -69,7 +69,7 @@ def handle_errors(
 
 
 def log_errors(
-    reraise: bool = True, default_return: Any = None, log_level: int = logging.ERROR
+    reraise: bool = True, default_return: Any = None, log_level: int = _stdlib_logging.ERROR
 ) -> Callable[[F], F]:
     """
     Decorator to log errors from async functions.

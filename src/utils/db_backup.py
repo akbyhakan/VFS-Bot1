@@ -5,7 +5,6 @@ using pg_dump and pg_restore for online (hot) backups.
 """
 
 import asyncio
-import logging
 import os
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -13,9 +12,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from src.utils.masking import _mask_database_url
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from src.utils.masking import _mask_database_url
 
 
 class DatabaseBackup:

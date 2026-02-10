@@ -250,5 +250,152 @@ class TestPreMigrationBackup:
             pytest.skip(f"Database not available for integration test: {e}")
 
 
+class TestGrafanaPasswordNotHardcoded:
+    """Test that Grafana password is not hardcoded in monitoring compose."""
+
+    def test_monitoring_compose_uses_env_var(self):
+        """Test that docker-compose.monitoring.yml uses environment variable for Grafana password."""
+        compose_path = Path("docker-compose.monitoring.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.monitoring.yml not found")
+
+        content = compose_path.read_text()
+        # Should NOT contain hardcoded password
+        assert "vfsbot_grafana" not in content, "Grafana password should not be hardcoded"
+        # Should use environment variable with proper syntax
+        assert "GRAFANA_ADMIN_PASSWORD" in content, "Should use GRAFANA_ADMIN_PASSWORD env var"
+        # Verify it's using the environment variable syntax, not just referencing it
+        assert "${GRAFANA_ADMIN_PASSWORD" in content, "Should use ${GRAFANA_ADMIN_PASSWORD...} syntax"
+        # Verify the :? syntax requiring the variable
+        assert ":?" in content, "Should use :? syntax to require environment variable"
+
+    def test_monitoring_compose_no_version_key(self):
+        """Test that docker-compose.monitoring.yml doesn't have deprecated version key."""
+        compose_path = Path("docker-compose.monitoring.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.monitoring.yml not found")
+
+        content = compose_path.read_text()
+        lines = content.split("\n")
+        # Find first non-empty line
+        first_line = next((line.strip() for line in lines if line.strip()), "")
+        assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
+
+    def test_monitoring_compose_localhost_binding(self):
+        """Test that monitoring ports are bound to localhost only."""
+        compose_path = Path("docker-compose.monitoring.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.monitoring.yml not found")
+
+        content = compose_path.read_text()
+        # Should use 127.0.0.1 binding
+        assert "127.0.0.1:9090:9090" in content, "Prometheus should bind to localhost"
+        assert "127.0.0.1:3000:3000" in content, "Grafana should bind to localhost"
+
+    def test_dev_compose_no_version_key(self):
+        """Test that docker-compose.dev.yml doesn't have deprecated version key."""
+        compose_path = Path("docker-compose.dev.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.dev.yml not found")
+
+        content = compose_path.read_text()
+        lines = content.split("\n")
+        # Find first non-empty line
+        first_line = next((line.strip() for line in lines if line.strip()), "")
+        assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
+
+
+class TestStartupValidatorGrafana:
+    """Test that startup validator checks Grafana password."""
+
+    @pytest.fixture
+    def production_env_vars(self):
+        """Fixture to manage environment variables for production security tests."""
+        # Store original values
+        original_values = {
+            "ENV": os.environ.get("ENV"),
+            "GRAFANA_ADMIN_PASSWORD": os.environ.get("GRAFANA_ADMIN_PASSWORD"),
+            "DATABASE_URL": os.environ.get("DATABASE_URL"),
+            "API_SECRET_KEY": os.environ.get("API_SECRET_KEY"),
+            "ADMIN_PASSWORD": os.environ.get("ADMIN_PASSWORD"),
+            "ADMIN_USERNAME": os.environ.get("ADMIN_USERNAME"),
+        }
+        
+        # Set common production environment
+        os.environ["ENV"] = "production"
+        os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
+        os.environ["API_SECRET_KEY"] = "a" * 64
+        os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
+        os.environ["ADMIN_USERNAME"] = "unique_admin_name"
+        
+        yield
+        
+        # Cleanup - restore original values or remove if they didn't exist
+        for key, value in original_values.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def test_grafana_default_password_detected(self, production_env_vars):
+        """Test that default Grafana password is detected."""
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
+
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
+
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) > 0, "Should detect default Grafana password"
+
+    def test_grafana_placeholder_patterns_detected(self, production_env_vars):
+        """Test that placeholder patterns in Grafana password are detected."""
+        test_patterns = [
+            "CHANGE_ME_generate_secure_grafana_password",
+            "my_password_change_me",
+            "ChangeMeNow",
+        ]
+        
+        from src.core.startup_validator import validate_production_security
+        
+        for password in test_patterns:
+            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            warnings = validate_production_security()
+            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+            assert len(grafana_warnings) > 0, f"Should detect placeholder pattern in '{password}'"
+
+    def test_grafana_common_defaults_detected(self, production_env_vars):
+        """Test that common default passwords are detected."""
+        common_defaults = ["admin", "password", "grafana"]
+        
+        from src.core.startup_validator import validate_production_security
+        
+        for password in common_defaults:
+            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            warnings = validate_production_security()
+            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+            assert len(grafana_warnings) > 0, f"Should detect common default password '{password}'"
+
+    def test_grafana_secure_password_passes(self, production_env_vars):
+        """Test that secure Grafana password passes validation."""
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
+
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
+
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) == 0, "Secure Grafana password should not trigger warning"
+
+    def test_grafana_secure_with_vfsbot_substring_passes(self, production_env_vars):
+        """Test that password containing 'vfsbot' as part of secure string passes."""
+        # This ensures we're using exact match for 'vfsbot_grafana', not substring
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "secure_vfsbot_integration_key_xyz789"
+
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
+
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) == 0, "Secure password with 'vfsbot' substring should pass"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

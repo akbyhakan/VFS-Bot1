@@ -1,10 +1,10 @@
 """Safe logging utilities for protecting sensitive data."""
 
-import logging
+import logging as _stdlib_logging
 import re
 from typing import Any, Dict, List, Pattern
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class SafeException:
@@ -99,7 +99,7 @@ class SafeException:
 
     @classmethod
     def safe_log(
-        cls, logger_instance: logging.Logger, level: int, message: str, exc_info: Any = None
+        cls, logger_instance: _stdlib_logging.Logger, level: int, message: str, exc_info: Any = None
     ) -> None:
         """
         Log message with automatic sensitive data redaction.

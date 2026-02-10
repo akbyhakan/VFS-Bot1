@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock
 
 help:
 	@echo "Available commands:"
@@ -17,6 +17,7 @@ help:
 	@echo "  make db-downgrade - Rollback last migration"
 	@echo "  make db-history   - Show migration history"
 	@echo "  make db-current   - Show current migration version"
+	@echo "  make lock         - Generate requirements.lock for reproducible deployments"
 
 install:
 	pip install -r requirements.txt
@@ -76,3 +77,7 @@ db-history:
 
 db-current:
 	alembic current
+
+lock:  ## Generate requirements.lock for reproducible deployments
+	pip freeze > requirements.lock
+	@echo "✅ requirements.lock updated"

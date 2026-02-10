@@ -1,15 +1,14 @@
 """Background service for cleaning up old appointment requests and screenshots."""
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 if TYPE_CHECKING:
     from src.models.database import Database
-
-logger = logging.getLogger(__name__)
 
 # Exponential backoff constants
 BASE_BACKOFF_SECONDS = 300  # 5 minutes

@@ -1,14 +1,13 @@
 """Token blacklist repository implementation."""
 
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from loguru import logger
 
 from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.db_helpers import _parse_command_tag
-
-logger = logging.getLogger(__name__)
 
 
 class TokenBlacklistEntry:

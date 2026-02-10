@@ -1,16 +1,14 @@
 """Standardized form handling utilities to eliminate code duplication."""
 
 import asyncio
-import logging
 from typing import Any, List, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 
 from src.constants import Delays, Timeouts
 from src.core.exceptions import SelectorNotFoundError
-
-logger = logging.getLogger(__name__)
 
 
 class FormHandler:
