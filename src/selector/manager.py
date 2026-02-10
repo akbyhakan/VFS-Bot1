@@ -22,7 +22,7 @@ class CountryAwareSelectorManager:
         Initialize country-aware selector manager.
 
         Args:
-            country_code: Ülke kodu (fra, nld, deu, vb.) veya "default"
+            country_code: Country code (fra, nld, deu, etc.) or "default"
                          For backward compatibility, if this looks like a file path,
                          it will be treated as selectors_file instead.
             selectors_file: Path to selectors YAML file
@@ -606,7 +606,7 @@ def get_selector_manager(country_code: str = "default") -> CountryAwareSelectorM
     Get or create a selector manager for a specific country.
 
     Args:
-        country_code: Ülke kodu (fra, nld, vb.) veya "default"
+        country_code: Country code (fra, nld, etc.) or "default"
 
     Returns:
         CountryAwareSelectorManager instance
