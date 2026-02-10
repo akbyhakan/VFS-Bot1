@@ -2,10 +2,11 @@
 
 import time
 from datetime import timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.auth import AuthRateLimiter
+from src.core.auth import AuthRateLimiter, RedisBackend, InMemoryBackend
 
 
 class TestAuthRateLimiter:
@@ -324,3 +325,40 @@ class TestCheckAndRecordAttempt:
         limiter2.record_attempt("user2")
         assert not limiter2.check_and_record_attempt("user2")  # Should work
         assert limiter2.check_and_record_attempt("user2")  # Now limited
+
+    def test_redis_backend_check_and_record_attempt_atomicity(self):
+        """Test that RedisBackend's check_and_record_attempt is atomic using Lua script."""
+        # Create a mock Redis client
+        mock_redis = MagicMock()
+        
+        # Mock the Lua script registration and execution
+        mock_script = MagicMock()
+        mock_redis.register_script.return_value = mock_script
+        
+        # Simulate script behavior: first 3 calls return 0 (allowed), then 1 (blocked)
+        mock_script.side_effect = [0, 0, 0, 1, 1]
+        
+        # Create RedisBackend with mocked client
+        backend = RedisBackend(mock_redis)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=backend)
+        
+        # First 3 attempts should succeed
+        assert not limiter.check_and_record_attempt("user1")
+        assert not limiter.check_and_record_attempt("user1")
+        assert not limiter.check_and_record_attempt("user1")
+        
+        # 4th attempt should be blocked
+        assert limiter.check_and_record_attempt("user1")
+        
+        # Verify the Lua script was called (not separate is_rate_limited + record_attempt)
+        assert mock_script.call_count == 4
+        
+        # Verify each call had the expected structure (keys=[key], args=[max, window, time, uuid])
+        for call in mock_script.call_args_list:
+            args, kwargs = call
+            assert 'keys' in kwargs
+            assert 'args' in kwargs
+            assert len(kwargs['keys']) == 1
+            assert len(kwargs['args']) == 4
+            assert kwargs['args'][0] == 3  # max_attempts
+            assert kwargs['args'][1] == 60  # window_seconds

@@ -220,9 +220,6 @@ class InMemoryBackend(RateLimiterBackend):
             
             # Check if rate limited
             if len(self._attempts[identifier]) >= max_attempts:
-                # Clean up empty lists
-                if not self._attempts[identifier]:
-                    del self._attempts[identifier]
                 return True
             
             # Not limited - record the attempt
@@ -293,6 +290,8 @@ class RedisBackend(RateLimiterBackend):
     def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
         """Atomically check rate limit and record attempt if not limited."""
         key = f"auth_rl:{identifier}"
+        # Use Unix timestamp (time.time()) for Redis operations for compatibility
+        # with Redis ZADD score field which expects numeric values
         now = time.time()
         attempt_id = str(uuid.uuid4())
         
