@@ -73,6 +73,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
+# After adding/changing dependencies in requirements.txt:
+make lock
+
 # Install Playwright browsers
 playwright install chromium
 
