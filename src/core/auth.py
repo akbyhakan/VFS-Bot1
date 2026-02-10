@@ -28,6 +28,38 @@ SUPPORTED_JWT_ALGORITHMS = frozenset({
     "ES256", "ES384", "ES512"
 })
 
+# Lua script for atomic rate limiting (check + record in one operation)
+# KEYS[1] = rate limit key
+# ARGV[1] = max_attempts
+# ARGV[2] = window_seconds  
+# ARGV[3] = current timestamp (now)
+# ARGV[4] = unique attempt ID (uuid)
+# Returns: 1 if rate limited (attempt NOT recorded), 0 if allowed (attempt recorded)
+_RATE_LIMIT_LUA_SCRIPT = """
+local key = KEYS[1]
+local max_attempts = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local attempt_id = ARGV[4]
+local cutoff = now - window
+
+-- Remove expired entries
+redis.call('ZREMRANGEBYSCORE', key, 0, cutoff)
+
+-- Check current count
+local count = redis.call('ZCARD', key)
+
+-- If already at or above limit, reject (don't record)
+if count >= max_attempts then
+    return 1
+end
+
+-- Under limit: record the attempt and set TTL
+redis.call('ZADD', key, now, attempt_id)
+redis.call('EXPIRE', key, window)
+return 0
+"""
+
 
 class RateLimiterBackend(ABC):
     """Abstract base class for rate limiter backends."""
@@ -78,6 +110,25 @@ class RateLimiterBackend(ABC):
 
         Returns:
             Number of identifiers cleaned up
+        """
+        pass
+
+    @abstractmethod
+    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """
+        Atomically check rate limit and record attempt if not limited.
+        
+        This eliminates the TOCTOU race condition between is_rate_limited() 
+        and record_attempt() by performing both operations atomically.
+        
+        Args:
+            identifier: Unique identifier (e.g., username, IP)
+            max_attempts: Maximum attempts allowed in window
+            window_seconds: Time window in seconds
+            
+        Returns:
+            True if rate limited (attempt was NOT recorded),
+            False if allowed (attempt WAS recorded)
         """
         pass
 
@@ -158,6 +209,26 @@ class InMemoryBackend(RateLimiterBackend):
 
             return len(stale_keys)
 
+    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """Atomically check rate limit and record attempt if not limited."""
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            cutoff = now - timedelta(seconds=window_seconds)
+            
+            # Clean old attempts
+            self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
+            
+            # Check if rate limited
+            if len(self._attempts[identifier]) >= max_attempts:
+                # Clean up empty lists
+                if not self._attempts[identifier]:
+                    del self._attempts[identifier]
+                return True
+            
+            # Not limited - record the attempt
+            self._attempts[identifier].append(now)
+            return False
+
     @property
     def is_distributed(self) -> bool:
         """Check if backend uses distributed storage."""
@@ -175,6 +246,8 @@ class RedisBackend(RateLimiterBackend):
             redis_client: Redis client instance
         """
         self._redis = redis_client
+        # Register Lua script for atomic rate limiting
+        self._rate_limit_script = self._redis.register_script(_RATE_LIMIT_LUA_SCRIPT)
 
     def is_rate_limited(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
         """Check if identifier is rate limited using atomic Redis pipeline."""
@@ -216,6 +289,18 @@ class RedisBackend(RateLimiterBackend):
         """
         # Redis handles cleanup via EXPIRE, so no manual cleanup needed
         return 0
+
+    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+        """Atomically check rate limit and record attempt if not limited."""
+        key = f"auth_rl:{identifier}"
+        now = time.time()
+        attempt_id = str(uuid.uuid4())
+        
+        result = self._rate_limit_script(
+            keys=[key],
+            args=[max_attempts, window_seconds, now, attempt_id]
+        )
+        return bool(result)
 
     @property
     def is_distributed(self) -> bool:
@@ -368,6 +453,11 @@ class AuthRateLimiter:
         """
         Check if identifier is rate limited.
 
+        .. note::
+            This method has a race condition when used with record_attempt() in 
+            distributed environments. Consider using check_and_record_attempt() instead
+            for atomic check-and-record operations.
+
         Args:
             identifier: Unique identifier (e.g., username, IP address)
 
@@ -380,10 +470,33 @@ class AuthRateLimiter:
         """
         Record an authentication attempt.
 
+        .. note::
+            This method has a race condition when used with is_rate_limited() in 
+            distributed environments. Consider using check_and_record_attempt() instead
+            for atomic check-and-record operations.
+
         Args:
             identifier: Unique identifier (e.g., username, IP address)
         """
         self._backend.record_attempt(identifier, self.window_seconds)
+
+    def check_and_record_attempt(self, identifier: str) -> bool:
+        """
+        Atomically check if rate limited and record attempt if not.
+        
+        This is the preferred method over separate is_rate_limited() + record_attempt() 
+        calls, as it eliminates the TOCTOU race condition in distributed environments.
+        
+        Args:
+            identifier: Unique identifier (e.g., username, IP address)
+            
+        Returns:
+            True if rate limited (attempt NOT recorded),
+            False if allowed (attempt WAS recorded)
+        """
+        return self._backend.check_and_record_attempt(
+            identifier, self.max_attempts, self.window_seconds
+        )
 
     def clear_attempts(self, identifier: str) -> None:
         """
