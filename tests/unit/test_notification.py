@@ -78,17 +78,22 @@ async def test_send_telegram_missing_credentials():
 
 @pytest.mark.asyncio
 async def test_send_telegram_exception():
-    """Test Telegram notification exception handling."""
+    """Test Telegram notification exception handling with retry."""
     config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
     with patch("telegram.Bot") as MockBot:
-        MockBot.side_effect = Exception("Telegram error")
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
 
         # Create notifier after patching Bot
         notifier = NotificationService(config)
 
         result = await notifier.send_telegram("Test", "Message")
         assert result is False
+        
+        # Verify retry happened (1 initial + 2 retries = 3 total attempts)
+        assert mock_bot.send_message.call_count == 3
 
 
 @pytest.mark.asyncio
@@ -103,7 +108,7 @@ async def test_send_email_missing_credentials():
 
 @pytest.mark.asyncio
 async def test_send_email_exception():
-    """Test email notification exception handling."""
+    """Test email notification exception handling with retry."""
     config = {
         "email": {
             "enabled": True,
@@ -118,9 +123,76 @@ async def test_send_email_exception():
     notifier = NotificationService(config)
 
     with patch("src.services.notification.aiosmtplib.SMTP") as MockSMTP:
-        MockSMTP.side_effect = Exception("SMTP error")
+        # Make SMTP raise exception on all attempts
+        mock_smtp_instance = AsyncMock()
+        MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
+        mock_smtp_instance.starttls = AsyncMock(side_effect=Exception("SMTP error"))
+        
         result = await notifier.send_email("Test", "Message")
         assert result is False
+        
+        # Verify retry happened (1 initial + 2 retries = 3 total attempts)
+        assert mock_smtp_instance.starttls.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_send_telegram_retry_then_success():
+    """Test Telegram notification succeeds after retry."""
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
+
+    with patch("telegram.Bot") as MockBot:
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        
+        # First call fails, second call succeeds
+        mock_bot.send_message = AsyncMock(side_effect=[
+            Exception("Transient error"),
+            None  # Success
+        ])
+
+        # Create notifier after patching Bot
+        notifier = NotificationService(config)
+
+        result = await notifier.send_telegram("Test", "Message")
+        assert result is True
+        
+        # Verify retry happened (2 calls: 1 failure + 1 success)
+        assert mock_bot.send_message.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_send_email_retry_then_success():
+    """Test email notification succeeds after retry."""
+    config = {
+        "email": {
+            "enabled": True,
+            "sender": "sender@example.com",
+            "password": "password",
+            "receiver": "receiver@example.com",
+            "smtp_server": "smtp.gmail.com",
+            "smtp_port": 587,
+        }
+    }
+
+    notifier = NotificationService(config)
+
+    with patch("src.services.notification.aiosmtplib.SMTP") as MockSMTP:
+        mock_smtp_instance = AsyncMock()
+        MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
+        
+        # First call fails, second succeeds
+        mock_smtp_instance.starttls = AsyncMock(side_effect=[
+            Exception("Transient error"),
+            None  # Success
+        ])
+        mock_smtp_instance.login = AsyncMock()
+        mock_smtp_instance.send_message = AsyncMock()
+        
+        result = await notifier.send_email("Test", "Message")
+        assert result is True
+        
+        # Verify retry happened (2 calls: 1 failure + 1 success)
+        assert mock_smtp_instance.starttls.call_count == 2
 
 
 @pytest.mark.asyncio
