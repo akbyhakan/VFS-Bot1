@@ -23,10 +23,12 @@ class TestAPIKeySaltSecurity:
 
     def test_api_key_salt_required_in_production(self, monkeypatch):
         """Test that API_KEY_SALT is required in production."""
-        # Clear the global salt
+        # Reset the singleton instance to force reload
         from src.core import security
 
-        security._API_KEY_SALT = None
+        if security.APIKeyManager._instance is not None:
+            security.APIKeyManager._instance._salt = None
+            security.APIKeyManager._instance._keys_loaded = False
 
         # Set production environment
         monkeypatch.setenv("ENV", "production")
@@ -41,10 +43,12 @@ class TestAPIKeySaltSecurity:
         # Set caplog to capture WARNING level logs
         caplog.set_level(logging.WARNING)
 
-        # Clear the global salt
+        # Reset the singleton instance to force reload
         from src.core import security
 
-        security._API_KEY_SALT = None
+        if security.APIKeyManager._instance is not None:
+            security.APIKeyManager._instance._salt = None
+            security.APIKeyManager._instance._keys_loaded = False
 
         # Set development environment
         monkeypatch.setenv("ENV", "development")
@@ -57,10 +61,12 @@ class TestAPIKeySaltSecurity:
 
     def test_api_key_salt_minimum_length(self, monkeypatch):
         """Test that API_KEY_SALT must be at least 32 characters."""
-        # Clear the global salt
+        # Reset the singleton instance to force reload
         from src.core import security
 
-        security._API_KEY_SALT = None
+        if security.APIKeyManager._instance is not None:
+            security.APIKeyManager._instance._salt = None
+            security.APIKeyManager._instance._keys_loaded = False
 
         monkeypatch.setenv("API_KEY_SALT", "short")
 
@@ -69,10 +75,12 @@ class TestAPIKeySaltSecurity:
 
     def test_api_key_salt_valid_length(self, monkeypatch):
         """Test that valid API_KEY_SALT is accepted."""
-        # Clear the global salt
+        # Reset the singleton instance to force reload
         from src.core import security
 
-        security._API_KEY_SALT = None
+        if security.APIKeyManager._instance is not None:
+            security.APIKeyManager._instance._salt = None
+            security.APIKeyManager._instance._keys_loaded = False
 
         valid_salt = "a" * 32  # 32 character salt
         monkeypatch.setenv("API_KEY_SALT", valid_salt)

@@ -189,7 +189,7 @@ The system learns over time which selectors work best and automatically promotes
 
 ### Option 2: Using Docker
 
-**Note:** Docker Compose automatically sets up PostgreSQL for you.
+**Note:** Docker Compose automatically sets up PostgreSQL and Redis for you.
 
 1. **Clone and configure**
    ```bash
@@ -198,7 +198,13 @@ The system learns over time which selectors work best and automatically promotes
    cp .env.example .env
    ```
    
-   Edit `.env` with your credentials. Important: Set `POSTGRES_PASSWORD` for the database.
+   Edit `.env` with your credentials. **Important**: Set both `POSTGRES_PASSWORD` and `REDIS_PASSWORD` for security.
+   
+   ```bash
+   # Generate secure passwords
+   echo "POSTGRES_PASSWORD=$(python -c 'import secrets; print(secrets.token_urlsafe(24))')" >> .env
+   echo "REDIS_PASSWORD=$(python -c 'import secrets; print(secrets.token_urlsafe(24))')" >> .env
+   ```
 
 2. **Run with Docker Compose**
    ```bash
@@ -206,7 +212,8 @@ The system learns over time which selectors work best and automatically promotes
    ```
    
    This will start:
-   - PostgreSQL database server
+   - PostgreSQL database server (with password authentication)
+   - Redis server (with password authentication)
    - VFS-Bot application
 
 3. **Access the dashboard**

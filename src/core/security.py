@@ -24,6 +24,7 @@ class APIKeyManager:
     _lock = RLock()
     _keys: Dict[str, Dict[str, Any]]
     _salt: Optional[bytes]
+    _keys_loaded: bool
 
     def __new__(cls) -> "APIKeyManager":
         """Create or return singleton instance."""
@@ -33,6 +34,7 @@ class APIKeyManager:
                 # Initialize in __new__ to ensure it happens once
                 cls._instance._keys = {}
                 cls._instance._salt = None
+                cls._instance._keys_loaded = False
             return cls._instance
 
     def __init__(self) -> None:
@@ -83,6 +85,12 @@ class APIKeyManager:
         salt = self.get_salt()
         return hmac.new(salt, api_key.encode(), hashlib.sha256).hexdigest()
 
+    def _ensure_keys_loaded(self) -> None:
+        """Lazy-load API keys on first use."""
+        if not self._keys_loaded:
+            self.load_keys()
+            self._keys_loaded = True
+
     def verify_key(self, api_key: str) -> Optional[Dict[str, Any]]:
         """
         Verify API key and return metadata.
@@ -94,6 +102,7 @@ class APIKeyManager:
             API key metadata if valid, None otherwise
         """
         with self._lock:
+            self._ensure_keys_loaded()
             key_hash = self._hash_key(api_key)
             return self._keys.get(key_hash)
 
@@ -211,7 +220,20 @@ def generate_api_key() -> str:
 
 
 def load_api_keys() -> None:
-    """Load API keys from environment or file."""
+    """
+    Load API keys from environment or file.
+    
+    .. deprecated::
+        Keys are now loaded lazily on first use via verify_key().
+        This function is kept for backward compatibility but is no longer
+        called automatically at module load time.
+    """
+    import warnings
+    warnings.warn(
+        "load_api_keys() is deprecated. Keys are now loaded lazily on first use.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     manager = APIKeyManager()
     manager.load_keys()
 
@@ -243,7 +265,3 @@ async def verify_api_key(
         )
 
     return key_metadata
-
-
-# Initialize API keys on module load
-load_api_keys()

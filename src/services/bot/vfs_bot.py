@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import random
 import time
 import warnings
@@ -69,7 +70,9 @@ class VFSBot:
         # User cache for graceful degradation (Issue 3.3)
         self._cached_users: List[Dict[str, Any]] = []
         self._cached_users_time: float = 0
-        self._USERS_CACHE_TTL: float = 300.0  # 5 minutes
+        self._USERS_CACHE_TTL: float = float(
+            os.getenv("USERS_CACHE_TTL", "300.0")
+        )
 
         # Initialize services context
         self.services = services

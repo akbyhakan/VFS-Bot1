@@ -257,10 +257,12 @@ def test_api_key_hash_with_salt(monkeypatch):
     # Set a custom salt (must be at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "test-salt-12345-with-sufficient-length-for-security")
 
-    # Clear cached salt
+    # Reset the singleton instance to force reload
     import src.core.security as security_module
 
-    security_module._API_KEY_SALT = None
+    if security_module.APIKeyManager._instance is not None:
+        security_module.APIKeyManager._instance._salt = None
+        security_module.APIKeyManager._instance._keys_loaded = False
 
     api_key = "my-secret-api-key-123"
     hash1 = APIKeyManager()._hash_key(api_key)
@@ -287,12 +289,16 @@ def test_api_key_hash_different_with_different_salt(monkeypatch):
 
     # First hash with salt1 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt1-with-enough-characters-to-be-secure-and-valid")
-    security_module._API_KEY_SALT = None
+    if security_module.APIKeyManager._instance is not None:
+        security_module.APIKeyManager._instance._salt = None
+        security_module.APIKeyManager._instance._keys_loaded = False
     hash1 = APIKeyManager()._hash_key(api_key)
 
     # Second hash with salt2 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt2-with-enough-characters-to-be-secure-and-valid")
-    security_module._API_KEY_SALT = None
+    if security_module.APIKeyManager._instance is not None:
+        security_module.APIKeyManager._instance._salt = None
+        security_module.APIKeyManager._instance._keys_loaded = False
     hash2 = APIKeyManager()._hash_key(api_key)
 
     # Hashes should be different
@@ -307,7 +313,9 @@ def test_api_key_hash_uses_default_salt_when_env_not_set(monkeypatch):
     # Ensure env var is not set and set ENV to development to allow default salt
     monkeypatch.delenv("API_KEY_SALT", raising=False)
     monkeypatch.setenv("ENV", "development")
-    security_module._API_KEY_SALT = None
+    if security_module.APIKeyManager._instance is not None:
+        security_module.APIKeyManager._instance._salt = None
+        security_module.APIKeyManager._instance._keys_loaded = False
 
     api_key = "test-key"
     hash_value = APIKeyManager()._hash_key(api_key)

@@ -66,8 +66,17 @@ class SensitiveDict:
 
     def wipe(self) -> None:
         """
-        Securely wipe internal data from memory.
-        
-        Call this in a finally block after sensitive data is no longer needed.
+        Best-effort memory wipe of internal data.
+
+        Clears the internal dictionary, removing all key-value references.
+
+        .. warning::
+            Python's immutable ``str`` and ``bytes`` values cannot be reliably
+            zeroed from memory.  They remain until the garbage collector
+            reclaims them.  For true secure memory erasure (e.g. PCI-DSS
+            cardholder data), store values as ``bytearray`` and use
+            ``src.utils.secure_memory.secure_zero_memory()`` before clearing.
+
+        Call this in a ``finally`` block after sensitive data is no longer needed.
         """
         self._data.clear()
