@@ -294,7 +294,6 @@ class AuthRateLimiter:
         """
         try:
             from src.services.notification import NotificationService
-            import asyncio
             
             # Create notification message
             message = (
@@ -306,23 +305,21 @@ class AuthRateLimiter:
             
             # Try to send notification asynchronously
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # If we're already in an event loop, create a task
+                # Try to get a running event loop first
+                try:
+                    loop = asyncio.get_running_loop()
+                    # If we're in a running loop, create a task
                     loop.create_task(
                         self._send_fallback_notification(message)
                     )
-                else:
-                    # If no loop is running, run synchronously
-                    loop.run_until_complete(
-                        self._send_fallback_notification(message)
-                    )
-            except RuntimeError:
-                # No event loop available, try to create one
-                try:
-                    asyncio.run(self._send_fallback_notification(message))
-                except Exception as notify_err:
-                    logger.error(f"Failed to send Redis fallback notification: {notify_err}")
+                except RuntimeError:
+                    # No running loop, try to run the coroutine synchronously
+                    try:
+                        asyncio.run(self._send_fallback_notification(message))
+                    except Exception as run_err:
+                        logger.error(f"Failed to send Redis fallback notification: {run_err}")
+            except Exception as notify_err:
+                logger.error(f"Failed to schedule Redis fallback notification: {notify_err}")
         except Exception as e:
             logger.error(f"Failed to initialize notification for Redis fallback: {e}")
     
@@ -335,7 +332,6 @@ class AuthRateLimiter:
         """
         try:
             from src.services.notification import NotificationService
-            import os
             
             # Build notification config from environment
             config = {

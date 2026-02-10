@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -323,8 +324,6 @@ async def check_database_health() -> bool:
 
 async def check_database() -> Dict[str, Any]:
     """Check database connectivity with latency measurement."""
-    import time
-
     try:
         from src.models.db_factory import DatabaseFactory
 
@@ -350,8 +349,6 @@ async def check_redis() -> Dict[str, Any]:
     Returns:
         Dictionary with Redis status, backend info, and optional latency
     """
-    import time
-    
     redis_url = os.getenv("REDIS_URL")
     
     if not redis_url:
