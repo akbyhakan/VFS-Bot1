@@ -13,7 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
-    """Token bucket rate limiter for API calls."""
+    """
+    Token bucket rate limiter for API calls.
+    
+    NOTE: This rate limiter is designed for single-process VFS API call throttling.
+    For distributed/multi-worker deployments, see src/core/auth.py which provides
+    Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
+    """
 
     def __init__(self, max_requests: int = 60, time_window: int = 60):
         """
