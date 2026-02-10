@@ -973,6 +973,24 @@ def verify_token(token: str) -> Dict[str, Any]:
                 # Check blacklist for old key tokens too using helper
                 _check_token_blacklist(payload)
 
+                # Check if token exceeds rotation max age
+                rotation_max_hours = int(os.getenv("API_SECRET_KEY_ROTATION_MAX_HOURS", "72"))
+                if "iat" in payload:
+                    issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+                    age = datetime.now(timezone.utc) - issued_at
+                    max_age = timedelta(hours=rotation_max_hours)
+                    
+                    if age > max_age:
+                        logger.warning(
+                            f"Token verified with previous key but exceeds rotation max age "
+                            f"({age.total_seconds()/3600:.1f}h > {rotation_max_hours}h), rejecting"
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Token too old for previous key verification",
+                            headers={"WWW-Authenticate": "Bearer"},
+                        )
+
                 logger.info("Token verified with previous key - consider refreshing token")
                 return cast(dict[str, Any], payload)
             except JWTError:

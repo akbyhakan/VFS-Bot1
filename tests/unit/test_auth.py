@@ -222,3 +222,82 @@ def test_jwt_key_rotation_without_previous_key(monkeypatch):
         verify_token(old_token)
 
     assert exc_info.value.status_code == 401
+
+
+def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
+    """Test that tokens verified with previous key exceeding max age are rejected."""
+    import secrets
+    from datetime import datetime, timezone
+
+    # Create two different keys
+    old_key = secrets.token_urlsafe(48)
+    new_key = secrets.token_urlsafe(48)
+
+    # Set old key
+    monkeypatch.setenv("API_SECRET_KEY", old_key)
+
+    # Clear the LRU cache for _get_jwt_settings
+    from src.core.auth import invalidate_jwt_settings_cache
+
+    invalidate_jwt_settings_cache()
+
+    # Manually create a token with old iat (80 hours ago)
+    iat_timestamp = int((datetime.now(timezone.utc) - timedelta(hours=80)).timestamp())
+    exp_timestamp = int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp())
+    
+    payload = {
+        "sub": "testuser",
+        "iat": iat_timestamp,
+        "exp": exp_timestamp,
+        "jti": "test-jti",
+        "type": "access",
+    }
+    
+    # Encode token with old key
+    old_token = jwt.encode(payload, old_key, algorithm=get_algorithm())
+
+    # Change to new key and set old key as previous
+    monkeypatch.setenv("API_SECRET_KEY", new_key)
+    monkeypatch.setenv("API_SECRET_KEY_PREVIOUS", old_key)
+    monkeypatch.setenv("API_SECRET_KEY_ROTATION_MAX_HOURS", "72")
+    invalidate_jwt_settings_cache()
+
+    # Old token should be rejected due to exceeding max age
+    with pytest.raises(HTTPException) as exc_info:
+        verify_token(old_token)
+
+    assert exc_info.value.status_code == 401
+    assert "too old" in exc_info.value.detail.lower()
+
+
+def test_jwt_rotation_within_grace_period_accepts(monkeypatch):
+    """Test that tokens within grace period are accepted with previous key."""
+    import secrets
+
+    # Create two different keys
+    old_key = secrets.token_urlsafe(48)
+    new_key = secrets.token_urlsafe(48)
+
+    # Set old key and create token
+    monkeypatch.setenv("API_SECRET_KEY", old_key)
+
+    # Clear the LRU cache for _get_jwt_settings
+    from src.core.auth import invalidate_jwt_settings_cache
+
+    invalidate_jwt_settings_cache()
+
+    # Create a fresh token (will have current iat)
+    data = {"sub": "testuser", "name": "Test User"}
+    old_token = create_access_token(data)
+
+    # Change to new key and set old key as previous with grace period
+    monkeypatch.setenv("API_SECRET_KEY", new_key)
+    monkeypatch.setenv("API_SECRET_KEY_PREVIOUS", old_key)
+    monkeypatch.setenv("API_SECRET_KEY_ROTATION_MAX_HOURS", "72")
+    invalidate_jwt_settings_cache()
+
+    # Token should verify successfully (it's fresh, within grace period)
+    payload = verify_token(old_token)
+    assert payload["sub"] == "testuser"
+    assert payload["name"] == "Test User"
+

@@ -125,17 +125,22 @@ class APIKeyManager:
             self._keys[key_hash] = metadata
             return key_hash
 
-    def rotate_key(self, old_api_key: str, new_api_key: str) -> Optional[str]:
+    def rotate_key(
+        self, old_api_key: str, new_api_key: str, rotation_grace_period_hours: int = 72
+    ) -> Optional[str]:
         """
         Rotate an API key - remove old key and add new one with same metadata.
 
         Args:
             old_api_key: Current API key to be replaced
             new_api_key: New API key to add
+            rotation_grace_period_hours: Grace period in hours for old key validity
 
         Returns:
             New key hash if successful, None if old key not found
         """
+        from datetime import timedelta
+
         with self._lock:
             old_key_hash = self._hash_key(old_api_key)
             metadata = self._keys.get(old_key_hash)
@@ -147,18 +152,24 @@ class APIKeyManager:
             # Remove old key
             del self._keys[old_key_hash]
 
-            # Add new key with same metadata but updated timestamp
+            # Add new key with same metadata but updated timestamp and grace period
             new_metadata = metadata.copy()
-            new_metadata["rotated_at"] = datetime.now(timezone.utc).isoformat()
+            rotated_at = datetime.now(timezone.utc)
+            new_metadata["rotated_at"] = rotated_at.isoformat()
+            grace_until = rotated_at + timedelta(hours=rotation_grace_period_hours)
+            new_metadata["rotation_grace_until"] = grace_until.isoformat()
             new_key_hash = self._hash_key(new_api_key)
             self._keys[new_key_hash] = new_metadata
 
-            logger.info(f"API key rotated for '{metadata.get('name', 'unknown')}'")
+            logger.info(
+                f"API key rotated for '{metadata.get('name', 'unknown')}' "
+                f"with grace period until {grace_until.isoformat()}"
+            )
             return new_key_hash
 
     def cleanup_expired_keys(self, max_age_days: int = 90) -> int:
         """
-        Remove API keys older than specified age.
+        Remove API keys older than specified age or past grace period.
 
         Args:
             max_age_days: Maximum age of keys in days
@@ -174,8 +185,26 @@ class APIKeyManager:
 
             expired_keys = []
             for key_hash, metadata in self._keys.items():
+                should_remove = False
+                
+                # Check if key has exceeded grace period after rotation
+                grace_until_str = metadata.get("rotation_grace_until")
+                if grace_until_str:
+                    try:
+                        grace_until = datetime.fromisoformat(grace_until_str)
+                        if grace_until.tzinfo is None:
+                            grace_until = grace_until.replace(tzinfo=timezone.utc)
+                        if current_time > grace_until:
+                            should_remove = True
+                            logger.debug(
+                                f"Key '{metadata.get('name', 'unknown')}' exceeded grace period"
+                            )
+                    except (ValueError, TypeError):
+                        logger.warning(f"Invalid grace period timestamp: {grace_until_str}")
+                
+                # Check if key is too old based on creation date
                 created_str = metadata.get("created")
-                if created_str:
+                if created_str and not should_remove:
                     try:
                         # Support both timezone-aware and naive datetime strings
                         # for backward compatibility
@@ -184,9 +213,12 @@ class APIKeyManager:
                         if created_time.tzinfo is None:
                             created_time = created_time.replace(tzinfo=timezone.utc)
                         if created_time < cutoff_time:
-                            expired_keys.append(key_hash)
+                            should_remove = True
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid created timestamp for key: {created_str}")
+                
+                if should_remove:
+                    expired_keys.append(key_hash)
 
             # Remove expired keys
             for key_hash in expired_keys:
