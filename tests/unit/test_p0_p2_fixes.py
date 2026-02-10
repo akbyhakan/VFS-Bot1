@@ -427,6 +427,34 @@ class TestEnvironmentValidation:
             elif "ENV" in os.environ:
                 del os.environ["ENV"]
 
+    def test_unknown_environment_log_is_sanitized(self, caplog):
+        """Test that unknown environment values are sanitized in log messages."""
+        from web.app import get_validated_environment
+
+        old_env = os.getenv("ENV")
+        try:
+            # Test with ANSI escape sequence injection
+            os.environ["ENV"] = "\x1b[31mmalicious\x1b[0m\nFAKE LOG LINE"
+            
+            with caplog.at_level("WARNING"):
+                result = get_validated_environment()
+            
+            # Should default to production
+            assert result == "production"
+            
+            # Check that log message was sanitized (no ANSI or newlines)
+            log_message = caplog.text
+            assert "\x1b" not in log_message
+            assert "\n" not in log_message or "defaulting to 'production'" in log_message
+            # The sanitized value should be in the log
+            assert "malicious" in log_message or "FAKE LOG LINE" in log_message
+            
+        finally:
+            if old_env:
+                os.environ["ENV"] = old_env
+            elif "ENV" in os.environ:
+                del os.environ["ENV"]
+
 
 # P2-7: Database batch operations
 from src.core.exceptions import BatchOperationError
