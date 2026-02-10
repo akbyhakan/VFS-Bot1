@@ -12,6 +12,24 @@ OTP Manager, VFS otomasyonu için merkezi bir OTP (One-Time Password) yönetim s
 
 ## Mimari
 
+### Modüler Yapı
+
+OTP Manager artık modüler bir yapıya sahiptir. Monolitik tek dosya yerine, her bileşen kendi dosyasında bulunmaktadır:
+
+```
+src/services/otp_manager/
+├── __init__.py           # Public API — tüm sınıfları ve fonksiyonları re-export eder
+├── models.py             # OTPSource, SessionState, OTPEntry, BotSession, IMAPConfig
+├── pattern_matcher.py    # HTMLTextExtractor, OTPPatternMatcher
+├── session_registry.py   # SessionRegistry
+├── email_processor.py    # EmailProcessor
+├── imap_listener.py      # IMAPListener
+├── sms_handler.py        # SMSWebhookHandler
+└── manager.py            # OTPManager class + get_otp_manager() singleton
+```
+
+**Backward Compatibility:** `__init__.py` dosyası tüm public API'yi re-export eder, bu nedenle mevcut `from src.services.otp_manager import X` şeklindeki import'lar hiçbir değişiklik gerektirmez.
+
 ### Temel Bileşenler
 
 1. **OTPManager**: Ana yönetici sınıf
