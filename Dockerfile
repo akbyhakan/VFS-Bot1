@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.lock .
 RUN pip install --no-cache-dir --user -r requirements.lock
 
-# Stage 2: Runtime
+# Stage 3: Runtime
 FROM python:3.12-slim
 
 WORKDIR /app

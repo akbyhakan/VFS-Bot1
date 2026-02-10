@@ -81,7 +81,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
 
         await bot.start()
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Bot stopped by user")
         shutdown_event.set()
     except Exception as e:

@@ -6,6 +6,8 @@ This guide explains how to set up SMS Forwarder to send OTP messages to VFS-Bot 
 
 The SMS webhook system enables each VFS account to receive SMS OTP messages automatically through a unique webhook URL. SMS Forwarder app on Android forwards SMS messages to these webhook URLs.
 
+**Note:** OTP Manager has been refactored into a modular structure with multiple files in `src/services/otp_manager/` directory. All existing imports remain backward compatible.
+
 ### Architecture
 
 ```
