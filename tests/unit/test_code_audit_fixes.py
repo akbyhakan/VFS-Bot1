@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import tempfile
+import yaml
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -443,13 +444,12 @@ class TestLogoutTokenRevocation:
         from unittest.mock import MagicMock, patch
         
         # We'll test the behavior directly by mocking the revoke_token function
-        with patch("web.routes.auth.revoke_token") as mock_revoke:
+        with patch("web.routes.auth.revoke_token", new_callable=AsyncMock) as mock_revoke:
             # Import the auth module AFTER patching
             from web.routes.auth import router
             from web.routes.auth import logout
             
-            # The test confirms that revoke_token will be called
-            # when a token is provided in the request
+            # Set the return value for the async mock
             mock_revoke.return_value = True
             
             # Verify the import was successful and the function is updated
@@ -471,6 +471,147 @@ class TestLogoutTokenRevocation:
         source = inspect.getsource(logout)
         assert 'extract_raw_token' in source
         assert 'revoke_token' in source
+        # Verify it awaits revoke_token (since it's async now)
+        assert 'await revoke_token' in source
+
+
+class TestDockerComposeSecurityHardening:
+    """Test Docker Compose security hardening directives."""
+
+    def test_docker_compose_vfs_bot_read_only(self):
+        """Test that vfs-bot service has read_only: true."""
+        compose_path = Path("docker-compose.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.yml not found")
+
+        content = compose_path.read_text()
+        
+        # Verify read_only is set to true for vfs-bot service
+        assert "read_only: true" in content, "vfs-bot service should have read_only: true"
+        
+        # Ensure it's in the vfs-bot service section
+        # Split by service definitions and find vfs-bot
+        compose_data = yaml.safe_load(content)
+        assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
+        assert compose_data["services"]["vfs-bot"].get("read_only") is True, \
+            "vfs-bot service should have read_only set to true"
+
+    def test_docker_compose_vfs_bot_no_new_privileges(self):
+        """Test that vfs-bot service has no-new-privileges:true."""
+        compose_path = Path("docker-compose.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.yml not found")
+
+        content = compose_path.read_text()
+        
+        # Verify no-new-privileges is present
+        assert "no-new-privileges:true" in content, \
+            "vfs-bot service should have no-new-privileges:true in security_opt"
+        
+        # Verify in YAML structure
+        compose_data = yaml.safe_load(content)
+        assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
+        security_opt = compose_data["services"]["vfs-bot"].get("security_opt", [])
+        assert "no-new-privileges:true" in security_opt, \
+            "vfs-bot service should have no-new-privileges:true in security_opt"
+
+    def test_docker_compose_vfs_bot_tmpfs(self):
+        """Test that vfs-bot service has tmpfs for /tmp."""
+        compose_path = Path("docker-compose.yml")
+        if not compose_path.exists():
+            pytest.skip("docker-compose.yml not found")
+
+        content = compose_path.read_text()
+        
+        # Verify tmpfs is configured
+        assert "tmpfs:" in content, "vfs-bot service should have tmpfs configured"
+        
+        # Verify in YAML structure
+        compose_data = yaml.safe_load(content)
+        assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
+        tmpfs = compose_data["services"]["vfs-bot"].get("tmpfs", [])
+        assert "/tmp" in tmpfs, "vfs-bot service should have /tmp in tmpfs"
+
+
+class TestPersistentTokenBlacklistInit:
+    """Test persistent token blacklist initialization and async functionality."""
+
+    @pytest.mark.asyncio
+    async def test_init_token_blacklist_creates_persistent_instance(self):
+        """Test that init_token_blacklist creates a PersistentTokenBlacklist."""
+        from src.core.auth import init_token_blacklist, get_token_blacklist
+        from src.core.auth.token_blacklist import PersistentTokenBlacklist
+        from unittest.mock import MagicMock
+        
+        # Create a mock database
+        mock_db = MagicMock()
+        
+        # Initialize the blacklist
+        init_token_blacklist(mock_db)
+        
+        # Get the blacklist and verify it's a PersistentTokenBlacklist
+        blacklist = get_token_blacklist()
+        assert isinstance(blacklist, PersistentTokenBlacklist)
+        assert blacklist._db is mock_db
+        assert blacklist._use_db is True
+
+    @pytest.mark.asyncio
+    async def test_check_blacklisted_uses_async_for_persistent(self):
+        """Test that check_blacklisted uses async path for PersistentTokenBlacklist."""
+        from src.core.auth import init_token_blacklist, check_blacklisted
+        from src.core.auth.token_blacklist import PersistentTokenBlacklist
+        from unittest.mock import AsyncMock, MagicMock
+        
+        # Create a mock database
+        mock_db = MagicMock()
+        
+        # Initialize persistent blacklist
+        init_token_blacklist(mock_db)
+        
+        # Mock the repository to avoid actual DB calls
+        with patch("src.core.auth.token_blacklist.TokenBlacklistRepository") as MockRepo:
+            mock_repo = MagicMock()
+            MockRepo.return_value = mock_repo
+            mock_repo.is_blacklisted = AsyncMock(return_value=True)
+            
+            # Check if token is blacklisted
+            result = await check_blacklisted("test_jti")
+            
+            # Verify async method was called
+            assert result is True
+            mock_repo.is_blacklisted.assert_called_once_with("test_jti")
+
+    @pytest.mark.asyncio
+    async def test_revoke_token_persists_to_db(self):
+        """Test that revoke_token persists to database when using PersistentTokenBlacklist."""
+        from src.core.auth import init_token_blacklist, revoke_token, create_access_token
+        from unittest.mock import AsyncMock, MagicMock
+        
+        # Create a mock database
+        mock_db = MagicMock()
+        
+        # Initialize persistent blacklist
+        init_token_blacklist(mock_db)
+        
+        # Create a test token
+        token = create_access_token({"sub": "test_user"})
+        
+        # Mock the repository to avoid actual DB calls
+        with patch("src.core.auth.token_blacklist.TokenBlacklistRepository") as MockRepo:
+            mock_repo = MagicMock()
+            MockRepo.return_value = mock_repo
+            mock_repo.add = AsyncMock()
+            
+            # Revoke the token
+            result = await revoke_token(token)
+            
+            # Verify token was added to database
+            assert result is True
+            mock_repo.add.assert_called_once()
+            # Verify jti and exp were passed
+            call_args = mock_repo.add.call_args
+            assert call_args is not None
+            assert len(call_args[0]) == 2  # jti and exp
 
 
 if __name__ == "__main__":

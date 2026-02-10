@@ -838,3 +838,28 @@ class TestDatabasePoolExhaustion:
         """Test that health check passes on healthy database."""
         result = await test_db.health_check()
         assert result is True
+        
+        # Verify failure counter is reset
+        assert test_db._consecutive_failures == 0
+
+    async def test_health_check_resets_degraded_state(self, test_db):
+        """Test that health_check resets degraded state on successful check."""
+        # Simulate degraded state by setting consecutive failures
+        test_db._consecutive_failures = 5
+        initial_state = test_db.state
+        assert initial_state == "degraded"  # Should be in degraded state
+        
+        # Run health check - should reset the failure counter
+        result = await test_db.health_check()
+        assert result is True
+        
+        # Verify state is restored to CONNECTED
+        assert test_db._consecutive_failures == 0
+        assert test_db.state == "connected"
+        
+        # Verify last successful query timestamp was updated
+        from datetime import datetime, timezone
+        assert test_db._last_successful_query is not None
+        # Should be recent (within last few seconds)
+        time_diff = (datetime.now(timezone.utc) - test_db._last_successful_query).total_seconds()
+        assert time_diff < 5

@@ -17,6 +17,8 @@ from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from src.core.auth import init_token_blacklist, get_token_blacklist
+from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
@@ -59,8 +61,23 @@ async def lifespan(app: FastAPI):
     logger.info("FastAPI application starting up...")
     try:
         # Ensure database is connected
-        await DatabaseFactory.ensure_connected()
+        db = await DatabaseFactory.ensure_connected()
         logger.info("Database connection established via DatabaseFactory")
+        
+        # Initialize persistent token blacklist with database
+        init_token_blacklist(db)
+        logger.info("Token blacklist initialized with database persistence")
+        
+        # Load existing blacklisted tokens from database
+        # Non-critical: Allow app to start even if loading fails
+        try:
+            blacklist = get_token_blacklist()
+            if isinstance(blacklist, PersistentTokenBlacklist):
+                count = await blacklist.load_from_database()
+                logger.info(f"Loaded {count} blacklisted tokens from database")
+        except Exception as e:
+            logger.warning(f"Failed to load blacklisted tokens from database: {e}")
+            logger.info("Application will continue with empty blacklist")
     except Exception as e:
         logger.error(f"Failed to connect database during startup: {e}")
         raise

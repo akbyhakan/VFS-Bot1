@@ -94,7 +94,7 @@ async def verify_jwt_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    return verify_token(token)
+    return await verify_token(token)
 
 
 async def get_db() -> AsyncIterator[Database]:

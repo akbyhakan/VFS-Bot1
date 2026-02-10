@@ -206,7 +206,7 @@ async def logout(
     
     if token:
         try:
-            revoke_token(token)
+            await revoke_token(token)
             logger.info(f"Token revoked during logout for user: {token_data.get('sub', 'unknown')}")
         except HTTPException as e:
             # Log the specific error but continue with logout

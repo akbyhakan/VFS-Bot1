@@ -15,6 +15,8 @@ from .token_blacklist import (
     TokenBlacklist,
     PersistentTokenBlacklist,
     get_token_blacklist,
+    init_token_blacklist,
+    check_blacklisted,
 )
 from .jwt_tokens import (
     SUPPORTED_JWT_ALGORITHMS,
@@ -50,6 +52,8 @@ __all__ = [
     "TokenBlacklist",
     "PersistentTokenBlacklist",
     "get_token_blacklist",
+    "init_token_blacklist",
+    "check_blacklisted",
     # JWT tokens
     "SUPPORTED_JWT_ALGORITHMS",
     "JWTSettings",
