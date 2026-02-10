@@ -243,6 +243,38 @@ class TestCORSValidation:
         assert "https://example.com" in origins
         assert "https://app.example.com" in origins
 
+    def test_cors_ipv6_localhost_blocked_in_production(self, monkeypatch):
+        """Test that IPv6 localhost is blocked in production."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "production")
+        origins = validate_cors_origins("http://[::1]:3000")
+        assert origins == []
+
+    def test_cors_zero_ip_blocked_in_production(self, monkeypatch):
+        """Test that 0.0.0.0 is blocked in production."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "production")
+        origins = validate_cors_origins("http://0.0.0.0:8000")
+        assert origins == []
+
+    def test_cors_localhost_subdomain_blocked_in_production(self, monkeypatch):
+        """Test that localhost subdomain bypass is blocked in production."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "production")
+        origins = validate_cors_origins("http://localhost.evil.com")
+        assert origins == []
+
+    def test_cors_ipv6_localhost_allowed_in_development(self, monkeypatch):
+        """Test that IPv6 localhost is allowed in development."""
+        from web.app import validate_cors_origins
+
+        monkeypatch.setenv("ENV", "development")
+        origins = validate_cors_origins("http://[::1]:3000")
+        assert "http://[::1]:3000" in origins
+
 
 class TestXForwardedFor:
     """Tests for X-Forwarded-For IP detection."""

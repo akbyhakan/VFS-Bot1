@@ -4,6 +4,7 @@ import asyncio
 import ipaddress
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -112,6 +113,21 @@ def get_validated_environment() -> str:
     return env
 
 
+# Comprehensive localhost detection pattern
+_LOCALHOST_PATTERN = re.compile(
+    r'^https?://'
+    r'(localhost|127\.0\.0\.1|\[?::1\]?|0\.0\.0\.0)'
+    r'(:\d+)?'
+    r'(/.*)?$',
+    re.IGNORECASE
+)
+
+
+def _is_localhost_origin(origin: str) -> bool:
+    """Check if origin is a localhost variant (including IPv6)."""
+    return bool(_LOCALHOST_PATTERN.match(origin))
+
+
 def validate_cors_origins(origins_str: str) -> List[str]:
     """
     Validate and parse CORS origins, blocking wildcard and localhost in production.
@@ -142,11 +158,8 @@ def validate_cors_origins(origins_str: str) -> List[str]:
             # Check for wildcard
             if o == "*":
                 invalid.append(o)
-            # Check for localhost (exact match or with port)
-            elif o.startswith("http://localhost") or o.startswith("https://localhost"):
-                invalid.append(o)
-            # Check for 127.0.0.1
-            elif "127.0.0.1" in o:
+            # Check for localhost variants (including IPv6, 0.0.0.0, subdomain bypass)
+            elif _is_localhost_origin(o):
                 invalid.append(o)
 
         if invalid:

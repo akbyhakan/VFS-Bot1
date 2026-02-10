@@ -48,6 +48,33 @@ class TestCORSProductionHardFail:
         # Should not raise in development, just returns empty list
         assert allowed_origins == []
 
+    def test_cors_ipv6_localhost_blocked_in_production(self):
+        """Test that IPv6 localhost (::1) is blocked in production."""
+        os.environ["ENV"] = "production"
+        
+        from web.app import validate_cors_origins
+        
+        origins = validate_cors_origins("http://[::1]:3000")
+        assert origins == []
+
+    def test_cors_zero_ip_blocked_in_production(self):
+        """Test that 0.0.0.0 is blocked in production."""
+        os.environ["ENV"] = "production"
+        
+        from web.app import validate_cors_origins
+        
+        origins = validate_cors_origins("http://0.0.0.0:8000")
+        assert origins == []
+
+    def test_cors_localhost_subdomain_bypass_blocked(self):
+        """Test that localhost subdomain bypass is blocked in production."""
+        os.environ["ENV"] = "production"
+        
+        from web.app import validate_cors_origins
+        
+        origins = validate_cors_origins("http://localhost.evil.com")
+        assert origins == []
+
 
 class TestBrowserMemoryLeakPrevention:
     """Test browser memory leak prevention features."""
@@ -395,6 +422,74 @@ class TestStartupValidatorGrafana:
 
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
         assert len(grafana_warnings) == 0, "Secure password with 'vfsbot' substring should pass"
+
+
+class TestLogoutTokenRevocation:
+    """Test logout endpoint revokes tokens properly."""
+
+    @pytest.mark.asyncio
+    async def test_logout_revokes_token_from_cookie(self):
+        """Test that logout revokes token when it's in cookie."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        
+        from fastapi import Response
+        from fastapi.testclient import TestClient
+        
+        # Create mock token and token_data
+        mock_token = "test_jwt_token_abc123"
+        mock_token_data = {"sub": "test_user"}
+        
+        with patch("web.routes.auth.revoke_token") as mock_revoke:
+            with patch("web.routes.auth.verify_jwt_token", return_value=mock_token_data):
+                from web.routes.auth import router
+                
+                # Create a test client
+                from fastapi import FastAPI
+                app = FastAPI()
+                app.include_router(router)
+                client = TestClient(app)
+                
+                # Call logout with cookie
+                response = client.post(
+                    "/auth/logout",
+                    cookies={"access_token": mock_token}
+                )
+                
+                # Verify token was revoked
+                assert response.status_code == 200
+                mock_revoke.assert_called_once_with(mock_token)
+
+    @pytest.mark.asyncio
+    async def test_logout_revokes_token_from_auth_header(self):
+        """Test that logout revokes token when it's in Authorization header."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        
+        from fastapi import Response
+        from fastapi.testclient import TestClient
+        
+        # Create mock token and token_data
+        mock_token = "test_jwt_token_xyz789"
+        mock_token_data = {"sub": "test_user"}
+        
+        with patch("web.routes.auth.revoke_token") as mock_revoke:
+            with patch("web.routes.auth.verify_jwt_token", return_value=mock_token_data):
+                from web.routes.auth import router
+                
+                # Create a test client
+                from fastapi import FastAPI
+                app = FastAPI()
+                app.include_router(router)
+                client = TestClient(app)
+                
+                # Call logout with Bearer token in header
+                response = client.post(
+                    "/auth/logout",
+                    headers={"Authorization": f"Bearer {mock_token}"}
+                )
+                
+                # Verify token was revoked
+                assert response.status_code == 200
+                mock_revoke.assert_called_once_with(mock_token)
 
 
 if __name__ == "__main__":

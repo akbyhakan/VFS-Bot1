@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.core.auth import create_access_token
+from src.core.auth import create_access_token, revoke_token
 from src.core.security import generate_api_key
 from src.models.database import Database
 from web.dependencies import get_db, verify_jwt_token
@@ -103,7 +103,7 @@ async def create_api_key_endpoint(
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def login(request: Request, response: Response, credentials: LoginRequest) -> TokenResponse:
     """
     Login endpoint - returns JWT token and sets HttpOnly cookie.
@@ -185,21 +185,38 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
 
 @router.post("/logout")
 async def logout(
+    request: Request,
     response: Response,
-    _: Dict[str, Any] = Depends(verify_jwt_token)
+    token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
-    Logout endpoint - clears the HttpOnly cookie.
+    Logout endpoint - clears the HttpOnly cookie and revokes the token.
     
     Requires authentication to prevent unauthorized cookie manipulation.
 
     Args:
+        request: FastAPI request object (for extracting token)
         response: FastAPI response object (for clearing cookies)
-        _: JWT token payload (dependency for authentication)
+        token_data: JWT token payload (dependency for authentication)
 
     Returns:
         Success message
     """
+    # Revoke the JWT token to prevent reuse via Authorization header
+    # Extract the raw token from cookie or Authorization header
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    
+    if token:
+        try:
+            revoke_token(token)
+            logger.info(f"Token revoked during logout for user: {token_data.get('sub', 'unknown')}")
+        except Exception as e:
+            logger.warning(f"Failed to revoke token during logout: {e}")
+    
     # Clear the access_token cookie
     response.delete_cookie(key="access_token", path="/")
     
