@@ -133,3 +133,89 @@ class TestSensitiveDict:
         
         assert bool(sensitive) is False
         assert sensitive.to_dict() == {}
+
+    def test_sensitive_dict_iter(self):
+        """Test that iteration works over keys."""
+        data = {"a": 1, "b": 2}
+        sensitive = SensitiveDict(data)
+        assert set(sensitive) == {"a", "b"}
+
+    def test_sensitive_dict_len(self):
+        """Test that len() returns correct count."""
+        data = {"a": 1, "b": 2, "c": 3}
+        sensitive = SensitiveDict(data)
+        assert len(sensitive) == 3
+
+    def test_sensitive_dict_items(self):
+        """Test that items() returns key-value pairs."""
+        data = {"number": "1234", "cvv": "123"}
+        sensitive = SensitiveDict(data)
+        items = dict(sensitive.items())
+        assert items == data
+
+    def test_sensitive_dict_values(self):
+        """Test that values() returns all values."""
+        data = {"a": 1, "b": 2}
+        sensitive = SensitiveDict(data)
+        assert set(sensitive.values()) == {1, 2}
+
+    def test_sensitive_dict_setitem(self):
+        """Test that __setitem__ works correctly."""
+        sensitive = SensitiveDict({"a": 1})
+        sensitive["b"] = 2
+        assert sensitive["b"] == 2
+
+    def test_sensitive_dict_delitem(self):
+        """Test that __delitem__ works correctly."""
+        sensitive = SensitiveDict({"a": 1, "b": 2})
+        del sensitive["a"]
+        assert "a" not in sensitive
+
+    def test_sensitive_dict_update(self):
+        """Test that update() works correctly."""
+        sensitive = SensitiveDict({"a": 1})
+        sensitive.update({"b": 2, "c": 3})
+        assert sensitive["b"] == 2
+        assert sensitive["c"] == 3
+
+    def test_sensitive_dict_update_kwargs(self):
+        """Test that update() works with kwargs."""
+        sensitive = SensitiveDict({"a": 1})
+        sensitive.update(b=2, c=3)
+        assert sensitive["b"] == 2
+        assert sensitive["c"] == 3
+
+    def test_sensitive_dict_pop(self):
+        """Test that pop() removes and returns value."""
+        sensitive = SensitiveDict({"a": 1, "b": 2})
+        val = sensitive.pop("a")
+        assert val == 1
+        assert "a" not in sensitive
+
+    def test_sensitive_dict_pop_default(self):
+        """Test that pop() returns default for missing key."""
+        sensitive = SensitiveDict({"a": 1})
+        val = sensitive.pop("missing", "default")
+        assert val == "default"
+
+    def test_sensitive_dict_eq(self):
+        """Test that equality comparison works."""
+        s1 = SensitiveDict({"a": 1})
+        s2 = SensitiveDict({"a": 1})
+        assert s1 == s2
+        assert s1 == {"a": 1}
+
+    def test_sensitive_dict_not_eq(self):
+        """Test that inequality comparison works."""
+        s1 = SensitiveDict({"a": 1})
+        s2 = SensitiveDict({"a": 2})
+        assert s1 != s2
+        assert s1 != {"a": 2}
+
+    def test_sensitive_dict_copy(self):
+        """Test that copy() creates independent copy."""
+        original = SensitiveDict({"a": 1, "b": 2})
+        copied = original.copy()
+        assert copied == original
+        copied["c"] = 3
+        assert "c" not in original

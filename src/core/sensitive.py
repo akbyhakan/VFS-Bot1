@@ -64,6 +64,52 @@ class SensitiveDict:
         """
         return dict(self._data)
 
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over keys (same behavior as dict)."""
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        """Return number of items."""
+        return len(self._data)
+
+    def items(self):
+        """Return view of (key, value) pairs."""
+        return self._data.items()
+
+    def values(self):
+        """Return view of values."""
+        return self._data.values()
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set item by key."""
+        self._data[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        """Delete item by key."""
+        del self._data[key]
+
+    def update(self, other: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
+        """Update dict with key-value pairs."""
+        if other:
+            self._data.update(other)
+        self._data.update(kwargs)
+
+    def pop(self, key: str, *args: Any) -> Any:
+        """Remove and return value for key."""
+        return self._data.pop(key, *args)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare equality (compares internal data)."""
+        if isinstance(other, SensitiveDict):
+            return self._data == other._data
+        if isinstance(other, dict):
+            return self._data == other
+        return NotImplemented
+
+    def copy(self) -> "SensitiveDict":
+        """Return a shallow copy."""
+        return SensitiveDict(self._data.copy())
+
     def wipe(self) -> None:
         """
         Best-effort memory wipe of internal data.
