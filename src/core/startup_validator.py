@@ -102,6 +102,16 @@ def validate_production_security() -> List[str]:
             "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
         )
 
+    # Check GRAFANA_ADMIN_PASSWORD
+    grafana_password = os.getenv("GRAFANA_ADMIN_PASSWORD", "")
+    if grafana_password and any(
+        pattern in grafana_password for pattern in ("CHANGE_ME", "change_me", "changeme", "vfsbot_grafana")
+    ):
+        warnings.append(
+            "GRAFANA_ADMIN_PASSWORD contains a default/placeholder value. "
+            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(16))\""
+        )
+
     return warnings
 
 

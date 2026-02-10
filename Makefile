@@ -76,3 +76,7 @@ db-history:
 
 db-current:
 	alembic current
+
+lock:  ## Generate requirements.lock for reproducible deployments
+	pip freeze > requirements.lock
+	@echo "✅ requirements.lock updated"
