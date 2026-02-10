@@ -12,6 +12,9 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     services:
       postgres:
         image: postgres:15
