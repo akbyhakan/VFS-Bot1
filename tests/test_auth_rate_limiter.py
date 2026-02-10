@@ -155,6 +155,7 @@ class TestAuthRateLimiter:
 
         # Use cleanup_stale_entries to clean up
         cleaned = limiter.cleanup_stale_entries()
+        assert cleaned == 3
         
         # After cleanup, empty lists should be removed from memory
         if hasattr(limiter._backend, '_attempts'):
