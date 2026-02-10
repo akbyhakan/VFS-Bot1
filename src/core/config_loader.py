@@ -197,7 +197,14 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
 
 # TTL-based cache for selectors (configurable via environment variable)
 # Note: TTL is read once at module load time and cached for application lifetime
-_SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
+try:
+    _SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
+except ValueError:
+    logger.warning(
+        f"Invalid SELECTORS_CACHE_TTL value: {os.getenv('SELECTORS_CACHE_TTL')}. "
+        "Must be a positive integer (seconds). Using default: 60"
+    )
+    _SELECTORS_CACHE_TTL = 60
 _selectors_cache: Optional[Tuple[float, Dict[str, Dict[str, Any]]]] = None
 _selectors_cache_lock = threading.Lock()  # Thread-safe cache access
 
