@@ -225,8 +225,9 @@ def init_token_blacklist(db: Any) -> None:
     Initialize token blacklist with database persistence.
 
     This function should be called during application startup after the database
-    connection is established. It creates a PersistentTokenBlacklist that will
-    load existing blacklisted tokens from the database asynchronously.
+    connection is established. It creates a PersistentTokenBlacklist. The actual
+    loading of tokens from the database happens asynchronously when the blacklist
+    is first used or can be triggered manually.
 
     Args:
         db: Database instance with token blacklist support
@@ -236,17 +237,8 @@ def init_token_blacklist(db: Any) -> None:
         logger.info("Initializing persistent token blacklist with database")
         _token_blacklist = PersistentTokenBlacklist(db=db)
     
-    # Schedule loading of existing blacklisted tokens from database
-    # This will be executed when the event loop is running
-    asyncio.create_task(_load_blacklist_from_db())
-
-
-async def _load_blacklist_from_db() -> None:
-    """Helper to load blacklist from database asynchronously."""
-    global _token_blacklist
-    if isinstance(_token_blacklist, PersistentTokenBlacklist):
-        count = await _token_blacklist.load_from_database()
-        logger.info(f"Loaded {count} blacklisted tokens from database")
+    # Note: Loading tokens from DB happens lazily or can be done via
+    # await get_token_blacklist().load_from_database() in an async context
 
 
 async def check_blacklisted(jti: str) -> bool:

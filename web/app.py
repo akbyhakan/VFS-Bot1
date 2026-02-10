@@ -63,9 +63,17 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection established via DatabaseFactory")
         
         # Initialize persistent token blacklist with database
-        from src.core.auth import init_token_blacklist
+        from src.core.auth import init_token_blacklist, get_token_blacklist
+        from src.core.auth.token_blacklist import PersistentTokenBlacklist
+        
         init_token_blacklist(db)
         logger.info("Token blacklist initialized with database persistence")
+        
+        # Load existing blacklisted tokens from database
+        blacklist = get_token_blacklist()
+        if isinstance(blacklist, PersistentTokenBlacklist):
+            count = await blacklist.load_from_database()
+            logger.info(f"Loaded {count} blacklisted tokens from database")
     except Exception as e:
         logger.error(f"Failed to connect database during startup: {e}")
         raise

@@ -448,9 +448,8 @@ class TestLogoutTokenRevocation:
             from web.routes.auth import router
             from web.routes.auth import logout
             
-            # The test confirms that revoke_token will be called
             # revoke_token is now async, so the mock should be an AsyncMock
-            mock_revoke.return_value = AsyncMock(return_value=True)
+            mock_revoke.return_value = AsyncMock(return_value=True)()
             
             # Verify the import was successful and the function is updated
             assert mock_revoke is not None
