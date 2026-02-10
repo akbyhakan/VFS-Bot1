@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import tempfile
+import yaml
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -490,7 +491,6 @@ class TestDockerComposeSecurityHardening:
         
         # Ensure it's in the vfs-bot service section
         # Split by service definitions and find vfs-bot
-        import yaml
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
         assert compose_data["services"]["vfs-bot"].get("read_only") is True, \
@@ -509,7 +509,6 @@ class TestDockerComposeSecurityHardening:
             "vfs-bot service should have no-new-privileges:true in security_opt"
         
         # Verify in YAML structure
-        import yaml
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
         security_opt = compose_data["services"]["vfs-bot"].get("security_opt", [])
@@ -528,7 +527,6 @@ class TestDockerComposeSecurityHardening:
         assert "tmpfs:" in content, "vfs-bot service should have tmpfs configured"
         
         # Verify in YAML structure
-        import yaml
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
         tmpfs = compose_data["services"]["vfs-bot"].get("tmpfs", [])

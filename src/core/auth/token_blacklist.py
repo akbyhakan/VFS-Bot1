@@ -8,6 +8,9 @@ from typing import Any, Optional
 
 from loguru import logger
 
+# Import at module level to avoid repeated import overhead
+from src.repositories import TokenBlacklistRepository
+
 
 class TokenBlacklist:
     """
@@ -121,7 +124,6 @@ class PersistentTokenBlacklist(TokenBlacklist):
         # Persist to database if available
         if self._use_db and self._db:
             try:
-                from src.repositories import TokenBlacklistRepository
                 repo = TokenBlacklistRepository(self._db)
                 await repo.add(jti, exp)
             except Exception as e:
@@ -136,7 +138,6 @@ class PersistentTokenBlacklist(TokenBlacklist):
         # Check database if available
         if self._use_db and self._db:
             try:
-                from src.repositories import TokenBlacklistRepository
                 repo = TokenBlacklistRepository(self._db)
                 return await repo.is_blacklisted(jti)
             except Exception as e:
@@ -150,7 +151,6 @@ class PersistentTokenBlacklist(TokenBlacklist):
             return 0
 
         try:
-            from src.repositories import TokenBlacklistRepository
             repo = TokenBlacklistRepository(self._db)
             tokens = await repo.get_active()
             for jti, exp in tokens:
@@ -190,7 +190,6 @@ class PersistentTokenBlacklist(TokenBlacklist):
             if db_cleanup_counter >= 6 and self._use_db and self._db:
                 db_cleanup_counter = 0
                 try:
-                    from src.repositories import TokenBlacklistRepository
                     repo = TokenBlacklistRepository(self._db)
                     deleted = await repo.cleanup_expired()
                     if deleted > 0:

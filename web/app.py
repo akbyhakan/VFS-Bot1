@@ -17,6 +17,8 @@ from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from src.core.auth import init_token_blacklist, get_token_blacklist
+from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
@@ -63,9 +65,6 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection established via DatabaseFactory")
         
         # Initialize persistent token blacklist with database
-        from src.core.auth import init_token_blacklist, get_token_blacklist
-        from src.core.auth.token_blacklist import PersistentTokenBlacklist
-        
         init_token_blacklist(db)
         logger.info("Token blacklist initialized with database persistence")
         
