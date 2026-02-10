@@ -17,6 +17,8 @@ correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextV
     "correlation_id", default=None
 )
 
+__all__ = ["correlation_id_ctx", "setup_structured_logging", "CorrelationIdFilter", "JSONFormatter"]
+
 
 class CorrelationIdFilter(logging.Filter):
     """
@@ -68,6 +70,18 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
+def _correlation_patcher(record: Dict[str, Any]) -> None:
+    """
+    Patch log records with correlation_id from context.
+    
+    This function is called by Loguru for each log record to inject
+    the correlation_id from the ContextVar into the log's extra fields.
+    """
+    corr_id = correlation_id_ctx.get()
+    if corr_id:
+        record["extra"]["correlation_id"] = corr_id
+
+
 def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> None:
     """
     Setup Loguru logging with structured output.
@@ -78,6 +92,9 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     """
     # Remove default handler
     logger.remove()
+    
+    # Configure logger to use correlation_id patcher
+    logger.configure(patcher=_correlation_patcher)
 
     logs_dir = Path("logs")
     logs_dir.mkdir(parents=True, exist_ok=True)

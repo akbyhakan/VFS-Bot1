@@ -1,14 +1,12 @@
 """Request correlation ID middleware for tracking requests across logs."""
 
 import uuid
-from contextvars import ContextVar
 from typing import Callable, cast
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Context variable to store correlation ID for the current request
-correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
+from src.core.logger import correlation_id_ctx
 
 
 class CorrelationMiddleware(BaseHTTPMiddleware):
@@ -29,7 +27,7 @@ class CorrelationMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
 
         # Store in context variable for access in logs
-        correlation_id.set(request_id)
+        correlation_id_ctx.set(request_id)
 
         # Process request
         response = await call_next(request)
@@ -47,4 +45,4 @@ def get_correlation_id() -> str:
     Returns:
         Correlation ID string, or empty string if not set
     """
-    return correlation_id.get()
+    return correlation_id_ctx.get() or ""

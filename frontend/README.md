@@ -139,19 +139,21 @@ npm run type-check
 
 ## 🔐 Authentication
 
-The frontend uses JWT-based authentication:
+The frontend uses JWT-based authentication with HttpOnly cookies:
 
 1. Login with admin credentials (set in backend `.env`)
-2. Token is stored in `localStorage`
-3. Token is automatically added to API requests
+2. JWT token is managed via **HttpOnly cookie** (set by the server automatically)
+3. Cookie-based authentication is used for all API requests (no manual token handling)
 4. Token expires after configured time (default 24h)
-5. "Remember Me" keeps you logged in across sessions
+5. "Remember Me" preference is stored locally to persist login intent across sessions
+6. Logout clears the HttpOnly cookie via the `/api/auth/logout` endpoint
 
 ## 🌐 API Integration
 
 ### Endpoints Used
 
 - `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout (clears HttpOnly cookie)
 - `GET /api/status` - Bot status
 - `POST /api/bot/start` - Start bot
 - `POST /api/bot/stop` - Stop bot
