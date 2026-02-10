@@ -334,7 +334,7 @@ class TestOTPManagerIntegration:
 
     def test_register_and_unregister_session(self):
         """Test session registration and unregistration."""
-        with patch("src.services.otp_manager.IMAPListener"):
+        with patch("src.services.otp_manager.manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
             session_id = manager.register_session(
@@ -346,7 +346,7 @@ class TestOTPManagerIntegration:
 
     def test_manual_otp_input(self):
         """Test manual OTP input."""
-        with patch("src.services.otp_manager.IMAPListener"):
+        with patch("src.services.otp_manager.manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
             session_id = manager.register_session(target_email="bot@example.com")
@@ -356,7 +356,7 @@ class TestOTPManagerIntegration:
 
     def test_process_sms_webhook(self):
         """Test SMS webhook processing."""
-        with patch("src.services.otp_manager.IMAPListener"):
+        with patch("src.services.otp_manager.manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
             manager.register_session(phone_number="+905551234567")
@@ -366,7 +366,7 @@ class TestOTPManagerIntegration:
 
     def test_health_check(self):
         """Test health check."""
-        with patch("src.services.otp_manager.IMAPListener"):
+        with patch("src.services.otp_manager.manager.IMAPListener"):
             manager = OTPManager(email="test@example.com", app_password="password")
 
             health = manager.health_check()
@@ -377,7 +377,7 @@ class TestOTPManagerIntegration:
 
     def test_start_and_stop(self):
         """Test starting and stopping manager."""
-        with patch("src.services.otp_manager.IMAPListener") as mock_listener_class:
+        with patch("src.services.otp_manager.manager.IMAPListener") as mock_listener_class:
             mock_listener = Mock()
             mock_listener_class.return_value = mock_listener
 
@@ -452,7 +452,7 @@ class TestConcurrentSessions:
 class TestIMAPListener:
     """Tests for IMAP listener (mocked)."""
 
-    @patch("src.services.otp_manager.imaplib.IMAP4_SSL")
+    @patch("src.services.otp_manager.imap_listener.imaplib.IMAP4_SSL")
     def test_imap_connection(self, mock_imap_class):
         """Test IMAP connection establishment."""
         mock_mail = Mock()
@@ -477,7 +477,7 @@ class TestIMAPListener:
         mock_mail.login.assert_called_once_with("test@example.com", "password")
         mock_mail.select.assert_called_once_with("INBOX")
 
-    @patch("src.services.otp_manager.imaplib.IMAP4_SSL")
+    @patch("src.services.otp_manager.imap_listener.imaplib.IMAP4_SSL")
     def test_imap_listener_start_stop(self, mock_imap_class):
         """Test starting and stopping IMAP listener."""
         mock_mail = Mock()
