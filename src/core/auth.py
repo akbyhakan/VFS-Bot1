@@ -911,7 +911,7 @@ def create_access_token(
     )
 
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
-    # PyJWT >= 2.0 returns str, but keep bytes handling for compatibility
+    # PyJWT >= 2.0 always returns str, but defensive bytes check kept for safety
     if isinstance(encoded_jwt, bytes):
         return encoded_jwt.decode()
     return str(encoded_jwt)

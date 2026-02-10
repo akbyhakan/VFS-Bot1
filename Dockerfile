@@ -56,13 +56,16 @@ RUN useradd -m -u 1000 vfsbot
 
 # Copy Python dependencies from builder to vfsbot's home
 COPY --from=builder /root/.local /home/vfsbot/.local
+
+# Set Python user base and update PATH
+ENV PYTHONUSERBASE=/home/vfsbot/.local
 ENV PATH=/home/vfsbot/.local/bin:$PATH
 
 # Set Playwright browsers path to vfsbot-accessible location
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/vfsbot/.cache/ms-playwright
 
-# Install Playwright Chromium using system Python with the user packages path
-RUN PYTHONPATH=/home/vfsbot/.local/lib/python3.12/site-packages python3 -m playwright install chromium && \
+# Install Playwright Chromium and set ownership
+RUN python3 -m playwright install chromium && \
     chown -R vfsbot:vfsbot /home/vfsbot/.local /home/vfsbot/.cache
 
 # Copy application code
