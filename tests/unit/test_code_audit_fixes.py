@@ -303,108 +303,54 @@ class TestGrafanaPasswordNotHardcoded:
 class TestStartupValidatorGrafana:
     """Test that startup validator checks Grafana password."""
 
-    def test_grafana_default_password_detected(self):
+    @pytest.fixture
+    def production_env_vars(self):
+        """Fixture to manage environment variables for production security tests."""
+        # Store original values
+        original_values = {
+            "ENV": os.environ.get("ENV"),
+            "GRAFANA_ADMIN_PASSWORD": os.environ.get("GRAFANA_ADMIN_PASSWORD"),
+            "DATABASE_URL": os.environ.get("DATABASE_URL"),
+            "API_SECRET_KEY": os.environ.get("API_SECRET_KEY"),
+            "ADMIN_PASSWORD": os.environ.get("ADMIN_PASSWORD"),
+            "ADMIN_USERNAME": os.environ.get("ADMIN_USERNAME"),
+        }
+        
+        # Set common production environment
+        os.environ["ENV"] = "production"
+        os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
+        os.environ["API_SECRET_KEY"] = "a" * 64
+        os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
+        os.environ["ADMIN_USERNAME"] = "unique_admin_name"
+        
+        yield
+        
+        # Cleanup - restore original values or remove if they didn't exist
+        for key, value in original_values.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def test_grafana_default_password_detected(self, production_env_vars):
         """Test that default Grafana password is detected."""
-        import os
-        # Store original values
-        original_env = os.environ.get("ENV")
-        original_grafana_pwd = os.environ.get("GRAFANA_ADMIN_PASSWORD")
-        original_db_url = os.environ.get("DATABASE_URL")
-        original_api_key = os.environ.get("API_SECRET_KEY")
-        original_admin_pwd = os.environ.get("ADMIN_PASSWORD")
-        original_admin_user = os.environ.get("ADMIN_USERNAME")
-        
-        try:
-            os.environ["ENV"] = "production"
-            os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
-            # Set other required vars to non-default values to isolate test
-            os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
-            os.environ["API_SECRET_KEY"] = "a" * 64
-            os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
-            os.environ["ADMIN_USERNAME"] = "unique_admin_name"
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
 
-            from src.core.startup_validator import validate_production_security
-            warnings = validate_production_security()
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
 
-            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
-            assert len(grafana_warnings) > 0, "Should detect default Grafana password"
-        finally:
-            # Cleanup - restore original values or remove if they didn't exist
-            if original_env is None:
-                os.environ.pop("ENV", None)
-            else:
-                os.environ["ENV"] = original_env
-            if original_grafana_pwd is None:
-                os.environ.pop("GRAFANA_ADMIN_PASSWORD", None)
-            else:
-                os.environ["GRAFANA_ADMIN_PASSWORD"] = original_grafana_pwd
-            if original_db_url is None:
-                os.environ.pop("DATABASE_URL", None)
-            else:
-                os.environ["DATABASE_URL"] = original_db_url
-            if original_api_key is None:
-                os.environ.pop("API_SECRET_KEY", None)
-            else:
-                os.environ["API_SECRET_KEY"] = original_api_key
-            if original_admin_pwd is None:
-                os.environ.pop("ADMIN_PASSWORD", None)
-            else:
-                os.environ["ADMIN_PASSWORD"] = original_admin_pwd
-            if original_admin_user is None:
-                os.environ.pop("ADMIN_USERNAME", None)
-            else:
-                os.environ["ADMIN_USERNAME"] = original_admin_user
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) > 0, "Should detect default Grafana password"
 
-    def test_grafana_secure_password_passes(self):
+    def test_grafana_secure_password_passes(self, production_env_vars):
         """Test that secure Grafana password passes validation."""
-        import os
-        # Store original values
-        original_env = os.environ.get("ENV")
-        original_grafana_pwd = os.environ.get("GRAFANA_ADMIN_PASSWORD")
-        original_db_url = os.environ.get("DATABASE_URL")
-        original_api_key = os.environ.get("API_SECRET_KEY")
-        original_admin_pwd = os.environ.get("ADMIN_PASSWORD")
-        original_admin_user = os.environ.get("ADMIN_USERNAME")
-        
-        try:
-            os.environ["ENV"] = "production"
-            os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
-            os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
-            os.environ["API_SECRET_KEY"] = "a" * 64
-            os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
-            os.environ["ADMIN_USERNAME"] = "unique_admin_name"
+        os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
 
-            from src.core.startup_validator import validate_production_security
-            warnings = validate_production_security()
+        from src.core.startup_validator import validate_production_security
+        warnings = validate_production_security()
 
-            grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
-            assert len(grafana_warnings) == 0, "Secure Grafana password should not trigger warning"
-        finally:
-            # Cleanup - restore original values or remove if they didn't exist
-            if original_env is None:
-                os.environ.pop("ENV", None)
-            else:
-                os.environ["ENV"] = original_env
-            if original_grafana_pwd is None:
-                os.environ.pop("GRAFANA_ADMIN_PASSWORD", None)
-            else:
-                os.environ["GRAFANA_ADMIN_PASSWORD"] = original_grafana_pwd
-            if original_db_url is None:
-                os.environ.pop("DATABASE_URL", None)
-            else:
-                os.environ["DATABASE_URL"] = original_db_url
-            if original_api_key is None:
-                os.environ.pop("API_SECRET_KEY", None)
-            else:
-                os.environ["API_SECRET_KEY"] = original_api_key
-            if original_admin_pwd is None:
-                os.environ.pop("ADMIN_PASSWORD", None)
-            else:
-                os.environ["ADMIN_PASSWORD"] = original_admin_pwd
-            if original_admin_user is None:
-                os.environ.pop("ADMIN_USERNAME", None)
-            else:
-                os.environ["ADMIN_USERNAME"] = original_admin_user
+        grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
+        assert len(grafana_warnings) == 0, "Secure Grafana password should not trigger warning"
 
 
 if __name__ == "__main__":
