@@ -67,7 +67,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Coverage threshold aligned with pytest.ini
+# Minimum coverage threshold - CI will fail if coverage drops below this
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

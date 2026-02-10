@@ -1,6 +1,23 @@
 # Multi-stage build for smaller image size
 
-# Stage 1: Build dependencies
+# Stage 1: Frontend builder
+FROM node:18-slim as frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy package files for dependency installation
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Install dependencies with clean install for reproducibility
+RUN npm ci
+
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build frontend (outputs to ../web/static/dist per vite.config.ts)
+RUN npm run build
+
+# Stage 2: Python dependencies builder
 FROM python:3.12-slim as builder
 
 WORKDIR /build
@@ -70,6 +87,9 @@ RUN python3 -m playwright install chromium && \
 
 # Copy application code
 COPY . .
+
+# Copy frontend build artifacts from frontend-builder (after COPY . . to override empty dist)
+COPY --from=frontend-builder /app/web/static/dist /app/web/static/dist
 
 # Set ownership of app directory
 RUN chown -R vfsbot:vfsbot /app

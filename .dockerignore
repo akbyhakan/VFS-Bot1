@@ -24,6 +24,10 @@ htmlcov
 venv
 env
 
+# Frontend
+frontend/node_modules
+web/static/dist
+
 # Documentation
 *.md
 docs
