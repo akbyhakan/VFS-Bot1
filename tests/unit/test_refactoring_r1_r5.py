@@ -294,6 +294,14 @@ class TestR5SignalHandlerSimplification:
                     "handle_signal should use get_running_loop()"
                 assert 'asyncio.run(' in func_str, \
                     "handle_signal should use asyncio.run() for fallback"
+                
+                # Should use os._exit instead of sys.exit(0)
+                assert 'os._exit' in func_str, \
+                    "handle_signal should use os._exit instead of sys.exit"
+                
+                # Should use add_done_callback for cleanup completion
+                assert 'add_done_callback' in func_str, \
+                    "handle_signal should use add_done_callback to wait for cleanup before exit"
         
         assert handle_signal_found, "handle_signal function not found in shutdown.py"
 
@@ -310,10 +318,22 @@ class TestR5SignalHandlerSimplification:
         assert 'we\'re in a sync context, try to get or create one' not in content.lower(), \
             "Old complex signal handler pattern should be removed"
         
-        # Should have the new simplified pattern with comment
-        assert 'No running loop — create a new one' in content or \
-               'No running loop - create a new one' in content, \
-            "New simplified signal handler pattern should be present"
+        # Parse the file to find the handle_signal function
+        tree = ast.parse(content)
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'handle_signal':
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                
+                # sys.exit(0) should NOT be in handle_signal
+                assert 'sys.exit(0)' not in func_str, \
+                    "handle_signal should not use sys.exit(0)"
+                
+                # os._exit should be used instead
+                assert 'os._exit' in func_str, \
+                    "handle_signal should use os._exit instead of sys.exit"
+                break
 
     @pytest.mark.asyncio
     async def test_fast_emergency_cleanup_runs_without_loop(self):
@@ -327,6 +347,50 @@ class TestR5SignalHandlerSimplification:
             
             # Should not raise any errors
             await fast_emergency_cleanup()
+
+    def test_signal_handler_uses_done_callback(self):
+        """Test that handle_signal uses add_done_callback for cleanup task completion."""
+        shutdown_file = Path(__file__).parent.parent.parent / 'src/core/shutdown.py'
+        
+        with open(shutdown_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'handle_signal':
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                
+                # Should use add_done_callback to wait for cleanup before exit
+                assert 'add_done_callback' in func_str, \
+                    "handle_signal should use add_done_callback to wait for cleanup before exit"
+                
+                # Should NOT have sys.exit in handle_signal (should use os._exit)
+                assert 'sys.exit(0)' not in func_str, \
+                    "handle_signal should use os._exit instead of sys.exit"
+                break
+
+    def test_signal_handler_no_immediate_exit_after_create_task(self):
+        """Test that handle_signal does not immediately exit after creating a task."""
+        shutdown_file = Path(__file__).parent.parent.parent / 'src/core/shutdown.py'
+        
+        with open(shutdown_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'handle_signal':
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                
+                # The old pattern had a finally block with sys.exit that ran immediately
+                # after create_task, preventing cleanup from executing.
+                # Verify no finally block with exit exists in handle_signal
+                assert 'finally:' not in func_str or 'sys.exit' not in func_str, \
+                    "handle_signal should not have a finally block with sys.exit"
+                break
 
 
 class TestDocumentationUpdates:
