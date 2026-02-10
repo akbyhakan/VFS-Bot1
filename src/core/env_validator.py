@@ -1,12 +1,11 @@
 """Environment variables validation."""
 
-import logging
 import os
 import re
 import sys
 from typing import Dict, List
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # Bcrypt hash prefixes for validation
 BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")

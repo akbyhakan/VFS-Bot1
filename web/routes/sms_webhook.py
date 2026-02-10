@@ -4,18 +4,16 @@ This module provides webhook endpoints for receiving SMS OTP messages
 via SMS Forwarder app. Each VFS account has a unique webhook URL.
 """
 
-import logging
 import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
+from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
 from src.utils.webhook_utils import verify_webhook_signature
-
-logger = logging.getLogger(__name__)
 
 # Initialize router
 router = APIRouter(prefix="/webhook/sms", tags=["SMS Webhook"])

@@ -1,11 +1,11 @@
 """Authentication routes for VFS-Bot web application."""
 
 import hmac
-import logging
 import os
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -14,8 +14,6 @@ from src.core.security import generate_api_key
 from src.models.database import Database
 from web.dependencies import extract_raw_token, get_db, verify_jwt_token
 from web.models.auth import LoginRequest, TokenResponse
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 

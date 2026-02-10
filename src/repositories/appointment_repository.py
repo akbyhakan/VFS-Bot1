@@ -1,12 +1,11 @@
 """Appointment repository implementation."""
 
-import logging
 from typing import Any, Dict, List, Optional
+
+from loguru import logger
 
 from src.models.database import Database
 from src.repositories.base import BaseRepository
-
-logger = logging.getLogger(__name__)
 
 
 class Appointment:

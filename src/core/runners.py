@@ -57,7 +57,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
     notifier = None
     try:
         # Initialize notification service
-        notifier = NotificationService(config["notifications"])
+        notifier = NotificationService(config.get("notifications", {}))
 
         # Initialize and start bot with shutdown event
         bot = VFSBot(config, db, notifier, shutdown_event=shutdown_event)
@@ -116,7 +116,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
 
 
 async def run_web_mode(
-    config: dict, start_cleanup: bool = True, db: Optional[Database] = None
+    config: dict, start_cleanup: bool = True, db: Optional[Database] = None, skip_shutdown: bool = False
 ) -> None:
     """
     Run bot with web dashboard.
@@ -125,6 +125,7 @@ async def run_web_mode(
         config: Configuration dictionary
         start_cleanup: Whether to start the cleanup service (default True)
         db: Optional shared database instance
+        skip_shutdown: Whether to skip graceful shutdown (default False)
     """
     logger.info("Starting VFS-Bot with web dashboard...")
 
@@ -157,15 +158,16 @@ async def run_web_mode(
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
-        # Graceful shutdown with timeout protection
-        try:
-            loop = asyncio.get_running_loop()
-            await graceful_shutdown_with_timeout(loop, db, None)
-        except ShutdownTimeoutError as e:
-            logger.error(f"Shutdown timeout: {e}")
-            # Continue with cleanup anyway
-        except Exception as e:
-            logger.error(f"Error during graceful shutdown: {e}")
+        # Graceful shutdown with timeout protection (skip if called from run_both_mode)
+        if not skip_shutdown:
+            try:
+                loop = asyncio.get_running_loop()
+                await graceful_shutdown_with_timeout(loop, db, None)
+            except ShutdownTimeoutError as e:
+                logger.error(f"Shutdown timeout: {e}")
+                # Continue with cleanup anyway
+            except Exception as e:
+                logger.error(f"Error during graceful shutdown: {e}")
 
         # Safe cleanup of all resources
         await safe_shutdown_cleanup(
@@ -191,7 +193,7 @@ async def run_both_mode(config: dict) -> None:
     db = await DatabaseFactory.ensure_connected()
 
     # Initialize notification service
-    notifier = NotificationService(config["notifications"])
+    notifier = NotificationService(config.get("notifications", {}))
 
     # Get and configure BotController singleton
     controller = await BotController.get_instance()
@@ -207,8 +209,8 @@ async def run_both_mode(config: dict) -> None:
                 f"Critical: Unable to start bot in both mode - {start_result['message']}"
             )
 
-        # Run web mode (with cleanup service enabled)
-        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db))
+        # Run web mode (with cleanup service enabled, skip its shutdown)
+        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True))
 
         # Wait for web task to complete
         await web_task

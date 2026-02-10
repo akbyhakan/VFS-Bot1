@@ -1,16 +1,14 @@
 """Proxy management routes for VFS-Bot web application."""
 
-import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from loguru import logger
 from pydantic import BaseModel
 
 from src.repositories import ProxyRepository
 from web.dependencies import get_proxy_repository, verify_jwt_token
 from web.models.proxy import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/proxy", tags=["proxy"])
 
 

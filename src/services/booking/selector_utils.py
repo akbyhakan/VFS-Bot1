@@ -1,13 +1,12 @@
 """Selector resolution utilities for VFS booking system."""
 
-import logging
 from typing import List
 
-from ...utils.selectors import get_selector_manager
-from ...core.exceptions import SelectorNotFoundError
+from loguru import logger
 from playwright.async_api import Page
 
-logger = logging.getLogger(__name__)
+from ...core.exceptions import SelectorNotFoundError
+from ...utils.selectors import get_selector_manager
 
 
 # Turkish month name to number mapping for date parsing

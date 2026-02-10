@@ -1,6 +1,5 @@
 """Appointment-related routes for VFS-Bot web application."""
 
-import logging
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -8,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
+from loguru import logger
 
 from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
@@ -21,8 +21,6 @@ from web.models.appointments import (
     AppointmentRequestResponse,
 )
 from web.models.common import CountryResponse, WebhookUrlsResponse
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 

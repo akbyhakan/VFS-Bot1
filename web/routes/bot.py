@@ -1,13 +1,13 @@
 """Bot control and WebSocket routes for VFS-Bot web application."""
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -16,8 +16,6 @@ from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
 from web.dependencies import bot_state, broadcast_message, manager, verify_jwt_token
 from web.models.bot import BotCommand
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
 

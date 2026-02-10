@@ -1,14 +1,12 @@
 """WebSocket connection manager with rate limiting."""
 
 import asyncio
-import logging
 import os
 import time
 from typing import Dict, Set
 
 from fastapi import WebSocket, WebSocketDisconnect
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class ConnectionManager:

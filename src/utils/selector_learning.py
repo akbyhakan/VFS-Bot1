@@ -1,12 +1,11 @@
 """Adaptive selector learning system for auto-promotion and optimization."""
 
 import json
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class SelectorLearner:

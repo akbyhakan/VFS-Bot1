@@ -1,14 +1,12 @@
 """Error handling and screenshot capture service."""
 
 import json
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class ErrorHandler:
