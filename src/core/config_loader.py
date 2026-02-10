@@ -234,12 +234,16 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
     system to update selectors at runtime and have changes picked up.
     
     Thread-safe: Uses lock to prevent race conditions during cache updates.
+    
+    Note: Returns the cached dictionary directly (not a copy) for performance.
+    Callers should treat the returned dictionary as read-only to avoid
+    race conditions with concurrent access.
 
     Args:
         config_path: Path to selectors YAML file
 
     Returns:
-        Dictionary of selector groups
+        Dictionary of selector groups (read-only)
     """
     global _selectors_cache
 
