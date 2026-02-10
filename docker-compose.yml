@@ -25,13 +25,14 @@ services:
     image: redis:7-alpine
     container_name: vfs-bot-redis
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD environment variable is required}
     ports:
       # Bind to localhost only for security
       - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,7 +57,7 @@ services:
       # Uses 'postgres' as hostname (Docker service name) instead of 'localhost'
       - DATABASE_URL=postgresql://vfs_bot:${POSTGRES_PASSWORD:?}@postgres:5432/vfs_bot
       # Redis URL for distributed rate limiting
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?}@redis:6379/0
     env_file:
       - .env
     healthcheck:

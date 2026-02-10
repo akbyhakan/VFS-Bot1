@@ -128,9 +128,35 @@ class Database:
         """
         Calculate optimal pool size based on system resources.
 
+        When running multiple workers/instances, set ``DB_MAX_CONNECTIONS``
+        and ``DB_WORKER_COUNT`` environment variables to avoid exceeding
+        PostgreSQL's ``max_connections`` limit.
+
+        Formula when both are set::
+
+            pool_size = min(DB_MAX_CONNECTIONS // DB_WORKER_COUNT, 20)
+
         Returns:
             Optimal pool size (min: 5, max: 20)
         """
+        # Check for explicit max connections / worker count configuration
+        max_conn_env = os.getenv("DB_MAX_CONNECTIONS")
+        worker_count_env = os.getenv("DB_WORKER_COUNT")
+
+        if max_conn_env and worker_count_env:
+            try:
+                max_connections = int(max_conn_env)
+                worker_count = max(1, int(worker_count_env))
+                # Reserve ~20% for admin/superuser connections
+                available = int(max_connections * 0.8)
+                per_worker = available // worker_count
+                return min(max(per_worker, 2), 20)
+            except (ValueError, ZeroDivisionError):
+                logger.warning(
+                    "Invalid DB_MAX_CONNECTIONS or DB_WORKER_COUNT, "
+                    "falling back to CPU-based calculation"
+                )
+
         cpu_count = os.cpu_count() or 4
         # Use 2x CPU count as a reasonable default
         optimal_size = cpu_count * 2

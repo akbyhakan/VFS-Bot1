@@ -435,6 +435,54 @@ SECRET_KEY=$(openssl rand -hex 32)
 4. **Regular backups** - Use `pg_dump` for PostgreSQL backups, automated and tested
 5. **Connection security** - Use strong passwords in `DATABASE_URL` and restrict network access
 
+#### Multi-Worker Database Pool Configuration
+
+⚠️ **CRITICAL**: When running multiple workers/instances of the bot, the total number of database connections can exceed PostgreSQL's `max_connections` limit.
+
+**Problem**: If each worker creates a pool of 20 connections and you run 4 workers, that's 80 connections total (plus admin connections).
+
+**Solution**: Set environment variables to control per-worker pool size:
+
+```bash
+# Example: PostgreSQL max_connections = 100
+DB_MAX_CONNECTIONS=100  # PostgreSQL max_connections setting
+DB_WORKER_COUNT=4        # Number of bot workers running
+
+# Result: Each worker gets ~20 connections (100 * 0.8 / 4)
+# The 0.8 factor reserves 20% for admin/superuser connections
+```
+
+The bot automatically calculates: `pool_size = min(DB_MAX_CONNECTIONS * 0.8 / DB_WORKER_COUNT, 20)`
+
+If these variables are not set, the bot uses CPU-based calculation (may cause issues with multiple workers).
+
+### Redis Security
+
+1. **Always use password authentication** - Set `REDIS_PASSWORD` environment variable
+2. **Bind to localhost only** - In `docker-compose.yml`, use `127.0.0.1:6379:6379`
+3. **Use encrypted connections** - Configure Redis TLS/SSL for production
+4. **Disable dangerous commands** - Use `rename-command` in redis.conf
+
+#### Docker Compose Redis Configuration
+
+When using Docker Compose, Redis password is **required**:
+
+```yaml
+redis:
+  command: redis-server --requirepass ${REDIS_PASSWORD:?}
+```
+
+Set in `.env` file:
+```bash
+# Generate secure password
+REDIS_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(24))")
+```
+
+The `REDIS_URL` must include the password:
+```bash
+REDIS_URL=redis://:your-password@redis:6379/0
+```
+
 ### Docker Security
 
 1. **Use non-root user** in containers

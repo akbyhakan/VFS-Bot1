@@ -24,6 +24,13 @@ def main():
     api_secret = secrets.token_urlsafe(48)  # 64 character output
     api_key_salt = secrets.token_urlsafe(32)  # 43 character output
     vfs_encryption_key = secrets.token_urlsafe(32)  # 43 character output
+    
+    # Generate secure database password
+    # This password is auto-generated and stored in .env - no manual input needed
+    db_password = secrets.token_urlsafe(24)
+    
+    # Generate secure Redis password
+    redis_password = secrets.token_urlsafe(24)
 
     # Get user input
     vfs_email = input("VFS Email: ")
@@ -38,10 +45,6 @@ def main():
     # Encrypt VFS password with Fernet for secure storage
     cipher = Fernet(encryption_key.encode())
     encrypted_vfs_password = cipher.encrypt(vfs_password.encode()).decode()
-
-    # Generate secure database password
-    # This password is auto-generated and stored in .env - no manual input needed
-    db_password = secrets.token_urlsafe(24)
 
     # Write .env file
     # Note: VFS_PASSWORD is encrypted using Fernet encryption for security
@@ -93,6 +96,17 @@ ENV=production
 DATABASE_URL=postgresql://vfs_bot:{db_password}@localhost:5432/vfs_bot
 POSTGRES_PASSWORD={db_password}
 DB_POOL_SIZE=10
+
+# ===========================================
+# Redis Configuration
+# ===========================================
+REDIS_URL=redis://:{redis_password}@localhost:6379/0
+REDIS_PASSWORD={redis_password}
+
+# ===========================================
+# Cache Configuration
+# ===========================================
+USERS_CACHE_TTL=300
 
 # ===========================================
 # Logging
