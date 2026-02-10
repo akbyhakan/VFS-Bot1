@@ -2,10 +2,8 @@
 # - ==  : Strict pin for critical/stable packages
 # - ~=  : Compatible release (allows patch updates within same minor)
 # - >=,<: Range pin where specific range is needed
-# For reproducible deployments, generate a lockfile:
-#   pip install -r requirements.txt && pip freeze > requirements.lock
-# Then update Dockerfile to use: COPY requirements.lock . && RUN pip install -r requirements.lock
-# See: make lock
+# Dependency lockfile (requirements.lock) is used by Dockerfile for reproducible builds.
+# To regenerate after changing dependencies: make lock
 
 playwright>=1.48.0,<2.0.0
 fastapi==0.109.1
@@ -35,7 +33,7 @@ SpeechRecognition==3.10.1
 pydub==0.25.1
 # Anti-detection - REQUIRED for bot functionality
 curl-cffi~=0.6.0  # Required for Cloudflare TLS fingerprint bypass
-numpy~=1.24.0  # Required for realistic Bézier curve mouse movements
+numpy>=1.26.0  # Required for realistic Bézier curve mouse movements (Python 3.12 compatible)
 pyjwt~=2.8.0
 loguru~=0.7.0
 passlib[bcrypt]~=1.7.4

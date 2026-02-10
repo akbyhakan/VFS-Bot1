@@ -134,7 +134,8 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 # - ==  : Strict pin for critical/stable packages
 # - ~=  : Compatible release (allows patch updates within same minor)
 # - >=,<: Range pin where specific range is needed
-# For reproducible deployments, generate a lockfile: pip freeze > requirements.lock
+# Dependency lockfile (requirements.lock) is used by Dockerfile for reproducible builds.
+# To regenerate after changing dependencies: make lock
 ```
 
 **Impact**: More predictable dependency resolution and easier security patching
@@ -182,7 +183,7 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 1. Update `.env` file to use secure passwords (not CHANGE_ME)
 2. Docker Compose V2 is now required (V1 deprecated anyway)
 3. Web dashboard accessible on localhost only (use reverse proxy for external access)
-4. Run `pip freeze > requirements.lock` for reproducible deployments
+4. The `requirements.lock` file ensures reproducible deployments (regenerate with `make lock` when updating dependencies)
 
 ---
 
@@ -200,15 +201,15 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 - src/services/booking/ (1 file)
 
 ### Documentation (3)
-- MIGRATION_SUMMARY.md (new)
-- FINAL_VERIFICATION.md (new)
-- PR_SUMMARY.md (new)
+- docs/MIGRATION_SUMMARY.md (new)
+- docs/FINAL_VERIFICATION.md (new)
+- docs/PR_SUMMARY.md (new)
 
 ### Tests (1)
 - tests/unit/test_p0_p2_fixes.py
 
 ### Scripts (1)
-- verify_migration.py (new)
+- scripts/verify_migration.py (new)
 
 **Total**: 31 files
 

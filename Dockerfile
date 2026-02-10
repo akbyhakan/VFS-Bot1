@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install to /install
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+# Copy lockfile and install pinned dependencies for reproducible builds
+COPY requirements.lock .
+RUN pip install --no-cache-dir --user -r requirements.lock
 
 # Stage 2: Runtime
 FROM python:3.12-slim
@@ -88,7 +88,7 @@ USER vfsbot
 # Expose port for web dashboard
 EXPOSE 8000
 
-# Health check using httpx (available in requirements.txt)
+# Health check using httpx (available in requirements.lock)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()" || exit 1
 
