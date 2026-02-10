@@ -1,4 +1,4 @@
-"""Tests for R1-R5 refactoring fixes.
+"""Tests for R1-R6 refactoring fixes.
 
 This test file validates the following refactoring changes:
 - R1: Logger migration from stdlib logging to loguru (22 files)
@@ -6,6 +6,7 @@ This test file validates the following refactoring changes:
 - R3: SlotNotAvailableError removal
 - R4: Config KeyError protection
 - R5: Signal handler simplification
+- R6: Runtime safety fixes (port parsing, DB pool size, bot failure handling, markdown injection)
 """
 
 import ast
@@ -390,6 +391,243 @@ class TestR5SignalHandlerSimplification:
                 # Verify no finally block with exit exists in handle_signal
                 assert not ('finally:' in func_str and 'sys.exit' in func_str), \
                     "handle_signal should not have a finally block with sys.exit"
+                break
+
+
+class TestR6RuntimeSafetyFixes:
+    """Tests for R6: Runtime safety fixes (port parsing, DB pool size, bot failure handling, markdown injection)."""
+
+    def test_parse_safe_port_function_exists(self):
+        """Test that parse_safe_port helper function was added."""
+        runners_file = Path(__file__).parent.parent.parent / 'src/core/runners.py'
+        
+        with open(runners_file, 'r') as f:
+            content = f.read()
+        
+        # Should have the parse_safe_port function
+        assert 'def parse_safe_port(' in content, \
+            "parse_safe_port function should be defined in runners.py"
+        
+        # Should have proper validation logic
+        assert '1 <= port <= 65535' in content, \
+            "parse_safe_port should validate port range 1-65535"
+        
+        # Should have try/except for ValueError
+        tree = ast.parse(content)
+        found_function = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'parse_safe_port':
+                found_function = True
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                assert 'try:' in func_str and 'except ValueError' in func_str, \
+                    "parse_safe_port should have try/except ValueError"
+                break
+        
+        assert found_function, "parse_safe_port function not found"
+
+    def test_run_web_mode_uses_parse_safe_port(self):
+        """Test that run_web_mode uses parse_safe_port instead of int()."""
+        runners_file = Path(__file__).parent.parent.parent / 'src/core/runners.py'
+        
+        with open(runners_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'run_web_mode':
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                
+                # Should use parse_safe_port()
+                assert 'parse_safe_port()' in func_str, \
+                    "run_web_mode should use parse_safe_port()"
+                
+                # Should NOT have int(os.getenv("UVICORN_PORT"))
+                assert 'int(os.getenv("UVICORN_PORT"' not in func_str, \
+                    "run_web_mode should not use int(os.getenv('UVICORN_PORT'))"
+                break
+
+    def test_web_app_uses_parse_safe_port(self):
+        """Test that web/app.py imports and uses parse_safe_port."""
+        app_file = Path(__file__).parent.parent.parent / 'web/app.py'
+        
+        with open(app_file, 'r') as f:
+            content = f.read()
+        
+        # Should import parse_safe_port from src.core.runners
+        assert 'from src.core.runners import parse_safe_port' in content, \
+            "web/app.py should import parse_safe_port from src.core.runners"
+        
+        # Should use parse_safe_port()
+        assert 'parse_safe_port()' in content, \
+            "web/app.py should use parse_safe_port()"
+        
+        # Should NOT have int(os.getenv("UVICORN_PORT")) in main block
+        lines = content.split('\n')
+        in_main = False
+        for line in lines:
+            if 'if __name__ == "__main__"' in line:
+                in_main = True
+            if in_main and 'int(os.getenv("UVICORN_PORT"' in line:
+                raise AssertionError("web/app.py should not use int(os.getenv('UVICORN_PORT')) in __main__")
+
+    def test_db_pool_size_has_error_handling(self):
+        """Test that DB_POOL_SIZE parsing has try/except with validation."""
+        db_file = Path(__file__).parent.parent.parent / 'src/models/database.py'
+        
+        with open(db_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == 'Database':
+                # Find __init__ method
+                for method in node.body:
+                    if isinstance(method, ast.FunctionDef) and method.name == '__init__':
+                        method_lines = content.split('\n')[method.lineno-1:method.end_lineno]
+                        method_str = '\n'.join(method_lines)
+                        
+                        # Should have try/except for DB_POOL_SIZE
+                        assert 'DB_POOL_SIZE' in method_str, \
+                            "Database.__init__ should reference DB_POOL_SIZE"
+                        
+                        # Should have try/except ValueError
+                        assert 'try:' in method_str and 'except ValueError' in method_str, \
+                            "DB_POOL_SIZE parsing should have try/except ValueError"
+                        
+                        # Should validate pool_size >= 1
+                        assert 'pool_size < 1' in method_str or 'pool_size >= 1' in method_str, \
+                            "DB_POOL_SIZE should be validated (>= 1)"
+                        break
+                break
+
+    def test_run_both_mode_starts_web_on_bot_failure(self):
+        """Test that run_both_mode starts web dashboard even when bot fails."""
+        runners_file = Path(__file__).parent.parent.parent / 'src/core/runners.py'
+        
+        with open(runners_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'run_both_mode':
+                func_lines = content.split('\n')[node.lineno-1:node.end_lineno]
+                func_str = '\n'.join(func_lines)
+                
+                # Check that RuntimeError is not raised between bot failure check and web start
+                # The old code raised RuntimeError immediately on bot failure, preventing web from starting
+                if 'if start_result["status"] != "success"' in func_str and 'run_web_mode' in func_str:
+                    # Extract the section between the failure check and web start
+                    parts = func_str.split('if start_result["status"] != "success"')
+                    if len(parts) > 1:
+                        after_check = parts[1]
+                        web_parts = after_check.split('run_web_mode')
+                        if len(web_parts) > 0:
+                            section_before_web = web_parts[0]
+                            assert 'raise RuntimeError' not in section_before_web, \
+                                "run_both_mode should not raise RuntimeError when bot fails before starting web"
+                
+                # Should start web_task regardless of bot status
+                assert 'run_web_mode' in func_str, \
+                    "run_both_mode should call run_web_mode"
+                
+                # Should have degraded mode message
+                assert 'degraded mode' in func_str.lower(), \
+                    "run_both_mode should mention degraded mode when bot fails"
+                break
+
+    def test_notification_has_escape_markdown(self):
+        """Test that NotificationService has _escape_markdown static method."""
+        notif_file = Path(__file__).parent.parent.parent / 'src/services/notification.py'
+        
+        with open(notif_file, 'r') as f:
+            content = f.read()
+        
+        # Should have _escape_markdown method
+        assert 'def _escape_markdown(' in content, \
+            "NotificationService should have _escape_markdown method"
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == 'NotificationService':
+                # Find _escape_markdown method
+                for method in node.body:
+                    if isinstance(method, ast.FunctionDef) and method.name == '_escape_markdown':
+                        # Check if it's a static method using AST decorator inspection
+                        has_staticmethod = any(
+                            isinstance(dec, ast.Name) and dec.id == 'staticmethod'
+                            for dec in method.decorator_list
+                        )
+                        assert has_staticmethod, \
+                            "_escape_markdown should be a static method"
+                        
+                        method_lines = content.split('\n')[method.lineno-1:method.end_lineno]
+                        method_str = '\n'.join(method_lines)
+                        
+                        # Should escape markdown special characters
+                        special_chars = ['*', '_', '`', '[', ']', '(', ')']
+                        for char in special_chars:
+                            # Check if character is mentioned (escaped as string)
+                            assert f"'{char}'" in method_str or f'"{char}"' in method_str, \
+                                f"_escape_markdown should handle '{char}' character"
+                        break
+                break
+
+    def test_send_telegram_uses_escape_markdown(self):
+        """Test that send_telegram uses _escape_markdown for title and message."""
+        notif_file = Path(__file__).parent.parent.parent / 'src/services/notification.py'
+        
+        with open(notif_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == 'NotificationService':
+                # Find send_telegram method
+                for method in node.body:
+                    if isinstance(method, ast.FunctionDef) and method.name == 'send_telegram':
+                        method_lines = content.split('\n')[method.lineno-1:method.end_lineno]
+                        method_str = '\n'.join(method_lines)
+                        
+                        # Should call _escape_markdown
+                        assert '_escape_markdown(' in method_str, \
+                            "send_telegram should use _escape_markdown"
+                        
+                        # Should escape both title and message
+                        assert 'escaped_title' in method_str or '_escape_markdown(title)' in method_str, \
+                            "send_telegram should escape title"
+                        assert 'escaped_message' in method_str or '_escape_markdown(message)' in method_str, \
+                            "send_telegram should escape message"
+                        break
+                break
+
+    def test_send_telegram_with_photo_uses_escape_markdown(self):
+        """Test that _send_telegram_with_photo uses _escape_markdown."""
+        notif_file = Path(__file__).parent.parent.parent / 'src/services/notification.py'
+        
+        with open(notif_file, 'r') as f:
+            content = f.read()
+        
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == 'NotificationService':
+                # Find _send_telegram_with_photo method
+                for method in node.body:
+                    if isinstance(method, ast.FunctionDef) and method.name == '_send_telegram_with_photo':
+                        method_lines = content.split('\n')[method.lineno-1:method.end_lineno]
+                        method_str = '\n'.join(method_lines)
+                        
+                        # Should call _escape_markdown
+                        assert '_escape_markdown(' in method_str, \
+                            "_send_telegram_with_photo should use _escape_markdown"
+                        
+                        # Should escape both title and message
+                        assert 'escaped_title' in method_str or '_escape_markdown(title)' in method_str, \
+                            "_send_telegram_with_photo should escape title"
+                        assert 'escaped_message' in method_str or '_escape_markdown(message)' in method_str, \
+                            "_send_telegram_with_photo should escape message"
+                        break
                 break
 
 
