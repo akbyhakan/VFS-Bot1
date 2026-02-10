@@ -258,6 +258,7 @@ class DatabaseBackup:
         Returns:
             True if restore was successful, False otherwise
         """
+        temp_sql_file = None
         temp_sql_path = None
         try:
             if not backup_path.exists():
@@ -273,8 +274,13 @@ class DatabaseBackup:
             is_encrypted = backup_path.suffix == '.enc'
             
             if is_encrypted:
-                # Decrypt to temporary file
-                temp_sql_path = Path(tempfile.mktemp(suffix='.sql', dir=self.backup_dir))
+                # Decrypt to temporary file (use NamedTemporaryFile for security)
+                temp_sql_file = tempfile.NamedTemporaryFile(
+                    mode='wb', suffix='.sql', dir=self.backup_dir, delete=False
+                )
+                temp_sql_path = Path(temp_sql_file.name)
+                temp_sql_file.close()  # Close so decrypt can write to it
+                
                 self._decrypt_file(backup_path, temp_sql_path)
                 restore_path = temp_sql_path
             else:

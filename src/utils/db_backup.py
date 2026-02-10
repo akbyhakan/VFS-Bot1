@@ -363,6 +363,7 @@ class DatabaseBackup:
 
         logger.warning(f"Restoring database from backup: {backup_path}")
 
+        temp_sql_file = None
         temp_sql_path = None
         try:
             # Create a backup of current database before restoring
@@ -373,8 +374,13 @@ class DatabaseBackup:
             is_encrypted = backup_file.suffix == '.enc'
             
             if is_encrypted:
-                # Decrypt to temporary file
-                temp_sql_path = Path(tempfile.mktemp(suffix='.sql', dir=self._backup_dir))
+                # Decrypt to temporary file (use NamedTemporaryFile for security)
+                temp_sql_file = tempfile.NamedTemporaryFile(
+                    mode='wb', suffix='.sql', dir=self._backup_dir, delete=False
+                )
+                temp_sql_path = Path(temp_sql_file.name)
+                temp_sql_file.close()  # Close so decrypt can write to it
+                
                 self._decrypt_file(backup_file, temp_sql_path)
                 restore_path = str(temp_sql_path)
             else:
