@@ -1,13 +1,22 @@
 """Application settings with Pydantic validation."""
 
-from typing import List, Optional
+from typing import Final, List, Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Current configuration version for schema compatibility
+CURRENT_CONFIG_VERSION: Final[str] = "2.0"
+
 
 class VFSSettings(BaseSettings):
     """Application settings with validation and environment variable support."""
+
+    # Configuration Version
+    config_version: Optional[str] = Field(
+        default=None, 
+        description="Configuration schema version for compatibility checking"
+    )
 
     # VFS Credentials
     vfs_email: str = Field(default="", description="VFS Global account email")

@@ -10,6 +10,8 @@ from typing import Any, Dict
 import yaml
 from dotenv import load_dotenv
 
+from src.core.config_version_checker import check_config_version
+
 logger = logging.getLogger(__name__)
 
 # Critical environment variables that must be set in production
@@ -161,6 +163,9 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     config: Dict[str, Any] = (
         substitute_env_vars(config_data) if isinstance(config_data, dict) else {}
     )
+
+    # Validate configuration version
+    check_config_version(config)
 
     return config
 
