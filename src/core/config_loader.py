@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -195,8 +196,10 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
 
 
 # TTL-based cache for selectors (configurable via environment variable)
+# Note: TTL is read once at module load time and cached for application lifetime
 _SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
 _selectors_cache: Optional[Tuple[float, Dict[str, Dict[str, Any]]]] = None
+_selectors_cache_lock = threading.Lock()  # Thread-safe cache access
 
 
 def invalidate_selectors_cache() -> None:
@@ -205,9 +208,12 @@ def invalidate_selectors_cache() -> None:
 
     This function should be called after AI repair updates the selectors file
     to ensure the next call to load_selectors() reloads from disk.
+    
+    Thread-safe: Uses lock to prevent race conditions.
     """
     global _selectors_cache
-    _selectors_cache = None
+    with _selectors_cache_lock:
+        _selectors_cache = None
     logger.debug("Selectors cache invalidated")
 
 
@@ -217,6 +223,8 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
 
     Cache expires after _SELECTORS_CACHE_TTL seconds to allow AI Auto-Repair
     system to update selectors at runtime and have changes picked up.
+    
+    Thread-safe: Uses lock to prevent race conditions during cache updates.
 
     Args:
         config_path: Path to selectors YAML file
@@ -226,35 +234,36 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
     """
     global _selectors_cache
 
-    # Check if cache is still valid
-    current_time = time.time()
-    if _selectors_cache is not None:
-        cache_time, cached_data = _selectors_cache
-        if current_time - cache_time < _SELECTORS_CACHE_TTL:
-            return cached_data
+    with _selectors_cache_lock:
+        # Check if cache is still valid
+        current_time = time.time()
+        if _selectors_cache is not None:
+            cache_time, cached_data = _selectors_cache
+            if current_time - cache_time < _SELECTORS_CACHE_TTL:
+                return cached_data
 
-    # Cache expired or not set, reload from disk
-    path = Path(config_path)
-    if not path.exists():
-        logger.warning(f"Selectors config not found: {config_path}, using defaults")
-        return {}
+        # Cache expired or not set, reload from disk
+        path = Path(config_path)
+        if not path.exists():
+            logger.warning(f"Selectors config not found: {config_path}, using defaults")
+            return {}
 
-    with open(path, "r", encoding="utf-8") as f:
-        selectors = yaml.safe_load(f)
+        with open(path, "r", encoding="utf-8") as f:
+            selectors = yaml.safe_load(f)
 
-    # Count total selectors
-    total = 0
-    if isinstance(selectors, dict):
-        for value in selectors.values():
-            if isinstance(value, dict):
-                total += len(value)
+        # Count total selectors
+        total = 0
+        if isinstance(selectors, dict):
+            for value in selectors.values():
+                if isinstance(value, dict):
+                    total += len(value)
 
-    logger.info(f"Loaded {total} selectors from {config_path}")
-    result = selectors if isinstance(selectors, dict) else {}
+        logger.info(f"Loaded {total} selectors from {config_path}")
+        result = selectors if isinstance(selectors, dict) else {}
 
-    # Update cache
-    _selectors_cache = (current_time, result)
-    return result
+        # Update cache
+        _selectors_cache = (current_time, result)
+        return result
 
 
 def get_config_selector(group: str, name: str, default: str = "") -> str:
