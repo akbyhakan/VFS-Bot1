@@ -82,6 +82,7 @@ class TestHealthEndpoint:
         data = response.json()
 
         assert "database" in data["components"]
+        assert "redis" in data["components"]
         assert "bot" in data["components"]
         assert "notifications" in data["components"]
 
