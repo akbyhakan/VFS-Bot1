@@ -319,7 +319,7 @@ class TestBackupEncryption:
 
 
 class TestBackupUtilEncryption:
-    """Tests for merged db_backup.py encryption (was db_backup_util.py)."""
+    """Tests for db_backup.py encryption functionality."""
 
     @pytest.fixture
     def temp_backup_dir(self):

@@ -256,7 +256,7 @@ class TestPreMigrationBackup:
     """Test pre-migration backup feature."""
 
     @pytest.mark.asyncio
-    async def test_database_backup_util_import(self):
+    async def test_database_backup_import(self):
         """Test that DatabaseBackup can be imported from db_backup."""
         from src.utils.db_backup import DatabaseBackup
 

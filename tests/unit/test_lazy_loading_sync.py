@@ -1,4 +1,4 @@
-"""Test that __all__ and _LAZY_MODULE_MAP stay synchronized in src/__init__.py."""
+"""Test that __all__ is correctly auto-derived from _LAZY_MODULE_MAP."""
 
 import ast
 from pathlib import Path
@@ -7,10 +7,10 @@ import pytest
 
 
 class TestLazyLoadingSync:
-    """Ensure __all__ and _LAZY_MODULE_MAP are always in sync."""
+    """Ensure __all__ is auto-derived from _LAZY_MODULE_MAP."""
 
     def test_all_keys_match_lazy_map(self):
-        """Every item in __all__ must have a corresponding entry in _LAZY_MODULE_MAP."""
+        """Verify __all__ contains all items from _LAZY_MODULE_MAP (auto-derivation check)."""
         import src
         all_set = set(src.__all__)
         lazy_set = set(src._LAZY_MODULE_MAP.keys())
@@ -20,7 +20,7 @@ class TestLazyLoadingSync:
         )
 
     def test_lazy_map_keys_match_all(self):
-        """Every key in _LAZY_MODULE_MAP must be listed in __all__."""
+        """Verify all _LAZY_MODULE_MAP keys are in __all__ (auto-derivation check)."""
         import src
         all_set = set(src.__all__)
         lazy_set = set(src._LAZY_MODULE_MAP.keys())
@@ -55,3 +55,44 @@ class TestLazyLoadingSync:
         lazy_set = set(src._LAZY_MODULE_MAP.keys())
         missing = lazy_set - type_checking_names
         assert not missing, f"Items without TYPE_CHECKING import: {missing}"
+
+    def test_all_is_derived_from_lazy_map(self):
+        """Verify __all__ is auto-derived from _LAZY_MODULE_MAP for src module."""
+        import src
+        # This test verifies that __all__ == list(_LAZY_MODULE_MAP.keys())
+        assert set(src.__all__) == set(src._LAZY_MODULE_MAP.keys()), (
+            "src.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
+        )
+
+    def test_all_length_matches_lazy_map(self):
+        """Verify __all__ and _LAZY_MODULE_MAP have the same length for src module."""
+        import src
+        assert len(src.__all__) == len(src._LAZY_MODULE_MAP), (
+            f"Length mismatch: __all__ has {len(src.__all__)} items, "
+            f"_LAZY_MODULE_MAP has {len(src._LAZY_MODULE_MAP)} items"
+        )
+
+    def test_models_all_derived_from_lazy_map(self):
+        """Verify __all__ is auto-derived from _LAZY_MODULE_MAP for src.models module."""
+        import src.models
+        # This test verifies that __all__ == list(_LAZY_MODULE_MAP.keys())
+        assert set(src.models.__all__) == set(src.models._LAZY_MODULE_MAP.keys()), (
+            "src.models.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
+        )
+
+    def test_no_duplicates_in_all(self):
+        """Verify there are no duplicate entries in __all__ for both modules."""
+        import src
+        import src.models
+        
+        # Test src module
+        assert len(src.__all__) == len(set(src.__all__)), (
+            f"Duplicate entries found in src.__all__: "
+            f"{[item for item in src.__all__ if src.__all__.count(item) > 1]}"
+        )
+        
+        # Test src.models module
+        assert len(src.models.__all__) == len(set(src.models.__all__)), (
+            f"Duplicate entries found in src.models.__all__: "
+            f"{[item for item in src.models.__all__ if src.models.__all__.count(item) > 1]}"
+        )
