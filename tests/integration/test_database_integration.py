@@ -276,6 +276,12 @@ class TestDatabaseIntegration:
         """Test database health check functionality."""
         is_healthy = await integration_db.health_check()
         assert is_healthy is True, "Database should be healthy"
+        
+        # Verify failure counter is reset
+        assert integration_db._consecutive_failures == 0
+        
+        # Verify state is CONNECTED
+        assert integration_db.state == "connected"
 
     @pytest.mark.asyncio
     async def test_batch_personal_details_retrieval(self, integration_db: Database):
