@@ -84,8 +84,11 @@ class DatabaseFactory:
 
         This should be called during application shutdown.
         """
+        instance_to_close = None
         with cls._lock:
             if cls._instance is not None:
-                await cls._instance.close()
+                instance_to_close = cls._instance
                 cls._instance = None
-                logger.info("Closed and reset database singleton instance")
+        if instance_to_close is not None:
+            await instance_to_close.close()
+            logger.info("Closed and reset database singleton instance")

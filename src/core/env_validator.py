@@ -106,12 +106,12 @@ class EnvValidator:
                             f"{var}: JWT secret too short (minimum 32 characters for security)"
                         )
 
-                # ADMIN_PASSWORD validation (production only)
-                elif var == "ADMIN_PASSWORD" and env == "production":
-                    # In production, admin password should be bcrypt hashed
+                # ADMIN_PASSWORD validation (ALL environments)
+                elif var == "ADMIN_PASSWORD":
+                    # Admin password should be bcrypt hashed in ALL environments
                     if not value.startswith(BCRYPT_PREFIXES):
                         validation_errors.append(
-                            f"{var}: Must be bcrypt hashed in production. "
+                            f"{var}: Must be bcrypt hashed in ALL environments. "
                             'Use: python -c "from passlib.context import CryptContext; '
                             "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\""
                         )

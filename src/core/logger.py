@@ -3,6 +3,7 @@
 import contextvars
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -120,6 +121,8 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
         )
 
     # Error file - separate error logs
+    # Determine if environment is development to control diagnose mode
+    is_dev = os.getenv("ENV", "production").lower() in ("development", "dev", "local", "test")
     logger.add(
         logs_dir / "errors_{time:YYYY-MM-DD}.log",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}",
@@ -127,7 +130,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
         rotation="10 MB",
         retention="90 days",  # Keep errors longer
         backtrace=True,  # Include full traceback
-        diagnose=True,  # Include variable values
+        diagnose=is_dev,  # Only include variable values in development (security risk in production)
     )
 
     logger.info(f"Logging initialized (level={level}, json={json_format})")

@@ -60,7 +60,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         notifier = NotificationService(config["notifications"])
 
         # Initialize and start bot with shutdown event
-        bot = VFSBot(config, db, notifier, shutdown_event)
+        bot = VFSBot(config, db, notifier, shutdown_event=shutdown_event)
 
         # Initialize selector health monitoring (if enabled)
         # Note: The health checker will be started within the bot's browser context
