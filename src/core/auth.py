@@ -13,7 +13,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, NamedTuple, Optional, cast
 
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from ..constants import RateLimits
 from ..core.exceptions import ValidationError
@@ -910,6 +911,7 @@ def create_access_token(
     )
 
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    # PyJWT >= 2.0 returns str, but keep bytes handling for compatibility
     if isinstance(encoded_jwt, bytes):
         return encoded_jwt.decode()
     return str(encoded_jwt)
