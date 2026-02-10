@@ -27,6 +27,8 @@ FULLY_MIGRATED = [
     "src/utils/security/endpoint_rate_limiter.py",
     "src/utils/security/session_manager.py",
     "src/services/booking/form_filler.py",
+    "src/services/bot/vfs_bot.py",
+    "src/utils/metrics.py",
 ]
 
 # Files with special handling
@@ -42,7 +44,8 @@ def check_file(filepath):
         content = f.read()
     
     has_loguru = 'from loguru import logger' in content
-    has_stdlib_import = re.search(r'^import logging$', content, re.MULTILINE)
+    # Match both 'import logging' and 'import logging as ...'
+    has_stdlib_import = re.search(r'^import logging(\s|$)', content, re.MULTILINE)
     has_getlogger = 'logging.getLogger' in content
     
     return has_loguru, has_stdlib_import, has_getlogger

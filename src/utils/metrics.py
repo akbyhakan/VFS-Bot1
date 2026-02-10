@@ -1,14 +1,13 @@
 """Metrics tracking for VFS-Bot performance monitoring."""
 
 import asyncio
-import logging
 import time
 from collections import defaultdict, deque
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 @dataclass

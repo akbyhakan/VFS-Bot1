@@ -1,12 +1,12 @@
 # Logging Migration Summary - stdlib to loguru
 
 ## Overview
-Successfully migrated 42+ priority Python files from stdlib logging to loguru.
+Successfully migrated 44+ priority Python files from stdlib logging to loguru.
 
 ## Migration Statistics
-- **Files Fully Migrated**: 42
+- **Files Fully Migrated**: 44
 - **Special Case Files**: 4 (partial migration or kept for compatibility)
-- **Lines Changed**: ~110 lines removed, ~64 lines added
+- **Lines Changed**: ~114 lines removed, ~66 lines added
 - **Test Result**: All files compile successfully ✅
 - **Security Scan**: No new vulnerabilities ✅
 
@@ -52,7 +52,7 @@ def some_function():
 - [x] src/models/database.py
 - [x] src/models/db_factory.py
 
-### Utils (11)
+### Utils (13)
 - [x] src/utils/token_utils.py
 - [x] src/utils/secure_memory.py
 - [x] src/utils/webhook_utils.py
@@ -62,6 +62,7 @@ def some_function():
 - [x] src/utils/helpers.py
 - [x] src/utils/error_capture.py
 - [x] src/utils/selector_learning.py
+- [x] src/utils/metrics.py
 
 ### Security Utils (4)
 - [x] src/utils/security/rate_limiter.py
@@ -69,10 +70,11 @@ def some_function():
 - [x] src/utils/security/endpoint_rate_limiter.py
 - [x] src/utils/security/session_manager.py
 
-### Services (2)
+### Services (4)
 - [x] src/services/booking/form_filler.py
 - [x] src/services/booking/selector_utils.py
 - [x] src/services/bot/error_handler.py
+- [x] src/services/bot/vfs_bot.py
 
 ### Repositories (3)
 - [x] src/repositories/log_repository.py
