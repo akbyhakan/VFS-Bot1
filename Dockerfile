@@ -81,6 +81,11 @@ ENV PATH=/home/vfsbot/.local/bin:$PATH
 # Set Playwright browsers path to vfsbot-accessible location
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/vfsbot/.cache/ms-playwright
 
+# Bind to all interfaces in Docker container (overridable via docker run -e)
+# Security: Default 127.0.0.1 in source code is intentional for local dev.
+# In Docker, 0.0.0.0 is needed for port mapping to work.
+ENV UVICORN_HOST=0.0.0.0
+
 # Install Playwright Chromium and set ownership
 RUN python3 -m playwright install chromium && \
     chown -R vfsbot:vfsbot /home/vfsbot/.local /home/vfsbot/.cache

@@ -62,9 +62,9 @@ def setup_signal_handlers():
                 try:
                     loop = asyncio.get_running_loop()
                     # Schedule cleanup to run in the existing loop
-                    asyncio.ensure_future(fast_emergency_cleanup())
+                    loop.create_task(fast_emergency_cleanup())
                 except RuntimeError:
-                    # No running loop — create a new one
+                    # No running loop - create a new one
                     asyncio.run(fast_emergency_cleanup())
             except Exception as e:
                 logger.error(f"Emergency cleanup failed: {e}")
