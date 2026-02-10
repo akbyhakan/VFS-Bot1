@@ -38,6 +38,28 @@ logger = logging.getLogger(__name__)
 security_scheme = HTTPBearer()
 
 
+def extract_raw_token(request: Request) -> str:
+    """
+    Extract raw JWT token from HttpOnly cookie or Authorization header.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        Raw JWT token string, or None if not found
+    """
+    # First, try to get token from HttpOnly cookie (primary method)
+    token = request.cookies.get("access_token")
+    
+    # Fallback to Authorization header
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    
+    return token
+
+
 # Global state instances
 bot_state = ThreadSafeBotState()
 manager = ConnectionManager()
@@ -64,16 +86,7 @@ async def verify_jwt_token(
     """
     from fastapi import HTTPException
     
-    token = None
-    
-    # First, try to get token from HttpOnly cookie (primary method)
-    token = request.cookies.get("access_token")
-    
-    # Fallback to Authorization header
-    if not token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+    token = extract_raw_token(request)
     
     # If no token found in either location, reject request
     if not token:

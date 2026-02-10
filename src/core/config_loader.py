@@ -57,12 +57,14 @@ def load_env_variables() -> None:
         logger.debug(f"Loaded environment variables from {env_path}")
 
 
-def substitute_env_vars(value: Any) -> Any:
+def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = None) -> Any:
     """
     Recursively substitute environment variables in configuration values.
 
     Args:
         value: Configuration value (string, dict, list, etc.)
+        _env: Internal parameter - cached environment value (do not set manually)
+        _is_production: Internal parameter - cached production check (do not set manually)
 
     Returns:
         Value with environment variables substituted
@@ -74,15 +76,16 @@ def substitute_env_vars(value: Any) -> Any:
         # Find ${VAR_NAME} patterns and replace with environment variable
         pattern = r"\$\{([^}]+)\}"
         matches = re.findall(pattern, value)
-        env = _get_environment()
-        is_production = _is_production_environment(env)
+        if _env is None:
+            _env = _get_environment()
+            _is_production = _is_production_environment(_env)
         
         for match in matches:
             env_value = os.getenv(match)
             
             # Check if this is a critical environment variable
             if env_value is None and match in CRITICAL_ENV_VARS:
-                if is_production:
+                if _is_production:
                     raise ValueError(
                         f"CRITICAL: Environment variable '{match}' is required in production "
                         f"but not set. This is a security risk. Please set {match} in your "
@@ -102,9 +105,15 @@ def substitute_env_vars(value: Any) -> Any:
             value = value.replace(f"${{{match}}}", env_value)
         return value
     elif isinstance(value, dict):
-        return {k: substitute_env_vars(v) for k, v in value.items()}
+        if _env is None:
+            _env = _get_environment()
+            _is_production = _is_production_environment(_env)
+        return {k: substitute_env_vars(v, _env, _is_production) for k, v in value.items()}
     elif isinstance(value, list):
-        return [substitute_env_vars(item) for item in value]
+        if _env is None:
+            _env = _get_environment()
+            _is_production = _is_production_environment(_env)
+        return [substitute_env_vars(item, _env, _is_production) for item in value]
     else:
         return value
 

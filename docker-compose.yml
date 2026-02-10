@@ -61,6 +61,8 @@ services:
       - DATABASE_URL=postgresql://vfs_bot:${POSTGRES_PASSWORD:?}@postgres:5432/vfs_bot
       # Redis URL for distributed rate limiting
       - REDIS_URL=redis://:${REDIS_PASSWORD:?}@redis:6379/0
+      # Bind to all interfaces in Docker container
+      - UVICORN_HOST=0.0.0.0
     env_file:
       - .env
     healthcheck:
