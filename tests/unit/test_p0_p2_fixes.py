@@ -442,12 +442,16 @@ class TestEnvironmentValidation:
             # Should default to production
             assert result == "production"
             
-            # Check that log message was sanitized (no ANSI or newlines)
+            # Check that log message was sanitized (no ANSI escape sequences)
             log_message = caplog.text
-            assert "\x1b" not in log_message
-            assert "\n" not in log_message or "defaulting to 'production'" in log_message
-            # The sanitized value should be in the log
-            assert "malicious" in log_message or "FAKE LOG LINE" in log_message
+            assert "\x1b" not in log_message, "ANSI escape sequences should be removed"
+            
+            # Check for expected warning message
+            assert "defaulting to 'production'" in log_message, "Expected warning message should appear"
+            
+            # The sanitized value should be in the log (without ANSI or newlines)
+            # Either "malicious" or "FAKE LOG LINE" should appear as sanitized text
+            assert "malicious" in log_message.lower() or "fake log line" in log_message.lower()
             
         finally:
             if old_env:

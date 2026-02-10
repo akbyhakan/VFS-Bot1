@@ -14,6 +14,8 @@ from typing import Optional
 #   - \x0c: Form feed
 #   - \x0e-\x1f: Shift Out through Unit Separator (includes \x1b ESC)
 #   - \x7f: DELETE
+#   Note: Tab (\x09) is intentionally preserved as it's commonly used for formatting
+#   in structured log messages and doesn't pose a security risk.
 _LOG_SANITIZER_PATTERN = re.compile(
     r"\x1b\[[0-9;]*[a-zA-Z]|\r?\n|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]"
 )
