@@ -273,13 +273,90 @@ class AuthRateLimiter:
                 logger.info(f"AuthRateLimiter using Redis backend: {_mask_database_url(redis_url)}")
                 return RedisBackend(client)
             except Exception as e:
-                logger.warning(
-                    f"Failed to connect to Redis ({_mask_database_url(redis_url)}), falling back to in-memory: {e}"
+                logger.critical(
+                    f"🚨 REDIS FALLBACK: Failed to connect to Redis ({_mask_database_url(redis_url)}), "
+                    f"falling back to in-memory backend. Rate limiting will NOT be shared across workers! Error: {e}"
                 )
+                # Attempt to send notification alert
+                self._notify_redis_fallback(redis_url, str(e))
 
         # Fallback to in-memory
         logger.info("AuthRateLimiter using in-memory backend")
         return InMemoryBackend()
+
+    def _notify_redis_fallback(self, redis_url: str, error: str) -> None:
+        """
+        Send notification alert when Redis fallback occurs.
+        
+        Args:
+            redis_url: The Redis URL that failed
+            error: Error message
+        """
+        try:
+            from src.services.notification import NotificationService
+            import asyncio
+            
+            # Create notification message
+            message = (
+                f"⚠️ Redis Connection Failed - Fallback to In-Memory\n\n"
+                f"Redis URL: {_mask_database_url(redis_url)}\n"
+                f"Error: {error}\n\n"
+                f"⚠️ WARNING: Rate limiting is NOT shared across workers in fallback mode!"
+            )
+            
+            # Try to send notification asynchronously
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're already in an event loop, create a task
+                    loop.create_task(
+                        self._send_fallback_notification(message)
+                    )
+                else:
+                    # If no loop is running, run synchronously
+                    loop.run_until_complete(
+                        self._send_fallback_notification(message)
+                    )
+            except RuntimeError:
+                # No event loop available, try to create one
+                try:
+                    asyncio.run(self._send_fallback_notification(message))
+                except Exception as notify_err:
+                    logger.error(f"Failed to send Redis fallback notification: {notify_err}")
+        except Exception as e:
+            logger.error(f"Failed to initialize notification for Redis fallback: {e}")
+    
+    async def _send_fallback_notification(self, message: str) -> None:
+        """
+        Async helper to send Redis fallback notification.
+        
+        Args:
+            message: Notification message
+        """
+        try:
+            from src.services.notification import NotificationService
+            import os
+            
+            # Build notification config from environment
+            config = {
+                "telegram": {
+                    "enabled": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
+                    "bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
+                    "chat_id": os.getenv("TELEGRAM_ADMIN_CHAT_ID"),
+                },
+                "email": {
+                    "enabled": bool(os.getenv("SMTP_SERVER")),
+                }
+            }
+            
+            notifier = NotificationService(config)
+            await notifier.send_notification(
+                title="🚨 Redis Connection Failed - Rate Limiter Fallback",
+                message=message,
+                priority="high"
+            )
+        except Exception as e:
+            logger.error(f"Failed to send Redis fallback notification: {e}")
 
     @property
     def is_distributed(self) -> bool:
@@ -361,7 +438,7 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
                 try:
                     worker_count = int(workers)
                     if worker_count > 1 and not _auth_rate_limiter.is_distributed:
-                        logger.error(
+                        logger.critical(
                             f"🚨 SECURITY RISK: Auth rate limiter running with {worker_count} workers "
                             "but using in-memory backend. Rate limiting is NOT shared across workers. "
                             "Set REDIS_URL environment variable to enable distributed rate limiting."
