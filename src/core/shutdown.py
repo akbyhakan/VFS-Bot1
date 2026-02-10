@@ -56,21 +56,27 @@ def setup_signal_handlers():
             logger.info("Shutdown event set, waiting for active operations to complete...")
         else:
             logger.warning("Second signal received, attempting fast cleanup before exit...")
-            # Attempt fast cleanup on second signal
             try:
-                # Try to get the running loop if inside an async context
+                loop = asyncio.get_running_loop()
+                # Running loop exists — schedule cleanup and let it complete
+                # before forcing exit
+                cleanup_task = loop.create_task(fast_emergency_cleanup())
+                
+                def _on_cleanup_done(task):
+                    logger.warning("Emergency cleanup completed, forcing exit")
+                    os._exit(0)
+                
+                cleanup_task.add_done_callback(_on_cleanup_done)
+                # Stop the loop so it processes remaining tasks and exits
+                loop.call_soon(loop.stop)
+            except RuntimeError:
+                # No running loop - run cleanup synchronously
                 try:
-                    loop = asyncio.get_running_loop()
-                    # Schedule cleanup to run in the existing loop
-                    loop.create_task(fast_emergency_cleanup())
-                except RuntimeError:
-                    # No running loop - create a new one
                     asyncio.run(fast_emergency_cleanup())
-            except Exception as e:
-                logger.error(f"Emergency cleanup failed: {e}")
-            finally:
-                logger.warning("Forcing exit after emergency cleanup attempt")
-                sys.exit(0)
+                except Exception as e:
+                    logger.error(f"Emergency cleanup failed: {e}")
+                logger.warning("Forcing exit after emergency cleanup")
+                os._exit(0)
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
