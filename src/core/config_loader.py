@@ -199,10 +199,12 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
 # Note: TTL is read once at module load time and cached for application lifetime
 try:
     _SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
-except ValueError:
+    if _SELECTORS_CACHE_TTL <= 0:
+        raise ValueError(f"SELECTORS_CACHE_TTL must be positive, got: {_SELECTORS_CACHE_TTL}")
+except ValueError as e:
     logger.warning(
         f"Invalid SELECTORS_CACHE_TTL value: {os.getenv('SELECTORS_CACHE_TTL')}. "
-        "Must be a positive integer (seconds). Using default: 60"
+        f"Must be a positive integer (seconds). Error: {e}. Using default: 60"
     )
     _SELECTORS_CACHE_TTL = 60
 _selectors_cache: Optional[Tuple[float, Dict[str, Dict[str, Any]]]] = None
