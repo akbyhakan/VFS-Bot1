@@ -51,19 +51,28 @@ RUN apt-get update && \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Create non-root user BEFORE copying dependencies
+RUN useradd -m -u 1000 vfsbot
 
-# Install Playwright Chromium only (dependencies already installed manually above)
-RUN playwright install chromium
+# Copy Python dependencies from builder to vfsbot's home
+COPY --from=builder /root/.local /home/vfsbot/.local
+
+# Set Python user base and update PATH
+ENV PYTHONUSERBASE=/home/vfsbot/.local
+ENV PATH=/home/vfsbot/.local/bin:$PATH
+
+# Set Playwright browsers path to vfsbot-accessible location
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/vfsbot/.cache/ms-playwright
+
+# Install Playwright Chromium and set ownership
+RUN python3 -m playwright install chromium && \
+    chown -R vfsbot:vfsbot /home/vfsbot/.local /home/vfsbot/.cache
 
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN useradd -m -u 1000 vfsbot && \
-    chown -R vfsbot:vfsbot /app
+# Set ownership of app directory
+RUN chown -R vfsbot:vfsbot /app
 
 # Create directories for logs and screenshots
 RUN mkdir -p /app/logs /app/screenshots && \
