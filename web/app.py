@@ -23,6 +23,7 @@ from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.models.db_factory import DatabaseFactory
 from src.services.otp_webhook_routes import router as otp_router
+from src.utils.log_sanitizer import sanitize_log_value
 from web.api_versioning import setup_versioned_routes
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
@@ -106,7 +107,10 @@ def get_validated_environment() -> str:
     """
     env = os.getenv("ENV", "production").lower()
     if env not in VALID_ENVIRONMENTS:
-        logger.warning(f"Unknown environment '{env}', defaulting to 'production' for security")
+        logger.warning(
+            f"Unknown environment '{sanitize_log_value(env, max_length=50)}', "
+            f"defaulting to 'production' for security"
+        )
         return "production"
     return env
 

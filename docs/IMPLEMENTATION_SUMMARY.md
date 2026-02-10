@@ -658,6 +658,119 @@ await page.select_option(self._centre_selector, label=centre)
 
 ---
 
+## G2: Log Injection Protection
+
+### Overview
+Implemented comprehensive log sanitization to prevent log injection attacks where malicious users could inject ANSI escape sequences, newlines, or control characters into log messages.
+
+### Problem
+In `web/app.py` line 109, the `env` value from environment variables was logged directly without sanitization:
+```python
+logger.warning(f"Unknown environment '{env}', defaulting to 'production' for security")
+```
+
+An attacker could inject malicious content via the `ENV` environment variable:
+- ANSI escape sequences for terminal manipulation: `\x1b[31m`
+- Newline characters for fake log entries: `\nFAKE ERROR: System compromised`
+- Control characters: `\x00`, `\x7f`
+
+### Solution Implemented
+
+**1. New Module: `src/utils/log_sanitizer.py`**
+- Created `sanitize_log_value(value, max_length=100)` function
+- Removes control characters, ANSI escape sequences, and newlines using regex
+- Truncates long values to prevent log flooding
+- Preserves normal Unicode characters (Turkish, emoji, etc.)
+- Handles None/empty values safely
+
+**2. Updated `web/app.py`**
+- Added import: `from src.utils.log_sanitizer import sanitize_log_value`
+- Updated line 109 to sanitize environment value before logging
+- Prevents log injection while maintaining log readability
+
+**3. Comprehensive Testing**
+- `tests/unit/test_log_sanitizer.py`: 10 tests covering all sanitization scenarios
+  - Normal values, ANSI escapes, newline injection, control characters
+  - Truncation, empty/None handling, Unicode safety
+  - Combined attack scenarios
+- `tests/unit/test_p0_p2_fixes.py`: Added test for environment validation with log sanitization
+
+### Files Modified
+- `src/utils/log_sanitizer.py` (new file, 60 lines)
+- `web/app.py` (2 lines changed)
+- `tests/unit/test_log_sanitizer.py` (new file, 158 lines)
+- `tests/unit/test_p0_p2_fixes.py` (27 lines added)
+
+### Test Results
+✅ All 10 log sanitizer tests passing
+✅ Environment validation test with sanitization passing
+
+---
+
+## G3: Secure Memory Wiping Enhancement
+
+### Overview
+Enhanced secure memory wiping for encryption keys by introducing a proper context manager that handles mutable bytearrays instead of creating ineffective copies of immutable strings.
+
+### Problem
+In `src/services/vfs_api_client.py`, the `_get_encryption_key()` method attempted to securely wipe keys but was ineffective:
+```python
+finally:
+    if key:
+        secure_zero_memory(bytearray(key.encode()))    # Creates new copy, original untouched
+    if key_bytes and len(key_bytes) <= 32:
+        secure_zero_memory(bytearray(key_bytes))       # Creates new copy, original untouched
+```
+
+The `bytearray()` constructor creates a **new copy**, so the original immutable strings remained in memory. The finally block was essentially dead code.
+
+### Solution Implemented
+
+**1. New Class: `SecureKeyContext` in `src/utils/secure_memory.py`**
+- Context manager for handling encryption keys securely
+- Converts key string to mutable bytearray immediately in `__enter__`
+- Clears string reference to allow garbage collection
+- Securely zeroes bytearray in `__exit__` using `secure_zero_memory()`
+- Cleanup guaranteed even on exceptions
+- Includes comprehensive docstring about Python limitations
+
+**2. Refactored `_get_encryption_key()` in `src/services/vfs_api_client.py`**
+- Replaced import from `secure_zero_memory` to `SecureKeyContext`
+- Removed old `key`, `key_bytes` variables
+- Removed ineffective finally block (dead code)
+- Cleaner, more secure implementation using context manager pattern
+- Key validation and SHA-256 derivation now work within secure context
+
+**3. Comprehensive Testing**
+- `tests/unit/test_secure_memory.py`: Added 6 new tests for `SecureKeyContext`
+  - Basic usage and bytearray return
+  - Memory zeroing on exit
+  - ValueError on None/empty input
+  - String reference clearing
+  - Exception cleanup guarantee
+
+### Files Modified
+- `src/utils/secure_memory.py` (58 lines added)
+- `src/services/vfs_api_client.py` (36 lines changed, simplified)
+- `tests/unit/test_secure_memory.py` (64 lines added)
+
+### Security Improvements
+✅ Keys stored as mutable bytearrays that can be zeroed
+✅ String references cleared to allow garbage collection
+✅ No dead code — old ineffective cleanup removed
+✅ Context manager guarantees cleanup on all exit paths
+✅ Documentation includes Python language limitations and production hardening advice
+
+### Test Results
+✅ All 18 secure memory tests passing (12 original + 6 new)
+
+### Documentation
+- Added Python limitation warnings in docstrings
+- Production hardening recommendations (ulimit -c 0, systemd LimitCORE=0)
+- Clear usage examples with AES encryption
+
+---
+
 ## Conclusion
 
 All P0, P1, and P2 issues have been successfully addressed with:
@@ -666,5 +779,11 @@ All P0, P1, and P2 issues have been successfully addressed with:
 - ✅ **0 security alerts**
 - ✅ **100% backward compatibility**
 - ✅ **Full documentation**
+
+**G2 & G3 Security Enhancements:**
+- ✅ **2/2 security fixes implemented** (Log Injection + Secure Memory)
+- ✅ **16/16 new tests passing** (10 log sanitizer + 6 secure key context)
+- ✅ **No dead code** — old ineffective cleanup removed
+- ✅ **Enhanced documentation** with security best practices
 
 The codebase is now more secure, performant, and reliable while maintaining complete backward compatibility with existing deployments.

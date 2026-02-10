@@ -7,10 +7,11 @@ This document outlines security best practices, configurations, and guidelines f
 1. [Content Security Policy (CSP)](#content-security-policy)
 2. [Payment Security](#payment-security)
 3. [Proxy Security](#proxy-security)
-4. [Secure Memory Handling](#secure-memory-handling)
-5. [Alert System](#alert-system)
-6. [Circuit Breaker](#circuit-breaker)
-7. [General Security Guidelines](#general-security-guidelines)
+4. [Log Sanitization](#log-sanitization)
+5. [Secure Memory Handling](#secure-memory-handling)
+6. [Alert System](#alert-system)
+7. [Circuit Breaker](#circuit-breaker)
+8. [General Security Guidelines](#general-security-guidelines)
 
 ---
 
@@ -206,24 +207,77 @@ logger.info(f"Using proxy: {safe_log}")
 
 ---
 
-### CVV Security (Payment)
+## Log Sanitization
 
-CVV codes are handled with special security measures:
+### Protection Against Log Injection
+
+VFS-Bot implements log sanitization to prevent log injection attacks. User-controlled values are sanitized before being written to logs to prevent:
+
+- **ANSI Escape Sequence Injection**: Attackers cannot inject color codes or terminal control sequences
+- **Newline Injection**: Prevents forging of fake log entries by injecting newline characters
+- **Control Character Injection**: Removes potentially harmful control characters
+
+### Usage
+
+Use the `sanitize_log_value()` function to sanitize any user-controlled data before logging:
 
 ```python
-from src.utils.secure_memory import SecureCVV
+from src.utils.log_sanitizer import sanitize_log_value
 
-# Use context manager for automatic memory cleanup
-with SecureCVV(cvv_input) as cvv:
-    # Use cvv securely
-    process_payment(cvv)
-# CVV is automatically cleared from memory
+# Sanitize environment variables
+env = os.getenv("ENV", "production")
+logger.warning(
+    f"Unknown environment '{sanitize_log_value(env, max_length=50)}', "
+    f"defaulting to 'production'"
+)
+
+# Sanitize user input
+user_input = request.form.get("username")
+logger.info(f"Login attempt for user: {sanitize_log_value(user_input)}")
 ```
 
-**Security guarantees:**
-- CVV exists only within the context manager
-- Memory is zeroed using `ctypes.memset`
-- No CVV is ever logged or stored
+### How It Works
+
+The `sanitize_log_value()` function:
+
+1. **Removes control characters**: NULL bytes, backspace, delete, etc.
+2. **Removes ANSI escape sequences**: Color codes like `\x1b[31m`
+3. **Removes newlines**: Both Unix (`\n`) and Windows (`\r\n`) style
+4. **Truncates long values**: Limits output to `max_length` (default: 100 characters)
+5. **Handles None/empty values**: Returns safe string representations
+
+**Example:**
+
+```python
+# Malicious input with ANSI and newline injection
+malicious = "\x1b[31mERROR\x1b[0m\nFAKE: Database deleted"
+
+# Sanitized output
+sanitized = sanitize_log_value(malicious)
+# Result: "ERRORFAKE: Database deleted"
+```
+
+### Best Practices
+
+1. **Always sanitize user input before logging** - Any value from external sources should be sanitized
+2. **Set appropriate max_length** - Use shorter limits for values like usernames (50), longer for messages (200)
+3. **Preserve Unicode characters** - Normal Unicode (Turkish, emoji, etc.) is safely preserved
+4. **Use for all untrusted sources** - Environment variables, HTTP headers, form data, API responses
+
+### What Gets Sanitized
+
+The sanitizer removes these patterns (regex):
+```
+\x1b\[[0-9;]*[a-zA-Z]  # ANSI escape sequences
+\r?\n                  # Newlines (Unix and Windows)
+[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]  # Control characters
+```
+
+### What's NOT Sanitized
+
+- Normal text and spaces
+- Unicode characters (Turkish: ğüşıöç, emoji: 🎉, etc.)
+- Punctuation and special characters (!, @, #, etc.)
 
 ---
 
@@ -261,12 +315,49 @@ with SecureCVV(user_input_cvv) as cvv:
 # cvv is automatically cleared from memory
 ```
 
+#### `SecureKeyContext` Context Manager
+
+Handles encryption keys securely in memory. This context manager converts the key string to a mutable bytearray immediately and zeroes it on exit, minimizing the window during which the key exists in cleartext memory:
+
+```python
+from src.utils.secure_memory import SecureKeyContext
+import os
+
+# Secure handling of encryption keys
+with SecureKeyContext(os.getenv("SECRET_KEY")) as key_bytes:
+    # key_bytes is a bytearray — use it for crypto operations
+    cipher = AES.new(bytes(key_bytes), AES.MODE_CBC, iv)
+    encrypted = cipher.encrypt(pad(data, AES.block_size))
+# key_bytes is now zeroed in memory
+```
+
+**Security Guarantees:**
+- Key is converted to mutable bytearray immediately
+- String reference is cleared to allow garbage collection
+- Memory is zeroed using `ctypes.memset` on context exit
+- Cleanup happens even if an exception occurs
+
+**IMPORTANT Python Limitations:**
+
+Due to Python language constraints, the original immutable string returned by `os.getenv()` cannot be zeroed and remains in memory until the garbage collector reclaims it. For maximum security in production:
+
+```bash
+# Disable core dumps to prevent key exposure in crash dumps
+ulimit -c 0
+
+# Or use systemd service configuration
+[Service]
+LimitCORE=0
+```
+
 ### Best Practices
 
-1. **Use context managers** for sensitive data
-2. **Never log sensitive data** - Use sanitized versions
+1. **Use context managers** for sensitive data (SecureCVV, SecureKeyContext)
+2. **Never log sensitive data** - Use sanitized versions (see [Log Sanitization](#log-sanitization))
 3. **Clear memory immediately** after use
 4. **Use secure_zero_memory** for bytearray/bytes cleanup
+5. **Disable core dumps** in production environments
+6. **Handle keys early** - Use SecureKeyContext immediately after reading environment variables
 
 ---
 
