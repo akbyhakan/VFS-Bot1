@@ -20,6 +20,10 @@ from src.core.security import APIKeyManager
 from loguru import logger
 
 
+# Configuration constants
+ROTATION_WARNING_THRESHOLD_DAYS = 60
+
+
 def check_key_ages():
     """Check and report the age of API keys."""
     print("\n=== API Key Age Check ===\n")
@@ -51,7 +55,7 @@ def check_key_ages():
                 age_days = (current_time - created).days
                 print(f"  Created: {created_str} ({age_days} days ago)")
                 
-                if age_days > 60:
+                if age_days > ROTATION_WARNING_THRESHOLD_DAYS:
                     warnings.append(f"⚠️  Key '{name}' is {age_days} days old (consider rotation)")
             except (ValueError, TypeError):
                 print(f"  Created: {created_str} (invalid format)")
