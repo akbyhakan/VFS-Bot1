@@ -2,10 +2,9 @@
 
 import hashlib
 import hmac
-import logging
 import time
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def verify_webhook_signature(

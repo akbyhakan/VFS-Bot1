@@ -1,13 +1,11 @@
 """Bypass Canvas, WebGL, and Audio Context fingerprinting."""
 
-import logging
 import random
 from dataclasses import dataclass
 from typing import Optional
 
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

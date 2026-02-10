@@ -1,7 +1,6 @@
 """JWT-based authentication for API endpoints."""
 
 import asyncio
-import logging
 import os
 import re
 import threading
@@ -15,12 +14,11 @@ from typing import Any, Dict, NamedTuple, Optional, cast
 from fastapi import HTTPException, status
 import jwt
 from jwt.exceptions import InvalidTokenError as JWTError
+from loguru import logger
 
 from ..constants import RateLimits
 from ..core.exceptions import ValidationError
 from ..utils.masking import _mask_database_url
-
-logger = logging.getLogger(__name__)
 
 # Supported JWT algorithms whitelist
 SUPPORTED_JWT_ALGORITHMS = frozenset({

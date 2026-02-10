@@ -1,10 +1,9 @@
 """Startup security validator - prevents running with insecure defaults."""
 
-import logging
 import os
 from typing import List
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # Known dangerous default values that should never be used in production
 # These are exact placeholder values from .env.example

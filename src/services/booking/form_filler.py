@@ -1,16 +1,14 @@
 """Form filling utilities for VFS booking system."""
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...core.exceptions import SelectorNotFoundError
 from .selector_utils import resolve_selector, try_selectors, get_selector
-
-logger = logging.getLogger(__name__)
 
 
 class FormFiller:

@@ -4,15 +4,15 @@ Startup validation module.
 Handles environment validation and critical dependency verification at startup.
 """
 
-import logging
 import os
+
+from loguru import logger
 
 from .exceptions import ConfigurationError
 
 
 def validate_environment():
     """Validate all required environment variables at startup."""
-    logger = logging.getLogger(__name__)
     env = os.getenv("ENV", "production").lower()
 
     # Always required
@@ -54,7 +54,6 @@ def validate_environment():
 
 def verify_critical_dependencies():
     """Verify all critical dependencies are installed."""
-    logger = logging.getLogger(__name__)
     missing = []
 
     try:

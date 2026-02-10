@@ -5,9 +5,10 @@ Handles different run modes: bot-only, web-only, and both.
 """
 
 import asyncio
-import logging
 import os
 from typing import Optional
+
+from loguru import logger
 
 from src.core.bot_controller import BotController
 from src.core.exceptions import ShutdownTimeoutError
@@ -30,7 +31,6 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
         config: Configuration dictionary
         db: Optional shared database instance
     """
-    logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in automated mode...")
 
     # Create shutdown event
@@ -126,7 +126,6 @@ async def run_web_mode(
         start_cleanup: Whether to start the cleanup service (default True)
         db: Optional shared database instance
     """
-    logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot with web dashboard...")
 
     import uvicorn
@@ -185,7 +184,6 @@ async def run_both_mode(config: dict) -> None:
     Args:
         config: Configuration dictionary
     """
-    logger = logging.getLogger(__name__)
     logger.info("Starting VFS-Bot in combined mode (bot + web)...")
 
     # Initialize shared database instance for both modes

@@ -1,15 +1,14 @@
 """Rate limiting for API requests."""
 
 import asyncio
-import logging
 import threading
 import time
 from collections import deque
 from typing import Optional
 
-from ...constants import RateLimitDefaults
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from ...constants import RateLimitDefaults
 
 
 class RateLimiter:

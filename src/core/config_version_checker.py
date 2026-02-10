@@ -1,11 +1,10 @@
 """Configuration version compatibility checking."""
 
-import logging
 from typing import Any, Dict, Final
 
-from src.core.exceptions import ConfigurationError
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from src.core.exceptions import ConfigurationError
 
 # Current configuration schema version
 CURRENT_CONFIG_VERSION: Final[str] = "2.0"

@@ -1,13 +1,12 @@
 """Per-endpoint rate limiting for VFS API calls."""
 
 import asyncio
-import logging
 import time
 from typing import Dict, Optional
 
-from .rate_limiter import RateLimiter
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from .rate_limiter import RateLimiter
 
 
 class EndpointRateLimiter:
