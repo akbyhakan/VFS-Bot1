@@ -21,6 +21,21 @@ CRITICAL_ENV_VARS: frozenset[str] = frozenset({
     "DATABASE_URL",
 })
 
+# Sensitive configuration keys to mask in logs
+SENSITIVE_CONFIG_KEYS: frozenset[str] = frozenset({
+    "database_url",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "encryption_key",
+    "vfs_encryption_key",
+    "api_secret_key",
+    "bearer",
+    "auth",
+    "credential",
+})
+
 
 def _get_environment() -> str:
     """
@@ -114,6 +129,46 @@ def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = Non
         return [substitute_env_vars(item, _env, _is_production) for item in value]
     else:
         return value
+
+
+def _safe_config_summary(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a safe version of config dict with sensitive values masked for logging.
+    
+    This is a defense-in-depth measure to prevent accidental logging of secrets.
+    Uses SENSITIVE_CONFIG_KEYS set to identify sensitive fields.
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        New dictionary with sensitive values masked as "[REDACTED]"
+    """
+    if not isinstance(config, dict):
+        return config
+    
+    safe_config: Dict[str, Any] = {}
+    for key, value in config.items():
+        key_lower = key.lower()
+        
+        # Check if key contains any sensitive pattern
+        is_sensitive = any(pattern in key_lower for pattern in SENSITIVE_CONFIG_KEYS)
+        
+        if is_sensitive:
+            safe_config[key] = "[REDACTED]"
+        elif isinstance(value, dict):
+            # Recursively mask nested dictionaries
+            safe_config[key] = _safe_config_summary(value)
+        elif isinstance(value, list):
+            # Mask list items if they're dicts
+            safe_config[key] = [
+                _safe_config_summary(item) if isinstance(item, dict) else item 
+                for item in value
+            ]
+        else:
+            safe_config[key] = value
+    
+    return safe_config
 
 
 def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:

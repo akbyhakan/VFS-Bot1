@@ -1,12 +1,12 @@
 """VFS Bot orchestrator - coordinates all bot components."""
 
 import asyncio
-import logging
 import os
 import random
 import time
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import CircuitBreaker as CircuitBreakerConfig, Intervals, RateLimits, Timeouts
@@ -18,8 +18,6 @@ from ..notification import NotificationService
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .service_context import BotServiceContext, BotServiceFactory
-
-logger = logging.getLogger(__name__)
 
 
 class VFSBot:
