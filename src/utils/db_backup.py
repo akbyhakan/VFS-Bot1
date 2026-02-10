@@ -7,11 +7,13 @@ using pg_dump and pg_restore for online (hot) backups.
 import asyncio
 import os
 import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
+from cryptography.fernet import Fernet
 from loguru import logger
 
 from src.utils.masking import _mask_database_url
@@ -56,6 +58,93 @@ class DatabaseBackup:
             f"(retention: {retention_days}d, interval: {interval_hours}h)"
         )
 
+    def _get_encryption_key(self) -> bytes:
+        """
+        Get encryption key for backups.
+        
+        Reads from BACKUP_ENCRYPTION_KEY env var first, falls back to ENCRYPTION_KEY.
+        
+        Returns:
+            Fernet encryption key as bytes
+            
+        Raises:
+            ValueError: If no encryption key is available
+        """
+        key = os.getenv("BACKUP_ENCRYPTION_KEY") or os.getenv("ENCRYPTION_KEY")
+        if not key:
+            raise ValueError(
+                "Backup encryption requires BACKUP_ENCRYPTION_KEY or ENCRYPTION_KEY environment variable. "
+                'Generate one with: python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"'
+            )
+        return key.encode() if isinstance(key, str) else key
+    
+    def _encrypt_file(self, plain_path: Path, encrypted_path: Path) -> None:
+        """
+        Encrypt a file using Fernet encryption.
+        
+        Args:
+            plain_path: Path to plain text file
+            encrypted_path: Path to encrypted output file
+            
+        Raises:
+            Exception: If encryption fails
+        """
+        try:
+            key = self._get_encryption_key()
+            cipher = Fernet(key)
+            
+            # Read plain file
+            with open(plain_path, 'rb') as f:
+                plain_data = f.read()
+            
+            # Encrypt
+            encrypted_data = cipher.encrypt(plain_data)
+            
+            # Write encrypted file
+            with open(encrypted_path, 'wb') as f:
+                f.write(encrypted_data)
+            
+            # Set restrictive permissions (Unix only)
+            try:
+                os.chmod(encrypted_path, 0o600)
+            except (OSError, AttributeError):
+                pass  # Skip on Windows or if chmod fails
+                
+        except Exception as e:
+            logger.error(f"File encryption failed: {e}", exc_info=True)
+            raise
+    
+    def _decrypt_file(self, encrypted_path: Path, plain_path: Path) -> None:
+        """
+        Decrypt a file using Fernet encryption.
+        
+        Args:
+            encrypted_path: Path to encrypted file
+            plain_path: Path to decrypted output file
+            
+        Raises:
+            Exception: If decryption fails
+        """
+        try:
+            key = self._get_encryption_key()
+            cipher = Fernet(key)
+            
+            # Read encrypted file
+            with open(encrypted_path, 'rb') as f:
+                encrypted_data = f.read()
+            
+            # Decrypt
+            plain_data = cipher.decrypt(encrypted_data)
+            
+            # Write plain file
+            with open(plain_path, 'wb') as f:
+                f.write(plain_data)
+                
+        except Exception as e:
+            logger.error(f"File decryption failed: {e}", exc_info=True)
+            raise
+
     def _generate_backup_path(self) -> Path:
         """
         Generate timestamped backup file path.
@@ -64,7 +153,7 @@ class DatabaseBackup:
             Path object for new backup file
         """
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        filename = f"vfs_bot_backup_{timestamp}.sql"
+        filename = f"vfs_bot_backup_{timestamp}.sql.enc"
         return self._backup_dir / filename
 
     async def create_backup(self) -> str:
@@ -72,6 +161,7 @@ class DatabaseBackup:
         Create a backup of the database.
 
         Uses pg_dump for online backup without locking the database.
+        Encrypts the backup file using Fernet encryption.
 
         Returns:
             Path to created backup file
@@ -80,25 +170,34 @@ class DatabaseBackup:
             Exception: On backup failure
         """
         backup_path = self._generate_backup_path()
+        temp_sql_path = backup_path.with_suffix('.sql')  # Temporary unencrypted file
 
         logger.info(f"Creating database backup: {backup_path}")
 
         try:
-            # Run pg_dump asynchronously
-            await self._perform_backup(self._database_url, str(backup_path))
+            # Run pg_dump to temporary SQL file
+            await self._perform_backup(self._database_url, str(temp_sql_path))
 
-            # Verify backup was created
-            if not backup_path.exists():
+            # Verify temp backup was created
+            if not temp_sql_path.exists():
                 raise Exception("Backup file was not created")
 
+            # Encrypt the backup file
+            self._encrypt_file(temp_sql_path, backup_path)
+            
+            # Securely delete the temporary plain SQL file
+            temp_sql_path.unlink()
+            
             backup_size = backup_path.stat().st_size
-            logger.info(f"Backup created successfully: {backup_path} ({backup_size:,} bytes)")
+            logger.info(f"Backup created and encrypted successfully: {backup_path} ({backup_size:,} bytes)")
 
             return str(backup_path)
 
         except Exception as e:
             logger.error(f"Backup failed: {e}", exc_info=True)
-            # Clean up partial backup if it exists
+            # Clean up partial files if they exist
+            if temp_sql_path.exists():
+                temp_sql_path.unlink()
             if backup_path.exists():
                 backup_path.unlink()
             raise
@@ -154,6 +253,8 @@ class DatabaseBackup:
     async def cleanup_old_backups(self) -> int:
         """
         Remove backups older than retention period.
+        
+        Handles both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Returns:
             Number of backups deleted
@@ -167,14 +268,16 @@ class DatabaseBackup:
         logger.debug(f"Cleaning up backups older than {self._retention_days} days")
 
         try:
-            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.sql"):
-                # Get file modification time
-                mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc)
+            # Check both encrypted and legacy unencrypted backups
+            for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
+                for backup_file in self._backup_dir.glob(pattern):
+                    # Get file modification time
+                    mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc)
 
-                if mtime < cutoff_time:
-                    logger.info(f"Deleting old backup: {backup_file} (age: {datetime.now(timezone.utc) - mtime})")
-                    backup_file.unlink()
-                    deleted_count += 1
+                    if mtime < cutoff_time:
+                        logger.info(f"Deleting old backup: {backup_file} (age: {datetime.now(timezone.utc) - mtime})")
+                        backup_file.unlink()
+                        deleted_count += 1
 
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} old backup(s)")
@@ -241,6 +344,8 @@ class DatabaseBackup:
     async def restore_from_backup(self, backup_path: str) -> bool:
         """
         Restore database from backup file.
+        
+        Supports both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Args:
             backup_path: Path to backup file
@@ -258,13 +363,26 @@ class DatabaseBackup:
 
         logger.warning(f"Restoring database from backup: {backup_path}")
 
+        temp_sql_path = None
         try:
             # Create a backup of current database before restoring
             logger.info("Creating safety backup of current DB before restore")
             await self.create_backup()
 
+            # Check if this is an encrypted backup
+            is_encrypted = backup_file.suffix == '.enc'
+            
+            if is_encrypted:
+                # Decrypt to temporary file
+                temp_sql_path = Path(tempfile.mktemp(suffix='.sql', dir=self._backup_dir))
+                self._decrypt_file(backup_file, temp_sql_path)
+                restore_path = str(temp_sql_path)
+            else:
+                # Use unencrypted backup directly
+                restore_path = str(backup_file)
+
             # Restore from backup using psql
-            await self._perform_restore(str(backup_file), self._database_url)
+            await self._perform_restore(restore_path, self._database_url)
 
             logger.info("Database restore completed successfully")
             return True
@@ -272,6 +390,11 @@ class DatabaseBackup:
         except Exception as e:
             logger.error(f"Database restore failed: {e}", exc_info=True)
             return False
+        finally:
+            # Clean up temporary decrypted file
+            if temp_sql_path and temp_sql_path.exists():
+                temp_sql_path.unlink()
+                logger.debug(f"Cleaned up temporary restore file: {temp_sql_path}")
 
     async def _perform_restore(self, backup_path: str, database_url: str) -> None:
         """
@@ -324,6 +447,8 @@ class DatabaseBackup:
     async def list_backups(self) -> List[Dict[str, Any]]:
         """
         List available backups with metadata.
+        
+        Supports both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Returns:
             List of backup info dictionaries
@@ -334,10 +459,16 @@ class DatabaseBackup:
             return backups
 
         try:
-            for backup_file in sorted(
-                self._backup_dir.glob("vfs_bot_backup_*.sql"), key=lambda p: p.stat().st_mtime, reverse=True
-            ):
+            # Collect both encrypted and legacy backups
+            all_backups = []
+            for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
+                all_backups.extend(self._backup_dir.glob(pattern))
+            
+            # Sort by modification time (newest first)
+            for backup_file in sorted(all_backups, key=lambda p: p.stat().st_mtime, reverse=True):
                 stat = backup_file.stat()
+                is_encrypted = backup_file.suffix == '.enc'
+                
                 backups.append(
                     {
                         "path": str(backup_file),
@@ -348,6 +479,7 @@ class DatabaseBackup:
                             datetime.now(timezone.utc)
                             - datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
                         ).days,
+                        "encrypted": is_encrypted,
                     }
                 )
 
@@ -368,10 +500,12 @@ class DatabaseBackup:
         total_size = 0
 
         if self._backup_dir.exists():
-            for backup_file in self._backup_dir.glob("vfs_bot_backup_*.sql"):
-                size = backup_file.stat().st_size
-                backups.append(backup_file.name)
-                total_size += size
+            # Collect both encrypted and legacy backups
+            for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
+                for backup_file in self._backup_dir.glob(pattern):
+                    size = backup_file.stat().st_size
+                    backups.append(backup_file.name)
+                    total_size += size
 
         return {
             "database_url": _mask_database_url(self._database_url),
@@ -382,6 +516,7 @@ class DatabaseBackup:
             "backup_count": len(backups),
             "total_backup_size_bytes": total_size,
             "latest_backup": backups[0] if backups else None,
+            "encryption_enabled": True,
         }
 
 

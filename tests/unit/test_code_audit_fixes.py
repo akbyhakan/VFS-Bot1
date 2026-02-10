@@ -245,6 +245,11 @@ class TestDatabaseBackupAutoStart:
             backup_service = DatabaseBackup(database_url=test_db_url, backup_dir=backup_dir)
             assert backup_service is not None
             assert backup_service._database_url == test_db_url
+            
+            # Verify encryption methods exist
+            assert hasattr(backup_service, '_get_encryption_key')
+            assert hasattr(backup_service, '_encrypt_file')
+            assert hasattr(backup_service, '_decrypt_file')
 
 
 class TestPreMigrationBackup:
@@ -256,6 +261,12 @@ class TestPreMigrationBackup:
         from src.utils.db_backup_util import DatabaseBackup
 
         assert DatabaseBackup is not None
+        
+        # Verify encryption methods exist
+        backup_util = DatabaseBackup()
+        assert hasattr(backup_util, '_get_encryption_key')
+        assert hasattr(backup_util, '_encrypt_file')
+        assert hasattr(backup_util, '_decrypt_file')
 
     @pytest.mark.asyncio
     @pytest.mark.integration
