@@ -137,46 +137,32 @@ class VFSPasswordEncryption:
         Raises:
             ConfigurationError: If VFS_ENCRYPTION_KEY is not set or invalid
         """
-        from ..utils.secure_memory import secure_zero_memory
+        from ..utils.secure_memory import SecureKeyContext
 
-        key = os.getenv("VFS_ENCRYPTION_KEY")
-        if not key:
+        key_str = os.getenv("VFS_ENCRYPTION_KEY")
+        if not key_str:
             raise ConfigurationError(
                 "VFS_ENCRYPTION_KEY environment variable must be set. "
                 "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
 
-        key_bytes = None
-        try:
-            key_bytes = key.encode("utf-8")
-
-            # Enforce minimum 32 bytes for security
-            if len(key_bytes) < 32:
+        with SecureKeyContext(key_str) as key_buf:
+            if len(key_buf) < 32:
                 raise ConfigurationError(
-                    f"VFS_ENCRYPTION_KEY must be at least 32 bytes (current: {len(key_bytes)}). "
+                    f"VFS_ENCRYPTION_KEY must be at least 32 bytes (current: {len(key_buf)}). "
                     "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
                 )
 
-            # Warn and derive key if longer than 32 bytes
-            if len(key_bytes) > 32:
+            if len(key_buf) > 32:
                 logger.warning(
-                    f"VFS_ENCRYPTION_KEY is {len(key_bytes)} bytes, "
+                    f"VFS_ENCRYPTION_KEY is {len(key_buf)} bytes, "
                     f"deriving 32-byte key using SHA-256 for consistency"
                 )
-                derived_key = hashlib.sha256(key_bytes).digest()
-                # Securely zero original key from memory
-                secure_zero_memory(bytearray(key_bytes))
-                return derived_key
+                derived = hashlib.sha256(bytes(key_buf)).digest()
+                return derived
 
-            # Use first 32 bytes for AES-256
-            result = key_bytes[:32]
-            return result
-        finally:
-            # Securely zero the key from memory
-            if key:
-                secure_zero_memory(bytearray(key.encode()))
-            if key_bytes and len(key_bytes) <= 32:
-                secure_zero_memory(bytearray(key_bytes))
+            return bytes(key_buf[:32])
+        # key_buf is securely zeroed here by SecureKeyContext.__exit__
 
     @classmethod
     def encrypt(cls, password: str) -> str:

@@ -4,7 +4,7 @@
 import pytest
 
 
-from src.utils.secure_memory import SecureCVV, secure_zero_memory
+from src.utils.secure_memory import SecureCVV, SecureKeyContext, secure_zero_memory
 
 
 def test_secure_zero_memory_with_bytearray():
@@ -116,3 +116,74 @@ def test_secure_cvv_whitespace():
 
     with SecureCVV(cvv_input) as cvv:
         assert cvv == cvv_input
+
+
+def test_secure_key_context_basic():
+    """Test SecureKeyContext basic usage."""
+    key_str = "test_secret_key_12345678901234567890"
+    
+    with SecureKeyContext(key_str) as key_bytes:
+        # Should return a bytearray
+        assert isinstance(key_bytes, bytearray)
+        # Should contain the encoded key
+        assert bytes(key_bytes) == key_str.encode("utf-8")
+
+
+def test_secure_key_context_zeroes_on_exit():
+    """Test SecureKeyContext zeroes data on exit."""
+    key_str = "test_secret_key_12345678901234567890"
+    
+    ctx = SecureKeyContext(key_str)
+    with ctx as key_bytes:
+        # Data should be populated
+        assert len(key_bytes) > 0
+        assert bytes(key_bytes) == key_str.encode("utf-8")
+    
+    # After exit, _data should be an empty bytearray
+    assert ctx._data == bytearray()
+
+
+def test_secure_key_context_none_raises():
+    """Test SecureKeyContext raises ValueError for None input."""
+    with pytest.raises(ValueError, match="Key string is None or empty"):
+        with SecureKeyContext(None) as key_bytes:
+            pass
+
+
+def test_secure_key_context_empty_raises():
+    """Test SecureKeyContext raises ValueError for empty string input."""
+    with pytest.raises(ValueError, match="Key string is None or empty"):
+        with SecureKeyContext("") as key_bytes:
+            pass
+
+
+def test_secure_key_context_clears_str_reference():
+    """Test SecureKeyContext clears string reference after __enter__."""
+    key_str = "test_secret_key_12345678901234567890"
+    
+    ctx = SecureKeyContext(key_str)
+    assert ctx._key_str == key_str  # Initially set
+    
+    with ctx as key_bytes:
+        # After entering, string reference should be cleared
+        assert ctx._key_str is None
+        assert isinstance(key_bytes, bytearray)
+
+
+def test_secure_key_context_exception_cleanup():
+    """Test SecureKeyContext cleans up even when exception occurs."""
+    key_str = "test_secret_key_12345678901234567890"
+    
+    ctx = SecureKeyContext(key_str)
+    
+    try:
+        with ctx as key_bytes:
+            assert len(key_bytes) > 0
+            # Simulate an exception
+            raise ValueError("Test exception")
+    except ValueError:
+        pass
+    
+    # Should still clean up after exception
+    assert ctx._data == bytearray()
+
