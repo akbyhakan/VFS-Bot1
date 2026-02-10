@@ -6,13 +6,16 @@ from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 def mask_database_url(url: str) -> str:
     """
-    Mask sensitive information in database URLs for safe logging.
+    Mask sensitive information in connection URLs for safe logging.
     
     Masks both credentials in the netloc (user:password@host) and
     sensitive query parameters like password, sslpassword, tokens, etc.
     
+    This function works with any connection URL (database, Redis, etc.)
+    that may contain sensitive credentials.
+    
     Args:
-        url: Database URL potentially containing credentials
+        url: Connection URL potentially containing credentials
         
     Returns:
         Masked URL safe for logging
@@ -22,6 +25,8 @@ def mask_database_url(url: str) -> str:
         'postgresql://***:***@localhost:5432/mydb'
         >>> mask_database_url("postgresql://user:pass@localhost/db?password=secret&sslmode=require")
         'postgresql://***:***@localhost/db?password=***&sslmode=require'
+        >>> mask_database_url("redis://user:pass@localhost:6379")
+        'redis://***:***@localhost:6379'
         >>> mask_database_url("sqlite:///path/to/db.sqlite")
         'sqlite://***'
         >>> mask_database_url("invalid-url")
@@ -52,7 +57,7 @@ def mask_database_url(url: str) -> str:
         # Mask sensitive query parameters
         masked_query = parsed.query
         if parsed.query:
-            # Sensitive parameter names to mask
+            # Sensitive parameter names to mask (lowercase for case-insensitive matching)
             sensitive_params = {
                 'password', 'sslpassword', 'sslkey', 'sslcert', 'sslrootcert',
                 'secret', 'token', 'api_key', 'apikey', 'access_key', 'auth'
@@ -61,9 +66,10 @@ def mask_database_url(url: str) -> str:
             # Parse query string
             params = parse_qs(parsed.query, keep_blank_values=True)
             
-            # Mask sensitive parameters
+            # Mask sensitive parameters (optimized with set membership check)
             for key in params:
-                if any(sensitive in key.lower() for sensitive in sensitive_params):
+                key_lower = key.lower()
+                if any(sensitive in key_lower for sensitive in sensitive_params):
                     params[key] = ['***'] * len(params[key])
             
             # Rebuild query string without URL-encoding the asterisks
