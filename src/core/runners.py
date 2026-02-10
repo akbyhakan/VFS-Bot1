@@ -125,7 +125,8 @@ async def run_web_mode(
         config: Configuration dictionary
         start_cleanup: Whether to start the cleanup service (default True)
         db: Optional shared database instance
-        skip_shutdown: Whether to skip graceful shutdown (default False)
+        skip_shutdown: Whether to skip graceful shutdown and full cleanup,
+            delegating it to the caller (used by run_both_mode). Default False.
     """
     logger.info("Starting VFS-Bot with web dashboard...")
 
@@ -158,25 +159,42 @@ async def run_web_mode(
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
-        # Graceful shutdown with timeout protection (skip if called from run_both_mode)
         if not skip_shutdown:
+            # Full shutdown path (standalone web mode)
             try:
                 loop = asyncio.get_running_loop()
                 await graceful_shutdown_with_timeout(loop, db, None)
             except ShutdownTimeoutError as e:
                 logger.error(f"Shutdown timeout: {e}")
-                # Continue with cleanup anyway
             except Exception as e:
                 logger.error(f"Error during graceful shutdown: {e}")
 
-        # Safe cleanup of all resources
-        await safe_shutdown_cleanup(
-            db=db,
-            db_owned=db_owned,
-            cleanup_service=cleanup_service,
-            cleanup_task=cleanup_task,
-        )
-        logger.info("Web mode shutdown complete")
+            # Safe cleanup of all resources
+            await safe_shutdown_cleanup(
+                db=db,
+                db_owned=db_owned,
+                cleanup_service=cleanup_service,
+                cleanup_task=cleanup_task,
+            )
+            logger.info("Web mode shutdown complete")
+        else:
+            # Delegated shutdown path (called from run_both_mode)
+            # Only stop local resources; full cleanup is handled by caller
+            if cleanup_task:
+                try:
+                    cleanup_task.cancel()
+                    await cleanup_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    logger.error(f"Error cancelling cleanup task: {e}")
+            if cleanup_service is not None:
+                try:
+                    cleanup_service.stop()
+                    logger.info("Cleanup service stopped")
+                except Exception as e:
+                    logger.error(f"Error stopping cleanup service: {e}")
+            logger.info("Web mode exited (shutdown delegated to caller)")
 
 
 async def run_both_mode(config: dict) -> None:
