@@ -1,6 +1,6 @@
 """Utility functions module."""
 
-from .selectors import CountryAwareSelectorManager, get_selector_manager
+from src.selector import CountryAwareSelectorManager, get_selector_manager
 
 __all__ = [
     "CountryAwareSelectorManager",
