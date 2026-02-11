@@ -1,12 +1,10 @@
 """Captcha solving module using 2Captcha service."""
 
 import asyncio
-import logging
 from typing import Any, Optional
 
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 # Maximum manual timeout limit (5 minutes)
 MAX_MANUAL_TIMEOUT = 300

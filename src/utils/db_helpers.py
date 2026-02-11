@@ -1,12 +1,10 @@
 """Database batch operations helpers for improved performance."""
 
-import logging
 import re
 from typing import Any, Awaitable, Callable, Dict, List, TypeVar
 
 import asyncpg
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 T = TypeVar("T")
 

@@ -1,11 +1,11 @@
 """Global error handling middleware for VFS-Bot web application."""
 
-import logging
 import traceback
 from typing import Callable, cast
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.exceptions import (
@@ -15,8 +15,6 @@ from src.core.exceptions import (
     ValidationError,
     VFSBotError,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):

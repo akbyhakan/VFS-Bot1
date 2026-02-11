@@ -1,15 +1,13 @@
 """Payment processing service for VFS appointment booking."""
 
 import asyncio
-import logging
 import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class PaymentMethod(Enum):

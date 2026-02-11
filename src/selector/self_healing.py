@@ -1,15 +1,13 @@
 """Advanced selector self-healing system."""
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import yaml
+from loguru import logger
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class SelectorSelfHealing:
