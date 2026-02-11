@@ -4,12 +4,11 @@ This module provides utilities for extracting OTP codes from text,
 including HTML parsing and regex-based pattern matching.
 """
 
-import logging
 import re
 from html.parser import HTMLParser
 from typing import List, Optional, Pattern
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class HTMLTextExtractor(HTMLParser):

@@ -1,50 +1,17 @@
 """User repository implementation."""
 
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
+
+from src.core.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_USER_UPDATE_FIELDS
 from src.core.exceptions import BatchOperationError, RecordNotFoundError, ValidationError
 from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.db_helpers import _parse_command_tag
 from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.validators import validate_email, validate_phone
-
-logger = logging.getLogger(__name__)
-
-# Allowed fields for personal_details table (SQL injection prevention)
-ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
-    {
-        "first_name",
-        "last_name",
-        "passport_number",
-        "passport_expiry",
-        "gender",
-        "mobile_code",
-        "mobile_number",
-        "email",
-        "nationality",
-        "date_of_birth",
-        "address_line1",
-        "address_line2",
-        "state",
-        "city",
-        "postcode",
-    }
-)
-
-# Allowed fields for users table update (SQL injection prevention)
-ALLOWED_USER_UPDATE_FIELDS = frozenset(
-    {
-        "email",
-        "password",
-        "centre",
-        "category",
-        "subcategory",
-        "active",
-    }
-)
 
 
 class User:

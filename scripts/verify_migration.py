@@ -33,6 +33,16 @@ FULLY_MIGRATED = [
     "src/services/otp_manager/session_registry.py",
     "src/selector/watcher.py",
     "src/core/config_validator.py",
+    # Problem 4.3: Loguru migration (9 files)
+    "src/repositories/user_repository.py",
+    "web/routes/users.py",
+    "web/routes/health.py",
+    "src/middleware/error_handler.py",
+    "src/utils/db_helpers.py",
+    "src/services/payment_service.py",
+    "src/selector/self_healing.py",
+    "src/services/captcha_solver.py",
+    "src/services/otp_manager/pattern_matcher.py",
 ]
 
 # Files with special handling

@@ -14,8 +14,9 @@ import pytest
 from cryptography.fernet import Fernet
 
 from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
+from src.core.constants import ALLOWED_PERSONAL_DETAILS_FIELDS
 from src.core.security import APIKeyManager
-from src.models.database import ALLOWED_PERSONAL_DETAILS_FIELDS, Database
+from src.models.database import Database
 from src.utils.encryption import reset_encryption
 from web.dependencies import ThreadSafeBotState
 

@@ -1,6 +1,5 @@
 """Health check and metrics routes for VFS-Bot web application."""
 
-import logging
 import os
 import sys
 import time
@@ -9,10 +8,9 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Response
 from fastapi.responses import PlainTextResponse
+from loguru import logger
 
 from web.dependencies import bot_state, metrics
-
-logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 

@@ -1,10 +1,10 @@
 """Type definitions for VFS-Bot.
 
-This module exports TypedDict definitions for configuration objects
-to improve type safety across the application.
+This module re-exports Pydantic configuration models from src.core.config_models
+for backward compatibility. New code should import directly from src.core.config_models.
 """
 
-from .config import (
+from src.core.config_models import (
     AntiDetectionConfig,
     AppConfig,
     BotConfig,

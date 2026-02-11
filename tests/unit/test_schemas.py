@@ -5,13 +5,11 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-
+from src.core.config_models import BotConfig, NotificationConfig
 from src.core.enums import AppointmentStatus
 from src.models.schemas import (
     AppointmentCreate,
     AppointmentResponse,
-    BotConfig,
-    NotificationConfig,
     UserCreate,
     UserResponse,
 )
@@ -101,9 +99,9 @@ def test_bot_config_defaults():
     """Test BotConfig with default values."""
     config = BotConfig()
 
-    assert config.check_interval == 60
+    assert config.check_interval == 30  # Updated default from config_models
     assert config.max_retries == 3
-    assert config.headless is True
+    assert config.headless is False  # Updated default from config_models
     assert config.auto_book is False
 
 

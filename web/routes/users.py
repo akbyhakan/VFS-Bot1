@@ -2,17 +2,15 @@
 
 import csv
 import io
-import logging
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from loguru import logger
 
 from src.core.exceptions import ValidationError
 from src.repositories import UserRepository
 from web.dependencies import get_user_repository, verify_jwt_token
 from web.models.users import UserCreateRequest, UserModel, UserUpdateRequest
-
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
