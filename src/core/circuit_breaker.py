@@ -43,7 +43,6 @@ Example:
 """
 
 import asyncio
-import logging
 import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -51,7 +50,7 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Awaitable, Callable, Optional, Type, TypeVar
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 T = TypeVar("T")
 

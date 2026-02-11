@@ -8,6 +8,7 @@ import os
 
 from loguru import logger
 
+from .environment import Environment
 from .exceptions import ConfigurationError
 
 
