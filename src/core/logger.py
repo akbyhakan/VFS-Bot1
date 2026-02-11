@@ -140,8 +140,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     # Error file - separate error logs
     # Determine if environment is development to control diagnose mode
     # Match the same logic as config_loader._is_production_environment
-    env = os.getenv("ENV", "production").lower()
-    is_dev = env in ("development", "dev", "local", "test", "testing")
+    is_dev = Environment.is_development()
     logger.add(
         logs_dir / "errors_{time:YYYY-MM-DD}.log",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}",

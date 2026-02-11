@@ -13,7 +13,7 @@ from .exceptions import ConfigurationError
 
 def validate_environment():
     """Validate all required environment variables at startup."""
-    env = os.getenv("ENV", "production").lower()
+    env = Environment.current()
 
     # Always required
     required_vars = ["ENCRYPTION_KEY"]
@@ -27,7 +27,7 @@ def validate_environment():
 
     missing = [var for var in required_vars if not os.getenv(var)]
 
-    if env == "production":
+    if Environment.is_production():
         missing.extend([var for var in production_required if not os.getenv(var)])
 
     if missing:

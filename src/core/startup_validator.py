@@ -5,6 +5,8 @@ from typing import List
 
 from loguru import logger
 
+from src.core.environment import Environment
+
 # Known dangerous default values that should never be used in production
 # These are exact placeholder values from .env.example
 DANGEROUS_DEFAULTS = frozenset({
@@ -26,10 +28,10 @@ def validate_production_security() -> List[str]:
     Returns:
         List of warning messages for insecure configurations
     """
-    env = os.getenv("ENV", "production").lower()
+    env = Environment.current()
     warnings: List[str] = []
 
-    if env not in ("production", "staging"):
+    if not Environment.is_production_or_staging():
         return warnings
 
     # Check admin username
@@ -134,7 +136,7 @@ def log_security_warnings(strict: bool = False) -> bool:
     Raises:
         SystemExit: If strict=True and warnings exist in production/staging
     """
-    env = os.getenv("ENV", "production").lower()
+    env = Environment.current()
     warnings = validate_production_security()
 
     if not warnings:
@@ -142,7 +144,7 @@ def log_security_warnings(strict: bool = False) -> bool:
         return True
 
     # In strict mode with production/staging, use critical logging
-    log_func = logger.critical if (strict and env in ("production", "staging")) else logger.warning
+    log_func = logger.critical if (strict and Environment.is_production_or_staging()) else logger.warning
 
     log_func("=" * 60)
     log_func("SECURITY CONFIGURATION WARNINGS")
@@ -155,7 +157,7 @@ def log_security_warnings(strict: bool = False) -> bool:
     )
 
     # In strict mode, exit if in production or staging
-    if strict and env in ("production", "staging"):
+    if strict and Environment.is_production_or_staging():
         logger.critical("CRITICAL: Exiting due to security warnings in strict mode")
         raise SystemExit(1)
 
