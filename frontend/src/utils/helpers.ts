@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { tr } from 'date-fns/locale/tr';
 
 /**
  * Merge Tailwind CSS classes with clsx
