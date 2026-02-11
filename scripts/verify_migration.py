@@ -29,6 +29,12 @@ FULLY_MIGRATED = [
     "src/services/booking/form_filler.py",
     "src/services/bot/vfs_bot.py",
     "src/utils/metrics.py",
+    "src/services/notification.py",
+    "src/services/otp_webhook.py",
+    "src/services/otp_manager/sms_handler.py",
+    "src/services/otp_manager/session_registry.py",
+    "src/selector/watcher.py",
+    "src/core/config_validator.py",
 ]
 
 # Files with special handling

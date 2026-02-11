@@ -2,16 +2,14 @@
 
 import asyncio
 import html
-import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, Literal, Optional
 
 import aiosmtplib
+from loguru import logger
 
 from src.utils.decorators import retry_async
-
-logger = logging.getLogger(__name__)
 
 # Type aliases for better type hints
 NotificationPriority = Literal["low", "normal", "high"]

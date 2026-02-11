@@ -3,13 +3,12 @@
 This module handles incoming SMS webhooks and routes OTP codes to sessions.
 """
 
-import logging
 from typing import Optional
+
+from loguru import logger
 
 from .pattern_matcher import OTPPatternMatcher
 from .session_registry import SessionRegistry
-
-logger = logging.getLogger(__name__)
 
 
 class SMSWebhookHandler:

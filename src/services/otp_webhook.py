@@ -1,7 +1,6 @@
 """SMS OTP Webhook receiver for VFS authentication."""
 
 import asyncio
-import logging
 import re
 import threading
 from collections import deque
@@ -10,7 +9,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Pattern
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 @dataclass

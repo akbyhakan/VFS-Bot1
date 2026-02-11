@@ -1,11 +1,9 @@
 """Configuration schema validation."""
 
-import logging
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
 from pydantic import BaseModel, Field, HttpUrl, model_validator, validator
-
-logger = logging.getLogger(__name__)
 
 
 class VFSConfig(BaseModel):
