@@ -231,6 +231,10 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     # Validate configuration version
     check_config_version(config)
 
+    # Validate config with Pydantic schema
+    from src.core.config_validator import ConfigValidator
+    ConfigValidator.validate(config)
+
     return config
 
 
