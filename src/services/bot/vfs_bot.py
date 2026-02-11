@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import CircuitBreaker as CircuitBreakerConfig, Intervals, RateLimits, Timeouts
+from ...constants import CircuitBreaker as CircuitBreakerConfig
+from ...constants import Intervals, RateLimits, Timeouts
 from ...core.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import UserRepository

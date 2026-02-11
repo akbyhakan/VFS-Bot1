@@ -51,23 +51,23 @@ class NotificationService:
     def _get_or_create_telegram_bot(self) -> Optional[Any]:
         """
         Get cached Telegram bot instance or create a new one.
-        
+
         Returns:
             Telegram Bot instance or None if bot_token is missing
         """
         if self._telegram_bot is not None:
             return self._telegram_bot
-        
+
         telegram_config = self.config.get("telegram", {})
         bot_token = telegram_config.get("bot_token")
-        
+
         if not bot_token:
             logger.error("Telegram bot_token missing")
             return None
-        
+
         try:
             from telegram import Bot
-            
+
             self._telegram_bot = Bot(token=bot_token)
             return self._telegram_bot
         except Exception as e:
@@ -78,17 +78,17 @@ class NotificationService:
     def _escape_markdown(text: str) -> str:
         """
         Escape Telegram Markdown special characters.
-        
+
         Args:
             text: Text to escape
-            
+
         Returns:
             Escaped text safe for Markdown parse_mode
         """
         # Escape Markdown special characters: * _ ` [ ] ( )
-        special_chars = ['*', '_', '`', '[', ']', '(', ')']
+        special_chars = ["*", "_", "`", "[", "]", "(", ")"]
         for char in special_chars:
-            text = text.replace(char, '\\' + char)
+            text = text.replace(char, "\\" + char)
         return text
 
     async def send_notification(
@@ -118,7 +118,12 @@ class NotificationService:
         else:
             logger.warning("No notification channels enabled")
 
-    @retry_async(max_retries=2, delay=1.0, backoff=2.0, exceptions=(ConnectionError, TimeoutError, OSError, Exception))
+    @retry_async(
+        max_retries=2,
+        delay=1.0,
+        backoff=2.0,
+        exceptions=(ConnectionError, TimeoutError, OSError, Exception),
+    )
     async def send_telegram(self, title: str, message: str) -> bool:
         """
         Send Telegram notification.
@@ -156,7 +161,12 @@ class NotificationService:
             logger.error(f"Telegram notification failed: {e}")
             return False
 
-    @retry_async(max_retries=2, delay=1.0, backoff=2.0, exceptions=(ConnectionError, TimeoutError, OSError, Exception))
+    @retry_async(
+        max_retries=2,
+        delay=1.0,
+        backoff=2.0,
+        exceptions=(ConnectionError, TimeoutError, OSError, Exception),
+    )
     async def send_email(self, subject: str, body: str) -> bool:
         """
         Send email notification.

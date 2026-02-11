@@ -44,14 +44,16 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
 
     # Get table schema from PostgreSQL information_schema
     async with db.get_connection() as conn:
-        columns_info = await conn.fetch("""
+        columns_info = await conn.fetch(
+            """
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name = 'payment_card'
-        """)
+        """
+        )
 
     # Extract column names
-    columns = [col['column_name'] for col in columns_info]
+    columns = [col["column_name"] for col in columns_info]
 
     # Verify CVV is stored encrypted (not plain text)
     assert "cvv_encrypted" in columns  # CVV is stored encrypted for personal bot use
@@ -148,18 +150,20 @@ async def test_password_encryption_in_database(database):
     # Add user with password
     plaintext_password = "my_secure_password"
     user_repo = UserRepository(db)
-    user_id = await user_repo.create({
-        'email': "test@example.com",
-        'password': plaintext_password,
-        'center_name': "Istanbul",
-        'visa_category': "Tourism",
-        'visa_subcategory': "Short Stay",
-    })
+    user_id = await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": plaintext_password,
+            "center_name": "Istanbul",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
+    )
 
     # Read password directly from database
     async with db.get_connection() as conn:
         row = await conn.fetchrow("SELECT password FROM users WHERE id = $1", user_id)
-        stored_password = row['password']
+        stored_password = row["password"]
 
     # Verify password is encrypted (not plaintext)
     assert stored_password != plaintext_password

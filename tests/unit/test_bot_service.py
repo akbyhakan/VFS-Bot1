@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 import pytest
 import pytest_asyncio
 
-
 from src.models.database import Database
 from src.services.bot.vfs_bot import VFSBot
 from src.services.notification import NotificationService
@@ -242,8 +241,8 @@ def test_bot_health_checker_default(bot_config, mock_db, mock_notifier):
 def test_bot_health_task_initialized_none(bot_config, mock_db, mock_notifier):
     """Test health task is initialized to None."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
-    assert hasattr(bot, '_health_task')
+
+    assert hasattr(bot, "_health_task")
     assert bot._health_task is None
 
 
@@ -251,22 +250,22 @@ def test_bot_health_task_initialized_none(bot_config, mock_db, mock_notifier):
 async def test_handle_task_exception_logs_error(bot_config, mock_db, mock_notifier):
     """Test _handle_task_exception logs exceptions from tasks."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Create a task that raises an exception
     async def failing_task():
         raise ValueError("Test exception")
-    
+
     task = asyncio.create_task(failing_task())
-    
+
     # Wait for task to complete
     try:
         await task
     except ValueError:
         pass
-    
+
     # Call the exception handler - should not raise
     bot._handle_task_exception(task)
-    
+
     # Verify the task has an exception
     assert task.exception() is not None
 
@@ -275,20 +274,20 @@ async def test_handle_task_exception_logs_error(bot_config, mock_db, mock_notifi
 async def test_handle_task_exception_cancelled(bot_config, mock_db, mock_notifier):
     """Test _handle_task_exception handles cancelled tasks."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Create a task and cancel it
     async def slow_task():
         await asyncio.sleep(10)
-    
+
     task = asyncio.create_task(slow_task())
     task.cancel()
-    
+
     # Wait for cancellation
     try:
         await task
     except asyncio.CancelledError:
         pass
-    
+
     # Call the exception handler - should not raise
     bot._handle_task_exception(task)
 
@@ -360,6 +359,7 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
 async def test_bot_get_users_with_fallback_uses_cache_on_db_failure(bot_config, mock_notifier):
     """Test that _get_users_with_fallback returns cached users when DB fails."""
     import time
+
     from src.models.database import DatabaseState
 
     # Create mock database that simulates failure
@@ -391,6 +391,7 @@ async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
 ):
     """Test that _get_users_with_fallback returns empty list when cache is expired."""
     import time
+
     from src.models.database import DatabaseState
 
     # Create mock database that simulates failure
@@ -416,6 +417,7 @@ async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
 async def test_bot_get_users_with_fallback_updates_cache_on_success(bot_config, mock_notifier):
     """Test that _get_users_with_fallback updates cache on successful DB query."""
     import time
+
     from src.models.database import DatabaseState
 
     # Create mock database that succeeds
@@ -443,9 +445,7 @@ async def test_bot_get_users_with_fallback_updates_cache_on_success(bot_config, 
 
 
 @pytest.mark.asyncio
-async def test_bot_ensure_db_connection_attempts_reconnect_on_degraded(
-    bot_config, mock_notifier
-):
+async def test_bot_ensure_db_connection_attempts_reconnect_on_degraded(bot_config, mock_notifier):
     """Test that _ensure_db_connection attempts reconnection when DB is degraded."""
     from src.models.database import DatabaseState
 
@@ -486,9 +486,9 @@ async def test_bot_ensure_db_connection_does_nothing_when_connected(bot_config, 
 async def test_trigger_event_initialized(bot_config, mock_db, mock_notifier):
     """Test that trigger event is initialized in VFSBot."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Verify trigger event exists and is an Event
-    assert hasattr(bot, '_trigger_event')
+    assert hasattr(bot, "_trigger_event")
     assert isinstance(bot._trigger_event, asyncio.Event)
     # Event should not be set initially
     assert not bot._trigger_event.is_set()
@@ -498,10 +498,10 @@ async def test_trigger_event_initialized(bot_config, mock_db, mock_notifier):
 async def test_wait_or_shutdown_normal_timeout(bot_config, mock_db, mock_notifier):
     """Test _wait_or_shutdown returns False on normal timeout."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Wait for a short duration - should timeout normally
     result = await bot._wait_or_shutdown(0.1)
-    
+
     assert result is False
 
 
@@ -509,18 +509,18 @@ async def test_wait_or_shutdown_normal_timeout(bot_config, mock_db, mock_notifie
 async def test_wait_or_shutdown_trigger_event(bot_config, mock_db, mock_notifier):
     """Test _wait_or_shutdown returns False when trigger event is set."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Set trigger event after a delay
     async def set_trigger_after_delay():
         await asyncio.sleep(0.05)
         bot._trigger_event.set()
-    
+
     # Start the delayed setter
     asyncio.create_task(set_trigger_after_delay())
-    
+
     # Wait - should be interrupted by trigger
     result = await bot._wait_or_shutdown(1.0)
-    
+
     # Should return False (not shutdown)
     assert result is False
     # Trigger event should be cleared after use
@@ -531,19 +531,17 @@ async def test_wait_or_shutdown_trigger_event(bot_config, mock_db, mock_notifier
 async def test_wait_or_shutdown_shutdown_event(bot_config, mock_db, mock_notifier):
     """Test _wait_or_shutdown returns True when shutdown event is set."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
-    
+
     # Set shutdown event after a delay
     async def set_shutdown_after_delay():
         await asyncio.sleep(0.05)
         bot.shutdown_event.set()
-    
+
     # Start the delayed setter
     asyncio.create_task(set_shutdown_after_delay())
-    
+
     # Wait - should be interrupted by shutdown
     result = await bot._wait_or_shutdown(1.0)
-    
+
     # Should return True (shutdown requested)
     assert result is True
-
-

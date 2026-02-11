@@ -9,9 +9,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
+from src.utils.error_capture import ErrorCapture
+
 # Add parent directory to path for imports
 
-from src.utils.error_capture import ErrorCapture
 
 
 class TestErrorCapture:

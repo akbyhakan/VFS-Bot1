@@ -1,25 +1,25 @@
 """Utility functions for masking sensitive data in logs and outputs."""
 
 from typing import Any, Dict, Optional, Set
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 
 def mask_database_url(url: str) -> str:
     """
     Mask sensitive information in connection URLs for safe logging.
-    
+
     Masks both credentials in the netloc (user:password@host) and
     sensitive query parameters like password, sslpassword, tokens, etc.
-    
+
     This function works with any connection URL (database, Redis, etc.)
     that may contain sensitive credentials.
-    
+
     Args:
         url: Connection URL potentially containing credentials
-        
+
     Returns:
         Masked URL safe for logging
-        
+
     Examples:
         >>> mask_database_url("postgresql://user:pass@localhost:5432/mydb")
         'postgresql://***:***@localhost:5432/mydb'
@@ -34,15 +34,15 @@ def mask_database_url(url: str) -> str:
     """
     try:
         parsed = urlparse(url)
-        
+
         # Handle empty or missing scheme
         if not parsed.scheme:
             return "<unparseable-url>"
-        
+
         # Handle non-network URLs (SQLite, etc.) - show only scheme
         if not parsed.netloc:
             return f"{parsed.scheme}://***"
-        
+
         # For network URLs, mask credentials if present
         if parsed.username or parsed.password:
             # Rebuild netloc with masked credentials
@@ -53,32 +53,41 @@ def mask_database_url(url: str) -> str:
         else:
             # No credentials, keep original netloc
             masked_netloc = parsed.netloc
-        
+
         # Mask sensitive query parameters
         masked_query = parsed.query
         if parsed.query:
             # Sensitive parameter names to mask (lowercase for case-insensitive matching)
             sensitive_params = {
-                'password', 'sslpassword', 'sslkey', 'sslcert', 'sslrootcert',
-                'secret', 'token', 'api_key', 'apikey', 'access_key', 'auth'
+                "password",
+                "sslpassword",
+                "sslkey",
+                "sslcert",
+                "sslrootcert",
+                "secret",
+                "token",
+                "api_key",
+                "apikey",
+                "access_key",
+                "auth",
             }
-            
+
             # Parse query string
             params = parse_qs(parsed.query, keep_blank_values=True)
-            
+
             # Mask sensitive parameters (optimized with set membership check)
             for key in params:
                 key_lower = key.lower()
                 if any(sensitive in key_lower for sensitive in sensitive_params):
-                    params[key] = ['***'] * len(params[key])
-            
+                    params[key] = ["***"] * len(params[key])
+
             # Rebuild query string without URL-encoding the asterisks
-            masked_query = urlencode(params, doseq=True, safe='*')
-        
+            masked_query = urlencode(params, doseq=True, safe="*")
+
         # Rebuild URL with masked netloc and query
         masked = parsed._replace(netloc=masked_netloc, query=masked_query)
         return urlunparse(masked)
-        
+
     except Exception:
         # If parsing fails entirely, return safe placeholder
         return "<unparseable-url>"

@@ -15,33 +15,37 @@ from src.core.config_version_checker import check_config_version
 from src.core.environment import Environment
 
 # Critical environment variables that must be set in production
-CRITICAL_ENV_VARS: frozenset[str] = frozenset({
-    "ENCRYPTION_KEY",
-    "API_SECRET_KEY",
-    "VFS_ENCRYPTION_KEY",
-    "DATABASE_URL",
-})
+CRITICAL_ENV_VARS: frozenset[str] = frozenset(
+    {
+        "ENCRYPTION_KEY",
+        "API_SECRET_KEY",
+        "VFS_ENCRYPTION_KEY",
+        "DATABASE_URL",
+    }
+)
 
 # Sensitive configuration keys to mask in logs
-SENSITIVE_CONFIG_KEYS: frozenset[str] = frozenset({
-    "database_url",
-    "password",
-    "secret",
-    "token",
-    "api_key",
-    "encryption_key",
-    "vfs_encryption_key",
-    "api_secret_key",
-    "bearer",
-    "auth",
-    "credential",
-})
+SENSITIVE_CONFIG_KEYS: frozenset[str] = frozenset(
+    {
+        "database_url",
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "encryption_key",
+        "vfs_encryption_key",
+        "api_secret_key",
+        "bearer",
+        "auth",
+        "credential",
+    }
+)
 
 
 def _get_environment() -> str:
     """
     Get the current environment.
-    
+
     Returns:
         Environment name in lowercase
     """
@@ -51,10 +55,10 @@ def _get_environment() -> str:
 def _is_production_environment(env: str) -> bool:
     """
     Check if the environment is production.
-    
+
     Args:
         env: Environment name
-        
+
     Returns:
         True if production environment, False otherwise
     """
@@ -65,7 +69,7 @@ def load_env_variables() -> None:
     """Load environment variables from .env file."""
     # Load from project root
     env_path = Path(__file__).parent.parent.parent / ".env"
-    
+
     if env_path.exists():
         load_dotenv(env_path)
         logger.debug(f"Loaded environment variables from {env_path}")
@@ -82,7 +86,7 @@ def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = Non
 
     Returns:
         Value with environment variables substituted
-        
+
     Raises:
         ValueError: If a critical env var is missing in production
     """
@@ -93,10 +97,10 @@ def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = Non
         if _env is None:
             _env = _get_environment()
             _is_production = _is_production_environment(_env)
-        
+
         for match in matches:
             env_value = os.getenv(match)
-            
+
             # Check if this is a critical environment variable
             if env_value is None and match in CRITICAL_ENV_VARS:
                 if _is_production:
@@ -115,7 +119,7 @@ def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = Non
                 # Non-critical variable
                 logger.debug(f"Environment variable '{match}' not set, using empty string")
                 env_value = ""
-            
+
             value = value.replace(f"${{{match}}}", env_value)
         return value
     elif isinstance(value, dict):
@@ -135,26 +139,26 @@ def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = Non
 def _safe_config_summary(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a safe version of config dict with sensitive values masked for logging.
-    
+
     This is a defense-in-depth measure to prevent accidental logging of secrets.
     Uses SENSITIVE_CONFIG_KEYS set to identify sensitive fields.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         New dictionary with sensitive values masked as "[REDACTED]"
     """
     if not isinstance(config, dict):
         return config
-    
+
     safe_config: Dict[str, Any] = {}
     for key, value in config.items():
         key_lower = key.lower()
-        
+
         # Check if key contains any sensitive pattern
         is_sensitive = any(pattern in key_lower for pattern in SENSITIVE_CONFIG_KEYS)
-        
+
         if is_sensitive:
             safe_config[key] = "[REDACTED]"
         elif isinstance(value, dict):
@@ -163,12 +167,11 @@ def _safe_config_summary(config: Dict[str, Any]) -> Dict[str, Any]:
         elif isinstance(value, list):
             # Mask list items if they're dicts
             safe_config[key] = [
-                _safe_config_summary(item) if isinstance(item, dict) else item 
-                for item in value
+                _safe_config_summary(item) if isinstance(item, dict) else item for item in value
             ]
         else:
             safe_config[key] = value
-    
+
     return safe_config
 
 
@@ -188,7 +191,7 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     """
     # Load environment variables first
     load_env_variables()
-    
+
     env = _get_environment()
     is_production = _is_production_environment(env)
 
@@ -216,7 +219,7 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
                 raise FileNotFoundError(
                     f"Config file not found: {config_path} and no example config available"
                 )
-    
+
     logger.info(f"Loading config from {config_file} in {env} environment")
 
     # Load YAML
@@ -233,6 +236,7 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
 
     # Validate config with Pydantic schema
     from src.core.config_validator import ConfigValidator
+
     ConfigValidator.validate(config)
 
     return config
@@ -284,7 +288,7 @@ def invalidate_selectors_cache() -> None:
 
     This function should be called after AI repair updates the selectors file
     to ensure the next call to load_selectors() reloads from disk.
-    
+
     Thread-safe: Uses lock to prevent race conditions.
     """
     global _selectors_cache
@@ -299,9 +303,9 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
 
     Cache expires after _SELECTORS_CACHE_TTL seconds to allow AI Auto-Repair
     system to update selectors at runtime and have changes picked up.
-    
+
     Thread-safe: Uses lock to prevent race conditions during cache updates.
-    
+
     Note: Returns the cached dictionary directly (not a copy) for performance.
     Callers should treat the returned dictionary as read-only to avoid
     race conditions with concurrent access.

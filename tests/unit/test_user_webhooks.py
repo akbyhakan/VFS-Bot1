@@ -22,13 +22,15 @@ async def db():
 async def test_user(db):
     """Create a test user."""
     user_repo = UserRepository(db)
-    user_id = await user_repo.create({
-        'email': "test@example.com",
-        'password': "testpass123",
-        'center_name': "Test Centre",
-        'visa_category': "Tourist",
-        'visa_subcategory': "Normal",
-    })
+    user_id = await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "testpass123",
+            "center_name": "Test Centre",
+            "visa_category": "Tourist",
+            "visa_subcategory": "Normal",
+        }
+    )
     return user_id
 
 
@@ -139,20 +141,24 @@ async def test_webhook_token_uniqueness(db):
     """Test that webhook tokens are unique."""
     # Create two users
     user_repo = UserRepository(db)
-    user1 = await user_repo.create({
-        'email': "user1@example.com",
-        'password': "pass1",
-        'center_name': "Centre 1",
-        'visa_category': "Tourist",
-        'visa_subcategory': "Normal",
-    })
-    user2 = await user_repo.create({
-        'email': "user2@example.com",
-        'password': "pass2",
-        'center_name': "Centre 2",
-        'visa_category': "Tourist",
-        'visa_subcategory': "Normal",
-    })
+    user1 = await user_repo.create(
+        {
+            "email": "user1@example.com",
+            "password": "pass1",
+            "center_name": "Centre 1",
+            "visa_category": "Tourist",
+            "visa_subcategory": "Normal",
+        }
+    )
+    user2 = await user_repo.create(
+        {
+            "email": "user2@example.com",
+            "password": "pass2",
+            "center_name": "Centre 2",
+            "visa_category": "Tourist",
+            "visa_subcategory": "Normal",
+        }
+    )
 
     # Create webhooks for both
     token1 = await db.create_user_webhook(user1)

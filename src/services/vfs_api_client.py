@@ -33,21 +33,20 @@ logger = logging.getLogger(__name__)
 
 def _get_required_env(name: str) -> str:
     """Get required environment variable with lazy validation.
-    
+
     Args:
         name: Environment variable name
-        
+
     Returns:
         Environment variable value
-        
+
     Raises:
         ConfigurationError: If environment variable is not set
     """
     value = os.getenv(name)
     if not value:
         raise ConfigurationError(
-            f"{name} environment variable must be set. "
-            "Check your .env file configuration."
+            f"{name} environment variable must be set. " "Check your .env file configuration."
         )
     return value
 
@@ -515,9 +514,7 @@ class VFSApiClient:
             if response.status == 429:
                 retry_after = int(response.headers.get("Retry-After", 60))
                 self.endpoint_limiter.on_rate_limited("slot_check", retry_after)
-                logger.error(
-                    f"Rate limited by VFS on slot check (429), retry after {retry_after}s"
-                )
+                logger.error(f"Rate limited by VFS on slot check (429), retry after {retry_after}s")
                 raise VFSRateLimitError(
                     f"Rate limited on slot check endpoint. Retry after {retry_after}s",
                     wait_time=retry_after,
@@ -640,7 +637,8 @@ class VFSApiClient:
                 )
 
             async with self._session.post(
-                f"{get_vfs_api_base()}/user/refresh", json={"refreshToken": self.session.refresh_token}
+                f"{get_vfs_api_base()}/user/refresh",
+                json={"refreshToken": self.session.refresh_token},
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()

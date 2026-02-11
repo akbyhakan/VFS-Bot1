@@ -4,11 +4,11 @@ import asyncio
 import os
 import random
 import tempfile
-import yaml
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import yaml
 
 
 class TestCORSProductionHardFail:
@@ -27,7 +27,13 @@ class TestCORSProductionHardFail:
 
             allowed_origins = validate_cors_origins("")
             env = os.getenv("ENV", "production").lower()
-            if not allowed_origins and env not in ("development", "dev", "local", "testing", "test"):
+            if not allowed_origins and env not in (
+                "development",
+                "dev",
+                "local",
+                "testing",
+                "test",
+            ):
                 raise RuntimeError(
                     "CRITICAL: No valid CORS origins configured for production. "
                     "Set CORS_ALLOWED_ORIGINS in .env (e.g., 'https://yourdomain.com'). "
@@ -52,27 +58,27 @@ class TestCORSProductionHardFail:
     def test_cors_ipv6_localhost_blocked_in_production(self):
         """Test that IPv6 localhost (::1) is blocked in production."""
         os.environ["ENV"] = "production"
-        
+
         from web.app import validate_cors_origins
-        
+
         origins = validate_cors_origins("http://[::1]:3000")
         assert origins == []
 
     def test_cors_zero_ip_blocked_in_production(self):
         """Test that 0.0.0.0 is blocked in production."""
         os.environ["ENV"] = "production"
-        
+
         from web.app import validate_cors_origins
-        
+
         origins = validate_cors_origins("http://0.0.0.0:8000")
         assert origins == []
 
     def test_cors_localhost_subdomain_bypass_blocked(self):
         """Test that localhost subdomain bypass is blocked in production."""
         os.environ["ENV"] = "production"
-        
+
         from web.app import validate_cors_origins
-        
+
         origins = validate_cors_origins("http://localhost.evil.com")
         assert origins == []
 
@@ -126,20 +132,20 @@ class TestBrowserMemoryLeakPrevention:
 
 class TestGracefulShutdownNotifications:
     """Test graceful shutdown notification features."""
-    
+
     @pytest.fixture
     def mock_vfs_bot(self):
         """Create a mock VFSBot instance for testing."""
         from src.services.bot.vfs_bot import VFSBot
-        
+
         # Mock browser manager
         browser_manager = MagicMock()
         browser_manager.close = AsyncMock()
-        
+
         # Mock notifier
         notifier = MagicMock()
         notifier.notify_bot_stopped = AsyncMock()
-        
+
         # Create VFSBot instance with mocks
         with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
             bot = VFSBot.__new__(VFSBot)
@@ -148,13 +154,13 @@ class TestGracefulShutdownNotifications:
             bot.browser_manager = browser_manager
             bot.notifier = notifier
             bot._active_booking_tasks = []
-            
+
             # Mock services.workflow.alert_service
             bot.services = MagicMock()
             bot.services.workflow = MagicMock()
             bot.services.workflow.alert_service = MagicMock()
             bot.services.workflow.alert_service.send_alert = AsyncMock()
-            
+
             return bot
 
     @pytest.mark.asyncio
@@ -180,7 +186,7 @@ class TestGracefulShutdownNotifications:
     async def test_stop_idempotent(self, mock_vfs_bot):
         """Test that stop() can be called multiple times safely."""
         bot = mock_vfs_bot
-        
+
         # Set alert service to None to simplify test
         bot.services.workflow.alert_service = None
 
@@ -246,11 +252,11 @@ class TestDatabaseBackupAutoStart:
             backup_service = DatabaseBackup(database_url=test_db_url, backup_dir=backup_dir)
             assert backup_service is not None
             assert backup_service._database_url == test_db_url
-            
+
             # Verify encryption methods exist
-            assert hasattr(backup_service, '_get_encryption_key')
-            assert hasattr(backup_service, '_encrypt_file')
-            assert hasattr(backup_service, '_decrypt_file')
+            assert hasattr(backup_service, "_get_encryption_key")
+            assert hasattr(backup_service, "_encrypt_file")
+            assert hasattr(backup_service, "_decrypt_file")
 
 
 class TestPreMigrationBackup:
@@ -262,12 +268,12 @@ class TestPreMigrationBackup:
         from src.utils.db_backup import DatabaseBackup
 
         assert DatabaseBackup is not None
-        
+
         # Verify encryption methods exist
         backup_util = DatabaseBackup()
-        assert hasattr(backup_util, '_get_encryption_key')
-        assert hasattr(backup_util, '_encrypt_file')
-        assert hasattr(backup_util, '_decrypt_file')
+        assert hasattr(backup_util, "_get_encryption_key")
+        assert hasattr(backup_util, "_encrypt_file")
+        assert hasattr(backup_util, "_decrypt_file")
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -304,7 +310,9 @@ class TestGrafanaPasswordNotHardcoded:
         # Should use environment variable with proper syntax
         assert "GRAFANA_ADMIN_PASSWORD" in content, "Should use GRAFANA_ADMIN_PASSWORD env var"
         # Verify it's using the environment variable syntax, not just referencing it
-        assert "${GRAFANA_ADMIN_PASSWORD" in content, "Should use ${GRAFANA_ADMIN_PASSWORD...} syntax"
+        assert (
+            "${GRAFANA_ADMIN_PASSWORD" in content
+        ), "Should use ${GRAFANA_ADMIN_PASSWORD...} syntax"
         # Verify the :? syntax requiring the variable
         assert ":?" in content, "Should use :? syntax to require environment variable"
 
@@ -359,16 +367,16 @@ class TestStartupValidatorGrafana:
             "ADMIN_PASSWORD": os.environ.get("ADMIN_PASSWORD"),
             "ADMIN_USERNAME": os.environ.get("ADMIN_USERNAME"),
         }
-        
+
         # Set common production environment
         os.environ["ENV"] = "production"
         os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
         os.environ["API_SECRET_KEY"] = "a" * 64
         os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
         os.environ["ADMIN_USERNAME"] = "unique_admin_name"
-        
+
         yield
-        
+
         # Cleanup - restore original values or remove if they didn't exist
         for key, value in original_values.items():
             if value is None:
@@ -381,6 +389,7 @@ class TestStartupValidatorGrafana:
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
 
         from src.core.startup_validator import validate_production_security
+
         warnings = validate_production_security()
 
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
@@ -393,9 +402,9 @@ class TestStartupValidatorGrafana:
             "my_password_change_me",
             "ChangeMeNow",
         ]
-        
+
         from src.core.startup_validator import validate_production_security
-        
+
         for password in test_patterns:
             os.environ["GRAFANA_ADMIN_PASSWORD"] = password
             warnings = validate_production_security()
@@ -405,9 +414,9 @@ class TestStartupValidatorGrafana:
     def test_grafana_common_defaults_detected(self, production_env_vars):
         """Test that common default passwords are detected."""
         common_defaults = ["admin", "password", "grafana"]
-        
+
         from src.core.startup_validator import validate_production_security
-        
+
         for password in common_defaults:
             os.environ["GRAFANA_ADMIN_PASSWORD"] = password
             warnings = validate_production_security()
@@ -419,6 +428,7 @@ class TestStartupValidatorGrafana:
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
 
         from src.core.startup_validator import validate_production_security
+
         warnings = validate_production_security()
 
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
@@ -430,6 +440,7 @@ class TestStartupValidatorGrafana:
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "secure_vfsbot_integration_key_xyz789"
 
         from src.core.startup_validator import validate_production_security
+
         warnings = validate_production_security()
 
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
@@ -442,16 +453,15 @@ class TestLogoutTokenRevocation:
     def test_logout_calls_revoke_token_when_token_present(self):
         """Test that logout calls revoke_token when token is present."""
         from unittest.mock import MagicMock, patch
-        
+
         # We'll test the behavior directly by mocking the revoke_token function
         with patch("web.routes.auth.revoke_token", new_callable=AsyncMock) as mock_revoke:
             # Import the auth module AFTER patching
-            from web.routes.auth import router
-            from web.routes.auth import logout
-            
+            from web.routes.auth import logout, router
+
             # Set the return value for the async mock
             mock_revoke.return_value = True
-            
+
             # Verify the import was successful and the function is updated
             assert mock_revoke is not None
 
@@ -459,20 +469,21 @@ class TestLogoutTokenRevocation:
         """Test the logic for extracting token from cookie."""
         # This test verifies that the logout endpoint has logic
         # to extract tokens using the extract_raw_token helper
-        from web.routes.auth import logout
         import inspect
-        
+
+        from web.routes.auth import logout
+
         # Check the function signature includes request parameter
         sig = inspect.signature(logout)
-        assert 'request' in sig.parameters
-        assert 'token_data' in sig.parameters
-        
+        assert "request" in sig.parameters
+        assert "token_data" in sig.parameters
+
         # Verify the source code uses the helper function and calls revoke_token
         source = inspect.getsource(logout)
-        assert 'extract_raw_token' in source
-        assert 'revoke_token' in source
+        assert "extract_raw_token" in source
+        assert "revoke_token" in source
         # Verify it awaits revoke_token (since it's async now)
-        assert 'await revoke_token' in source
+        assert "await revoke_token" in source
 
 
 class TestDockerComposeSecurityHardening:
@@ -485,16 +496,17 @@ class TestDockerComposeSecurityHardening:
             pytest.skip("docker-compose.yml not found")
 
         content = compose_path.read_text()
-        
+
         # Verify read_only is set to true for vfs-bot service
         assert "read_only: true" in content, "vfs-bot service should have read_only: true"
-        
+
         # Ensure it's in the vfs-bot service section
         # Split by service definitions and find vfs-bot
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
-        assert compose_data["services"]["vfs-bot"].get("read_only") is True, \
-            "vfs-bot service should have read_only set to true"
+        assert (
+            compose_data["services"]["vfs-bot"].get("read_only") is True
+        ), "vfs-bot service should have read_only set to true"
 
     def test_docker_compose_vfs_bot_no_new_privileges(self):
         """Test that vfs-bot service has no-new-privileges:true."""
@@ -503,17 +515,19 @@ class TestDockerComposeSecurityHardening:
             pytest.skip("docker-compose.yml not found")
 
         content = compose_path.read_text()
-        
+
         # Verify no-new-privileges is present
-        assert "no-new-privileges:true" in content, \
-            "vfs-bot service should have no-new-privileges:true in security_opt"
-        
+        assert (
+            "no-new-privileges:true" in content
+        ), "vfs-bot service should have no-new-privileges:true in security_opt"
+
         # Verify in YAML structure
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
         security_opt = compose_data["services"]["vfs-bot"].get("security_opt", [])
-        assert "no-new-privileges:true" in security_opt, \
-            "vfs-bot service should have no-new-privileges:true in security_opt"
+        assert (
+            "no-new-privileges:true" in security_opt
+        ), "vfs-bot service should have no-new-privileges:true in security_opt"
 
     def test_docker_compose_vfs_bot_tmpfs(self):
         """Test that vfs-bot service has tmpfs for /tmp."""
@@ -522,10 +536,10 @@ class TestDockerComposeSecurityHardening:
             pytest.skip("docker-compose.yml not found")
 
         content = compose_path.read_text()
-        
+
         # Verify tmpfs is configured
         assert "tmpfs:" in content, "vfs-bot service should have tmpfs configured"
-        
+
         # Verify in YAML structure
         compose_data = yaml.safe_load(content)
         assert "vfs-bot" in compose_data["services"], "vfs-bot service not found"
@@ -539,16 +553,17 @@ class TestPersistentTokenBlacklistInit:
     @pytest.mark.asyncio
     async def test_init_token_blacklist_creates_persistent_instance(self):
         """Test that init_token_blacklist creates a PersistentTokenBlacklist."""
-        from src.core.auth import init_token_blacklist, get_token_blacklist
-        from src.core.auth.token_blacklist import PersistentTokenBlacklist
         from unittest.mock import MagicMock
-        
+
+        from src.core.auth import get_token_blacklist, init_token_blacklist
+        from src.core.auth.token_blacklist import PersistentTokenBlacklist
+
         # Create a mock database
         mock_db = MagicMock()
-        
+
         # Initialize the blacklist
         init_token_blacklist(mock_db)
-        
+
         # Get the blacklist and verify it's a PersistentTokenBlacklist
         blacklist = get_token_blacklist()
         assert isinstance(blacklist, PersistentTokenBlacklist)
@@ -558,25 +573,26 @@ class TestPersistentTokenBlacklistInit:
     @pytest.mark.asyncio
     async def test_check_blacklisted_uses_async_for_persistent(self):
         """Test that check_blacklisted uses async path for PersistentTokenBlacklist."""
-        from src.core.auth import init_token_blacklist, check_blacklisted
-        from src.core.auth.token_blacklist import PersistentTokenBlacklist
         from unittest.mock import AsyncMock, MagicMock
-        
+
+        from src.core.auth import check_blacklisted, init_token_blacklist
+        from src.core.auth.token_blacklist import PersistentTokenBlacklist
+
         # Create a mock database
         mock_db = MagicMock()
-        
+
         # Initialize persistent blacklist
         init_token_blacklist(mock_db)
-        
+
         # Mock the repository to avoid actual DB calls
         with patch("src.core.auth.token_blacklist.TokenBlacklistRepository") as MockRepo:
             mock_repo = MagicMock()
             MockRepo.return_value = mock_repo
             mock_repo.is_blacklisted = AsyncMock(return_value=True)
-            
+
             # Check if token is blacklisted
             result = await check_blacklisted("test_jti")
-            
+
             # Verify async method was called
             assert result is True
             mock_repo.is_blacklisted.assert_called_once_with("test_jti")
@@ -584,27 +600,28 @@ class TestPersistentTokenBlacklistInit:
     @pytest.mark.asyncio
     async def test_revoke_token_persists_to_db(self):
         """Test that revoke_token persists to database when using PersistentTokenBlacklist."""
-        from src.core.auth import init_token_blacklist, revoke_token, create_access_token
         from unittest.mock import AsyncMock, MagicMock
-        
+
+        from src.core.auth import create_access_token, init_token_blacklist, revoke_token
+
         # Create a mock database
         mock_db = MagicMock()
-        
+
         # Initialize persistent blacklist
         init_token_blacklist(mock_db)
-        
+
         # Create a test token
         token = create_access_token({"sub": "test_user"})
-        
+
         # Mock the repository to avoid actual DB calls
         with patch("src.core.auth.token_blacklist.TokenBlacklistRepository") as MockRepo:
             mock_repo = MagicMock()
             MockRepo.return_value = mock_repo
             mock_repo.add = AsyncMock()
-            
+
             # Revoke the token
             result = await revoke_token(token)
-            
+
             # Verify token was added to database
             assert result is True
             mock_repo.add.assert_called_once()

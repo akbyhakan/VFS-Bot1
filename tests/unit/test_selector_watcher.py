@@ -1,12 +1,11 @@
 """Tests for selector health monitoring."""
 
-
 import pytest
+
+from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 
 # Add parent directory to path for imports
 
-from src.selector import SelectorHealthCheck
-from src.selector import CountryAwareSelectorManager
 
 
 class TestSelectorHealthCheck:

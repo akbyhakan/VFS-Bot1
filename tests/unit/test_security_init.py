@@ -1,8 +1,6 @@
 """Tests for security module initialization and lazy loading."""
 
-
 import pytest
-
 
 
 def test_security_module_all_exports():

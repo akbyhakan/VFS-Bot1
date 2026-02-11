@@ -52,20 +52,21 @@ class SlotChecker:
         self.human_sim = human_sim
         self.cloudflare_handler = cloudflare_handler
         self.error_capture = error_capture or ErrorCapture()
-        
+
         # Initialize SelectorManager for country-aware selectors
         from src.selector import get_selector_manager
+
         country = config.get("vfs", {}).get("mission", "default")
         self._selector_manager = get_selector_manager(country)
-    
+
     def _get_selector(self, selector_path: str, fallback: str) -> str:
         """
         Get selector from SelectorManager or return fallback.
-        
+
         Args:
             selector_path: Dot-notation path to selector (e.g., "appointment.slot_date")
             fallback: Default selector to use if not found
-            
+
         Returns:
             Selector string
         """
@@ -106,27 +107,44 @@ class SlotChecker:
                 await self.cloudflare_handler.handle_challenge(page)
 
             # Select centre, category, subcategory using configured selectors
-            await page.select_option(self._get_selector("appointment.centre_dropdown", "select#centres"), label=centre)
+            await page.select_option(
+                self._get_selector("appointment.centre_dropdown", "select#centres"), label=centre
+            )
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
-            await page.select_option(self._get_selector("appointment.category_dropdown", "select#categories"), label=category)
+            await page.select_option(
+                self._get_selector("appointment.category_dropdown", "select#categories"),
+                label=category,
+            )
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
-            await page.select_option(self._get_selector("appointment.subcategory_dropdown", "select#subcategories"), label=subcategory)
+            await page.select_option(
+                self._get_selector("appointment.subcategory_dropdown", "select#subcategories"),
+                label=subcategory,
+            )
             await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
 
             # Click to check slots with human simulation using configured selector
-            await smart_click(page, self._get_selector("appointment.check_slots_button", "button#check-slots"), self.human_sim)
+            await smart_click(
+                page,
+                self._get_selector("appointment.check_slots_button", "button#check-slots"),
+                self.human_sim,
+            )
             await asyncio.sleep(random.uniform(*Delays.AFTER_CLICK_CHECK))
 
             # Check if slots are available using configured selector
-            slots_available = await page.locator(self._get_selector("appointment.available_slot", ".available-slot")).count() > 0
+            slots_available = (
+                await page.locator(
+                    self._get_selector("appointment.available_slot", ".available-slot")
+                ).count()
+                > 0
+            )
 
             if slots_available:
                 # Get slot selectors from SelectorManager
                 date_selector = self._get_selector("appointment.slot_date", ".slot-date")
                 time_selector = self._get_selector("appointment.slot_time", ".slot-time")
-                
+
                 # Get first available slot
                 date_content = await page.locator(date_selector).first.text_content()
                 time_content = await page.locator(time_selector).first.text_content()

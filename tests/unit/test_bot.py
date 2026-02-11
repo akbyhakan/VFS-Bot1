@@ -5,26 +5,27 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-# Add parent directory to path for imports
-
 from src.models.database import Database
 from src.services.bot.vfs_bot import VFSBot
 from src.services.notification import NotificationService
+
+# Add parent directory to path for imports
+
 
 
 @pytest_asyncio.fixture
 async def database():
     """Create a test database."""
     from src.constants import Database as DatabaseConfig
-    
+
     test_db_url = DatabaseConfig.TEST_URL
     db = Database(database_url=test_db_url)
-    
+
     try:
         await db.connect()
     except Exception as e:
         pytest.skip(f"PostgreSQL test database not available: {e}")
-    
+
     yield db
     await db.close()
 
@@ -145,7 +146,7 @@ async def test_add_appointment(database):
 def test_bot_initialization(config):
     """Test bot initialization."""
     from src.constants import Database as DatabaseConfig
-    
+
     db = Database(database_url=DatabaseConfig.TEST_URL)
     notifier = NotificationService(config["notifications"])
     bot = VFSBot(config, db, notifier)

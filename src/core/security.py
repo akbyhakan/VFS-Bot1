@@ -184,7 +184,7 @@ class APIKeyManager:
             expired_keys = []
             for key_hash, metadata in self._keys.items():
                 should_remove = False
-                
+
                 # Check if key has exceeded grace period after rotation
                 grace_until_str = metadata.get("rotation_grace_until")
                 if grace_until_str:
@@ -199,7 +199,7 @@ class APIKeyManager:
                             )
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid grace period timestamp: {grace_until_str}")
-                
+
                 # Check if key is too old based on creation date
                 created_str = metadata.get("created")
                 if created_str and not should_remove:
@@ -214,7 +214,7 @@ class APIKeyManager:
                             should_remove = True
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid created timestamp for key: {created_str}")
-                
+
                 if should_remove:
                     expired_keys.append(key_hash)
 
@@ -252,13 +252,14 @@ def generate_api_key() -> str:
 def load_api_keys() -> None:
     """
     Load API keys from environment or file.
-    
+
     .. deprecated::
         Keys are now loaded lazily on first use via verify_key().
         This function is kept for backward compatibility but is no longer
         called automatically at module load time.
     """
     import warnings
+
     warnings.warn(
         "load_api_keys() is deprecated. Keys are now loaded lazily on first use.",
         DeprecationWarning,

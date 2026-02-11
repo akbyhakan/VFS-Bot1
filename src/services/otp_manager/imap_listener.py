@@ -65,7 +65,7 @@ class IMAPListener:
         self._processed_uids_queue: deque = deque()
         self._processed_uids_set: set = set()
         self._lock = threading.Lock()
-        
+
         # Health tracking
         self._last_noop_time = time.time()
         self._connection_healthy = False
@@ -132,14 +132,14 @@ class IMAPListener:
                             except Exception as e:
                                 logger.warning(f"NOOP keepalive failed: {e}")
                                 raise  # Trigger reconnection
-                        
+
                         self._poll_emails(mail)
                         self._last_successful_poll = datetime.now(timezone.utc)
                         self._consecutive_poll_errors = 0
-                        
+
                         # Cleanup processed UIDs after successful poll
                         self._cleanup_processed_uids()
-                        
+
                         time.sleep(self._poll_interval)
                     except (imaplib.IMAP4.abort, imaplib.IMAP4.error) as e:
                         # Protocol-level errors - reconnect immediately
@@ -148,8 +148,10 @@ class IMAPListener:
                         break  # Reconnect
                     except Exception as e:
                         self._consecutive_poll_errors += 1
-                        logger.error(f"Error polling emails (consecutive: {self._consecutive_poll_errors}): {e}")
-                        
+                        logger.error(
+                            f"Error polling emails (consecutive: {self._consecutive_poll_errors}): {e}"
+                        )
+
                         # Break after 5 consecutive errors
                         if self._consecutive_poll_errors >= 5:
                             logger.critical("5 consecutive poll errors - stopping IMAP listener")
@@ -172,7 +174,9 @@ class IMAPListener:
 
             # Wait before reconnecting
             if self._running:
-                logger.info(f"Reconnecting in {reconnect_delay}s... (total reconnects: {self._total_reconnects})")
+                logger.info(
+                    f"Reconnecting in {reconnect_delay}s... (total reconnects: {self._total_reconnects})"
+                )
                 time.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
 
@@ -233,7 +237,7 @@ class IMAPListener:
                 # Remove oldest UIDs from the front of the deque
                 target_size = self._max_processed_uids // 2
                 to_remove = current_size - target_size
-                
+
                 # Remove oldest UIDs (defensive check in case of edge cases)
                 for _ in range(to_remove):
                     if self._processed_uids_queue:
@@ -242,7 +246,7 @@ class IMAPListener:
                     else:
                         # Queue exhausted before target - should not happen
                         break
-                
+
                 logger.info(
                     f"Cleaned up processed UIDs: {current_size} -> {len(self._processed_uids_set)} "
                     f"(removed {to_remove} oldest UIDs)"
@@ -251,14 +255,16 @@ class IMAPListener:
     def get_health(self) -> dict:
         """
         Get IMAP listener health status.
-        
+
         Returns:
             Dictionary with health metrics
         """
         with self._lock:
             return {
                 "connected": self._connection_healthy,
-                "last_successful_poll": self._last_successful_poll.isoformat() if self._last_successful_poll else None,
+                "last_successful_poll": (
+                    self._last_successful_poll.isoformat() if self._last_successful_poll else None
+                ),
                 "total_reconnects": self._total_reconnects,
                 "consecutive_poll_errors": self._consecutive_poll_errors,
                 "processed_uids_count": len(self._processed_uids_set),

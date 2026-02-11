@@ -1,8 +1,6 @@
 """Tests for refactored bot structure."""
 
 
-
-
 def test_new_modular_imports():
     """Test that new modular imports work."""
     from src.services.bot import (

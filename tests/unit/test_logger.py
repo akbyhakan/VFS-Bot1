@@ -168,52 +168,54 @@ class TestSetupStructuredLogging:
     def test_correlation_id_patcher_integration(self, tmp_path, monkeypatch):
         """Test that correlation_id is automatically added to Loguru logs via patcher."""
         monkeypatch.chdir(tmp_path)
-        
+
         from loguru import logger as loguru_logger
+
         from src.core.logger import correlation_id_ctx
-        
+
         # Setup logging
         setup_structured_logging(level="INFO", json_format=True)
-        
+
         # Set a correlation ID
         test_correlation_id = "test-correlation-123"
         correlation_id_ctx.set(test_correlation_id)
-        
+
         # Log a message
         loguru_logger.info("Test message with correlation_id")
-        
+
         # Force flush
         for handler in logging.root.handlers:
             handler.flush()
-        
+
         # Read the log file
         log_file = tmp_path / "logs" / "vfs_bot.jsonl"
         content = log_file.read_text()
-        
+
         # Should contain the correlation_id in the JSON log
         assert test_correlation_id in content
         assert "correlation_id" in content
-        
+
     def test_correlation_id_patcher_no_id_set(self, tmp_path, monkeypatch):
         """Test that patcher handles case when correlation_id is not set."""
         monkeypatch.chdir(tmp_path)
-        
+
         from loguru import logger as loguru_logger
+
         from src.core.logger import correlation_id_ctx
-        
+
         # Setup logging
         setup_structured_logging(level="INFO", json_format=True)
-        
+
         # Ensure no correlation ID is set
         correlation_id_ctx.set(None)
-        
+
         # Log a message
         loguru_logger.info("Test message without correlation_id")
-        
+
         # Should not crash - patcher should handle None gracefully
         # Force flush
         for handler in logging.root.handlers:
             handler.flush()
-        
+
         log_file = tmp_path / "logs" / "vfs_bot.jsonl"
         assert log_file.exists()

@@ -6,19 +6,17 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, NamedTuple, Optional, cast
 
-from fastapi import HTTPException, status
 import jwt
+from fastapi import HTTPException, status
 from jwt.exceptions import InvalidTokenError as JWTError
 from loguru import logger
 
 from .token_blacklist import check_blacklisted, get_token_blacklist
 
 # Supported JWT algorithms whitelist
-SUPPORTED_JWT_ALGORITHMS = frozenset({
-    "HS256", "HS384", "HS512",
-    "RS256", "RS384", "RS512",
-    "ES256", "ES384", "ES512"
-})
+SUPPORTED_JWT_ALGORITHMS = frozenset(
+    {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+)
 
 
 class JWTSettings(NamedTuple):
@@ -49,13 +47,13 @@ def _get_jwt_settings() -> JWTSettings:
         ValueError: If API_SECRET_KEY is not set or invalid
     """
     global _jwt_settings_cache, _jwt_settings_cache_time
-    
+
     now = time.monotonic()
-    
+
     # Return cached settings if still valid
     if _jwt_settings_cache is not None and (now - _jwt_settings_cache_time) < _JWT_SETTINGS_TTL:
         return _jwt_settings_cache
-    
+
     # Load fresh settings from environment
     secret_key = os.getenv("API_SECRET_KEY")
     if not secret_key:
@@ -89,16 +87,18 @@ def _get_jwt_settings() -> JWTSettings:
         raise ValueError("JWT_EXPIRY_HOURS environment variable must be a valid integer")
 
     # Update cache
-    _jwt_settings_cache = JWTSettings(secret_key=secret_key, algorithm=algorithm, expire_hours=expire_hours)
+    _jwt_settings_cache = JWTSettings(
+        secret_key=secret_key, algorithm=algorithm, expire_hours=expire_hours
+    )
     _jwt_settings_cache_time = now
-    
+
     return _jwt_settings_cache
 
 
 def invalidate_jwt_settings_cache() -> None:
     """
     Invalidate JWT settings cache.
-    
+
     This forces a reload of settings from environment on next access.
     Useful for testing or when key rotation is performed.
     """
@@ -230,7 +230,7 @@ async def verify_token(token: str) -> Dict[str, Any]:
                     issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
                     age = datetime.now(timezone.utc) - issued_at
                     max_age = timedelta(hours=rotation_max_hours)
-                    
+
                     if age > max_age:
                         logger.warning(
                             f"Token verified with previous key but exceeds rotation max age "
@@ -301,13 +301,13 @@ async def revoke_token(token: str) -> bool:
 
         # Add to blacklist (use async method if available)
         blacklist = get_token_blacklist()
-        if hasattr(blacklist, 'add_async'):
+        if hasattr(blacklist, "add_async"):
             # PersistentTokenBlacklist
             await blacklist.add_async(jti, exp_dt)
         else:
             # Regular TokenBlacklist
             blacklist.add(jti, exp_dt)
-        
+
         logger.info(f"Token {jti[:8]}... revoked successfully")
         return True
 

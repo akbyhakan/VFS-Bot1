@@ -120,7 +120,9 @@ class BotMetrics:
 
         MetricsHelper.record_booking_success(centre=centre)
 
-    async def record_error(self, user_id: Optional[int], error_type: str, component: str = "bot") -> None:
+    async def record_error(
+        self, user_id: Optional[int], error_type: str, component: str = "bot"
+    ) -> None:
         """
         Record an error.
 

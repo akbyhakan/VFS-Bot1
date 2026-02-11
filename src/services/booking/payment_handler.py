@@ -7,8 +7,8 @@ from typing import Any, Dict
 
 from playwright.async_api import Page
 
-from .selector_utils import resolve_selector, try_selectors, get_selector
 from ..otp_webhook import get_otp_service
+from .selector_utils import get_selector, resolve_selector, try_selectors
 
 logger = logging.getLogger(__name__)
 
@@ -191,10 +191,11 @@ class PaymentHandler:
             current_url = page.url
             try:
                 from urllib.parse import urlparse
+
                 parsed_url = urlparse(current_url)
                 # Check that the domain is exactly vfsglobal.com or a subdomain
                 if parsed_url.hostname and (
-                    parsed_url.hostname == "vfsglobal.com" 
+                    parsed_url.hostname == "vfsglobal.com"
                     or parsed_url.hostname.endswith(".vfsglobal.com")
                 ):
                     logger.info("✅ Redirected to VFS - Payment successful")

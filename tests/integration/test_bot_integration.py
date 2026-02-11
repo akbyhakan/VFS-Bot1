@@ -28,7 +28,9 @@ async def test_login_success(mock_page, config, mock_db, mock_notifier):
     mock_page.url = "https://visa.vfsglobal.com/tur/deu/en/dashboard"
     mock_page.locator.return_value.count = AsyncMock(return_value=0)  # No captcha
 
-    result = await bot.services.workflow.auth_service.login(mock_page, "test@example.com", "password")
+    result = await bot.services.workflow.auth_service.login(
+        mock_page, "test@example.com", "password"
+    )
 
     assert result is True
     mock_page.goto.assert_called_once()
@@ -44,7 +46,9 @@ async def test_login_failure_wrong_credentials(mock_page, config, mock_db, mock_
     mock_page.url = "https://visa.vfsglobal.com/tur/deu/en/login"
     mock_page.locator.return_value.count = AsyncMock(return_value=0)
 
-    result = await bot.services.workflow.auth_service.login(mock_page, "wrong@example.com", "wrongpass")
+    result = await bot.services.workflow.auth_service.login(
+        mock_page, "wrong@example.com", "wrongpass"
+    )
 
     assert result is False
 
@@ -64,7 +68,9 @@ async def test_check_slots_available(mock_page, config, mock_db, mock_notifier):
     mock_page.locator.return_value = mock_locator
     mock_page.locator.return_value.first = mock_first
 
-    slot = await bot.services.workflow.slot_checker.check_slots(mock_page, "Istanbul", "Schengen Visa", "Tourism")
+    slot = await bot.services.workflow.slot_checker.check_slots(
+        mock_page, "Istanbul", "Schengen Visa", "Tourism"
+    )
 
     assert slot is not None
     assert slot["date"] == "2024-02-15"
@@ -81,7 +87,9 @@ async def test_check_slots_not_available(mock_page, config, mock_db, mock_notifi
     mock_locator.count = AsyncMock(return_value=0)
     mock_page.locator.return_value = mock_locator
 
-    slot = await bot.services.workflow.slot_checker.check_slots(mock_page, "Istanbul", "Schengen Visa", "Tourism")
+    slot = await bot.services.workflow.slot_checker.check_slots(
+        mock_page, "Istanbul", "Schengen Visa", "Tourism"
+    )
 
     assert slot is None
 
@@ -155,7 +163,9 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
     with (
         patch.object(bot.services.workflow.auth_service, "login", return_value=True),
         patch.object(
-            bot.services.workflow.slot_checker, "check_slots", return_value={"date": "15/02/2024", "time": "10:00"}
+            bot.services.workflow.slot_checker,
+            "check_slots",
+            return_value={"date": "15/02/2024", "time": "10:00"},
         ),
         patch.object(bot.services.workflow.booking_service, "run_booking_flow", return_value=True),
         patch.object(
@@ -163,7 +173,9 @@ async def test_process_user_with_slot_found(config, mock_db, mock_notifier):
             "verify_booking_confirmation",
             return_value={"success": True, "reference": "REF-123456"},
         ),
-        patch.object(bot.services.workflow.waitlist_handler, "detect_waitlist_mode", return_value=False),
+        patch.object(
+            bot.services.workflow.waitlist_handler, "detect_waitlist_mode", return_value=False
+        ),
     ):
         mock_db.get_personal_details.return_value = {
             "first_name": "John",

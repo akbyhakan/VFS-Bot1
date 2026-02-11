@@ -71,7 +71,7 @@ def test_sanitize_truncation():
     # Create a string longer than max_length
     long_text = "a" * 200
     result = sanitize_log_value(long_text, max_length=50)
-    
+
     # Should be truncated to 50 characters (47 'a's + '...')
     assert len(result) == 50
     assert result.endswith("...")
@@ -156,7 +156,7 @@ def test_sanitize_default_max_length():
     # Create a string longer than 100 characters
     long_text = "b" * 150
     result = sanitize_log_value(long_text)  # No max_length specified
-    
+
     # Should be truncated to 100 characters (default)
     assert len(result) == 100
     assert result.endswith("...")

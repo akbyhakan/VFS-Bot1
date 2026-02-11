@@ -278,12 +278,12 @@ def get_encryption() -> PasswordEncryption:
     # First check without lock (fast path for existing instance)
     if _encryption_instance is not None:
         current_time = time.monotonic()
-        
+
         # Only check env key if TTL has expired
         if current_time - _last_key_check_time < _KEY_CHECK_INTERVAL:
             # Fast path: instance exists and TTL not expired - no env check needed
             return _encryption_instance
-        
+
         # TTL expired - check if key changed
         current_key = os.getenv("ENCRYPTION_KEY")
         if current_key and _normalize_key(current_key) == _encryption_instance._key:
@@ -296,7 +296,7 @@ def get_encryption() -> PasswordEncryption:
     with _encryption_lock:
         current_time = time.monotonic()
         current_key = os.getenv("ENCRYPTION_KEY")
-        
+
         # Double-check after acquiring lock
         if _encryption_instance is None or (
             current_key and _normalize_key(current_key) != _encryption_instance._key
@@ -306,7 +306,7 @@ def get_encryption() -> PasswordEncryption:
         else:
             # Instance exists and key matches - update check time
             _last_key_check_time = current_time
-            
+
         # Ensure _encryption_instance is not None before returning
         if _encryption_instance is None:
             raise RuntimeError("Failed to initialize PasswordEncryption instance")

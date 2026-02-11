@@ -3,9 +3,9 @@
 import os
 from datetime import timedelta
 
+import jwt
 import pytest
 from fastapi import HTTPException
-import jwt
 
 from src.core.auth import (
     create_access_token,
@@ -244,7 +244,7 @@ def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
     # Manually create a token with old iat (80 hours ago)
     iat_timestamp = int((datetime.now(timezone.utc) - timedelta(hours=80)).timestamp())
     exp_timestamp = int((datetime.now(timezone.utc) + timedelta(days=7)).timestamp())
-    
+
     payload = {
         "sub": "testuser",
         "iat": iat_timestamp,
@@ -252,7 +252,7 @@ def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
         "jti": "test-jti",
         "type": "access",
     }
-    
+
     # Encode token with old key
     old_token = jwt.encode(payload, old_key, algorithm=get_algorithm())
 
@@ -300,4 +300,3 @@ def test_jwt_rotation_within_grace_period_accepts(monkeypatch):
     payload = verify_token(old_token)
     assert payload["sub"] == "testuser"
     assert payload["name"] == "Test User"
-

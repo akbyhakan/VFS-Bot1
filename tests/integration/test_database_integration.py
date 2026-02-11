@@ -23,13 +23,13 @@ except ImportError:
 async def postgres_url() -> AsyncGenerator[str, None]:
     """
     Create a PostgreSQL container for integration tests.
-    
+
     Yields:
         PostgreSQL connection URL
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not available")
-    
+
     # Use testcontainers to create a real PostgreSQL instance
     with PostgresContainer("postgres:15") as postgres:
         yield postgres.get_connection_url()
@@ -39,10 +39,10 @@ async def postgres_url() -> AsyncGenerator[str, None]:
 async def db(postgres_url: str) -> AsyncGenerator[Database, None]:
     """
     Create database instance using testcontainers PostgreSQL.
-    
+
     Args:
         postgres_url: PostgreSQL connection URL from container
-        
+
     Yields:
         Database instance for testing
     """
@@ -75,7 +75,7 @@ class TestDatabaseIntegrationWithTestcontainers:
         """Test database connection and health check."""
         # Verify connection is established
         assert db.pool is not None, "Database pool should be established"
-        
+
         # Verify health check passes
         is_healthy = await db.health_check()
         assert is_healthy is True, "Database should be healthy"
@@ -84,22 +84,22 @@ class TestDatabaseIntegrationWithTestcontainers:
     @pytest.mark.slow
     async def test_connection_pool_under_pressure(self, db: Database):
         """Test connection pool under concurrent load."""
-        
+
         async def health_check_task() -> bool:
             """Execute a health check."""
             try:
                 return await db.health_check()
             except Exception:
                 return False
-        
+
         # Create 20 concurrent health check tasks
         tasks = [health_check_task() for _ in range(20)]
         results = await asyncio.gather(*tasks)
-        
+
         # At least 90% should succeed
         success_count = sum(1 for r in results if r is True)
         success_rate = success_count / len(results)
-        
+
         assert success_rate >= 0.90, (
             f"Expected >= 90% success rate, got {success_rate:.1%} "
             f"({success_count}/{len(results)} successful)"
@@ -117,13 +117,15 @@ class TestDatabaseIntegration:
         async def create_user(i: int) -> int:
             """Create a single user."""
             user_repo = UserRepository(integration_db)
-            return await user_repo.create({
-                'email': f"user{i}@test.com",
-                'password': f"password{i}",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            return await user_repo.create(
+                {
+                    "email": f"user{i}@test.com",
+                    "password": f"password{i}",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
 
         # Create 10 users concurrently
         tasks = [create_user(i) for i in range(10)]
@@ -192,13 +194,15 @@ class TestDatabaseIntegration:
 
         # Create a user
         user_repo = UserRepository(integration_db)
-        user_id = await user_repo.create({
-            'email': "test@example.com",
-            'password': "testpass",
-            'center_name': "Istanbul",
-            'visa_category': "Schengen",
-            'visa_subcategory': "Tourism",
-        })
+        user_id = await user_repo.create(
+            {
+                "email": "test@example.com",
+                "password": "testpass",
+                "center_name": "Istanbul",
+                "visa_category": "Schengen",
+                "visa_subcategory": "Tourism",
+            }
+        )
 
         async def read_user() -> dict:
             """Read user in separate connection."""
@@ -209,9 +213,7 @@ class TestDatabaseIntegration:
         async def update_user() -> None:
             """Update user in separate connection."""
             async with integration_db.get_connection() as conn:
-                await conn.execute(
-                    "UPDATE users SET centre = $1 WHERE id = $2", "Ankara", user_id
-                )
+                await conn.execute("UPDATE users SET centre = $1 WHERE id = $2", "Ankara", user_id)
 
         # Initial read
         user = await read_user()
@@ -232,13 +234,15 @@ class TestDatabaseIntegration:
         user_repo = UserRepository(integration_db)
         user_ids = []
         for i in range(5):
-            user_id = await user_repo.create({
-                'email': f"concurrent{i}@test.com",
-                'password': f"pass{i}",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            user_id = await user_repo.create(
+                {
+                    "email": f"concurrent{i}@test.com",
+                    "password": f"pass{i}",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
             user_ids.append(user_id)
 
         user_repo = UserRepository(integration_db)
@@ -276,10 +280,10 @@ class TestDatabaseIntegration:
         """Test database health check functionality."""
         is_healthy = await integration_db.health_check()
         assert is_healthy is True, "Database should be healthy"
-        
+
         # Verify failure counter is reset
         assert integration_db._consecutive_failures == 0
-        
+
         # Verify state is CONNECTED
         assert integration_db.state == "connected"
 
@@ -291,13 +295,15 @@ class TestDatabaseIntegration:
         user_repo = UserRepository(integration_db)
         user_ids = []
         for i in range(5):
-            user_id = await user_repo.create({
-                'email': f"batch{i}@test.com",
-                'password': f"pass{i}",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            user_id = await user_repo.create(
+                {
+                    "email": f"batch{i}@test.com",
+                    "password": f"pass{i}",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
             user_ids.append(user_id)
 
             await integration_db.add_personal_details(
@@ -334,13 +340,15 @@ class TestDatabaseContextManager:
 
             # Should be able to use the database
             user_repo = UserRepository(db)
-            user_id = await user_repo.create({
-                'email': "context@test.com",
-                'password': "password",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            user_id = await user_repo.create(
+                {
+                    "email": "context@test.com",
+                    "password": "password",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
             assert user_id > 0
 
         # After context exit, connection should be closed

@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-
 from src.services.otp_manager import (
     BotSession,
     EmailProcessor,

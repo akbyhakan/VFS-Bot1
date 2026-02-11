@@ -17,16 +17,16 @@ class TestHTMLSanitization:
         """Test that script tags and contents are removed."""
         html = '<script>alert("secret data")</script><div>content</div>'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "secret data" not in sanitized
         assert "<script>" not in sanitized  # Entire tag removed
         assert "<div>content</div>" in sanitized
 
     def test_sanitize_removes_style_contents(self):
         """Test that style tags and contents are removed."""
-        html = '<style>.secret { color: red; }</style><div>content</div>'
+        html = "<style>.secret { color: red; }</style><div>content</div>"
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert ".secret" not in sanitized
         assert "<style>" not in sanitized  # Entire tag removed
 
@@ -34,15 +34,15 @@ class TestHTMLSanitization:
         """Test that input values are redacted."""
         html = '<input type="text" value="sensitive_data" name="user">'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "sensitive_data" not in sanitized
         assert "[redacted]" in sanitized
 
     def test_sanitize_redacts_textarea_contents(self):
         """Test that textarea contents are redacted."""
-        html = '<textarea>sensitive text data</textarea>'
+        html = "<textarea>sensitive text data</textarea>"
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "sensitive text data" not in sanitized
         assert "[redacted]" in sanitized
 
@@ -50,7 +50,7 @@ class TestHTMLSanitization:
         """Test that meta tag content is redacted."""
         html = '<meta name="csrf-token" content="secret_csrf_token">'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "secret_csrf_token" not in sanitized
         assert "[redacted]" in sanitized
 
@@ -58,7 +58,7 @@ class TestHTMLSanitization:
         """Test that data-* attributes are removed."""
         html = '<div data-user-id="12345" data-session="xyz">content</div>'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "data-user-id" not in sanitized
         assert "data-session" not in sanitized
         assert "12345" not in sanitized
@@ -68,21 +68,21 @@ class TestHTMLSanitization:
         """Test that inline event handlers are removed."""
         html = '<button onclick="alert(\'test\')" onload="init()">Click</button>'
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert "onclick" not in sanitized
         assert "onload" not in sanitized
         assert "alert" not in sanitized
 
     def test_sanitize_removes_hidden_inputs_with_token(self):
         """Test that hidden inputs with sensitive names are removed."""
-        html = '''
+        html = """
             <input type="hidden" name="csrf_token" value="secret">
             <input type="hidden" name="session_id" value="xyz">
             <input type="hidden" name="user_nonce" value="abc">
             <input type="text" name="username">
-        '''
+        """
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         assert 'name="csrf_token"' not in sanitized
         assert 'name="session_id"' not in sanitized
         assert 'name="user_nonce"' not in sanitized
@@ -90,7 +90,7 @@ class TestHTMLSanitization:
 
     def test_sanitize_complex_html(self):
         """Test sanitization of complex HTML with multiple sensitive elements."""
-        html = '''
+        html = """
             <html>
             <head>
                 <script>var secret = "token123";</script>
@@ -108,9 +108,9 @@ class TestHTMLSanitization:
                 <div data-user-id="12345" data-analytics="track">Content</div>
             </body>
             </html>
-        '''
+        """
         sanitized = AISelectorRepair._sanitize_html_for_llm(html)
-        
+
         # Verify sensitive data is removed
         assert "secret = " not in sanitized or "token123" not in sanitized
         assert ".hidden" not in sanitized
@@ -122,7 +122,7 @@ class TestHTMLSanitization:
         assert "data-user-id" not in sanitized
         assert "data-analytics" not in sanitized
         assert "onclick" not in sanitized
-        
+
         # Verify structure remains
         assert "<form>" in sanitized
         assert 'name="username"' in sanitized
@@ -515,14 +515,14 @@ class TestYAMLEdgeCasesInAddToYAML:
         empty_file.write_text("")
 
         repair = AISelectorRepair(str(empty_file))
-        
+
         # Should not crash, should log warning and return early
         repair._add_to_yaml("login.email_input", "input#new-email")
-        
+
         # File should remain empty (or unchanged)
         content = empty_file.read_text()
         assert content == ""  # Should not be modified
-        
+
         # Verify warning was logged
         assert "Selectors file is empty or invalid" in caplog.text
 
@@ -532,15 +532,15 @@ class TestYAMLEdgeCasesInAddToYAML:
         none_file.write_text("~\n")
 
         repair = AISelectorRepair(str(none_file))
-        
+
         # Should not crash, should log warning and return early
         repair._add_to_yaml("login.email_input", "input#new-email")
-        
+
         # File should remain unchanged (contains None)
         with open(none_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert loaded is None
-        
+
         # Verify warning was logged
         assert "Selectors file is empty or invalid" in caplog.text
 
@@ -550,15 +550,15 @@ class TestYAMLEdgeCasesInAddToYAML:
         list_file.write_text("- item1\n- item2\n")
 
         repair = AISelectorRepair(str(list_file))
-        
+
         # Should not crash, should log warning and return early
         repair._add_to_yaml("login.email_input", "input#new-email")
-        
+
         # File should remain unchanged (still a list)
         with open(list_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert isinstance(loaded, list)
-        
+
         # Verify warning was logged
         assert "Selectors file is empty or invalid" in caplog.text
 
@@ -568,29 +568,29 @@ class TestYAMLEdgeCasesInAddToYAML:
         string_file.write_text("just a string\n")
 
         repair = AISelectorRepair(str(string_file))
-        
+
         # Should not crash, should log warning and return early
         repair._add_to_yaml("login.email_input", "input#new-email")
-        
+
         # File should remain unchanged (still a string)
         with open(string_file, "r") as f:
             loaded = yaml.safe_load(f)
         assert isinstance(loaded, str)
-        
+
         # Verify warning was logged
         assert "Selectors file is empty or invalid" in caplog.text
 
     def test_add_to_yaml_with_valid_dict(self, temp_selectors_file):
         """Test that _add_to_yaml works correctly with valid dict YAML."""
         repair = AISelectorRepair(str(temp_selectors_file))
-        
+
         # Should successfully add to valid YAML
         repair._add_to_yaml("login.password_input", "input#new-password")
-        
+
         # File should be updated
         with open(temp_selectors_file, "r") as f:
             loaded = yaml.safe_load(f)
-        
+
         assert isinstance(loaded, dict)
         assert "login" in loaded
         # The new selector should be added

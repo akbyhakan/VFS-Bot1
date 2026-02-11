@@ -23,7 +23,7 @@ __all__ = ["correlation_id_ctx", "setup_structured_logging", "CorrelationIdFilte
 class CorrelationIdFilter(logging.Filter):
     """
     Add correlation ID to log records.
-    
+
     Legacy - kept for backward compatibility with stdlib logging consumers.
     """
 
@@ -35,7 +35,7 @@ class CorrelationIdFilter(logging.Filter):
 class JSONFormatter(logging.Formatter):
     """
     Format log records as JSON.
-    
+
     Legacy - kept for backward compatibility with stdlib logging consumers.
     """
 
@@ -73,7 +73,7 @@ class JSONFormatter(logging.Formatter):
 def _correlation_patcher(record: Dict[str, Any]) -> None:
     """
     Patch log records with correlation_id from context.
-    
+
     This function is called by Loguru for each log record to inject
     the correlation_id from the ContextVar into the log's extra fields.
     """
@@ -92,7 +92,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     """
     # Remove default handler
     logger.remove()
-    
+
     # Configure logger to use correlation_id patcher
     logger.configure(patcher=_correlation_patcher)
 

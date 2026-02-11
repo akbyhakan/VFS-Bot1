@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from src.models.database import Database
 from src.repositories.base import BaseRepository
-from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.db_helpers import _parse_command_tag
+from src.utils.encryption import decrypt_password, encrypt_password
 
 logger = logging.getLogger(__name__)
 
@@ -165,13 +165,15 @@ class ProxyRepository(BaseRepository[Proxy]):
             List of proxy dictionaries with decrypted passwords
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT id, server, port, username, password_encrypted, is_active,
                        last_used, failure_count, created_at, updated_at
                 FROM proxy_endpoints
                 WHERE is_active = true
                 ORDER BY failure_count ASC, last_used ASC NULLS FIRST
-                """)
+                """
+            )
 
             proxies = []
             for row in rows:
@@ -430,8 +432,12 @@ class ProxyRepository(BaseRepository[Proxy]):
                     "total_proxies": int(row["total_proxies"]),
                     "active_proxies": int(row["active_proxies"]),
                     "inactive_proxies": int(row["inactive_proxies"]),
-                    "avg_failure_count": float(row["avg_failure_count"]) if row["avg_failure_count"] else 0.0,
-                    "max_failure_count": int(row["max_failure_count"]) if row["max_failure_count"] else 0,
+                    "avg_failure_count": (
+                        float(row["avg_failure_count"]) if row["avg_failure_count"] else 0.0
+                    ),
+                    "max_failure_count": (
+                        int(row["max_failure_count"]) if row["max_failure_count"] else 0
+                    ),
                 }
 
             return {

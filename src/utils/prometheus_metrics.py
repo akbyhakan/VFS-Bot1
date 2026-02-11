@@ -1,7 +1,7 @@
 """Prometheus metrics integration for VFS-Bot."""
 
-from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 from loguru import logger
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
 from src.core.enums import MetricsStatus, SlotCheckStatus
 

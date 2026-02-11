@@ -18,7 +18,7 @@ from ...utils.masking import _mask_database_url
 # Lua script for atomic rate limiting (check + record in one operation)
 # KEYS[1] = rate limit key
 # ARGV[1] = max_attempts
-# ARGV[2] = window_seconds  
+# ARGV[2] = window_seconds
 # ARGV[3] = current timestamp (now)
 # ARGV[4] = unique attempt ID (uuid)
 # Returns: 1 if rate limited (attempt NOT recorded), 0 if allowed (attempt recorded)
@@ -75,13 +75,15 @@ class RateLimiterBackend(ABC):
         pass
 
     @abstractmethod
-    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+    def check_and_record_attempt(
+        self, identifier: str, max_attempts: int, window_seconds: int
+    ) -> bool:
         """
         Atomically check rate limit and record attempt if not limited.
-        
-        This eliminates the TOCTOU race condition between is_rate_limited() 
+
+        This eliminates the TOCTOU race condition between is_rate_limited()
         and record_attempt() by performing both operations atomically.
-        
+
         Args:
             identifier: Unique identifier (e.g., username, IP)
             max_attempts: Maximum attempts allowed in window
@@ -136,19 +138,21 @@ class InMemoryBackend(RateLimiterBackend):
 
             return len(stale_keys)
 
-    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+    def check_and_record_attempt(
+        self, identifier: str, max_attempts: int, window_seconds: int
+    ) -> bool:
         """Atomically check rate limit and record attempt if not limited."""
         with self._lock:
             now = datetime.now(timezone.utc)
             cutoff = now - timedelta(seconds=window_seconds)
-            
+
             # Clean old attempts
             self._attempts[identifier] = [t for t in self._attempts[identifier] if t > cutoff]
-            
+
             # Check if rate limited
             if len(self._attempts[identifier]) >= max_attempts:
                 return True
-            
+
             # Not limited - record the attempt
             self._attempts[identifier].append(now)
             return False
@@ -188,17 +192,18 @@ class RedisBackend(RateLimiterBackend):
         # Redis handles cleanup via EXPIRE, so no manual cleanup needed
         return 0
 
-    def check_and_record_attempt(self, identifier: str, max_attempts: int, window_seconds: int) -> bool:
+    def check_and_record_attempt(
+        self, identifier: str, max_attempts: int, window_seconds: int
+    ) -> bool:
         """Atomically check rate limit and record attempt if not limited."""
         key = f"auth_rl:{identifier}"
         # Use Unix timestamp (time.time()) for Redis operations for compatibility
         # with Redis ZADD score field which expects numeric values
         now = time.time()
         attempt_id = str(uuid.uuid4())
-        
+
         result = self._rate_limit_script(
-            keys=[key],
-            args=[max_attempts, window_seconds, now, attempt_id]
+            keys=[key], args=[max_attempts, window_seconds, now, attempt_id]
         )
         return bool(result)
 
@@ -219,7 +224,7 @@ class AuthRateLimiter:
         self,
         max_attempts: int = 5,
         window_seconds: int = 60,
-        backend: Optional[RateLimiterBackend] = None
+        backend: Optional[RateLimiterBackend] = None,
     ):
         """
         Initialize rate limiter.
@@ -252,6 +257,7 @@ class AuthRateLimiter:
         if redis_url:
             try:
                 import redis
+
                 client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
@@ -272,14 +278,14 @@ class AuthRateLimiter:
     def _notify_redis_fallback(self, redis_url: str, error: str) -> None:
         """
         Send notification alert when Redis fallback occurs.
-        
+
         Args:
             redis_url: The Redis URL that failed
             error: Error message
         """
         try:
             from src.services.notification import NotificationService
-            
+
             # Create notification message
             message = (
                 f"⚠️ Redis Connection Failed - Fallback to In-Memory\n\n"
@@ -287,16 +293,16 @@ class AuthRateLimiter:
                 f"Error: {error}\n\n"
                 f"⚠️ WARNING: Rate limiting is NOT shared across workers in fallback mode!"
             )
-            
+
             # Try to send notification using helper method
             self._schedule_notification(message)
         except Exception as e:
             logger.error(f"Failed to initialize notification for Redis fallback: {e}")
-    
+
     def _schedule_notification(self, message: str) -> None:
         """
         Helper to schedule notification in event loop if available.
-        
+
         Args:
             message: Notification message to send
         """
@@ -313,17 +319,17 @@ class AuthRateLimiter:
                 logger.error(f"Failed to send Redis fallback notification: {run_err}")
         except Exception as notify_err:
             logger.error(f"Failed to schedule Redis fallback notification: {notify_err}")
-    
+
     async def _send_fallback_notification(self, message: str) -> None:
         """
         Async helper to send Redis fallback notification.
-        
+
         Args:
             message: Notification message
         """
         try:
             from src.services.notification import NotificationService
-            
+
             # Build notification config from environment
             config = {
                 "telegram": {
@@ -333,14 +339,14 @@ class AuthRateLimiter:
                 },
                 "email": {
                     "enabled": bool(os.getenv("SMTP_SERVER")),
-                }
+                },
             }
-            
+
             notifier = NotificationService(config)
             await notifier.send_notification(
                 title="🚨 Redis Connection Failed - Rate Limiter Fallback",
                 message=message,
-                priority="high"
+                priority="high",
             )
         except Exception as e:
             logger.error(f"Failed to send Redis fallback notification: {e}")
@@ -358,13 +364,13 @@ class AuthRateLimiter:
     def check_and_record_attempt(self, identifier: str) -> bool:
         """
         Atomically check if rate limited and record attempt if not.
-        
-        This is the preferred method over separate is_rate_limited() + record_attempt() 
+
+        This is the preferred method over separate is_rate_limited() + record_attempt()
         calls, as it eliminates the TOCTOU race condition in distributed environments.
-        
+
         Args:
             identifier: Unique identifier (e.g., username, IP address)
-            
+
         Returns:
             True if rate limited (attempt NOT recorded),
             False if allowed (attempt WAS recorded)

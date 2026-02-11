@@ -231,9 +231,9 @@ class TestSlotRetention:
     def test_enforce_retention_trims_excess_slots(self, temp_data_file):
         """Test that retention enforcement trims excess slots."""
         from src.services.slot_analyzer import _MAX_SLOT_RECORDS
-        
+
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
+
         # Add more than max records
         now = datetime.now()
         for i in range(_MAX_SLOT_RECORDS + 100):
@@ -249,19 +249,19 @@ class TestSlotRetention:
                     "found_weekday": "Monday",
                 }
             )
-        
+
         # Save data - should trigger retention
         analyzer._save_data_sync()
-        
+
         # Verify retention was enforced
         assert len(analyzer._patterns["slots"]) == _MAX_SLOT_RECORDS
 
     def test_retention_keeps_most_recent(self, temp_data_file):
         """Test that retention keeps the most recent records."""
         from src.services.slot_analyzer import _MAX_SLOT_RECORDS
-        
+
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
+
         # Add records with identifiable timestamps
         now = datetime.now()
         for i in range(_MAX_SLOT_RECORDS + 10):
@@ -277,10 +277,10 @@ class TestSlotRetention:
                     "found_weekday": "Monday",
                 }
             )
-        
+
         # Save and enforce retention
         analyzer._save_data_sync()
-        
+
         # First 10 oldest should be removed
         remaining_centres = [slot["centre"] for slot in analyzer._patterns["slots"]]
         assert f"Centre_0" not in remaining_centres
@@ -291,7 +291,7 @@ class TestSlotRetention:
     def test_retention_on_load(self, temp_data_file):
         """Test that retention is enforced when loading data."""
         from src.services.slot_analyzer import _MAX_SLOT_RECORDS
-        
+
         # Create file with excess records
         now = datetime.now()
         data = {
@@ -311,10 +311,9 @@ class TestSlotRetention:
             "stats": {},
         }
         temp_data_file.write_text(json.dumps(data))
-        
+
         # Load data - should trigger retention
         analyzer = SlotPatternAnalyzer(str(temp_data_file))
-        
+
         # Verify retention was enforced
         assert len(analyzer._patterns["slots"]) == _MAX_SLOT_RECORDS
-

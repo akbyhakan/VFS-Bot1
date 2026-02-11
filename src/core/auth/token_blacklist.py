@@ -181,9 +181,7 @@ class PersistentTokenBlacklist(TokenBlacklist):
             # In-memory cleanup (every interval)
             with self._lock:
                 self._cleanup_expired()
-                logger.debug(
-                    f"Token blacklist cleanup: {len(self._blacklist)} tokens remaining"
-                )
+                logger.debug(f"Token blacklist cleanup: {len(self._blacklist)} tokens remaining")
 
             # Database cleanup (every 6th interval ≈ 30 minutes)
             db_cleanup_counter += 1
@@ -193,9 +191,7 @@ class PersistentTokenBlacklist(TokenBlacklist):
                     repo = TokenBlacklistRepository(self._db)
                     deleted = await repo.cleanup_expired()
                     if deleted > 0:
-                        logger.info(
-                            f"Database token cleanup: removed {deleted} expired tokens"
-                        )
+                        logger.info(f"Database token cleanup: removed {deleted} expired tokens")
                 except Exception as e:
                     logger.warning(f"Database token cleanup failed: {e}")
 
@@ -235,7 +231,7 @@ def init_token_blacklist(db: Any) -> None:
     with _blacklist_lock:
         logger.info("Initializing persistent token blacklist with database")
         _token_blacklist = PersistentTokenBlacklist(db=db)
-    
+
     # Note: Loading tokens from DB happens lazily or can be done via
     # await get_token_blacklist().load_from_database() in an async context
 

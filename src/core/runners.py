@@ -26,6 +26,7 @@ from .shutdown import (
 
 class BotConfigDict(TypedDict, total=False):
     """Type hints for the bot configuration dictionary."""
+
     vfs: Dict[str, Any]
     bot: Dict[str, Any]
     notifications: Dict[str, Any]
@@ -38,11 +39,11 @@ class BotConfigDict(TypedDict, total=False):
 
 def parse_safe_port(env_var: str = "UVICORN_PORT", default: int = 8000) -> int:
     """Parse port from environment variable with validation.
-    
+
     Args:
         env_var: Environment variable name to read
         default: Default port if env var is missing or invalid
-        
+
     Returns:
         Valid port number (1-65535)
     """
@@ -77,12 +78,14 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
     db_owned = db is None
     if db_owned:
         from src.models.db_factory import DatabaseFactory
+
         db = await DatabaseFactory.ensure_connected()
 
     # Database backup service (PostgreSQL)
     backup_service = None
     try:
         from src.utils.db_backup import get_backup_service
+
         backup_service = get_backup_service()
         await backup_service.start_scheduled_backups()
         logger.info("Database backup service started (pg_dump, encrypted)")
@@ -151,7 +154,10 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
 
 
 async def run_web_mode(
-    config: BotConfigDict, start_cleanup: bool = True, db: Optional[Database] = None, skip_shutdown: bool = False
+    config: BotConfigDict,
+    start_cleanup: bool = True,
+    db: Optional[Database] = None,
+    skip_shutdown: bool = False,
 ) -> None:
     """
     Run bot with web dashboard.
@@ -174,6 +180,7 @@ async def run_web_mode(
     db_owned = db is None
     if db_owned:
         from src.models.db_factory import DatabaseFactory
+
         db = await DatabaseFactory.ensure_connected()
 
     cleanup_service = None  # Initialize to None
@@ -243,6 +250,7 @@ async def run_both_mode(config: BotConfigDict) -> None:
 
     # Initialize shared database instance for both modes
     from src.models.db_factory import DatabaseFactory
+
     db = await DatabaseFactory.ensure_connected()
 
     # Initialize notification service
@@ -266,7 +274,9 @@ async def run_both_mode(config: BotConfigDict) -> None:
 
         # Run web mode (with cleanup service enabled, skip its shutdown)
         # Web starts regardless of bot status for diagnostics
-        web_task = asyncio.create_task(run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True))
+        web_task = asyncio.create_task(
+            run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True)
+        )
 
         # Wait for web task to complete
         await web_task

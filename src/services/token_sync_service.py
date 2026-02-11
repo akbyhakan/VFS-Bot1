@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 class TokenSyncService:
     """
     Synchronizes token state between VFSApiClient and SessionManager.
-    
+
     This service bridges the gap between two independent token management systems:
     - VFSApiClient.VFSSession: In-memory VFS Global API token
     - SessionManager: Persistent Dashboard/Anti-detection JWT
-    
+
     Responsibilities:
     - Sync token state after VFSApiClient login or refresh
     - Provide proactive token refresh logic based on configurable buffer
@@ -36,12 +36,12 @@ class TokenSyncService:
                                          (default: from TOKEN_REFRESH_BUFFER_MINUTES env var)
         """
         self.session_manager = session_manager
-        
+
         # Get token refresh buffer from parameter or environment
         if token_refresh_buffer_minutes is None:
             token_refresh_buffer_minutes = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
         self.token_refresh_buffer_minutes = token_refresh_buffer_minutes
-        
+
         logger.info(
             f"TokenSyncService initialized with buffer: {self.token_refresh_buffer_minutes} minutes"
             f" (SessionManager: {'enabled' if session_manager else 'disabled'})"
@@ -78,9 +78,7 @@ class TokenSyncService:
 
             # Sync to SessionManager
             self.session_manager.set_tokens(access_token, refresh_token)
-            logger.info(
-                f"Token synced to SessionManager (expires: {vfs_session.expires_at})"
-            )
+            logger.info(f"Token synced to SessionManager (expires: {vfs_session.expires_at})")
 
         except Exception as e:
             logger.error(f"Failed to sync tokens to SessionManager: {e}", exc_info=True)

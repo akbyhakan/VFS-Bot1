@@ -78,7 +78,7 @@ class TestBackupEncryption:
             assert Path(backup_path).exists()
 
             # Verify temp SQL file was deleted
-            temp_sql_path = Path(backup_path).with_suffix('.sql')
+            temp_sql_path = Path(backup_path).with_suffix(".sql")
             assert not temp_sql_path.exists()
 
     @pytest.mark.asyncio
@@ -133,8 +133,10 @@ class TestBackupEncryption:
         encrypted_path.write_bytes(encrypted_data)
 
         # Mock the restore subprocess call
-        with patch.object(backup_service, "_perform_restore") as mock_restore, \
-             patch.object(backup_service, "create_backup") as mock_create:
+        with (
+            patch.object(backup_service, "_perform_restore") as mock_restore,
+            patch.object(backup_service, "create_backup") as mock_create,
+        ):
 
             mock_restore.return_value = None
             mock_create.return_value = None
@@ -227,6 +229,7 @@ class TestBackupEncryption:
     async def test_cleanup_handles_both_extensions(self, temp_backup_dir, encryption_key):
         """Test cleanup handles both .sql and .sql.enc files."""
         from datetime import datetime, timedelta, timezone
+
         from src.utils.db_backup import DatabaseBackup
 
         os.environ["ENCRYPTION_KEY"] = encryption_key
@@ -246,6 +249,7 @@ class TestBackupEncryption:
 
         # Touch files to make them old
         import time
+
         old_time = time.time() - (2 * 24 * 3600)  # 2 days ago
         os.utime(old_enc, (old_time, old_time))
         os.utime(old_sql, (old_time, old_time))
@@ -359,7 +363,7 @@ class TestBackupUtilEncryption:
             assert Path(backup_path).exists()
 
             # Verify temp SQL was deleted
-            temp_sql = Path(backup_path).with_suffix('.sql')
+            temp_sql = Path(backup_path).with_suffix(".sql")
             assert not temp_sql.exists()
 
     @pytest.mark.asyncio
@@ -382,8 +386,10 @@ class TestBackupUtilEncryption:
         encrypted_path.write_bytes(encrypted_data)
 
         # Mock subprocess and create_backup
-        with patch.object(backup_service, "_perform_restore") as mock_restore, \
-             patch.object(backup_service, "create_backup") as mock_create:
+        with (
+            patch.object(backup_service, "_perform_restore") as mock_restore,
+            patch.object(backup_service, "create_backup") as mock_create,
+        ):
 
             mock_restore.return_value = None
             mock_create.return_value = str(Path(temp_backup_dir) / "pre_restore.sql.enc")
@@ -414,6 +420,7 @@ class TestBackupUtilEncryption:
         ]
 
         import time
+
         for i, backup in enumerate(backups):
             backup.write_text(f"backup {i}")
             # Set mtime to ensure order (newest first)

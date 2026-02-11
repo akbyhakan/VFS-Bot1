@@ -12,14 +12,14 @@ from .rate_limiter import RateLimiter
 class EndpointRateLimiter:
     """
     Per-endpoint rate limiter that maintains separate rate limits for different API endpoints.
-    
+
     VFS Global applies different rate limits to different endpoints:
     - Login: More restrictive (3 req/60s)
     - Slot checks: Moderate (30 req/60s)
     - Booking: Restrictive (10 req/60s)
     - Centres/categories: Light (5 req/60s)
     - Default: Standard (60 req/60s)
-    
+
     NOTE: This rate limiter is designed for single-process VFS API call throttling.
     For distributed/multi-worker deployments, see src/core/auth.py which provides
     Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
@@ -65,9 +65,9 @@ class EndpointRateLimiter:
     async def acquire(self, endpoint: str = "default") -> None:
         """
         Acquire permission to make a request to the specified endpoint.
-        
+
         Waits if rate limit is reached or if VFS has imposed a rate limit via 429 response.
-        
+
         Args:
             endpoint: Endpoint category ("login", "slot_check", "booking", "centres", "default")
         """
@@ -87,14 +87,14 @@ class EndpointRateLimiter:
 
         # Get appropriate limiter
         limiter = self._limiters.get(endpoint, self._limiters["default"])
-        
+
         # Acquire from the endpoint-specific limiter
         await limiter.acquire()
 
     def on_rate_limited(self, endpoint: str, retry_after: int) -> None:
         """
         Record a 429 rate limit response from VFS.
-        
+
         Args:
             endpoint: Endpoint category that was rate limited
             retry_after: Seconds to wait before retrying (from Retry-After header)
@@ -102,14 +102,13 @@ class EndpointRateLimiter:
         retry_until = time.time() + retry_after
         self._vfs_rate_limits[endpoint] = retry_until
         logger.warning(
-            f"VFS rate limit (429) received for {endpoint}, "
-            f"enforcing {retry_after}s wait"
+            f"VFS rate limit (429) received for {endpoint}, " f"enforcing {retry_after}s wait"
         )
 
     def get_all_stats(self) -> Dict[str, dict]:
         """
         Get statistics for all endpoint limiters.
-        
+
         Returns:
             Dictionary mapping endpoint names to their rate limiter stats
         """
@@ -131,16 +130,16 @@ class EndpointRateLimiter:
     def get_stats(self, endpoint: str = "default") -> dict:
         """
         Get statistics for a specific endpoint limiter.
-        
+
         Args:
             endpoint: Endpoint category to get stats for
-            
+
         Returns:
             Rate limiter statistics dictionary
         """
         limiter = self._limiters.get(endpoint, self._limiters["default"])
         stats = limiter.get_stats()
-        
+
         # Add VFS rate limit info if active
         if endpoint in self._vfs_rate_limits:
             current_time = time.time()
@@ -150,5 +149,5 @@ class EndpointRateLimiter:
             stats["vfs_wait_remaining"] = vfs_wait_remaining
         else:
             stats["vfs_rate_limited"] = False
-            
+
         return stats

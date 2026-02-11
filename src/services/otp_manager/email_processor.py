@@ -133,6 +133,7 @@ class EmailProcessor:
             received_at = email.utils.parsedate_to_datetime(date_str)
         except (ValueError, TypeError):
             from datetime import datetime, timezone
+
             received_at = datetime.now(timezone.utc)
 
         return OTPEntry(

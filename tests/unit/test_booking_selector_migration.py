@@ -2,12 +2,12 @@
 
 import pytest
 
+from src.selector import get_selector_manager
 from src.services.booking import (
     get_selector,
     get_selector_with_fallback,
     resolve_selector,
 )
-from src.selector import get_selector_manager
 
 
 class TestBookingSelectorMigration:

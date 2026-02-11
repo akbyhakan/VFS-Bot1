@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.auth import AuthRateLimiter, RedisBackend, InMemoryBackend
+from src.core.auth import AuthRateLimiter, InMemoryBackend, RedisBackend
 
 
 class TestAuthRateLimiter:
@@ -26,13 +26,13 @@ class TestAuthRateLimiter:
 
         # First attempt - not limited, recorded
         assert not limiter.check_and_record_attempt("user1")
-        
+
         # Second attempt - not limited, recorded
         assert not limiter.check_and_record_attempt("user1")
 
         # Third attempt - not limited, recorded
         assert not limiter.check_and_record_attempt("user1")
-        
+
         # Fourth attempt - now limited
         assert limiter.check_and_record_attempt("user1")
 
@@ -55,7 +55,7 @@ class TestAuthRateLimiter:
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
         assert limiter.check_and_record_attempt("user1")
-        
+
         # user2 should still be able to make attempts
         assert not limiter.check_and_record_attempt("user2")
 
@@ -147,7 +147,7 @@ class TestAuthRateLimiter:
         assert not limiter.check_and_record_attempt("user3")
 
         # Check that attempts are recorded (access backend's internal state)
-        if hasattr(limiter._backend, '_attempts'):
+        if hasattr(limiter._backend, "_attempts"):
             assert len(limiter._backend._attempts) == 3
 
         # Wait for window to expire
@@ -156,9 +156,9 @@ class TestAuthRateLimiter:
         # Use cleanup_stale_entries to clean up
         cleaned = limiter.cleanup_stale_entries()
         assert cleaned == 3
-        
+
         # After cleanup, empty lists should be removed from memory
-        if hasattr(limiter._backend, '_attempts'):
+        if hasattr(limiter._backend, "_attempts"):
             assert len(limiter._backend._attempts) == 0
 
     def test_timezone_aware_datetime(self):
@@ -169,7 +169,7 @@ class TestAuthRateLimiter:
         assert not limiter.check_and_record_attempt("user1")
 
         # For in-memory backend, check stored timestamp
-        if hasattr(limiter._backend, '_attempts'):
+        if hasattr(limiter._backend, "_attempts"):
             assert len(limiter._backend._attempts["user1"]) == 1
             stored_time = limiter._backend._attempts["user1"][0]
             # Timezone-aware datetime should have tzinfo
@@ -218,76 +218,76 @@ class TestCheckAndRecordAttempt:
     def test_check_and_record_attempt_basic(self):
         """Test that check_and_record_attempt returns False until max_attempts, then True."""
         limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
-        
+
         # First 3 attempts should succeed (return False = not limited)
         assert not limiter.check_and_record_attempt("user1")  # 1st attempt
         assert not limiter.check_and_record_attempt("user1")  # 2nd attempt
         assert not limiter.check_and_record_attempt("user1")  # 3rd attempt
-        
+
         # 4th attempt should be rate limited (return True = limited)
         assert limiter.check_and_record_attempt("user1")
-        
+
         # Further attempts should also be limited
         assert limiter.check_and_record_attempt("user1")
 
     def test_check_and_record_attempt_does_not_record_when_limited(self):
         """Verify that once limited, additional calls don't add more entries."""
         limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
-        
+
         # First 2 attempts succeed
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
-        
+
         # Now we're at the limit
         assert limiter.check_and_record_attempt("user1")
-        
+
         # Verify we're still at the limit (no new entries were added)
         # Clear and check that only 2 attempts were recorded
-        if hasattr(limiter._backend, '_attempts'):
+        if hasattr(limiter._backend, "_attempts"):
             # For in-memory backend, we can verify directly
             assert len(limiter._backend._attempts.get("user1", [])) == 2
 
     def test_check_and_record_attempt_window_expiration(self):
         """Verify attempts expire correctly with check_and_record_attempt."""
         limiter = AuthRateLimiter(max_attempts=2, window_seconds=1)
-        
+
         # Record 2 attempts - should hit the limit
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
-        
+
         # Should be rate limited now
         assert limiter.check_and_record_attempt("user1")
-        
+
         # Wait for window to expire
         time.sleep(1.1)
-        
+
         # Should no longer be rate limited
         assert not limiter.check_and_record_attempt("user1")
 
     def test_check_and_record_attempt_clear_attempts(self):
         """Verify clear_attempts resets the state for check_and_record_attempt."""
         limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
-        
+
         # Hit the limit
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
         assert limiter.check_and_record_attempt("user1")
-        
+
         # Clear attempts
         limiter.clear_attempts("user1")
-        
+
         # Should be able to make attempts again
         assert not limiter.check_and_record_attempt("user1")
 
     def test_check_and_record_attempt_thread_safety(self):
         """Multi-threaded test to verify atomicity of check_and_record_attempt."""
         import threading
-        
+
         limiter = AuthRateLimiter(max_attempts=50, window_seconds=60)
         successful_attempts = []
         failed_attempts = []
         lock = threading.Lock()
-        
+
         def make_attempts():
             for _ in range(30):
                 is_limited = limiter.check_and_record_attempt("user1")
@@ -296,14 +296,14 @@ class TestCheckAndRecordAttempt:
                         failed_attempts.append(1)
                     else:
                         successful_attempts.append(1)
-        
+
         # Run 2 threads, each trying 30 attempts = 60 total attempts
         threads = [threading.Thread(target=make_attempts) for _ in range(2)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        
+
         # Should have exactly 50 successful attempts (max_attempts)
         # and 10 failed attempts (60 - 50)
         assert len(successful_attempts) == 50
@@ -312,12 +312,12 @@ class TestCheckAndRecordAttempt:
     def test_check_and_record_attempt_different_identifiers(self):
         """Test that different identifiers are tracked independently."""
         limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
-        
+
         # user1 hits the limit
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
         assert limiter.check_and_record_attempt("user1")
-        
+
         # user2 should still be able to make attempts
         assert not limiter.check_and_record_attempt("user2")
         assert not limiter.check_and_record_attempt("user2")
@@ -327,35 +327,35 @@ class TestCheckAndRecordAttempt:
         """Test that RedisBackend's check_and_record_attempt is atomic using Lua script."""
         # Create a mock Redis client
         mock_redis = MagicMock()
-        
+
         # Mock the Lua script registration and execution
         mock_script = MagicMock()
         mock_redis.register_script.return_value = mock_script
-        
+
         # Simulate script behavior: first 3 calls return 0 (allowed), then 1 (blocked)
         mock_script.side_effect = [0, 0, 0, 1, 1]
-        
+
         # Create RedisBackend with mocked client
         backend = RedisBackend(mock_redis)
         limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=backend)
-        
+
         # First 3 attempts should succeed
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
         assert not limiter.check_and_record_attempt("user1")
-        
+
         # 4th attempt should be blocked
         assert limiter.check_and_record_attempt("user1")
-        
+
         # Verify the Lua script was called (not separate is_rate_limited + record_attempt)
         assert mock_script.call_count == 4
-        
+
         # Verify each call had the expected structure (keys=[key], args=[max, window, time, uuid])
         for call in mock_script.call_args_list:
             args, kwargs = call
-            assert 'keys' in kwargs
-            assert 'args' in kwargs
-            assert len(kwargs['keys']) == 1
-            assert len(kwargs['args']) == 4
-            assert kwargs['args'][0] == 3  # max_attempts
-            assert kwargs['args'][1] == 60  # window_seconds
+            assert "keys" in kwargs
+            assert "args" in kwargs
+            assert len(kwargs["keys"]) == 1
+            assert len(kwargs["args"]) == 4
+            assert kwargs["args"][0] == 3  # max_attempts
+            assert kwargs["args"][1] == 60  # window_seconds

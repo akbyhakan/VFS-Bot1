@@ -1,4 +1,5 @@
 """Ülke profil yükleyici."""
+
 from pathlib import Path
 from typing import Any, Dict, Optional
 

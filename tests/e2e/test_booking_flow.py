@@ -7,7 +7,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import UserRepository, AppointmentRepository
+from src.repositories import AppointmentRepository, UserRepository
 
 
 class TestBookingFlow:
@@ -23,13 +23,15 @@ class TestBookingFlow:
         try:
             # Create test user
             user_repo = UserRepository(db)
-            user_id = await user_repo.create({
-                'email': "e2e_test@example.com",
-                'password': "testpassword",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            user_id = await user_repo.create(
+                {
+                    "email": "e2e_test@example.com",
+                    "password": "testpassword",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
 
             # Add personal details
             await db.add_personal_details(
@@ -58,15 +60,17 @@ class TestBookingFlow:
 
             # Create appointment
             appointment_repo = AppointmentRepository(db)
-            await appointment_repo.create({
-                'user_id': user_id,
-                'centre': "Istanbul",
-                'category': "Schengen",
-                'subcategory': "Tourism",
-                'appointment_date': "2024-12-31",
-                'appointment_time': "10:00",
-                'reference_number': "REF123456",
-            })
+            await appointment_repo.create(
+                {
+                    "user_id": user_id,
+                    "centre": "Istanbul",
+                    "category": "Schengen",
+                    "subcategory": "Tourism",
+                    "appointment_date": "2024-12-31",
+                    "appointment_time": "10:00",
+                    "reference_number": "REF123456",
+                }
+            )
 
             # Verify appointment
             appointments = await db.get_appointments(user_id)
@@ -102,13 +106,15 @@ class TestBookingFlow:
         try:
             # Create test user
             user_repo = UserRepository(db)
-            user_id = await user_repo.create({
-                'email': "no_slots@example.com",
-                'password': "testpassword",
-                'center_name': "Istanbul",
-                'visa_category': "Schengen",
-                'visa_subcategory': "Tourism",
-            })
+            user_id = await user_repo.create(
+                {
+                    "email": "no_slots@example.com",
+                    "password": "testpassword",
+                    "center_name": "Istanbul",
+                    "visa_category": "Schengen",
+                    "visa_subcategory": "Tourism",
+                }
+            )
 
             # Simulate slot check with no available slots
             slot_available = False
@@ -195,28 +201,32 @@ class TestBookingFlow:
             user_repo = UserRepository(db)
             user_ids = []
             for i in range(3):
-                user_id = await user_repo.create({
-                    'email': f"concurrent{i}@example.com",
-                    'password': "testpass",
-                    'center_name': "Istanbul",
-                    'visa_category': "Schengen",
-                    'visa_subcategory': "Tourism",
-                })
+                user_id = await user_repo.create(
+                    {
+                        "email": f"concurrent{i}@example.com",
+                        "password": "testpass",
+                        "center_name": "Istanbul",
+                        "visa_category": "Schengen",
+                        "visa_subcategory": "Tourism",
+                    }
+                )
                 user_ids.append(user_id)
 
             # Simulate concurrent booking attempts
             appointment_repo = AppointmentRepository(db)
 
             async def book_appointment(user_id: int) -> int:
-                return await appointment_repo.create({
-                    'user_id': user_id,
-                    'centre': "Istanbul",
-                    'category': "Schengen",
-                    'subcategory': "Tourism",
-                    'appointment_date': "2024-12-31",
-                    'appointment_time': "10:00",
-                    'reference_number': f"REF{user_id}",
-                })
+                return await appointment_repo.create(
+                    {
+                        "user_id": user_id,
+                        "centre": "Istanbul",
+                        "category": "Schengen",
+                        "subcategory": "Tourism",
+                        "appointment_date": "2024-12-31",
+                        "appointment_time": "10:00",
+                        "reference_number": f"REF{user_id}",
+                    }
+                )
 
             tasks = [book_appointment(uid) for uid in user_ids]
             appointment_ids = await asyncio.gather(*tasks)

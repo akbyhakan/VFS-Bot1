@@ -5,7 +5,6 @@ import time
 import pytest
 import pytest_asyncio
 
-
 from src.utils.metrics import BotMetrics, MetricsSnapshot, get_metrics
 
 

@@ -1,8 +1,6 @@
 """Tests for security utilities."""
 
-
 import pytest
-
 
 from src.core.auth import hash_password, verify_password
 from src.core.security import APIKeyManager, generate_api_key

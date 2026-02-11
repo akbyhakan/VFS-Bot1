@@ -369,4 +369,3 @@ class TestSMSWebhookHMACVerification:
 
         # Should work without HMAC when secret not configured
         assert response.status_code == 200
-

@@ -109,16 +109,17 @@ def setup_test_environment(monkeypatch):
 async def database():
     """
     Create a test database.
-    
+
     Note: This fixture requires a PostgreSQL test database to be available.
     Set TEST_DATABASE_URL environment variable or it will use the default.
     """
     import os
+
     from src.constants import Database as DbConstants
-    
+
     # Use test database URL from environment or default
     database_url = os.getenv("TEST_DATABASE_URL", DbConstants.TEST_URL)
-    
+
     db = Database(database_url=database_url)
     await db.connect()
     yield db

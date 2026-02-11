@@ -46,16 +46,19 @@ async def test_concurrent_writes(database):
     """Test concurrent write operations don't cause corruption."""
     db = database
     from src.repositories import UserRepository
+
     user_repo = UserRepository(db)
 
     async def add_user(i: int):
-        await user_repo.create({
-            'email': f"user{i}@example.com",
-            'password': "testpass123",
-            'center_name': "Istanbul",
-            'visa_category': "Tourism",
-            'visa_subcategory': "Short Stay",
-        })
+        await user_repo.create(
+            {
+                "email": f"user{i}@example.com",
+                "password": "testpass123",
+                "center_name": "Istanbul",
+                "visa_category": "Tourism",
+                "visa_subcategory": "Short Stay",
+            }
+        )
 
     # Create 20 users concurrently
     tasks = [add_user(i) for i in range(20)]

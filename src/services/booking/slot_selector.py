@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from playwright.async_api import Page
 
 from ...constants import Delays
-from .selector_utils import TURKISH_MONTHS, resolve_selector, try_selectors, get_selector
+from .selector_utils import TURKISH_MONTHS, get_selector, resolve_selector, try_selectors
 
 logger = logging.getLogger(__name__)
 

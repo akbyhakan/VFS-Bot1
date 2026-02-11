@@ -178,9 +178,7 @@ class TestTokenSyncService:
         service = TokenSyncService(token_refresh_buffer_minutes=5)
 
         # Token expires in 10 minutes (outside buffer)
-        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(
-            minutes=10
-        )
+        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
         result = await service.ensure_fresh_token(mock_vfs_api_client)
 
@@ -198,9 +196,7 @@ class TestTokenSyncService:
         )
 
         # Token expires in 3 minutes (within buffer)
-        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(
-            minutes=3
-        )
+        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=3)
 
         result = await service.ensure_fresh_token(mock_vfs_api_client)
 
@@ -220,9 +216,7 @@ class TestTokenSyncService:
         )
 
         # Token expires in 3 minutes (within buffer)
-        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(
-            minutes=3
-        )
+        mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=3)
 
         # Make refresh fail
         mock_vfs_api_client._refresh_token.side_effect = Exception("Refresh failed")
@@ -283,9 +277,7 @@ class TestTokenSyncService:
 
         # After refresh, update the expires_at to simulate successful refresh
         async def refresh_side_effect():
-            mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(
-                hours=1
-            )
+            mock_vfs_api_client.session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
             mock_vfs_api_client.session.access_token = "new_access_token"
             mock_vfs_api_client.session.refresh_token = "new_refresh_token"
 

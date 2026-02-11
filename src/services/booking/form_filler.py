@@ -8,7 +8,7 @@ from loguru import logger
 from playwright.async_api import Page
 
 from ...core.exceptions import SelectorNotFoundError
-from .selector_utils import resolve_selector, try_selectors, get_selector
+from .selector_utils import get_selector, resolve_selector, try_selectors
 
 
 class FormFiller:

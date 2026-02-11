@@ -364,8 +364,7 @@ class TestCountryAwareSelectorManager:
     def test_factory_function_caching(self, temp_country_selectors_file):
         """Test that get_selector_manager returns cached instances."""
         # Clear cache first
-        from src.selector import get_selector_manager
-        from src.selector import manager
+        from src.selector import get_selector_manager, manager
 
         manager._selector_managers.clear()
 
@@ -498,4 +497,3 @@ class TestYAMLEdgeCases:
         assert manager._selectors["version"] == "test-valid"
         assert "login" in manager._selectors
         assert manager.get("login.email_input") == "input#email"
-
