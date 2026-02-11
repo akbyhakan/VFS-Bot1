@@ -1,4 +1,4 @@
-"""AI-powered selector auto-repair using Google Gemini."""
+"""AI-powered selector auto-repair using Google GenAI SDK."""
 
 import os
 import re
@@ -22,22 +22,21 @@ class AISelectorRepair:
         """
         self.selectors_file = Path(selectors_file)
         self.enabled = False
-        self.model = None
+        self.client = None
 
         # Try to initialize Gemini API
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
             try:
-                import google.generativeai as genai
+                from google import genai
 
-                genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel("gemini-pro")
+                self.client = genai.Client(api_key=api_key)
                 self.enabled = True
                 logger.info("🤖 AI-powered selector auto-repair enabled")
             except ImportError:
                 logger.warning(
-                    "google-generativeai package not installed. "
-                    "Install with: pip install google-generativeai"
+                    "google-genai package not installed. "
+                    "Install with: pip install google-genai"
                 )
             except Exception as e:
                 logger.warning(f"Failed to initialize Gemini API: {e}")
@@ -199,8 +198,8 @@ class AISelectorRepair:
             logger.debug("AI repair not enabled")
             return None
 
-        if not self.model:
-            logger.warning("AI model not initialized")
+        if not self.client:
+            logger.warning("AI client not initialized")
             return None
 
         try:
@@ -216,7 +215,9 @@ class AISelectorRepair:
 
             # Query LLM
             logger.info(f"🤖 Asking AI for selector suggestion for: {selector_path}")
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash", contents=prompt
+            )
 
             if response and response.text:
                 suggested_selector = response.text.strip()

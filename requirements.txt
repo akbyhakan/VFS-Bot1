@@ -42,5 +42,5 @@ slowapi~=0.1.9
 cryptography~=46.0.5
 pycryptodome~=3.21.0
 cachetools~=5.5.1
-google-generativeai~=0.8.4  # Optional: AI-powered selector repair
+google-genai~=1.0.0  # Optional: AI-powered selector repair (unified SDK)
 redis[hiredis]~=5.2.1  # Required for distributed rate limiting in multi-worker deployments

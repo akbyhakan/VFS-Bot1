@@ -81,7 +81,7 @@ VFS-Bot uses a multi-layered approach to find elements on the page, making it hi
 - Optimized order based on learning system
 
 ### 4. AI Auto-Repair (Optional)
-- LLM-powered selector recovery using Google Gemini
+- LLM-powered selector recovery using Google GenAI SDK
 - Activates when all selectors fail
 - Auto-updates `config/selectors.yaml` with successful suggestions
 - Graceful degradation when API key not provided

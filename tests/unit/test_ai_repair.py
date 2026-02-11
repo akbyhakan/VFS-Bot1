@@ -151,30 +151,30 @@ def test_ai_repair_init_no_api_key(temp_selectors_file):
         repair = AISelectorRepair(str(temp_selectors_file))
 
         assert repair.enabled is False
-        assert repair.model is None
+        assert repair.client is None
 
 
 def test_ai_repair_init_with_api_key(temp_selectors_file):
     """Test initialization with API key."""
-    # Mock the entire google.generativeai module before import
+    # Mock the entire google.genai module before import
     import sys
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-            mock_model = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_client = MagicMock()
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
             assert repair.enabled is True
-            assert repair.model is not None
-            mock_genai.configure.assert_called_with(api_key="test-key")
+            assert repair.client is not None
+            mock_genai.Client.assert_called_with(api_key="test-key")
 
 
 def test_ai_repair_init_import_error(temp_selectors_file):
-    """Test graceful handling when google-generativeai is not installed."""
+    """Test graceful handling when google-genai is not installed."""
     with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         # Simulate ImportError by removing from sys.modules and making import fail
         import sys
@@ -182,8 +182,8 @@ def test_ai_repair_init_import_error(temp_selectors_file):
         original_import = __builtins__["__import__"]
 
         def mock_import(name, *args, **kwargs):
-            if "google.generativeai" in name:
-                raise ImportError("No module named 'google.generativeai'")
+            if "google.genai" in name or (name == "google" and "genai" in str(args)):
+                raise ImportError("No module named 'google.genai'")
             return original_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=mock_import):
@@ -213,15 +213,18 @@ async def test_suggest_selector_success(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-            # Mock model response
+            # Mock client and response
             mock_response = MagicMock()
             mock_response.text = "input#new-email-field"
 
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.return_value = mock_response
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
@@ -242,15 +245,18 @@ async def test_suggest_selector_validation_fails(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-            # Mock model response
+            # Mock client and response
             mock_response = MagicMock()
             mock_response.text = "input#invalid-selector"
 
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.return_value = mock_response
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
@@ -271,15 +277,18 @@ async def test_suggest_selector_empty_response(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
             # Mock empty response
             mock_response = MagicMock()
             mock_response.text = ""
 
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.return_value = mock_response
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
@@ -418,15 +427,18 @@ async def test_suggest_selector_strips_markdown(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
             # Mock response with markdown
             mock_response = MagicMock()
             mock_response.text = "```css\ninput#email-field\n```"
 
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.return_value = mock_response
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
@@ -447,14 +459,17 @@ async def test_suggest_selector_limits_html_size(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
             mock_response = MagicMock()
             mock_response.text = "input#test"
 
-            mock_model = MagicMock()
-            mock_model.generate_content.return_value = mock_response
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.return_value = mock_response
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
@@ -468,7 +483,7 @@ async def test_suggest_selector_limits_html_size(temp_selectors_file):
             await repair.suggest_selector(mock_page, "login.email_input", "Email")
 
             # Check that prompt was called with limited HTML
-            call_args = mock_model.generate_content.call_args[0][0]
+            call_args = mock_models.generate_content.call_args[1]["contents"]
             # HTML should be truncated to 50KB
             assert len(call_args) < len(large_html)
 
@@ -480,11 +495,14 @@ async def test_suggest_selector_exception_handling(temp_selectors_file):
 
     mock_genai = MagicMock()
 
-    with patch.dict(sys.modules, {"google.generativeai": mock_genai}):
+    with patch.dict(sys.modules, {"google.genai": mock_genai, "google": MagicMock(genai=mock_genai)}):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-            mock_model = MagicMock()
-            mock_model.generate_content.side_effect = Exception("API Error")
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_models = MagicMock()
+            mock_models.generate_content.side_effect = Exception("API Error")
+
+            mock_client = MagicMock()
+            mock_client.models = mock_models
+            mock_genai.Client.return_value = mock_client
 
             repair = AISelectorRepair(str(temp_selectors_file))
 
