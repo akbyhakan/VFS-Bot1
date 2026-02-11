@@ -6,13 +6,11 @@ instead of filesystem watchers to avoid additional dependencies.
 """
 
 import asyncio
-import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import yaml
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class ConfigHotReload:

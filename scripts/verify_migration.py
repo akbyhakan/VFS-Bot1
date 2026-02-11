@@ -43,6 +43,10 @@ FULLY_MIGRATED = [
     "src/selector/self_healing.py",
     "src/services/captcha_solver.py",
     "src/services/otp_manager/pattern_matcher.py",
+    # Bug fix: loguru migration completed
+    "src/core/config_hot_reload.py",
+    "src/core/bot_controller.py",
+    "src/core/circuit_breaker.py",
 ]
 
 # Files with special handling
