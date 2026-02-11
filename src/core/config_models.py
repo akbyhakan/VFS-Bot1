@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, SecretStr
 
-
 # VFS Configuration Models
 
 
@@ -275,28 +274,34 @@ class AppConfig(BaseModel):
             bot=bot,
             captcha=captcha,
             notifications=notifications,
-            anti_detection=AntiDetectionConfig(**data.get("anti_detection", {}))
-            if "anti_detection" in data
-            else None,
-            credentials=CredentialsConfig(**data.get("credentials", {}))
-            if "credentials" in data
-            else None,
-            appointments=AppointmentsConfig(**data.get("appointments", {}))
-            if "appointments" in data
-            else None,
-            human_behavior=HumanBehaviorConfig(**data.get("human_behavior", {}))
-            if "human_behavior" in data
-            else None,
+            anti_detection=(
+                AntiDetectionConfig(**data.get("anti_detection", {}))
+                if "anti_detection" in data
+                else None
+            ),
+            credentials=(
+                CredentialsConfig(**data.get("credentials", {})) if "credentials" in data else None
+            ),
+            appointments=(
+                AppointmentsConfig(**data.get("appointments", {}))
+                if "appointments" in data
+                else None
+            ),
+            human_behavior=(
+                HumanBehaviorConfig(**data.get("human_behavior", {}))
+                if "human_behavior" in data
+                else None
+            ),
             session=SessionConfig(**data.get("session", {})) if "session" in data else None,
-            cloudflare=CloudflareConfig(**data.get("cloudflare", {}))
-            if "cloudflare" in data
-            else None,
+            cloudflare=(
+                CloudflareConfig(**data.get("cloudflare", {})) if "cloudflare" in data else None
+            ),
             proxy=ProxyConfig(**data.get("proxy", {})) if "proxy" in data else None,
-            selector_health_check=SelectorHealthCheckConfig(
-                **data.get("selector_health_check", {})
-            )
-            if "selector_health_check" in data
-            else None,
+            selector_health_check=(
+                SelectorHealthCheckConfig(**data.get("selector_health_check", {}))
+                if "selector_health_check" in data
+                else None
+            ),
             payment=PaymentConfig(**data.get("payment", {})) if "payment" in data else None,
             alerts=AlertsConfig(**data.get("alerts", {})) if "alerts" in data else None,
             database=DatabaseConfig(**data.get("database", {})) if "database" in data else None,
