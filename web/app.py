@@ -19,6 +19,7 @@ from slowapi.errors import RateLimitExceeded
 
 from src.core.auth import init_token_blacklist, get_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
+from src.core.environment import Environment
 from src.core.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
@@ -109,11 +110,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error closing DatabaseFactory: {e}")
 
 
-# Valid environment names (whitelist for security)
-VALID_ENVIRONMENTS = frozenset(
-    {"production", "staging", "development", "dev", "testing", "test", "local"}
-)
-
 
 def get_validated_environment() -> str:
     """
@@ -122,8 +118,8 @@ def get_validated_environment() -> str:
     Returns:
         Validated environment name (defaults to 'production' for unknown values)
     """
-    env = os.getenv("ENV", "production").lower()
-    if env not in VALID_ENVIRONMENTS:
+    env = Environment.current_raw()
+    if env not in Environment.VALID:
         logger.warning(
             f"Unknown environment '{sanitize_log_value(env, max_length=50)}', "
             f"defaulting to 'production' for security"

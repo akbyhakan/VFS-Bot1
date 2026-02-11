@@ -1,16 +1,14 @@
 """Selector health monitoring service."""
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Browser, Page
 
 from src.services.notification import NotificationService
 from src.selector.manager import CountryAwareSelectorManager
-
-logger = logging.getLogger(__name__)
 
 
 class SelectorHealthCheck:

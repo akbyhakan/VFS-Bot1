@@ -52,11 +52,11 @@ class APIKeyManager:
     def _load_salt(self) -> None:
         """Load salt from environment (must be called with lock held)."""
         salt_env = os.getenv("API_KEY_SALT")
-        env = os.getenv("ENV", "production").lower()
+        env = Environment.current()
 
         if not salt_env:
             # In development, use a default insecure salt with warning
-            if env in ("development", "dev", "testing", "test"):
+            if env in Environment._DEV_MODE:
                 logger.warning(
                     "SECURITY WARNING: API_KEY_SALT not set in development mode. "
                     "Using default insecure salt. DO NOT USE IN PRODUCTION!"

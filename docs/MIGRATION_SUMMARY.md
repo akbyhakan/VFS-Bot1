@@ -1,12 +1,12 @@
 # Logging Migration Summary - stdlib to loguru
 
 ## Overview
-Successfully migrated 44+ priority Python files from stdlib logging to loguru.
+Successfully migrated 50+ priority Python files from stdlib logging to loguru.
 
 ## Migration Statistics
-- **Files Fully Migrated**: 44
+- **Files Fully Migrated**: 50
 - **Special Case Files**: 4 (partial migration or kept for compatibility)
-- **Lines Changed**: ~114 lines removed, ~66 lines added
+- **Lines Changed**: ~120 lines removed, ~72 lines added
 - **Test Result**: All files compile successfully ✅
 - **Security Scan**: No new vulnerabilities ✅
 
@@ -75,6 +75,15 @@ def some_function():
 - [x] src/services/booking/selector_utils.py
 - [x] src/services/bot/error_handler.py
 - [x] src/services/bot/vfs_bot.py
+- [x] src/services/notification.py
+- [x] src/services/otp_webhook.py
+
+### Services - OTP Manager (2)
+- [x] src/services/otp_manager/sms_handler.py
+- [x] src/services/otp_manager/session_registry.py
+
+### Selector (1)
+- [x] src/selector/watcher.py
 
 ### Repositories (3)
 - [x] src/repositories/log_repository.py

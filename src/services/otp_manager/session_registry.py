@@ -3,15 +3,14 @@
 This module provides thread-safe session management for OTP delivery.
 """
 
-import logging
 import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from .models import BotSession, SessionState
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from .models import BotSession, SessionState
 
 
 class SessionRegistry:

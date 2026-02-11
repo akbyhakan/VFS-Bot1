@@ -393,33 +393,21 @@ class TestEnvironmentValidation:
 
     def test_valid_environments_whitelist(self):
         """Test that valid environments are accepted."""
-        # Test the constants and function directly without importing web.app
-        VALID_ENVIRONMENTS = frozenset(
-            {"production", "staging", "development", "dev", "testing", "test", "local"}
-        )
-
+        from src.core.environment import Environment
+        
         valid_envs = ["production", "staging", "development", "dev", "testing", "test", "local"]
 
         for env in valid_envs:
-            assert env in VALID_ENVIRONMENTS
+            assert env in Environment.VALID
 
     def test_unknown_environment_defaults_to_production(self):
         """Test that unknown environments default to production."""
-        # Test the function logic directly
-        VALID_ENVIRONMENTS = frozenset(
-            {"production", "staging", "development", "dev", "testing", "test", "local"}
-        )
-
-        def get_validated_environment() -> str:
-            env = os.getenv("ENV", "production").lower()
-            if env not in VALID_ENVIRONMENTS:
-                return "production"
-            return env
+        from src.core.environment import Environment
 
         old_env = os.getenv("ENV")
         try:
             os.environ["ENV"] = "unknown_environment"
-            result = get_validated_environment()
+            result = Environment.current()
             assert result == "production"
         finally:
             if old_env:

@@ -1,6 +1,6 @@
 """Database factory with singleton pattern for connection management."""
 
-from threading import RLock
+import asyncio
 from typing import Optional
 
 from loguru import logger
@@ -13,7 +13,7 @@ class DatabaseFactory:
     Singleton factory for database connections.
 
     Ensures only one database instance exists throughout the application lifecycle.
-    Thread-safe singleton implementation.
+    Thread-safe singleton implementation with async lock for async operations.
 
     Example:
         ```python
@@ -27,7 +27,14 @@ class DatabaseFactory:
     """
 
     _instance: Optional[Database] = None
-    _lock = RLock()
+    _async_lock: Optional[asyncio.Lock] = None
+
+    @classmethod
+    def _get_async_lock(cls) -> asyncio.Lock:
+        """Get or create the async lock (lazy initialization for event loop safety)."""
+        if cls._async_lock is None:
+            cls._async_lock = asyncio.Lock()
+        return cls._async_lock
 
     @classmethod
     def get_instance(
@@ -45,11 +52,10 @@ class DatabaseFactory:
         Returns:
             Database singleton instance
         """
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = Database(database_url=database_url, pool_size=pool_size)
-                logger.info("Created new database singleton instance")
-            return cls._instance
+        if cls._instance is None:
+            cls._instance = Database(database_url=database_url, pool_size=pool_size)
+            logger.info("Created new database singleton instance")
+        return cls._instance
 
     @classmethod
     def reset_instance(cls) -> None:
@@ -59,9 +65,9 @@ class DatabaseFactory:
         Warning: This will NOT close the existing connection.
         Call close() on the instance before resetting.
         """
-        with cls._lock:
-            cls._instance = None
-            logger.info("Reset database singleton instance")
+        cls._instance = None
+        cls._async_lock = None  # Reset lock too
+        logger.info("Reset database singleton instance")
 
     @classmethod
     async def ensure_connected(cls) -> Database:
@@ -71,11 +77,12 @@ class DatabaseFactory:
         Returns:
             Connected database instance
         """
-        db = cls.get_instance()
-        if db.pool is None:
-            await db.connect()
-            logger.info("Database connection established")
-        return db
+        async with cls._get_async_lock():
+            db = cls.get_instance()
+            if db.pool is None:
+                await db.connect()
+                logger.info("Database connection established")
+            return db
 
     @classmethod
     async def close_instance(cls) -> None:
@@ -84,11 +91,9 @@ class DatabaseFactory:
 
         This should be called during application shutdown.
         """
-        instance_to_close = None
-        with cls._lock:
+        async with cls._get_async_lock():
             if cls._instance is not None:
                 instance_to_close = cls._instance
                 cls._instance = None
-        if instance_to_close is not None:
-            await instance_to_close.close()
-            logger.info("Closed and reset database singleton instance")
+                await instance_to_close.close()
+                logger.info("Closed and reset database singleton instance")

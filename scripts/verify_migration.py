@@ -13,14 +13,12 @@ FULLY_MIGRATED = [
     "src/core/runners.py",
     "src/core/config_version_checker.py",
     "src/core/startup_validator.py",
-    "src/core/auth.py",
     "src/models/database.py",
     "src/models/db_factory.py",
     "src/utils/token_utils.py",
     "src/utils/secure_memory.py",
     "src/utils/webhook_utils.py",
     "src/utils/idempotency.py",
-    "src/utils/ai_selector_repair.py",
     "src/utils/anti_detection/fingerprint_bypass.py",
     "src/utils/security/rate_limiter.py",
     "src/utils/security/adaptive_rate_limiter.py",
@@ -29,6 +27,12 @@ FULLY_MIGRATED = [
     "src/services/booking/form_filler.py",
     "src/services/bot/vfs_bot.py",
     "src/utils/metrics.py",
+    "src/services/notification.py",
+    "src/services/otp_webhook.py",
+    "src/services/otp_manager/sms_handler.py",
+    "src/services/otp_manager/session_registry.py",
+    "src/selector/watcher.py",
+    "src/core/config_validator.py",
 ]
 
 # Files with special handling

@@ -6,9 +6,10 @@ Handles different run modes: bot-only, web-only, and both.
 
 import asyncio
 import os
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
+from typing_extensions import TypedDict
 
 from src.core.bot_controller import BotController
 from src.core.exceptions import ShutdownTimeoutError
@@ -21,6 +22,18 @@ from .shutdown import (
     safe_shutdown_cleanup,
     set_shutdown_event,
 )
+
+
+class BotConfigDict(TypedDict, total=False):
+    """Type hints for the bot configuration dictionary."""
+    vfs: Dict[str, Any]
+    bot: Dict[str, Any]
+    notifications: Dict[str, Any]
+    captcha: Dict[str, Any]
+    anti_detection: Dict[str, Any]
+    appointments: Dict[str, Any]
+    selector_health_check: Dict[str, Any]
+    mode: str
 
 
 def parse_safe_port(env_var: str = "UVICORN_PORT", default: int = 8000) -> int:
@@ -46,7 +59,7 @@ def parse_safe_port(env_var: str = "UVICORN_PORT", default: int = 8000) -> int:
         return default
 
 
-async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
+async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
 
@@ -138,7 +151,7 @@ async def run_bot_mode(config: dict, db: Optional[Database] = None) -> None:
 
 
 async def run_web_mode(
-    config: dict, start_cleanup: bool = True, db: Optional[Database] = None, skip_shutdown: bool = False
+    config: BotConfigDict, start_cleanup: bool = True, db: Optional[Database] = None, skip_shutdown: bool = False
 ) -> None:
     """
     Run bot with web dashboard.
@@ -219,7 +232,7 @@ async def run_web_mode(
             logger.info("Web mode exited (shutdown delegated to caller)")
 
 
-async def run_both_mode(config: dict) -> None:
+async def run_both_mode(config: BotConfigDict) -> None:
     """
     Run both bot and web dashboard concurrently.
 

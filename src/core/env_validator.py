@@ -7,6 +7,8 @@ from typing import Dict, List
 
 from loguru import logger
 
+from src.core.environment import Environment
+
 # Bcrypt hash prefixes for validation
 BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")
 
