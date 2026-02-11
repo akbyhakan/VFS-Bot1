@@ -12,7 +12,6 @@ from src.services.notification import NotificationService
 # Add parent directory to path for imports
 
 
-
 @pytest_asyncio.fixture
 async def database():
     """Create a test database."""

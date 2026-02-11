@@ -9,7 +9,6 @@ from src.services.bot.booking_workflow import BookingWorkflow
 # Add parent directory to path for imports
 
 
-
 class TestBookingWorkflowMultiPerson:
     """Test multi-person booking functionality in BookingWorkflow."""
 

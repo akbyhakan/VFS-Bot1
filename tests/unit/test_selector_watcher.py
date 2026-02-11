@@ -7,7 +7,6 @@ from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 # Add parent directory to path for imports
 
 
-
 class TestSelectorHealthCheck:
     """Test selector health check functionality."""
 

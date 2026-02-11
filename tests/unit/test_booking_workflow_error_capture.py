@@ -11,7 +11,6 @@ from src.utils.error_capture import ErrorCapture
 # Add parent directory to path for imports
 
 
-
 class TestBookingWorkflowErrorCapture:
     """Test ErrorCapture integration in BookingWorkflow."""
 

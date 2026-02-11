@@ -14,7 +14,6 @@ from src.utils.error_capture import ErrorCapture
 # Add parent directory to path for imports
 
 
-
 class TestErrorCapture:
     """Test error capture functionality."""
 

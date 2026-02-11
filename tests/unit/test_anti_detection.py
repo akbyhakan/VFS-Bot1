@@ -12,7 +12,6 @@ from src.utils.security.session_manager import SessionManager
 # Add parent directory to path for imports
 
 
-
 class TestBezierCurve:
     """Test Bézier curve generation."""
 

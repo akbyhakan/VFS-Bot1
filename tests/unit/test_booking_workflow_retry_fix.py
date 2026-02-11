@@ -11,7 +11,6 @@ from src.services.bot.booking_workflow import BookingWorkflow
 # Add parent directory to path for imports
 
 
-
 class TestBookingWorkflowRetryFix:
     """Test that retry mechanism works correctly after fixes."""
 
