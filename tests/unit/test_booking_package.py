@@ -9,17 +9,17 @@ class TestBookingPackageStructure:
     def test_can_import_from_booking_package(self):
         """Verify all public symbols importable from booking package."""
         from src.services.booking import (
+            DOUBLE_MATCH_PATTERNS,
+            TURKISH_MONTHS,
             BookingOrchestrator,
-            FormFiller,
-            SlotSelector,
-            PaymentHandler,
             BookingValidator,
+            FormFiller,
+            PaymentHandler,
+            SlotSelector,
             get_selector,
             get_selector_with_fallback,
             resolve_selector,
             try_selectors,
-            TURKISH_MONTHS,
-            DOUBLE_MATCH_PATTERNS,
         )
 
         # Verify classes exist
@@ -38,7 +38,6 @@ class TestBookingPackageStructure:
         # Verify constants exist
         assert isinstance(TURKISH_MONTHS, dict)
         assert isinstance(DOUBLE_MATCH_PATTERNS, list)
-
 
     def test_booking_orchestrator_initialization(self):
         """Test BookingOrchestrator can be initialized."""
@@ -69,7 +68,7 @@ class TestBookingPackageStructure:
         # Empty config should not crash initialization
         service = BookingOrchestrator(config={})
         assert service.config == {}
-        
+
         # Config with unexpected structure should not crash
         service2 = BookingOrchestrator(config={"unknown": "value"})
         assert service2.config == {"unknown": "value"}
@@ -121,6 +120,7 @@ class TestBookingPackageStructure:
         assert len(DOUBLE_MATCH_PATTERNS) == 2
         assert all(isinstance(p, str) for p in DOUBLE_MATCH_PATTERNS)
 
+
 class TestComponentIntegration:
     """Test that components work together correctly."""
 
@@ -138,7 +138,7 @@ class TestComponentIntegration:
         assert hasattr(orchestrator, "validator")
 
         # Verify they're the right types
-        from src.services.booking import FormFiller, SlotSelector, PaymentHandler, BookingValidator
+        from src.services.booking import BookingValidator, FormFiller, PaymentHandler, SlotSelector
 
         assert isinstance(orchestrator.form_filler, FormFiller)
         assert isinstance(orchestrator.slot_selector, SlotSelector)
@@ -150,7 +150,7 @@ class TestComponentIntegration:
         from src.services.booking import BookingValidator
 
         validator = BookingValidator()
-        
+
         # Test date normalization
         assert validator.normalize_date("01-01-2024") == "01/01/2024"
         assert validator.normalize_date("15-06-2024") == "15/06/2024"

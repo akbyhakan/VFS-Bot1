@@ -48,7 +48,7 @@ class TestConfigVersionChecker:
         config = {"config_version": "3.0", "vfs": {}}
         with pytest.raises(ConfigurationError) as exc_info:
             check_config_version(config)
-        
+
         error = exc_info.value
         assert "Unsupported configuration version: 3.0" in str(error)
         assert "3.0" in error.details.get("config_version", "")
@@ -58,7 +58,7 @@ class TestConfigVersionChecker:
         config = {"config_version": 2.0, "vfs": {}}
         with pytest.raises(ConfigurationError) as exc_info:
             check_config_version(config)
-        
+
         error = exc_info.value
         assert "must be a string" in str(error)
 
@@ -79,7 +79,7 @@ class TestConfigVersionChecker:
         config = {"config_version": "99.0", "vfs": {}}
         with pytest.raises(ConfigurationError) as exc_info:
             check_config_version(config)
-        
+
         error = exc_info.value
         assert error.details["config_version"] == "99.0"
         assert "supported_versions" in error.details

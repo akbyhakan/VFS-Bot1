@@ -1,4 +1,5 @@
 """Advanced session recovery system for crash resilience."""
+
 import asyncio
 import json
 import logging
@@ -59,9 +60,9 @@ class SessionRecovery:
 
         checkpoint = {
             "step": step,
-            "step_index": self.CHECKPOINT_STEPS.index(step)
-            if step in self.CHECKPOINT_STEPS
-            else -1,
+            "step_index": (
+                self.CHECKPOINT_STEPS.index(step) if step in self.CHECKPOINT_STEPS else -1
+            ),
             "user_id": user_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "context": context,
@@ -101,7 +102,9 @@ class SessionRecovery:
                     logger.debug("Checkpoint loaded (encrypted)")
                 except InvalidToken:
                     # Backward compatibility: try reading as plain JSON
-                    logger.warning("Checkpoint file is not encrypted, reading as plaintext (legacy)")
+                    logger.warning(
+                        "Checkpoint file is not encrypted, reading as plaintext (legacy)"
+                    )
                     checkpoint = json.loads(raw_data.decode("utf-8"))
             else:
                 # No encryption available, read as plaintext
@@ -168,9 +171,7 @@ class SessionRecovery:
             return context
         return {}
 
-    async def save_checkpoint_async(
-        self, step: str, user_id: int, context: Dict[str, Any]
-    ) -> None:
+    async def save_checkpoint_async(self, step: str, user_id: int, context: Dict[str, Any]) -> None:
         """Async wrapper for save_checkpoint — prevents blocking the event loop."""
         await asyncio.to_thread(self.save_checkpoint, step, user_id, context)
 

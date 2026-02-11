@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Add parent directory to path for imports
-
 from src.services.bot.booking_workflow import BookingWorkflow
+
+# Add parent directory to path for imports
 
 
 class TestBookingWorkflowMultiPerson:
@@ -276,12 +276,12 @@ class TestBookingWorkflowMultiPerson:
         # Verify repr and str don't contain actual card number
         repr_str = repr(reservation["payment_card"])
         str_str = str(reservation["payment_card"])
-        
+
         assert "1234567812345678" not in repr_str
         assert "1234567812345678" not in str_str
         assert "MASKED" in repr_str
         assert "MASKED" in str_str
-        
+
         # But direct access still works
         assert reservation["payment_card"]["number"] == "1234567812345678"
         assert reservation["payment_card"]["cvv"] == "123"

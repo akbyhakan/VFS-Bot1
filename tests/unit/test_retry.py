@@ -1,8 +1,6 @@
 """Tests for retry strategies."""
 
-
 import pytest
-
 
 from src.core.exceptions import (
     CaptchaError,

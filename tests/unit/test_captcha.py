@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 from src.services.captcha_solver import CaptchaSolver
 
 

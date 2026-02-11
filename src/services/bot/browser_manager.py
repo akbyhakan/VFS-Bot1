@@ -204,10 +204,10 @@ class BrowserManager:
     async def should_restart(self) -> bool:
         """
         Check if browser should be restarted for memory management.
-        
+
         Note: This method increments the page count as part of the check.
         Call this once per page creation to track usage and determine restart needs.
-        
+
         Returns:
             True if browser should be restarted, False otherwise
         """

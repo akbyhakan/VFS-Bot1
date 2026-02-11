@@ -3,7 +3,6 @@
 import re
 from typing import Optional
 
-
 # Pattern to match control characters, ANSI escape sequences, and newlines
 # Order matters: ANSI escape sequences must be matched before individual control chars
 # - \x1b\[[0-9;]*[a-zA-Z]: ANSI escape sequences (e.g., \x1b[31m for red)
@@ -16,9 +15,7 @@ from typing import Optional
 #   - \x7f: DELETE
 #   Note: Tab (\x09) is intentionally preserved as it's commonly used for formatting
 #   in structured log messages and doesn't pose a security risk.
-_LOG_SANITIZER_PATTERN = re.compile(
-    r"\x1b\[[0-9;]*[a-zA-Z]|\r?\n|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]"
-)
+_LOG_SANITIZER_PATTERN = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\r?\n|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
 def sanitize_log_value(value: Optional[str], max_length: int = 100) -> str:
@@ -46,20 +43,20 @@ def sanitize_log_value(value: Optional[str], max_length: int = 100) -> str:
     # Handle None or empty values
     if value is None:
         return "None"
-    
+
     if not isinstance(value, str):
         # For non-string values, use safe repr()
         value = repr(value)
-    
+
     if not value:
         return "''"
-    
+
     # Remove control characters, ANSI escape sequences, and newlines
     sanitized = _LOG_SANITIZER_PATTERN.sub("", value)
-    
+
     # Truncate if exceeds max_length
     if len(sanitized) > max_length:
         # Reserve 3 characters for ellipsis
         sanitized = sanitized[: max_length - 3] + "..."
-    
+
     return sanitized

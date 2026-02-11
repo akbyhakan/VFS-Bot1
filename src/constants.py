@@ -179,9 +179,9 @@ class BookingTimeouts:
     ELEMENT_WAIT_MS: Final[int] = 10000
     PAGE_LOAD_MS: Final[int] = 30000
     PAYMENT_CONFIRMATION: Final[int] = 60
-    OTP_WAIT: Final[
-        int
-    ] = 300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
+    OTP_WAIT: Final[int] = (
+        300  # FIXED: Consistent with OTP.TIMEOUT_SECONDS and Timeouts.OTP_WAIT_SECONDS
+    )
 
 
 class BookingDelays:
@@ -219,4 +219,3 @@ class LogEmoji:
     BOT: Final[str] = "🤖"
     CALENDAR: Final[str] = "📅"
     PAYMENT: Final[str] = "💳"
-

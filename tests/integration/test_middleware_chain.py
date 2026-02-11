@@ -1,9 +1,10 @@
 """Integration tests for middleware chain behavior."""
 
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
-import time
 
 from web.app import create_app
 
@@ -16,7 +17,7 @@ class TestMiddlewareChain:
     def client(self):
         """Create test client with full middleware stack."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -24,18 +25,18 @@ class TestMiddlewareChain:
     def test_middleware_order_security_headers_applied(self, client):
         """Test that SecurityHeadersMiddleware adds headers."""
         response = client.get("/health")
-        
+
         # SecurityHeadersMiddleware should add these headers
         assert "X-Content-Type-Options" in response.headers
         assert response.headers["X-Content-Type-Options"] == "nosniff"
-        
+
         assert "X-Frame-Options" in response.headers
         assert response.headers["X-Frame-Options"] == "DENY"
 
     def test_middleware_order_correlation_id_added(self, client):
         """Test that CorrelationMiddleware adds correlation ID."""
         response = client.get("/health")
-        
+
         # CorrelationMiddleware should process requests
         # Correlation ID may be in headers or logged
         assert response.status_code == 200
@@ -44,11 +45,11 @@ class TestMiddlewareChain:
         """Test that ErrorHandlerMiddleware is first and catches all errors."""
         # Request non-existent endpoint
         response = client.get("/api/v1/definitely-does-not-exist")
-        
+
         # ErrorHandlerMiddleware should catch and return proper error
         # 404 = not found, 422 = validation/unprocessable
         assert response.status_code in [404, 422]
-        
+
         # Should return JSON error format
         data = response.json()
         assert "detail" in data
@@ -57,12 +58,9 @@ class TestMiddlewareChain:
         """Test that CORS middleware allows configured origins."""
         response = client.options(
             "/api/v1/users",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "GET"
-            }
+            headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
         )
-        
+
         # CORS preflight should be handled
         # TestClient may not fully simulate CORS, but endpoint should respond
         assert response.status_code in [200, 401]
@@ -73,7 +71,7 @@ class TestMiddlewareChain:
         for _ in range(3):
             response = client.get("/health")
             assert response.status_code == 200
-        
+
         # Tracking should happen in background (no visible effect on response)
 
     def test_middleware_chain_performance(self, client):
@@ -82,7 +80,7 @@ class TestMiddlewareChain:
         start_time = time.time()
         response = client.get("/health")
         elapsed = time.time() - start_time
-        
+
         assert response.status_code == 200
         # Middleware should add minimal overhead (< 1 second for local test)
         assert elapsed < 1.0
@@ -96,7 +94,7 @@ class TestSecurityHeadersMiddleware:
     def client(self):
         """Create test client."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -104,20 +102,20 @@ class TestSecurityHeadersMiddleware:
     def test_security_headers_csp_present(self, client):
         """Test that Content-Security-Policy header is present."""
         response = client.get("/health")
-        
+
         assert "Content-Security-Policy" in response.headers
 
     def test_security_headers_xss_protection(self, client):
         """Test that X-XSS-Protection header is present."""
         response = client.get("/health")
-        
+
         assert "X-XSS-Protection" in response.headers
 
     def test_security_headers_hsts_in_production(self, client):
         """Test that HSTS header is added in production mode."""
         # Note: Test environment may not include HSTS
         response = client.get("/health")
-        
+
         # In test environment, HSTS might not be present
         # This documents expected production behavior
         assert response.status_code == 200
@@ -125,21 +123,21 @@ class TestSecurityHeadersMiddleware:
     def test_security_headers_frame_options(self, client):
         """Test that X-Frame-Options prevents clickjacking."""
         response = client.get("/health")
-        
+
         assert "X-Frame-Options" in response.headers
         assert response.headers["X-Frame-Options"] in ["DENY", "SAMEORIGIN"]
 
     def test_security_headers_content_type_options(self, client):
         """Test that X-Content-Type-Options prevents MIME sniffing."""
         response = client.get("/health")
-        
+
         assert "X-Content-Type-Options" in response.headers
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     def test_security_headers_on_error_responses(self, client):
         """Test that security headers are added even on error responses."""
         response = client.get("/api/v1/nonexistent")
-        
+
         # Security headers should be present on error responses too
         assert "X-Content-Type-Options" in response.headers
         assert "X-Frame-Options" in response.headers
@@ -153,7 +151,7 @@ class TestErrorHandlerMiddleware:
     def client(self):
         """Create test client."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -161,7 +159,7 @@ class TestErrorHandlerMiddleware:
     def test_error_handler_404_format(self, client):
         """Test that 404 errors are properly formatted."""
         response = client.get("/nonexistent-page")
-        
+
         # 404 or 422 depending on routing
         assert response.status_code in [404, 422]
         data = response.json()
@@ -172,7 +170,7 @@ class TestErrorHandlerMiddleware:
         # This would require triggering an internal error
         # For now, test that error format is consistent
         response = client.get("/api/v1/users")
-        
+
         # Will fail auth, but error should be properly formatted
         assert response.status_code in [401, 500]
         data = response.json()
@@ -181,11 +179,8 @@ class TestErrorHandlerMiddleware:
     def test_error_handler_validation_errors(self, client):
         """Test that validation errors (422) are properly handled."""
         # Send invalid data to trigger validation error
-        response = client.post(
-            "/api/v1/users",
-            json={"invalid": "data"}
-        )
-        
+        response = client.post("/api/v1/users", json={"invalid": "data"})
+
         # Should return validation error or auth error
         assert response.status_code in [401, 422]
 
@@ -198,7 +193,7 @@ class TestCORSMiddleware:
     def client(self):
         """Create test client."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -210,37 +205,34 @@ class TestCORSMiddleware:
             headers={
                 "Origin": "http://localhost:3000",
                 "Access-Control-Request-Method": "POST",
-                "Access-Control-Request-Headers": "Content-Type, Authorization"
-            }
+                "Access-Control-Request-Headers": "Content-Type, Authorization",
+            },
         )
-        
+
         # Should handle preflight
         # Note: TestClient may not fully simulate CORS
         assert response.status_code in [200, 401]
 
     def test_cors_allows_credentials(self, client):
         """Test that CORS allows credentials."""
-        response = client.get(
-            "/health",
-            headers={"Origin": "http://localhost:3000"}
-        )
-        
+        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+
         # Should allow credentials for cookie-based auth
         assert response.status_code == 200
 
     def test_cors_allowed_methods(self, client):
         """Test that CORS allows configured HTTP methods."""
         methods = ["GET", "POST", "PUT", "DELETE"]
-        
+
         for method in methods:
             response = client.options(
                 "/api/v1/users",
                 headers={
                     "Origin": "http://localhost:3000",
-                    "Access-Control-Request-Method": method
-                }
+                    "Access-Control-Request-Method": method,
+                },
             )
-            
+
             # Should allow these methods
             assert response.status_code in [200, 401]
 
@@ -253,7 +245,7 @@ class TestMiddlewareIntegration:
     def client(self):
         """Create test client."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -261,13 +253,13 @@ class TestMiddlewareIntegration:
     def test_full_middleware_stack_on_success(self, client):
         """Test that all middleware works together on successful request."""
         response = client.get("/health")
-        
+
         assert response.status_code == 200
-        
+
         # Security headers present
         assert "X-Content-Type-Options" in response.headers
         assert "X-Frame-Options" in response.headers
-        
+
         # Response is properly formatted
         data = response.json()
         assert "status" in data
@@ -275,14 +267,14 @@ class TestMiddlewareIntegration:
     def test_full_middleware_stack_on_error(self, client):
         """Test that all middleware works together on error."""
         response = client.get("/nonexistent")
-        
+
         # 404 or 422 depending on routing
         assert response.status_code in [404, 422]
-        
+
         # Security headers still present on error
         assert "X-Content-Type-Options" in response.headers
         assert "X-Frame-Options" in response.headers
-        
+
         # Error is properly formatted
         data = response.json()
         assert "detail" in data
@@ -290,14 +282,11 @@ class TestMiddlewareIntegration:
     def test_middleware_with_authentication(self, client):
         """Test middleware interaction with authentication."""
         # Request with invalid auth
-        response = client.get(
-            "/api/v1/users",
-            headers={"Authorization": "Bearer invalid_token"}
-        )
-        
+        response = client.get("/api/v1/users", headers={"Authorization": "Bearer invalid_token"})
+
         # Should fail auth but middleware should still work
         assert response.status_code in [401, 500]
-        
+
         # Security headers should be present
         assert "X-Content-Type-Options" in response.headers
 
@@ -312,13 +301,10 @@ class TestMiddlewareIntegration:
             "first_name": "Test",
             "last_name": "User",
             "phone": "+1234567890",
-            "is_active": True
+            "is_active": True,
         }
-        
-        response = client.post(
-            "/api/v1/users",
-            json=payload
-        )
-        
+
+        response = client.post("/api/v1/users", json=payload)
+
         # Should fail auth, but request data should be processed
         assert response.status_code in [401, 422]

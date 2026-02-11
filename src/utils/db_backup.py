@@ -45,7 +45,9 @@ class DatabaseBackup:
             interval_hours: Hours between scheduled backups (default: 6)
             max_backups: Maximum number of backups to retain (if set, overrides retention_days)
         """
-        self._database_url = database_url or os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
+        self._database_url = database_url or os.getenv(
+            "DATABASE_URL", "postgresql://localhost:5432/vfs_bot"
+        )
         self._backup_dir = Path(backup_dir)
         self._retention_days = retention_days
         self._interval_hours = interval_hours
@@ -65,12 +67,12 @@ class DatabaseBackup:
     def _get_encryption_key(self) -> bytes:
         """
         Get encryption key for backups.
-        
+
         Reads from BACKUP_ENCRYPTION_KEY env var first, falls back to ENCRYPTION_KEY.
-        
+
         Returns:
             Fernet encryption key as bytes
-            
+
         Raises:
             ValueError: If no encryption key is available
         """
@@ -82,69 +84,69 @@ class DatabaseBackup:
                 'print(Fernet.generate_key().decode())"'
             )
         return key.encode() if isinstance(key, str) else key
-    
+
     def _encrypt_file(self, plain_path: Path, encrypted_path: Path) -> None:
         """
         Encrypt a file using Fernet encryption.
-        
+
         Args:
             plain_path: Path to plain text file
             encrypted_path: Path to encrypted output file
-            
+
         Raises:
             Exception: If encryption fails
         """
         try:
             key = self._get_encryption_key()
             cipher = Fernet(key)
-            
+
             # Read plain file
-            with open(plain_path, 'rb') as f:
+            with open(plain_path, "rb") as f:
                 plain_data = f.read()
-            
+
             # Encrypt
             encrypted_data = cipher.encrypt(plain_data)
-            
+
             # Write encrypted file
-            with open(encrypted_path, 'wb') as f:
+            with open(encrypted_path, "wb") as f:
                 f.write(encrypted_data)
-            
+
             # Set restrictive permissions (Unix only)
             try:
                 os.chmod(encrypted_path, 0o600)
             except (OSError, AttributeError):
                 pass  # Skip on Windows or if chmod fails
-                
+
         except Exception as e:
             logger.error(f"File encryption failed: {e}", exc_info=True)
             raise
-    
+
     def _decrypt_file(self, encrypted_path: Path, plain_path: Path) -> None:
         """
         Decrypt a file using Fernet encryption.
-        
+
         Args:
             encrypted_path: Path to encrypted file
             plain_path: Path to decrypted output file
-            
+
         Raises:
             Exception: If decryption fails
         """
         try:
             key = self._get_encryption_key()
             cipher = Fernet(key)
-            
+
             # Read encrypted file
-            with open(encrypted_path, 'rb') as f:
+            with open(encrypted_path, "rb") as f:
                 encrypted_data = f.read()
-            
+
             # Decrypt
             plain_data = cipher.decrypt(encrypted_data)
-            
+
             # Write plain file
-            with open(plain_path, 'wb') as f:
+            with open(plain_path, "wb") as f:
                 f.write(plain_data)
-                
+
         except Exception as e:
             logger.error(f"File decryption failed: {e}", exc_info=True)
             raise
@@ -183,7 +185,7 @@ class DatabaseBackup:
             Exception: On backup failure
         """
         backup_path = self._generate_backup_path(suffix=suffix)
-        temp_sql_path = backup_path.with_suffix('.sql')  # Temporary unencrypted file
+        temp_sql_path = backup_path.with_suffix(".sql")  # Temporary unencrypted file
 
         logger.info(f"Creating database backup: {backup_path}")
 
@@ -197,12 +199,14 @@ class DatabaseBackup:
 
             # Encrypt the backup file
             self._encrypt_file(temp_sql_path, backup_path)
-            
+
             # Securely delete the temporary plain SQL file
             temp_sql_path.unlink()
-            
+
             backup_size = backup_path.stat().st_size
-            logger.info(f"Backup created and encrypted successfully: {backup_path} ({backup_size:,} bytes)")
+            logger.info(
+                f"Backup created and encrypted successfully: {backup_path} ({backup_size:,} bytes)"
+            )
 
             return str(backup_path)
 
@@ -225,51 +229,48 @@ class DatabaseBackup:
         """
         # Set up environment with password if present
         env = os.environ.copy()
-        
+
         # Parse database URL to extract connection parameters
         parsed = urlparse(database_url)
-        
+
         # Build pg_dump command with separate parameters for security
-        cmd = ['pg_dump']
-        
+        cmd = ["pg_dump"]
+
         if parsed.hostname:
-            cmd.extend(['-h', parsed.hostname])
+            cmd.extend(["-h", parsed.hostname])
         if parsed.port:
-            cmd.extend(['-p', str(parsed.port)])
+            cmd.extend(["-p", str(parsed.port)])
         if parsed.username:
-            cmd.extend(['-U', parsed.username])
+            cmd.extend(["-U", parsed.username])
         if parsed.path and len(parsed.path) > 1:
-            cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
-        
-        cmd.extend(['-f', backup_path])
-        
+            cmd.extend(["-d", parsed.path[1:]])  # Remove leading /
+
+        cmd.extend(["-f", backup_path])
+
         # Set password in environment for security
         if parsed.password:
-            env['PGPASSWORD'] = parsed.password
-        
+            env["PGPASSWORD"] = parsed.password
+
         # Run pg_dump
         process = await asyncio.create_subprocess_exec(
-            *cmd,
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-        
+
         stdout, stderr = await process.communicate()
-        
+
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
             raise Exception(f"pg_dump failed with return code {process.returncode}: {error_msg}")
-        
+
         logger.debug("PostgreSQL backup completed")
 
     async def cleanup_old_backups(self) -> int:
         """
         Remove backups based on retention policy.
-        
+
         If max_backups is set, keeps only the N most recent backups.
         Otherwise, removes backups older than retention_days.
-        
+
         Handles both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Returns:
@@ -285,16 +286,16 @@ class DatabaseBackup:
             all_backups = []
             for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
                 all_backups.extend(self._backup_dir.glob(pattern))
-            
+
             if self._max_backups is not None:
                 # Count-based cleanup: keep only N most recent backups
                 logger.debug(f"Cleaning up backups exceeding limit of {self._max_backups}")
-                
+
                 # Sort by modification time (newest first)
                 backups_sorted = sorted(all_backups, key=lambda p: p.stat().st_mtime, reverse=True)
-                
+
                 # Remove backups exceeding the limit
-                for backup_file in backups_sorted[self._max_backups:]:
+                for backup_file in backups_sorted[self._max_backups :]:
                     logger.info(f"Deleting old backup (count limit): {backup_file}")
                     backup_file.unlink()
                     deleted_count += 1
@@ -302,13 +303,15 @@ class DatabaseBackup:
                 # Time-based cleanup: remove backups older than retention_days
                 cutoff_time = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
                 logger.debug(f"Cleaning up backups older than {self._retention_days} days")
-                
+
                 for backup_file in all_backups:
                     # Get file modification time
                     mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc)
 
                     if mtime < cutoff_time:
-                        logger.info(f"Deleting old backup: {backup_file} (age: {datetime.now(timezone.utc) - mtime})")
+                        logger.info(
+                            f"Deleting old backup: {backup_file} (age: {datetime.now(timezone.utc) - mtime})"
+                        )
                         backup_file.unlink()
                         deleted_count += 1
 
@@ -377,7 +380,7 @@ class DatabaseBackup:
     async def restore_from_backup(self, backup_path: str) -> bool:
         """
         Restore database from backup file.
-        
+
         Supports both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Args:
@@ -404,16 +407,16 @@ class DatabaseBackup:
             await self.create_backup()
 
             # Check if this is an encrypted backup
-            is_encrypted = backup_file.suffix == '.enc'
-            
+            is_encrypted = backup_file.suffix == ".enc"
+
             if is_encrypted:
                 # Decrypt to temporary file (use NamedTemporaryFile for security)
                 temp_sql_file = tempfile.NamedTemporaryFile(
-                    mode='wb', suffix='.sql', dir=self._backup_dir, delete=False
+                    mode="wb", suffix=".sql", dir=self._backup_dir, delete=False
                 )
                 temp_sql_path = Path(temp_sql_file.name)
                 temp_sql_file.close()  # Close so decrypt can write to it
-                
+
                 self._decrypt_file(backup_file, temp_sql_path)
                 restore_path = str(temp_sql_path)
             else:
@@ -445,48 +448,47 @@ class DatabaseBackup:
         """
         # Set up environment with password if present
         env = os.environ.copy()
-        
+
         # Parse database URL to extract connection parameters
         parsed = urlparse(database_url)
-        
+
         # Build psql command with separate parameters for security
-        cmd = ['psql']
-        
+        cmd = ["psql"]
+
         if parsed.hostname:
-            cmd.extend(['-h', parsed.hostname])
+            cmd.extend(["-h", parsed.hostname])
         if parsed.port:
-            cmd.extend(['-p', str(parsed.port)])
+            cmd.extend(["-p", str(parsed.port)])
         if parsed.username:
-            cmd.extend(['-U', parsed.username])
+            cmd.extend(["-U", parsed.username])
         if parsed.path and len(parsed.path) > 1:
-            cmd.extend(['-d', parsed.path[1:]])  # Remove leading /
-        
-        cmd.extend(['-f', backup_path])
-        
+            cmd.extend(["-d", parsed.path[1:]])  # Remove leading /
+
+        cmd.extend(["-f", backup_path])
+
         # Set password in environment for security
         if parsed.password:
-            env['PGPASSWORD'] = parsed.password
-        
+            env["PGPASSWORD"] = parsed.password
+
         # Run psql to restore
         process = await asyncio.create_subprocess_exec(
-            *cmd,
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-        
+
         stdout, stderr = await process.communicate()
-        
+
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
-            raise Exception(f"psql restore failed with return code {process.returncode}: {error_msg}")
-        
+            raise Exception(
+                f"psql restore failed with return code {process.returncode}: {error_msg}"
+            )
+
         logger.debug(f"Restored backup to database")
 
     async def list_backups(self) -> List[Dict[str, Any]]:
         """
         List available backups with metadata.
-        
+
         Supports both encrypted (.sql.enc) and legacy unencrypted (.sql) backups.
 
         Returns:
@@ -502,18 +504,20 @@ class DatabaseBackup:
             all_backups = []
             for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
                 all_backups.extend(self._backup_dir.glob(pattern))
-            
+
             # Sort by modification time (newest first)
             for backup_file in sorted(all_backups, key=lambda p: p.stat().st_mtime, reverse=True):
                 stat = backup_file.stat()
-                is_encrypted = backup_file.suffix == '.enc'
-                
+                is_encrypted = backup_file.suffix == ".enc"
+
                 backups.append(
                     {
                         "path": str(backup_file),
                         "filename": backup_file.name,
                         "size_bytes": stat.st_size,
-                        "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                        "created_at": datetime.fromtimestamp(
+                            stat.st_mtime, tz=timezone.utc
+                        ).isoformat(),
                         "age_days": (
                             datetime.now(timezone.utc)
                             - datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)

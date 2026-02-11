@@ -1,8 +1,6 @@
 """Tests for alert service."""
 
-
 import pytest
-
 
 from src.services.alert_service import (
     AlertChannel,

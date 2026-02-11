@@ -94,13 +94,15 @@ class TestConcurrentLoad:
 
             async def write_user(user_id: int) -> int:
                 """Write a user to database."""
-                return await user_repo.create({
-                    'email': f"load{user_id}@test.com",
-                    'password': f"password{user_id}",
-                    'center_name': "Istanbul",
-                    'visa_category': "Schengen",
-                    'visa_subcategory': "Tourism",
-                })
+                return await user_repo.create(
+                    {
+                        "email": f"load{user_id}@test.com",
+                        "password": f"password{user_id}",
+                        "center_name": "Istanbul",
+                        "visa_category": "Schengen",
+                        "visa_subcategory": "Tourism",
+                    }
+                )
 
             # Perform concurrent writes
             tasks = [write_user(i) for i in range(write_count)]
@@ -130,13 +132,15 @@ class TestConcurrentLoad:
             # Create some test data
             user_repo = UserRepository(db)
             for i in range(10):
-                await user_repo.create({
-                    'email': f"read{i}@test.com",
-                    'password': f"password{i}",
-                    'center_name': "Istanbul",
-                    'visa_category': "Schengen",
-                    'visa_subcategory': "Tourism",
-                })
+                await user_repo.create(
+                    {
+                        "email": f"read{i}@test.com",
+                        "password": f"password{i}",
+                        "center_name": "Istanbul",
+                        "visa_category": "Schengen",
+                        "visa_subcategory": "Tourism",
+                    }
+                )
 
             # Perform many concurrent reads
             read_count = 100
@@ -175,13 +179,15 @@ class TestConcurrentLoad:
             # Create initial data
             user_repo = UserRepository(db)
             for i in range(5):
-                await user_repo.create({
-                    'email': f"initial{i}@test.com",
-                    'password': f"password{i}",
-                    'center_name': "Istanbul",
-                    'visa_category': "Schengen",
-                    'visa_subcategory': "Tourism",
-                })
+                await user_repo.create(
+                    {
+                        "email": f"initial{i}@test.com",
+                        "password": f"password{i}",
+                        "center_name": "Istanbul",
+                        "visa_category": "Schengen",
+                        "visa_subcategory": "Tourism",
+                    }
+                )
 
             write_count = 25
             read_count = 75
@@ -190,13 +196,15 @@ class TestConcurrentLoad:
 
             async def write_user(user_id: int) -> int:
                 """Write operation."""
-                return await user_repo.create({
-                    'email': f"mixed{user_id}@test.com",
-                    'password': f"password{user_id}",
-                    'center_name': "Istanbul",
-                    'visa_category': "Schengen",
-                    'visa_subcategory': "Tourism",
-                })
+                return await user_repo.create(
+                    {
+                        "email": f"mixed{user_id}@test.com",
+                        "password": f"password{user_id}",
+                        "center_name": "Istanbul",
+                        "visa_category": "Schengen",
+                        "visa_subcategory": "Tourism",
+                    }
+                )
 
             async def read_users() -> list:
                 """Read operation."""
@@ -288,13 +296,15 @@ class TestConcurrentLoad:
                 """Perform operations continuously."""
                 user_repo = UserRepository(db)
                 for i in range(operations_per_second):
-                    await user_repo.create({
-                        'email': f"sustained{time.time()}@test.com",
-                        'password': "password",
-                        'center_name': "Istanbul",
-                        'visa_category': "Schengen",
-                        'visa_subcategory': "Tourism",
-                    })
+                    await user_repo.create(
+                        {
+                            "email": f"sustained{time.time()}@test.com",
+                            "password": "password",
+                            "center_name": "Istanbul",
+                            "visa_category": "Schengen",
+                            "visa_subcategory": "Tourism",
+                        }
+                    )
                     await asyncio.sleep(1.0 / operations_per_second)
 
             start_time = time.time()

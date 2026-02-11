@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Add parent directory to path for imports
-
 from src.core.exceptions import VFSBotError
 from src.services.bot.booking_workflow import BookingWorkflow
 from src.utils.error_capture import ErrorCapture
+
+# Add parent directory to path for imports
 
 
 class TestBookingWorkflowErrorCapture:
@@ -172,11 +172,13 @@ class TestBookingWorkflowErrorCapture:
         }
 
         # Setup mocks for the new form filling calls
-        workflow.db.get_personal_details = AsyncMock(return_value={
-            "first_name": "John",
-            "last_name": "Doe",
-            "email": "waitlist@example.com",
-        })
+        workflow.db.get_personal_details = AsyncMock(
+            return_value={
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "waitlist@example.com",
+            }
+        )
         workflow.booking_service.fill_all_applicants = AsyncMock()
 
         # Make waitlist_handler.join_waitlist raise an exception
@@ -236,11 +238,13 @@ class TestBookingWorkflowErrorCapture:
         workflow.booking_service.fill_all_applicants = AsyncMock()
         workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
         workflow.waitlist_handler.click_confirm_button = AsyncMock(return_value=True)
-        workflow.waitlist_handler.handle_waitlist_success = AsyncMock(return_value={
-            "login_email": "test@example.com",
-            "reference_number": "REF123",
-            "screenshot_path": "/tmp/screenshot.png",
-        })
+        workflow.waitlist_handler.handle_waitlist_success = AsyncMock(
+            return_value={
+                "login_email": "test@example.com",
+                "reference_number": "REF123",
+                "screenshot_path": "/tmp/screenshot.png",
+            }
+        )
         workflow.notifier.notify_waitlist_success = AsyncMock()
 
         # Call process_waitlist_flow
@@ -295,9 +299,7 @@ class TestBookingWorkflowErrorCapture:
     async def test_error_capture_exception_is_caught(self, mock_dependencies):
         """Test that exceptions during error capture are caught and logged, but main exception is still raised."""
         mock_error_capture = MagicMock()
-        mock_error_capture.capture = AsyncMock(
-            side_effect=Exception("Error capture failed")
-        )
+        mock_error_capture.capture = AsyncMock(side_effect=Exception("Error capture failed"))
 
         workflow = BookingWorkflow(
             **mock_dependencies,

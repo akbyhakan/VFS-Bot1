@@ -100,7 +100,7 @@ class TestSubstituteEnvVars:
     def test_substitute_critical_env_var_missing_development(self):
         """Test that missing critical env var logs warning but returns empty string in dev."""
         import logging
-        
+
         with patch.dict(os.environ, {"ENV": "development"}, clear=True):
             with patch("src.core.config_loader.logger") as mock_logger:
                 result = substitute_env_vars("${VFS_ENCRYPTION_KEY}")
@@ -161,7 +161,7 @@ class TestLoadConfig:
         """Test that config loading raises error in production when file is missing."""
         # Config file doesn't exist, example also doesn't exist
         mock_exists.return_value = False
-        
+
         with patch.dict(os.environ, {"ENV": "production"}):
             with pytest.raises(FileNotFoundError) as exc_info:
                 load_config("missing.yaml")
@@ -179,9 +179,9 @@ class TestLoadConfig:
                 # Third: main config file
                 # Fourth: example config file (should return True)
                 mock_exists.side_effect = [False, False, False, True]
-                
+
                 # Should not raise an error in development mode
                 result = load_config("config/config.yaml")
-                
+
                 # Result should contain the example config data
                 assert result == {"example": "config"}

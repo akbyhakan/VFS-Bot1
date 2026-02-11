@@ -7,12 +7,12 @@ from typing import Any, Dict
 
 from playwright.async_api import Page
 
-from .selector_utils import get_selector
-from .form_filler import FormFiller
-from .slot_selector import SlotSelector
-from .payment_handler import PaymentHandler
-from .booking_validator import BookingValidator
 from ...core.sensitive import SensitiveDict
+from .booking_validator import BookingValidator
+from .form_filler import FormFiller
+from .payment_handler import PaymentHandler
+from .selector_utils import get_selector
+from .slot_selector import SlotSelector
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,13 @@ class BookingOrchestrator:
     slot selection, payment, and validation.
     """
 
-    def __init__(self, config: Dict[str, Any], captcha_solver: Any = None, human_sim: Any = None, payment_service: Any = None):
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        captcha_solver: Any = None,
+        human_sim: Any = None,
+        payment_service: Any = None,
+    ):
         """
         Initialize booking orchestrator.
 
@@ -161,12 +167,14 @@ class BookingOrchestrator:
                     "PaymentService is required for payment processing. "
                     "Legacy inline payment mode has been removed for security (PCI-DSS compliance)."
                 )
-                raise ValueError("PaymentService is required - legacy payment mode removed for PCI-DSS compliance")
+                raise ValueError(
+                    "PaymentService is required - legacy payment mode removed for PCI-DSS compliance"
+                )
 
             # Use PaymentService for secure payment processing
             user_id = reservation.get("user_id", 0)
             card_details_wrapped = reservation.get("payment_card")
-            
+
             try:
                 # Unwrap SensitiveDict at point of use only
                 if isinstance(card_details_wrapped, SensitiveDict):
@@ -174,20 +182,18 @@ class BookingOrchestrator:
                 else:
                     # Fallback for non-SensitiveDict (backward compatibility)
                     card_details = card_details_wrapped
-                
+
                 # PaymentService will enforce PCI-DSS security controls
                 # It will reject automated payments in production
                 payment_success = await self.payment_service.process_payment(
-                    page=page,
-                    user_id=user_id,
-                    card_details=card_details
+                    page=page, user_id=user_id, card_details=card_details
                 )
             finally:
                 # Securely wipe card details from memory after use
                 if isinstance(card_details_wrapped, SensitiveDict):
                     card_details_wrapped.wipe()
                 card_details = None
-            
+
             if not payment_success:
                 logger.error("Payment processing failed")
                 return False

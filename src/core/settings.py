@@ -14,8 +14,7 @@ class VFSSettings(BaseSettings):
 
     # Configuration Version
     config_version: Optional[str] = Field(
-        default=None, 
-        description="Configuration schema version for compatibility checking"
+        default=None, description="Configuration schema version for compatibility checking"
     )
 
     # VFS Credentials
@@ -24,8 +23,7 @@ class VFSSettings(BaseSettings):
         default=SecretStr(""), description="VFS Global account password"
     )
     vfs_password_encrypted: bool = Field(
-        default=False, 
-        description="Flag indicating if VFS_PASSWORD is Fernet-encrypted"
+        default=False, description="Flag indicating if VFS_PASSWORD is Fernet-encrypted"
     )
 
     # Encryption Keys
@@ -58,7 +56,7 @@ class VFSSettings(BaseSettings):
     # Database Configuration
     database_url: str = Field(
         default="postgresql://localhost:5432/vfs_bot",
-        description="PostgreSQL database connection URL"
+        description="PostgreSQL database connection URL",
     )
     db_pool_size: int = Field(default=10, ge=1, le=100, description="Database connection pool size")
     db_connection_timeout: float = Field(
@@ -68,7 +66,7 @@ class VFSSettings(BaseSettings):
     # Redis Configuration
     redis_url: Optional[str] = Field(
         default=None,
-        description="Redis URL for distributed rate limiting (leave empty for in-memory)"
+        description="Redis URL for distributed rate limiting (leave empty for in-memory)",
     )
 
     # CORS Configuration
@@ -182,33 +180,33 @@ class VFSSettings(BaseSettings):
     def decrypt_vfs_password(self) -> "VFSSettings":
         """
         Decrypt VFS password if it was stored encrypted.
-        
+
         Returns:
             Self with decrypted password
-            
+
         Raises:
             ValueError: If decryption fails
         """
         if self.vfs_password_encrypted:
             try:
                 from cryptography.fernet import Fernet
-                
+
                 # Get encryption key
                 encryption_key = self.encryption_key.get_secret_value()
                 cipher = Fernet(encryption_key.encode())
-                
+
                 # Decrypt the password
                 encrypted_password = self.vfs_password.get_secret_value()
                 decrypted_password = cipher.decrypt(encrypted_password.encode()).decode()
-                
+
                 # Update the password with decrypted value
                 self.vfs_password = SecretStr(decrypted_password)
-                
+
             except Exception as e:
                 raise ValueError(
                     f"Failed to decrypt VFS_PASSWORD. Ensure ENCRYPTION_KEY is correct. Error: {e}"
                 )
-        
+
         return self
 
     def get_cors_origins(self) -> List[str]:

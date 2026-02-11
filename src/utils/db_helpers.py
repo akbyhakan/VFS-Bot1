@@ -291,6 +291,7 @@ async def batch_update(
         try:
             # Group updates by their column sets for executemany optimization
             from collections import defaultdict
+
             groups: Dict[tuple, List[Dict[str, Any]]] = defaultdict(list)
 
             for update_data in batch:
@@ -303,8 +304,7 @@ async def batch_update(
                     continue
                 # Validate columns
                 valid_cols = tuple(
-                    col for col in sorted(update_dict.keys())
-                    if validate_sql_identifier(col)
+                    col for col in sorted(update_dict.keys()) if validate_sql_identifier(col)
                 )
                 if valid_cols:
                     groups[valid_cols].append(update_data)

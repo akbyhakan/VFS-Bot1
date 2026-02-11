@@ -9,16 +9,18 @@ from src.core.environment import Environment
 
 # Known dangerous default values that should never be used in production
 # These are exact placeholder values from .env.example
-DANGEROUS_DEFAULTS = frozenset({
-    "your-secret-key-here-must-be-at-least-64-characters-long-for-security",
-    "your-base64-encoded-encryption-key-here",
-    "your-32-byte-encryption-key-here",
-    "your-secure-api-key-here",
-    "one-time-secret-for-key-generation",
-    "your-api-key-here",
-    "change-me",
-    "CHANGE_ME",
-})
+DANGEROUS_DEFAULTS = frozenset(
+    {
+        "your-secret-key-here-must-be-at-least-64-characters-long-for-security",
+        "your-base64-encoded-encryption-key-here",
+        "your-32-byte-encryption-key-here",
+        "your-secure-api-key-here",
+        "one-time-secret-for-key-generation",
+        "your-api-key-here",
+        "change-me",
+        "CHANGE_ME",
+    }
+)
 
 
 def validate_production_security() -> List[str]:
@@ -50,8 +52,7 @@ def validate_production_security() -> List[str]:
         or admin_pass.startswith("$2y$")
     ):
         warnings.append(
-            "ADMIN_PASSWORD is not a bcrypt hash. "
-            "Run: python scripts/setup_environment.py"
+            "ADMIN_PASSWORD is not a bcrypt hash. " "Run: python scripts/setup_environment.py"
         )
 
     # Check for dangerous default values in security-critical env vars
@@ -73,15 +74,13 @@ def validate_production_security() -> List[str]:
     # Check DATABASE_URL for dangerous defaults (substring match)
     database_url = os.getenv("DATABASE_URL", "")
     if not database_url:
-        warnings.append(
-            "DATABASE_URL is empty. Set a valid database connection string."
-        )
+        warnings.append("DATABASE_URL is empty. Set a valid database connection string.")
     elif database_url in DANGEROUS_DEFAULTS or any(
         pattern in database_url for pattern in ("CHANGE_ME", "change_me", "changeme")
     ):
         warnings.append(
             "DATABASE_URL contains a default/placeholder password. "
-            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
+            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check POSTGRES_PASSWORD
@@ -91,7 +90,7 @@ def validate_production_security() -> List[str]:
     ):
         warnings.append(
             "POSTGRES_PASSWORD contains a default/placeholder value. "
-            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
+            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check REDIS_PASSWORD
@@ -101,7 +100,7 @@ def validate_production_security() -> List[str]:
     ):
         warnings.append(
             "REDIS_PASSWORD contains a default/placeholder value. "
-            "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(24))\""
+            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check GRAFANA_ADMIN_PASSWORD
@@ -111,13 +110,13 @@ def validate_production_security() -> List[str]:
         if grafana_password in ("vfsbot_grafana", "admin", "password", "grafana"):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD is set to a common default password. "
-                "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(16))\""
+                'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
         # Substring match for placeholder patterns
         elif any(pattern in grafana_password for pattern in ("CHANGE_ME", "change_me", "changeme")):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD contains a default/placeholder value. "
-                "Generate a secure password with: python -c \"import secrets; print(secrets.token_urlsafe(16))\""
+                'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
 
     return warnings
@@ -144,7 +143,9 @@ def log_security_warnings(strict: bool = False) -> bool:
         return True
 
     # In strict mode with production/staging, use critical logging
-    log_func = logger.critical if (strict and Environment.is_production_or_staging()) else logger.warning
+    log_func = (
+        logger.critical if (strict and Environment.is_production_or_staging()) else logger.warning
+    )
 
     log_func("=" * 60)
     log_func("SECURITY CONFIGURATION WARNINGS")
@@ -152,9 +153,7 @@ def log_security_warnings(strict: bool = False) -> bool:
     for warning in warnings:
         log_func(f"⚠️  {warning}")
     log_func("=" * 60)
-    log_func(
-        "Fix these issues or set ENV=development to suppress these warnings."
-    )
+    log_func("Fix these issues or set ENV=development to suppress these warnings.")
 
     # In strict mode, exit if in production or staging
     if strict and Environment.is_production_or_staging():

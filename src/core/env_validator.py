@@ -64,7 +64,7 @@ class EnvValidator:
                 elif var == "VFS_PASSWORD":
                     # Check if password is encrypted
                     is_encrypted = os.getenv("VFS_PASSWORD_ENCRYPTED", "false").lower() == "true"
-                    
+
                     if is_encrypted:
                         # Validate Fernet token format (base64-encoded, longer string)
                         if not cls._validate_fernet_token(value):
@@ -203,23 +203,23 @@ class EnvValidator:
         """
         try:
             import base64
-            
+
             # Fernet tokens are base64-encoded and typically longer than plain text
-            # Minimum 60 characters: Fernet adds ~41 bytes overhead (version byte + 
+            # Minimum 60 characters: Fernet adds ~41 bytes overhead (version byte +
             # timestamp + IV + padding) to the encrypted data, which becomes ~55 chars
             # in base64. A short password would still result in 60+ chars total.
             if len(token) < 60:
                 return False
-            
+
             # Try to decode as base64
             decoded = base64.urlsafe_b64decode(token.encode())
-            
-            # Fernet overhead: 1 byte version + 8 bytes timestamp + 16 bytes IV + 
+
+            # Fernet overhead: 1 byte version + 8 bytes timestamp + 16 bytes IV +
             # 16 bytes auth tag + PKCS7 padding = minimum ~40 bytes overhead
             # So any valid Fernet token should have at least 40 bytes
             if len(decoded) < 40:
                 return False
-                
+
             return True
         except Exception:
             return False

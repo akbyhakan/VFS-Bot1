@@ -1,4 +1,5 @@
 """Adaptive scheduler - intelligent interval management based on time of day."""
+
 from datetime import datetime
 from typing import Any, Dict
 from zoneinfo import ZoneInfo

@@ -34,6 +34,7 @@ class TestDatabaseFactory:
     def test_get_instance_with_default_path(self):
         """Test get_instance uses default database URL."""
         import os
+
         db = DatabaseFactory.get_instance()
         # Should use default from environment or fallback
         expected = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
@@ -122,6 +123,7 @@ class TestDatabaseFactory:
     def test_get_instance_none_path_uses_default(self):
         """Test that None database_url uses default value."""
         import os
+
         db = DatabaseFactory.get_instance(database_url=None)
         expected = os.getenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot")
         assert db.database_url == expected

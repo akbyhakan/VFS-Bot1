@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 from src.services.notification import NotificationService
 
 
@@ -91,7 +90,7 @@ async def test_send_telegram_exception():
 
         result = await notifier.send_telegram("Test", "Message")
         assert result is False
-        
+
         # Verify retry happened (1 initial + 2 retries = 3 total attempts)
         assert mock_bot.send_message.call_count == 3
 
@@ -127,10 +126,10 @@ async def test_send_email_exception():
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
         mock_smtp_instance.starttls = AsyncMock(side_effect=Exception("SMTP error"))
-        
+
         result = await notifier.send_email("Test", "Message")
         assert result is False
-        
+
         # Verify retry happened (1 initial + 2 retries = 3 total attempts)
         assert mock_smtp_instance.starttls.call_count == 3
 
@@ -143,19 +142,18 @@ async def test_send_telegram_retry_then_success():
     with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
-        
+
         # First call fails, second call succeeds
-        mock_bot.send_message = AsyncMock(side_effect=[
-            Exception("Transient error"),
-            None  # Success
-        ])
+        mock_bot.send_message = AsyncMock(
+            side_effect=[Exception("Transient error"), None]  # Success
+        )
 
         # Create notifier after patching Bot
         notifier = NotificationService(config)
 
         result = await notifier.send_telegram("Test", "Message")
         assert result is True
-        
+
         # Verify retry happened (2 calls: 1 failure + 1 success)
         assert mock_bot.send_message.call_count == 2
 
@@ -179,18 +177,17 @@ async def test_send_email_retry_then_success():
     with patch("src.services.notification.aiosmtplib.SMTP") as MockSMTP:
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
-        
+
         # First call fails, second succeeds
-        mock_smtp_instance.starttls = AsyncMock(side_effect=[
-            Exception("Transient error"),
-            None  # Success
-        ])
+        mock_smtp_instance.starttls = AsyncMock(
+            side_effect=[Exception("Transient error"), None]  # Success
+        )
         mock_smtp_instance.login = AsyncMock()
         mock_smtp_instance.send_message = AsyncMock()
-        
+
         result = await notifier.send_email("Test", "Message")
         assert result is True
-        
+
         # Verify retry happened (2 calls: 1 failure + 1 success)
         assert mock_smtp_instance.starttls.call_count == 2
 

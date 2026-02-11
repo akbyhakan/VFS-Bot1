@@ -1,8 +1,6 @@
 """Tests for secure memory utilities."""
 
-
 import pytest
-
 
 from src.utils.secure_memory import SecureCVV, SecureKeyContext, secure_zero_memory
 
@@ -121,7 +119,7 @@ def test_secure_cvv_whitespace():
 def test_secure_key_context_basic():
     """Test SecureKeyContext basic usage."""
     key_str = "test_secret_key_12345678901234567890"
-    
+
     with SecureKeyContext(key_str) as key_bytes:
         # Should return a bytearray
         assert isinstance(key_bytes, bytearray)
@@ -132,13 +130,13 @@ def test_secure_key_context_basic():
 def test_secure_key_context_zeroes_on_exit():
     """Test SecureKeyContext zeroes data on exit."""
     key_str = "test_secret_key_12345678901234567890"
-    
+
     ctx = SecureKeyContext(key_str)
     with ctx as key_bytes:
         # Data should be populated
         assert len(key_bytes) > 0
         assert bytes(key_bytes) == key_str.encode("utf-8")
-    
+
     # After exit, _data should be an empty bytearray
     assert ctx._data == bytearray()
 
@@ -160,10 +158,10 @@ def test_secure_key_context_empty_raises():
 def test_secure_key_context_clears_str_reference():
     """Test SecureKeyContext clears string reference after __enter__."""
     key_str = "test_secret_key_12345678901234567890"
-    
+
     ctx = SecureKeyContext(key_str)
     assert ctx._key_str == key_str  # Initially set
-    
+
     with ctx as key_bytes:
         # After entering, string reference should be cleared
         assert ctx._key_str is None
@@ -173,9 +171,9 @@ def test_secure_key_context_clears_str_reference():
 def test_secure_key_context_exception_cleanup():
     """Test SecureKeyContext cleans up even when exception occurs."""
     key_str = "test_secret_key_12345678901234567890"
-    
+
     ctx = SecureKeyContext(key_str)
-    
+
     try:
         with ctx as key_bytes:
             assert len(key_bytes) > 0
@@ -183,7 +181,6 @@ def test_secure_key_context_exception_cleanup():
             raise ValueError("Test exception")
     except ValueError:
         pass
-    
+
     # Should still clean up after exception
     assert ctx._data == bytearray()
-

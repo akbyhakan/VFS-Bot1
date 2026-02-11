@@ -147,7 +147,7 @@ class WebhookTokenManager:
 
         Args:
             base_url: Base URL for webhook endpoints. If None, reads from WEBHOOK_BASE_URL env var.
-        
+
         Raises:
             ValueError: If base_url is not provided and WEBHOOK_BASE_URL is not set
         """

@@ -337,11 +337,11 @@ class CircuitBreaker:
             "state": self._state.value,
             "failure_count": self._failure_count,
             "failure_threshold": self.failure_threshold,
-            "last_failure_time": self._last_failure_time.isoformat()
-            if self._last_failure_time
-            else None,
+            "last_failure_time": (
+                self._last_failure_time.isoformat() if self._last_failure_time else None
+            ),
             "timeout_seconds": self.timeout_seconds,
-            "total_errors_in_window": len(self._error_timestamps)
-            if self._max_errors_per_hour
-            else 0,
+            "total_errors_in_window": (
+                len(self._error_timestamps) if self._max_errors_per_hour else 0
+            ),
         }

@@ -1,8 +1,6 @@
 """Tests for custom exceptions."""
 
-
 import pytest
-
 
 from src.core.exceptions import (
     AuthenticationError,

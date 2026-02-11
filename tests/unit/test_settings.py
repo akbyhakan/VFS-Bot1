@@ -4,8 +4,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-
-
 from pydantic import ValidationError
 
 from src.core.settings import VFSSettings, get_settings, reset_settings

@@ -49,9 +49,7 @@ class AppointmentDeduplication:
         """
         return f"{user_id}:{centre}:{category}:{date}"
 
-    async def is_duplicate(
-        self, user_id: int, centre: str, category: str, date: str
-    ) -> bool:
+    async def is_duplicate(self, user_id: int, centre: str, category: str, date: str) -> bool:
         """
         Check if booking attempt is a duplicate.
 
@@ -86,9 +84,7 @@ class AppointmentDeduplication:
 
         return False
 
-    async def mark_booked(
-        self, user_id: int, centre: str, category: str, date: str
-    ) -> None:
+    async def mark_booked(self, user_id: int, centre: str, category: str, date: str) -> None:
         """
         Mark a booking as completed to prevent duplicates.
 

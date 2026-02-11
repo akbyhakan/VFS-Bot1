@@ -18,8 +18,8 @@ from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..alert_service import AlertSeverity
-from ..booking import get_selector
 from ..appointment_deduplication import get_deduplication_service
+from ..booking import get_selector
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
@@ -84,7 +84,7 @@ class BookingWorkflow:
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
         self.alert_service = alert_service
-        
+
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
 
@@ -194,21 +194,21 @@ class BookingWorkflow:
                 screenshot_path: Optional[str] = waitlist_details.get("screenshot_path")
                 await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
                 logger.info(f"Waitlist registration successful for {masked_email}")
-                
+
                 # Send alert for waitlist success (INFO severity)
                 await self._send_alert_safe(
                     message=f"✅ Waitlist registration successful for {masked_email}",
                     severity=AlertSeverity.INFO,
-                    metadata={"user_email": masked_email, "details": waitlist_details}
+                    metadata={"user_email": masked_email, "details": waitlist_details},
                 )
             else:
                 logger.error("Failed to handle waitlist success screen")
-                
+
                 # Send alert for waitlist failure (ERROR severity)
                 await self._send_alert_safe(
                     message=f"❌ Failed to handle waitlist success for {masked_email}",
                     severity=AlertSeverity.ERROR,
-                    metadata={"user_email": masked_email}
+                    metadata={"user_email": masked_email},
                 )
 
         except Exception as e:
@@ -328,19 +328,21 @@ class BookingWorkflow:
             confirmation = await self.booking_service.verify_booking_confirmation(page)
             if confirmation.get("success"):
                 reference = confirmation.get("reference", "UNKNOWN")
-                await self.appointment_repo.create({
-                    "user_id": user["id"],
-                    "centre": centre,
-                    "category": user["category"],
-                    "subcategory": user["subcategory"],
-                    "appointment_date": slot["date"],
-                    "appointment_time": slot["time"],
-                    "reference_number": reference
-                })
+                await self.appointment_repo.create(
+                    {
+                        "user_id": user["id"],
+                        "centre": centre,
+                        "category": user["category"],
+                        "subcategory": user["subcategory"],
+                        "appointment_date": slot["date"],
+                        "appointment_time": slot["time"],
+                        "reference_number": reference,
+                    }
+                )
                 await self.notifier.notify_booking_success(
                     centre, slot["date"], slot["time"], reference
                 )
-                
+
                 # Send alert for booking success (INFO severity)
                 await self._send_alert_safe(
                     message=f"✅ Booking successful: {centre} - {slot['date']} {slot['time']} (Ref: {reference})",
@@ -351,7 +353,7 @@ class BookingWorkflow:
                         "date": slot["date"],
                         "time": slot["time"],
                         "reference": reference,
-                    }
+                    },
                 )
 
                 # Mark booking in deduplication service
@@ -362,7 +364,7 @@ class BookingWorkflow:
                 logger.info("Booking completed - checkpoint cleared")
             else:
                 logger.error(f"Booking verification failed: {confirmation.get('error')}")
-                
+
                 # Send alert for booking verification failure (ERROR severity)
                 await self._send_alert_safe(
                     message=f"❌ Booking verification failed: {confirmation.get('error')}",
@@ -371,11 +373,11 @@ class BookingWorkflow:
                         "user_id": user["id"],
                         "centre": centre,
                         "error": confirmation.get("error"),
-                    }
+                    },
                 )
         else:
             logger.error("Booking flow failed")
-            
+
             # Send alert for booking flow failure (ERROR severity)
             await self._send_alert_safe(
                 message=f"❌ Booking flow failed for {centre}",
@@ -383,7 +385,7 @@ class BookingWorkflow:
                 metadata={
                     "user_id": user["id"],
                     "centre": centre,
-                }
+                },
             )
 
     async def _process_normal_flow(

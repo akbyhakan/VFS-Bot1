@@ -203,7 +203,7 @@ class TestGracefulShutdownTimeout:
         # Create a test database
         test_db_url = DatabaseConfig.TEST_URL
         db = Database(database_url=test_db_url)
-        
+
         try:
             await db.connect()
         except Exception as e:
@@ -235,7 +235,7 @@ class TestGracefulShutdownTimeout:
         # Create a test database
         test_db_url = DatabaseConfig.TEST_URL
         db = Database(database_url=test_db_url)
-        
+
         try:
             await db.connect()
         except Exception as e:
@@ -316,7 +316,9 @@ class TestFastAPILifespan:
 
         # Mock DatabaseFactory methods
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
-            with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock) as mock_close:
+            with patch(
+                "web.app.DatabaseFactory.close_instance", new_callable=AsyncMock
+            ) as mock_close:
                 with patch("src.services.otp_webhook.get_otp_service") as mock_otp:
                     mock_otp_service = AsyncMock()
                     mock_otp_service.stop_cleanup_scheduler = AsyncMock()
@@ -366,7 +368,9 @@ class TestEmergencyCleanup:
 
         from src.core.shutdown import fast_emergency_cleanup
 
-        with patch("src.models.db_factory.DatabaseFactory.close_instance", new_callable=AsyncMock) as mock_close:
+        with patch(
+            "src.models.db_factory.DatabaseFactory.close_instance", new_callable=AsyncMock
+        ) as mock_close:
             await fast_emergency_cleanup()
             mock_close.assert_called_once()
 
@@ -394,7 +398,7 @@ class TestEnvironmentValidation:
     def test_valid_environments_whitelist(self):
         """Test that valid environments are accepted."""
         from src.core.environment import Environment
-        
+
         valid_envs = ["production", "staging", "development", "dev", "testing", "test", "local"]
 
         for env in valid_envs:
@@ -423,24 +427,26 @@ class TestEnvironmentValidation:
         try:
             # Test with ANSI escape sequence injection
             os.environ["ENV"] = "\x1b[31mmalicious\x1b[0m\nFAKE LOG LINE"
-            
+
             with caplog.at_level("WARNING"):
                 result = get_validated_environment()
-            
+
             # Should default to production
             assert result == "production"
-            
+
             # Check that log message was sanitized (no ANSI escape sequences)
             log_message = caplog.text
             assert "\x1b" not in log_message, "ANSI escape sequences should be removed"
-            
+
             # Check for expected warning message
-            assert "defaulting to 'production'" in log_message, "Expected warning message should appear"
-            
+            assert (
+                "defaulting to 'production'" in log_message
+            ), "Expected warning message should appear"
+
             # The sanitized value should be in the log (without ANSI or newlines)
             # Either "malicious" or "FAKE LOG LINE" should appear as sanitized text
             assert "malicious" in log_message.lower() or "fake log line" in log_message.lower()
-            
+
         finally:
             if old_env:
                 os.environ["ENV"] = old_env
@@ -477,7 +483,7 @@ class TestDatabaseBatchOperations:
 
         test_db_url = DatabaseConfig.TEST_URL
         db = Database(database_url=test_db_url)
-        
+
         try:
             await db.connect()
         except Exception as e:
@@ -550,7 +556,9 @@ class TestStartupValidatorStrictMode:
         try:
             # Set production environment with placeholder secret
             os.environ["ENV"] = "production"
-            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            os.environ["API_SECRET_KEY"] = (
+                "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            )
 
             # Should raise SystemExit in strict mode
             with pytest.raises(SystemExit) as exc_info:
@@ -580,7 +588,9 @@ class TestStartupValidatorStrictMode:
         try:
             # Set development environment with placeholder secret
             os.environ["ENV"] = "development"
-            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            os.environ["API_SECRET_KEY"] = (
+                "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            )
 
             # Should not raise in development
             result = log_security_warnings(strict=True)
@@ -609,7 +619,9 @@ class TestStartupValidatorStrictMode:
         try:
             # Set production environment with placeholder secret
             os.environ["ENV"] = "production"
-            os.environ["API_SECRET_KEY"] = "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            os.environ["API_SECRET_KEY"] = (
+                "your-secret-key-here-must-be-at-least-64-characters-long-for-security"
+            )
 
             # Should not raise, just return False
             result = log_security_warnings(strict=False)
@@ -681,11 +693,13 @@ class TestStartupValidatorStrictMode:
         try:
             # Set production environment with CHANGE_ME in DATABASE_URL
             os.environ["ENV"] = "production"
-            os.environ["DATABASE_URL"] = "postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot"
+            os.environ["DATABASE_URL"] = (
+                "postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot"
+            )
 
             # Should detect the placeholder password
             warnings = validate_production_security()
-            
+
             # Find the DATABASE_URL warning
             db_warnings = [w for w in warnings if "DATABASE_URL" in w]
             assert len(db_warnings) > 0, "Should detect CHANGE_ME in DATABASE_URL"
@@ -717,7 +731,7 @@ class TestStartupValidatorStrictMode:
 
             # Should detect the placeholder password
             warnings = validate_production_security()
-            
+
             # Find the POSTGRES_PASSWORD warning
             pg_warnings = [w for w in warnings if "POSTGRES_PASSWORD" in w]
             assert len(pg_warnings) > 0, "Should detect CHANGE_ME in POSTGRES_PASSWORD"
@@ -749,7 +763,7 @@ class TestStartupValidatorStrictMode:
 
             # Should detect the placeholder password
             warnings = validate_production_security()
-            
+
             # Find the REDIS_PASSWORD warning
             redis_warnings = [w for w in warnings if "REDIS_PASSWORD" in w]
             assert len(redis_warnings) > 0, "Should detect change_me in REDIS_PASSWORD"
@@ -784,7 +798,9 @@ class TestOpenAPISecurityConfig:
             os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
 
             # Need to reload the app module to pick up new environment
-            with patch.dict(os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}):
+            with patch.dict(
+                os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}
+            ):
                 # Import after setting environment
                 import importlib
 
@@ -861,59 +877,58 @@ class TestEncryptionHotpathOptimization:
         """Test that encryption instance uses TTL cache to avoid repeated os.getenv() calls."""
         import time
         from unittest.mock import patch
-        
-        from src.utils.encryption import get_encryption, reset_encryption, _KEY_CHECK_INTERVAL
-        
+
+        from src.utils.encryption import _KEY_CHECK_INTERVAL, get_encryption, reset_encryption
+
         # Reset to start fresh
         reset_encryption()
-        
+
         from cryptography.fernet import Fernet
-        
+
         old_key = os.getenv("ENCRYPTION_KEY")
-        
+
         try:
             # Set valid test key
             test_key = Fernet.generate_key().decode()
             os.environ["ENCRYPTION_KEY"] = test_key
-            
+
             # Get encryption instance - this will call os.getenv()
             enc1 = get_encryption()
             assert enc1 is not None
-            
+
             # Mock os.getenv to track calls
-            with patch('src.utils.encryption.os.getenv') as mock_getenv:
+            with patch("src.utils.encryption.os.getenv") as mock_getenv:
                 mock_getenv.return_value = test_key
-                
+
                 # Get encryption again immediately - should use cache, not call getenv
                 enc2 = get_encryption()
                 assert enc2 is enc1
-                
+
                 # getenv should NOT be called due to TTL cache
                 mock_getenv.assert_not_called()
-            
+
             # Now test after TTL expiration
             # Need to mock time.monotonic to simulate time passing
             from src.utils import encryption as enc_module
-            
+
             # Force TTL to expire by setting last check time to far past
             enc_module._last_key_check_time = 0.0
-            
-            with patch('src.utils.encryption.os.getenv') as mock_getenv:
+
+            with patch("src.utils.encryption.os.getenv") as mock_getenv:
                 mock_getenv.return_value = test_key
-                
+
                 # Get encryption - TTL expired, should check env
                 enc3 = get_encryption()
                 assert enc3 is enc1
-                
+
                 # getenv SHOULD be called because TTL expired
                 mock_getenv.assert_called()
-        
+
         finally:
             # Restore original key
             if old_key:
                 os.environ["ENCRYPTION_KEY"] = old_key
             elif "ENCRYPTION_KEY" in os.environ:
                 del os.environ["ENCRYPTION_KEY"]
-            
-            reset_encryption()
 
+            reset_encryption()

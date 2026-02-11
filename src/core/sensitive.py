@@ -6,19 +6,19 @@ from typing import Any, Dict, Iterator, List, Optional
 class SensitiveDict:
     """
     A dictionary wrapper that masks values in repr/str to prevent exposure.
-    
+
     This class prevents sensitive data (like card details) from appearing in:
     - Stack traces and exception messages
     - Log outputs
     - Debug prints
-    
+
     While still allowing normal dictionary access for actual usage.
     """
 
     def __init__(self, data: Optional[Dict[str, Any]] = None):
         """
         Initialize SensitiveDict with optional data.
-        
+
         Args:
             data: Dictionary to wrap (copied internally)
         """
@@ -56,9 +56,9 @@ class SensitiveDict:
     def to_dict(self) -> Dict[str, Any]:
         """
         Explicitly unwrap to regular dict.
-        
+
         Use this only at point-of-use when you need the actual values.
-        
+
         Returns:
             Copy of internal dictionary
         """

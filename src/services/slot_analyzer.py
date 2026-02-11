@@ -1,4 +1,5 @@
 """Slot pattern analysis and reporting."""
+
 import asyncio
 import json
 import logging
@@ -11,8 +12,8 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 # Batch write constants
-_BATCH_SIZE = 10         # Write to disk every N records (async)
-_BATCH_INTERVAL = 60.0   # Or every 60 seconds (whichever comes first)
+_BATCH_SIZE = 10  # Write to disk every N records (async)
+_BATCH_INTERVAL = 60.0  # Or every 60 seconds (whichever comes first)
 
 # Retention limit to prevent unbounded growth
 _MAX_SLOT_RECORDS = 10_000  # Maximum number of slot records to keep
@@ -59,9 +60,9 @@ class SlotPatternAnalyzer:
     def _enforce_retention(data: Dict[str, Any]) -> None:
         """
         Enforce retention policy by trimming slots list to max size.
-        
+
         Removes oldest records (FIFO) when limit is exceeded.
-        
+
         Args:
             data: Pattern data dictionary to enforce retention on
         """
@@ -97,19 +98,19 @@ class SlotPatternAnalyzer:
             "duration_seconds": duration_seconds,
         }
         self._patterns["slots"].append(record)
-        
+
         with self._lock:
             self._pending_writes += 1
-        
+
         logger.info(f"Slot pattern recorded: {country}/{centre}")
-        
+
         # Check if we should save (batch logic)
         await self._maybe_save()
 
     async def _maybe_save(self) -> None:
         """Save data if batch size or time interval reached."""
         should_save = False
-        
+
         with self._lock:
             if self._pending_writes >= _BATCH_SIZE:
                 should_save = True
@@ -117,7 +118,7 @@ class SlotPatternAnalyzer:
                 elapsed = (datetime.now(timezone.utc) - self._last_save_time).total_seconds()
                 if elapsed >= _BATCH_INTERVAL and self._pending_writes > 0:
                     should_save = True
-        
+
         if should_save:
             await asyncio.to_thread(self._save_data_sync)
 
@@ -125,7 +126,7 @@ class SlotPatternAnalyzer:
         """Force write any pending data to disk."""
         with self._lock:
             pending = self._pending_writes
-        
+
         if pending > 0:
             await asyncio.to_thread(self._save_data_sync)
             logger.info(f"Flushed {pending} pending slot records to disk")

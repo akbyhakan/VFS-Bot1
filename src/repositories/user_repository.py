@@ -534,7 +534,8 @@ class UserRepository(BaseRepository[User]):
             List of user dictionaries with personal details
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT
                     u.id, u.email, u.centre as center_name,
                     u.category as visa_category, u.subcategory as visa_subcategory,
@@ -543,7 +544,8 @@ class UserRepository(BaseRepository[User]):
                 FROM users u
                 LEFT JOIN personal_details p ON u.id = p.user_id
                 ORDER BY u.created_at DESC
-            """)
+            """
+            )
             return [dict(row) for row in rows]
 
     async def get_by_id_with_details(self, user_id: int) -> Optional[Dict[str, Any]]:

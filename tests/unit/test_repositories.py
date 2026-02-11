@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
-
 from src.core.exceptions import RecordNotFoundError, ValidationError
 from src.models.database import Database
 from src.repositories.user_repository import User, UserRepository

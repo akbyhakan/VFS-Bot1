@@ -1,7 +1,10 @@
 """Tests for DatabaseFactory async lock."""
+
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from src.models.db_factory import DatabaseFactory
 
 
@@ -17,8 +20,8 @@ class TestDatabaseFactoryAsyncLock:
         mock_db = MagicMock()
         mock_db.pool = None
         mock_db.connect = AsyncMock()
-        
-        with patch.object(DatabaseFactory, 'get_instance', return_value=mock_db):
+
+        with patch.object(DatabaseFactory, "get_instance", return_value=mock_db):
             db = await DatabaseFactory.ensure_connected()
             assert db is mock_db
             mock_db.connect.assert_called_once()
@@ -28,7 +31,7 @@ class TestDatabaseFactoryAsyncLock:
         mock_db = MagicMock()
         mock_db.close = AsyncMock()
         DatabaseFactory._instance = mock_db
-        
+
         await DatabaseFactory.close_instance()
         mock_db.close.assert_called_once()
         assert DatabaseFactory._instance is None
@@ -39,12 +42,12 @@ class TestDatabaseFactoryAsyncLock:
         mock_db = MagicMock()
         mock_db.pool = None
         mock_db.connect = AsyncMock()
-        
-        with patch.object(DatabaseFactory, 'get_instance', return_value=mock_db):
+
+        with patch.object(DatabaseFactory, "get_instance", return_value=mock_db):
             # Call ensure_connected multiple times concurrently
             tasks = [DatabaseFactory.ensure_connected() for _ in range(5)]
             results = await asyncio.gather(*tasks)
-            
+
             # All should return the same instance
             assert all(r is mock_db for r in results)
             # Connect should only be called once
@@ -55,9 +58,9 @@ class TestDatabaseFactoryAsyncLock:
         # Create a lock
         DatabaseFactory._get_async_lock()
         assert DatabaseFactory._async_lock is not None
-        
+
         # Reset
         DatabaseFactory.reset_instance()
-        
+
         # Lock should be None
         assert DatabaseFactory._async_lock is None

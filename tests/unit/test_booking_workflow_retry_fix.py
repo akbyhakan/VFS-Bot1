@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from tenacity import RetryError
 
-# Add parent directory to path for imports
-
 from src.core.exceptions import LoginError, VFSBotError
 from src.services.bot.booking_workflow import BookingWorkflow
+
+# Add parent directory to path for imports
 
 
 class TestBookingWorkflowRetryFix:
@@ -294,9 +294,7 @@ class TestBookingWorkflowHelperMethods:
             ],
         }
 
-        workflow.db.get_pending_appointment_request_for_user = AsyncMock(
-            return_value=mock_request
-        )
+        workflow.db.get_pending_appointment_request_for_user = AsyncMock(return_value=mock_request)
 
         reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
 

@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
-
 from src.utils.anti_detection.stealth_config import StealthConfig
 
 
@@ -181,7 +180,7 @@ async def test_chrome_runtime_object_properties(mock_page):
 @pytest.mark.asyncio
 async def test_spoof_languages_custom(mock_page):
     """Test language spoofing with custom languages via public API."""
-    custom_langs = ['de-DE', 'de', 'en-US', 'en']
+    custom_langs = ["de-DE", "de", "en-US", "en"]
     await StealthConfig.apply_stealth(mock_page, languages=custom_langs)
 
     # Find the languages script call
@@ -200,10 +199,10 @@ async def test_spoof_languages_custom(mock_page):
 async def test_spoof_languages_invalid_injection_attempt(mock_page):
     """Test that invalid language codes are rejected to prevent injection."""
     malicious_langs = ["en'; alert('xss'); '"]
-    
+
     with pytest.raises(ValueError, match="Invalid language code"):
         await StealthConfig._spoof_languages(mock_page, languages=malicious_langs)
-    
+
     # Should not have called add_init_script
     mock_page.add_init_script.assert_not_called()
 
@@ -211,7 +210,7 @@ async def test_spoof_languages_invalid_injection_attempt(mock_page):
 @pytest.mark.asyncio
 async def test_apply_stealth_with_custom_languages(mock_page):
     """Test apply_stealth passes languages to _spoof_languages."""
-    custom_langs = ['fr-FR', 'fr', 'en-US', 'en']
+    custom_langs = ["fr-FR", "fr", "en-US", "en"]
     await StealthConfig.apply_stealth(mock_page, languages=custom_langs)
 
     # Find the languages script call

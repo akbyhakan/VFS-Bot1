@@ -13,7 +13,6 @@ from playwright.async_api import Page, TimeoutError
 from ..constants import Intervals, Timeouts
 from ..utils.masking import mask_email
 
-
 __all__ = [
     "mask_sensitive_data",
     "smart_fill",
@@ -88,9 +87,9 @@ async def smart_fill(
                     page=page,
                     selector_path=selector_path,
                     failed_selector=selector,
-                    element_description=element_description
+                    element_description=element_description,
                 )
-                
+
                 if new_selector:
                     logger.info(f"Self-healing found new selector: {new_selector}")
                     # Retry with healed selector
@@ -101,7 +100,7 @@ async def smart_fill(
                     return
             except Exception as heal_error:
                 logger.warning(f"Self-healing failed: {heal_error}")
-        
+
         # Re-raise original error if healing didn't work
         logger.error(f"Failed to fill selector '{selector}': {e}")
         raise
@@ -145,9 +144,9 @@ async def smart_click(
                     page=page,
                     selector_path=selector_path,
                     failed_selector=selector,
-                    element_description=element_description
+                    element_description=element_description,
                 )
-                
+
                 if new_selector:
                     logger.info(f"Self-healing found new selector: {new_selector}")
                     # Retry with healed selector
@@ -158,7 +157,7 @@ async def smart_click(
                     return
             except Exception as heal_error:
                 logger.warning(f"Self-healing failed: {heal_error}")
-        
+
         # Re-raise original error if healing didn't work
         logger.error(f"Failed to click selector '{selector}': {e}")
         raise

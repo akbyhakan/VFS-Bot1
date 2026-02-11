@@ -10,15 +10,11 @@ class TestSensitiveDict:
 
     def test_sensitive_dict_repr_masks_values(self):
         """Test that repr does not contain actual values."""
-        data = {
-            "number": "1234567812345678",
-            "cvv": "123",
-            "expiry": "12/25"
-        }
+        data = {"number": "1234567812345678", "cvv": "123", "expiry": "12/25"}
         sensitive = SensitiveDict(data)
-        
+
         repr_str = repr(sensitive)
-        
+
         # Should contain keys but not values
         assert "keys=" in repr_str
         assert "MASKED" in repr_str
@@ -28,15 +24,11 @@ class TestSensitiveDict:
 
     def test_sensitive_dict_str_masks_values(self):
         """Test that str does not contain actual values."""
-        data = {
-            "number": "1234567812345678",
-            "cvv": "123",
-            "expiry": "12/25"
-        }
+        data = {"number": "1234567812345678", "cvv": "123", "expiry": "12/25"}
         sensitive = SensitiveDict(data)
-        
+
         str_repr = str(sensitive)
-        
+
         # Should contain keys but not values
         assert "keys=" in str_repr
         assert "MASKED" in str_repr
@@ -48,7 +40,7 @@ class TestSensitiveDict:
         """Test that direct item access works normally."""
         data = {"number": "1234567812345678", "cvv": "123"}
         sensitive = SensitiveDict(data)
-        
+
         assert sensitive["number"] == "1234567812345678"
         assert sensitive["cvv"] == "123"
 
@@ -56,7 +48,7 @@ class TestSensitiveDict:
         """Test that .get() method works normally."""
         data = {"number": "1234567812345678"}
         sensitive = SensitiveDict(data)
-        
+
         assert sensitive.get("number") == "1234567812345678"
         assert sensitive.get("cvv", "default") == "default"
 
@@ -64,7 +56,7 @@ class TestSensitiveDict:
         """Test that 'in' operator works."""
         data = {"number": "1234567812345678"}
         sensitive = SensitiveDict(data)
-        
+
         assert "number" in sensitive
         assert "cvv" not in sensitive
 
@@ -72,13 +64,13 @@ class TestSensitiveDict:
         """Test that wipe() clears internal data."""
         data = {"number": "1234567812345678", "cvv": "123"}
         sensitive = SensitiveDict(data)
-        
+
         # Before wipe
         assert sensitive["number"] == "1234567812345678"
-        
+
         # After wipe
         sensitive.wipe()
-        
+
         with pytest.raises(KeyError):
             _ = sensitive["number"]
 
@@ -86,13 +78,13 @@ class TestSensitiveDict:
         """Test that to_dict() returns a regular dict."""
         data = {"number": "1234567812345678", "cvv": "123"}
         sensitive = SensitiveDict(data)
-        
+
         unwrapped = sensitive.to_dict()
-        
+
         assert isinstance(unwrapped, dict)
         assert unwrapped["number"] == "1234567812345678"
         assert unwrapped["cvv"] == "123"
-        
+
         # Should be a copy, not a reference
         unwrapped["new_key"] = "value"
         assert "new_key" not in sensitive
@@ -102,11 +94,11 @@ class TestSensitiveDict:
         # Non-empty should be truthy
         sensitive = SensitiveDict({"key": "value"})
         assert bool(sensitive) is True
-        
+
         # Empty should be falsy
         empty = SensitiveDict()
         assert bool(empty) is False
-        
+
         # After wipe should be falsy
         sensitive.wipe()
         assert bool(sensitive) is False
@@ -115,22 +107,22 @@ class TestSensitiveDict:
         """Test that keys() returns an iterator."""
         data = {"number": "1234567812345678", "cvv": "123", "expiry": "12/25"}
         sensitive = SensitiveDict(data)
-        
+
         keys = list(sensitive.keys())
-        
+
         assert set(keys) == {"number", "cvv", "expiry"}
 
     def test_sensitive_dict_empty_initialization(self):
         """Test creating SensitiveDict with no data."""
         sensitive = SensitiveDict()
-        
+
         assert bool(sensitive) is False
         assert sensitive.to_dict() == {}
 
     def test_sensitive_dict_none_initialization(self):
         """Test creating SensitiveDict with None."""
         sensitive = SensitiveDict(None)
-        
+
         assert bool(sensitive) is False
         assert sensitive.to_dict() == {}
 

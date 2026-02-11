@@ -5,9 +5,9 @@ from typing import List
 from loguru import logger
 from playwright.async_api import Page
 
-from ...core.exceptions import SelectorNotFoundError
 from src.selector import get_selector_manager
 
+from ...core.exceptions import SelectorNotFoundError
 
 # Turkish month name to number mapping for date parsing
 TURKISH_MONTHS = {
@@ -28,7 +28,7 @@ TURKISH_MONTHS = {
 # Double match patterns for different languages
 DOUBLE_MATCH_PATTERNS = [
     r"(\d+)\s*Başvuru sahipleri.*?:\s*(\d{2}-\d{2}-\d{4})",  # Turkish
-    r"(\d+)\s*[Aa]pplicants?.*?:\s*(\d{2}-\d{2}-\d{4})",     # English
+    r"(\d+)\s*[Aa]pplicants?.*?:\s*(\d{2}-\d{2}-\d{4})",  # English
 ]
 
 

@@ -383,9 +383,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             True if deleted, False otherwise
         """
         async with self.db.get_connection() as conn:
-            result = await conn.execute(
-                "DELETE FROM appointment_requests WHERE id = $1", id
-            )
+            result = await conn.execute("DELETE FROM appointment_requests WHERE id = $1", id)
 
             if result != "DELETE 0":
                 logger.info(f"Appointment request {id} deleted")

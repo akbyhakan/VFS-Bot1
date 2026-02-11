@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-
 from src.services.bot.waitlist_handler import WaitlistHandler
 from src.services.notification import NotificationService
 

@@ -10,6 +10,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from src.selector import SelectorSelfHealing
+
 from ...constants import RateLimits
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
@@ -18,7 +20,6 @@ from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
 from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
-from src.selector import SelectorSelfHealing
 from ..adaptive_scheduler import AdaptiveScheduler
 from ..alert_service import AlertChannel, AlertConfig, AlertService
 from ..booking import BookingOrchestrator

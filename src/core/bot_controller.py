@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class BotController:
     """
     Singleton controller for managing VFSBot lifecycle.
-    
+
     Provides thread-safe access to bot control operations from web endpoints.
     """
 
@@ -45,11 +45,11 @@ class BotController:
     async def get_instance(cls) -> "BotController":
         """
         Get singleton instance of BotController.
-        
+
         Uses threading.Lock for thread-safe instance creation (synchronous operation).
         Async operations within the instance use instance-level asyncio.Lock to
         synchronize async operations.
-        
+
         Returns:
             BotController instance
         """
@@ -65,7 +65,7 @@ class BotController:
     async def reset_instance(cls) -> None:
         """
         Reset singleton instance (for testing).
-        
+
         Stops any running bot and clears the singleton.
         Uses threading.Lock to ensure thread-safe reset across multiple threads.
         The lock is only held during instance nullification; stop_bot() is called
@@ -73,14 +73,14 @@ class BotController:
         """
         # Get instance reference before acquiring lock
         instance = cls._instance
-        
+
         # Stop bot outside the lock to avoid blocking
         if instance is not None:
             try:
                 await instance.stop_bot()
             except Exception as e:
                 logger.error(f"Error stopping bot during reset: {e}")
-        
+
         # Only hold lock during instance nullification (fast operation)
         with cls._init_lock:
             cls._instance = None
@@ -90,7 +90,7 @@ class BotController:
     ) -> None:
         """
         Configure the bot controller with dependencies.
-        
+
         Args:
             config: Bot configuration dictionary
             db: Database instance
@@ -106,7 +106,7 @@ class BotController:
     async def start_bot(self) -> Dict[str, str]:
         """
         Start the bot.
-        
+
         Returns:
             Status dictionary with result
         """
@@ -198,7 +198,7 @@ class BotController:
     async def stop_bot(self) -> Dict[str, str]:
         """
         Stop the bot.
-        
+
         Returns:
             Status dictionary with result
         """
@@ -241,7 +241,7 @@ class BotController:
     async def restart_bot(self) -> Dict[str, str]:
         """
         Restart the bot.
-        
+
         Returns:
             Status dictionary with result
         """
@@ -262,10 +262,10 @@ class BotController:
     async def trigger_check_now(self) -> Dict[str, str]:
         """
         Trigger an immediate slot check.
-        
+
         This method interrupts the bot's sleep cycle and triggers an immediate
         check by setting the trigger event that the bot's main loop monitors.
-        
+
         Returns:
             Status dictionary with result
         """
@@ -281,7 +281,7 @@ class BotController:
     def get_status(self) -> Dict[str, Any]:
         """
         Get current bot status.
-        
+
         Returns:
             Status dictionary with bot state
         """
@@ -304,7 +304,7 @@ class BotController:
     def is_running(self) -> bool:
         """
         Check if bot is currently running.
-        
+
         Returns:
             True if bot is running, False otherwise
         """

@@ -73,7 +73,7 @@ class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
             return [
                 TokenBlacklistEntry(
                     jti=row[0],
-                    exp=datetime.fromisoformat(row[1]) if isinstance(row[1], str) else row[1]
+                    exp=datetime.fromisoformat(row[1]) if isinstance(row[1], str) else row[1],
                 )
                 for row in rows
             ]

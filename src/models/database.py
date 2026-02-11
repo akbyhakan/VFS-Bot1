@@ -23,7 +23,6 @@ F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 # Allowed fields for personal_details table (SQL injection prevention)
 
 
-
 class DatabaseState:
     """Database connection state constants."""
 
@@ -106,11 +105,11 @@ class Database:
         Attempts to detect CPU quota limits in the following order:
         1. cgroups v2: Reads /sys/fs/cgroup/cpu.max
         2. cgroups v1: Reads /sys/fs/cgroup/cpu/cpu.cfs_quota_us and cpu.cfs_period_us
-        
+
         Returns:
             int: Number of CPUs available to the container (minimum 1)
             None: If running outside a container or cgroups files not found
-        
+
         Examples:
             - Container with 2 CPU limit: returns 2
             - Container with 0.5 CPU limit: returns 1 (minimum enforced)
@@ -128,7 +127,7 @@ class Database:
                     return max(1, quota // period)
         except (ValueError, IndexError, OSError):
             pass
-        
+
         # cgroups v1
         try:
             quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
@@ -140,7 +139,7 @@ class Database:
                     return max(1, quota // period)
         except (ValueError, OSError):
             pass
-        
+
         return None
 
     def _calculate_optimal_pool_size(self) -> int:
@@ -445,4 +444,3 @@ class Database:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
-

@@ -3,8 +3,9 @@
 import os
 import re
 
-from ...core.exceptions import ValidationError
 from src.core.environment import Environment
+
+from ...core.exceptions import ValidationError
 
 # Bcrypt has a maximum password length of 72 bytes
 MAX_PASSWORD_BYTES = 72

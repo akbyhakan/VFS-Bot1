@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 import pytest_asyncio
 
-
 from src.utils.security.session_manager import SessionManager
 
 

@@ -61,11 +61,11 @@ def setup_signal_handlers():
                 # Running loop exists — schedule cleanup and let it complete
                 # before forcing exit
                 cleanup_task = loop.create_task(fast_emergency_cleanup())
-                
+
                 def _on_cleanup_done(task):
                     logger.warning("Emergency cleanup completed, forcing exit")
                     os._exit(0)
-                
+
                 cleanup_task.add_done_callback(_on_cleanup_done)
                 # Stop the loop so it processes remaining tasks and exits
                 loop.call_soon(loop.stop)

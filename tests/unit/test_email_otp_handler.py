@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-
 from src.services.email_otp_handler import (
     EmailOTPEntry,
     EmailOTPHandler,

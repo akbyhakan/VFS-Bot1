@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-
 from src.utils.security.proxy_manager import ProxyManager
 
 

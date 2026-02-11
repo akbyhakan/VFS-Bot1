@@ -6,8 +6,8 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from .selector_utils import DOUBLE_MATCH_PATTERNS
 from ...core.exceptions import SelectorNotFoundError
+from .selector_utils import DOUBLE_MATCH_PATTERNS
 
 
 class BookingValidator:
@@ -66,7 +66,9 @@ class BookingValidator:
                     "CRITICAL: Page structure may have changed - "
                     "expected keywords not found. Manual review required."
                 )
-                raise SelectorNotFoundError("double_match_pattern", tried_selectors=DOUBLE_MATCH_PATTERNS)
+                raise SelectorNotFoundError(
+                    "double_match_pattern", tried_selectors=DOUBLE_MATCH_PATTERNS
+                )
 
             # Keywords found but pattern didn't match - might be no availability
             logger.warning("Appointment info pattern not found, but page seems valid")

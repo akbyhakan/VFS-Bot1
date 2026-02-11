@@ -1,8 +1,9 @@
 """Integration tests for API endpoint chain: login → user management → booking."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from web.app import create_app
 
@@ -16,7 +17,7 @@ class TestAPIFlow:
         """Create test client with mocked dependencies."""
         # Create app without security validation for testing
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         # Mock database factory to prevent actual DB connection
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
@@ -38,19 +39,21 @@ class TestAPIFlow:
         repo = AsyncMock()
         repo.get_all_with_details = AsyncMock(return_value=[])
         repo.create = AsyncMock(return_value=1)
-        repo.get_by_id_with_details = AsyncMock(return_value={
-            "id": 1,
-            "email": "test@example.com",
-            "phone": "+1234567890",
-            "first_name": "Test",
-            "last_name": "User",
-            "center_name": "TestCenter",
-            "visa_category": "Tourist",
-            "visa_subcategory": "Standard",
-            "is_active": True,
-            "created_at": "2024-01-01T00:00:00",
-            "updated_at": "2024-01-01T00:00:00",
-        })
+        repo.get_by_id_with_details = AsyncMock(
+            return_value={
+                "id": 1,
+                "email": "test@example.com",
+                "phone": "+1234567890",
+                "first_name": "Test",
+                "last_name": "User",
+                "center_name": "TestCenter",
+                "visa_category": "Tourist",
+                "visa_subcategory": "Standard",
+                "is_active": True,
+                "created_at": "2024-01-01T00:00:00",
+                "updated_at": "2024-01-01T00:00:00",
+            }
+        )
         repo.get_by_email = AsyncMock(return_value=None)
         repo.update = AsyncMock(return_value=True)
         repo.delete = AsyncMock(return_value=True)
@@ -62,12 +65,14 @@ class TestAPIFlow:
         repo = AsyncMock()
         repo.get_all = AsyncMock(return_value=[])
         repo.create = AsyncMock(return_value=1)
-        repo.get_by_id = AsyncMock(return_value={
-            "id": 1,
-            "user_id": 1,
-            "status": "pending",
-            "created_at": "2024-01-01T00:00:00",
-        })
+        repo.get_by_id = AsyncMock(
+            return_value={
+                "id": 1,
+                "user_id": 1,
+                "status": "pending",
+                "created_at": "2024-01-01T00:00:00",
+            }
+        )
         return repo
 
     def test_health_endpoint_no_auth_required(self, client):
@@ -90,11 +95,14 @@ class TestAPIFlow:
         endpoints = [
             "/api/v1/users",
         ]
-        
+
         for endpoint in endpoints:
             response = client.get(endpoint)
             # 401 = unauthorized, 422 = validation error
-            assert response.status_code in [401, 422], f"Endpoint {endpoint} should require auth or validation"
+            assert response.status_code in [
+                401,
+                422,
+            ], f"Endpoint {endpoint} should require auth or validation"
 
     def test_login_flow_generates_key(self, client, mock_db_connection):
         """Test API key generation flow."""
@@ -103,15 +111,14 @@ class TestAPIFlow:
             mock_db = AsyncMock()
             mock_db.get_connection.return_value.__aenter__.return_value = mock_db_connection
             mock_factory.return_value = mock_db
-            
+
             # Mock admin secret check - not consumed
             mock_db_connection.fetchval.return_value = False
-            
+
             response = client.post(
-                "/api/v1/auth/generate-key",
-                headers={"X-Admin-Secret": "test-secret"}
+                "/api/v1/auth/generate-key", headers={"X-Admin-Secret": "test-secret"}
             )
-            
+
             # Should reject because admin secret is not properly configured in test env
             # In real environment, this would succeed with proper secret
             assert response.status_code in [401, 500]
@@ -120,7 +127,7 @@ class TestAPIFlow:
         """Test that user management endpoints require authentication."""
         # Override dependencies
         from web.dependencies import get_user_repository
-        
+
         # Try to create user without auth
         response = client.post(
             "/api/v1/users",
@@ -134,9 +141,9 @@ class TestAPIFlow:
                 "last_name": "User",
                 "phone": "+1234567890",
                 "is_active": True,
-            }
+            },
         )
-        
+
         assert response.status_code == 401
 
     def test_appointment_flow_requires_auth(self, client):
@@ -148,11 +155,8 @@ class TestAPIFlow:
 
     def test_cors_headers_present(self, client):
         """Test that CORS headers are properly configured."""
-        response = client.options(
-            "/api/v1/users",
-            headers={"Origin": "http://localhost:3000"}
-        )
-        
+        response = client.options("/api/v1/users", headers={"Origin": "http://localhost:3000"})
+
         # CORS middleware should add appropriate headers
         # Note: TestClient might not process all middleware the same as real server
         # 405 = Method not allowed (OPTIONS might not be defined for all routes)
@@ -168,7 +172,7 @@ class TestAPIFlow:
     def test_security_headers_present(self, client):
         """Test that security headers are added by middleware."""
         response = client.get("/health")
-        
+
         # Check for security headers added by SecurityHeadersMiddleware
         assert "X-Content-Type-Options" in response.headers
         assert response.headers["X-Content-Type-Options"] == "nosniff"
@@ -177,14 +181,14 @@ class TestAPIFlow:
         """Test that error handler middleware properly catches errors."""
         # Make request to non-existent endpoint
         response = client.get("/api/v1/nonexistent")
-        
+
         # Should return error (404 or 422), not crash
         assert response.status_code in [404, 422]
 
     def test_request_tracking_adds_headers(self, client):
         """Test that request tracking middleware adds correlation headers."""
         response = client.get("/health")
-        
+
         # Request tracking should be handled by middleware
         # Success is indicated by proper response
         assert response.status_code == 200
@@ -198,7 +202,7 @@ class TestAuthenticationFlow:
     def client(self):
         """Create test client for auth testing."""
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
             with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
                 yield TestClient(app)
@@ -206,22 +210,16 @@ class TestAuthenticationFlow:
     def test_cookie_based_auth_fallback(self, client):
         """Test that cookie-based authentication is supported."""
         # Make request with auth cookie
-        response = client.get(
-            "/api/v1/users",
-            cookies={"access_token": "invalid_token"}
-        )
-        
+        response = client.get("/api/v1/users", cookies={"access_token": "invalid_token"})
+
         # Should attempt to validate token and fail (because it's invalid)
         # Status could be 401 (invalid token) or 500 (verification error)
         assert response.status_code in [401, 500]
 
     def test_bearer_token_auth_fallback(self, client):
         """Test that Bearer token authentication is supported."""
-        response = client.get(
-            "/api/v1/users",
-            headers={"Authorization": "Bearer invalid_token"}
-        )
-        
+        response = client.get("/api/v1/users", headers={"Authorization": "Bearer invalid_token"})
+
         # Should attempt to validate token and fail
         assert response.status_code in [401, 500]
 

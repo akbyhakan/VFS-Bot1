@@ -451,7 +451,9 @@ class CountryAwareSelectorManager:
                     logger.debug(f"Found element with placeholder: {placeholder}")
                     return locator
                 except Exception as e:
-                    logger.debug(f"Placeholder-based locator failed (placeholder={placeholder}): {e}")
+                    logger.debug(
+                        f"Placeholder-based locator failed (placeholder={placeholder}): {e}"
+                    )
 
         except Exception as e:
             logger.debug(f"Semantic locator failed: {e}")

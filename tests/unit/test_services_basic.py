@@ -1,8 +1,6 @@
 """Basic tests for service modules to boost coverage."""
 
-
 import pytest
-
 
 from src.services.captcha_solver import CaptchaSolver
 from src.services.centre_fetcher import CentreFetcher

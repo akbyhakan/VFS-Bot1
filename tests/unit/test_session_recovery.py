@@ -33,7 +33,7 @@ class TestSessionRecovery:
         )
 
         assert temp_checkpoint_file.exists()
-        
+
         # Load checkpoint using recovery method (handles encryption)
         data = recovery.load_checkpoint()
 
@@ -256,7 +256,9 @@ class TestSessionRecovery:
 
         # Save a checkpoint
         recovery.save_checkpoint(
-            step="logged_in", user_id=123, context={"email": "test@example.com", "password": "secret"}
+            step="logged_in",
+            user_id=123,
+            context={"email": "test@example.com", "password": "secret"},
         )
 
         assert temp_checkpoint_file.exists()
@@ -265,7 +267,7 @@ class TestSessionRecovery:
         raw_data = temp_checkpoint_file.read_bytes()
         # Fernet tokens start with version byte (0x80) followed by timestamp
         # The base64 encoding typically starts with 'gAAAAA'
-        assert raw_data.startswith(b'gAAAAA'), "File should be encrypted with Fernet"
+        assert raw_data.startswith(b"gAAAAA"), "File should be encrypted with Fernet"
 
         # Load checkpoint - should decrypt successfully
         checkpoint = recovery.load_checkpoint()
@@ -312,6 +314,7 @@ class TestSessionRecovery:
 
         # Now enable encryption and try to load
         from cryptography.fernet import Fernet
+
         encryption_key = Fernet.generate_key().decode()
         monkeypatch.setenv("ENCRYPTION_KEY", encryption_key)
 

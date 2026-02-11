@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Browser, Page
 
-from src.services.notification import NotificationService
 from src.selector.manager import CountryAwareSelectorManager
+from src.services.notification import NotificationService
 
 
 class SelectorHealthCheck:
