@@ -2,14 +2,13 @@
 
 import asyncio
 import json
-import logging
 import threading
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 # Batch write constants
 _BATCH_SIZE = 10  # Write to disk every N records (async)
