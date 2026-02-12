@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.core.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_USER_UPDATE_FIELDS
+from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_USER_UPDATE_FIELDS
 from src.core.exceptions import BatchOperationError, RecordNotFoundError, ValidationError
 from src.models.database import Database
 from src.repositories.base import BaseRepository

@@ -1,12 +1,12 @@
 # Logging Migration Summary - stdlib to loguru
 
 ## Overview
-Successfully migrated 50+ priority Python files from stdlib logging to loguru.
+Successfully migrated 55 priority Python files from stdlib logging to loguru.
 
 ## Migration Statistics
-- **Files Fully Migrated**: 50
+- **Files Fully Migrated**: 55
 - **Special Case Files**: 4 (partial migration or kept for compatibility)
-- **Lines Changed**: ~120 lines removed, ~72 lines added
+- **Lines Changed**: ~130 lines removed, ~75 lines added
 - **Test Result**: All files compile successfully ✅
 - **Security Scan**: No new vulnerabilities ✅
 
@@ -70,20 +70,27 @@ def some_function():
 - [x] src/utils/security/endpoint_rate_limiter.py
 - [x] src/utils/security/session_manager.py
 
-### Services (4)
+### Services (10)
 - [x] src/services/booking/form_filler.py
 - [x] src/services/booking/selector_utils.py
 - [x] src/services/bot/error_handler.py
 - [x] src/services/bot/vfs_bot.py
 - [x] src/services/notification.py
 - [x] src/services/otp_webhook.py
+- [x] src/services/slot_analyzer.py
+- [x] src/services/email_otp_handler.py
+- [x] src/services/vfs/encryption.py
+- [x] src/services/vfs/client.py
+
+**Note**: `src/services/vfs/models.py` excluded - contains only TypedDict/dataclass definitions, no logging needed
 
 ### Services - OTP Manager (2)
 - [x] src/services/otp_manager/sms_handler.py
 - [x] src/services/otp_manager/session_registry.py
 
-### Selector (1)
+### Selector (2)
 - [x] src/selector/watcher.py
+- [x] src/selector/manager.py
 
 ### Repositories (3)
 - [x] src/repositories/log_repository.py

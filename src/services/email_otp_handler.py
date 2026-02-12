@@ -7,7 +7,6 @@ that receive OTP codes via a catch-all email configuration.
 import email
 import email.utils
 import imaplib
-import logging
 import re
 import threading
 import time
@@ -19,7 +18,7 @@ from email.message import Message
 from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional, Pattern
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 @dataclass

@@ -438,12 +438,13 @@ async def check_vfs_api_health() -> bool:
     try:
         import aiohttp
 
-        from src.services.vfs_api_client import VFS_API_BASE
+        from src.services.vfs import get_vfs_api_base
 
+        vfs_api_base = get_vfs_api_base()
         timeout = aiohttp.ClientTimeout(total=5)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             # Just check if the base URL is reachable
-            async with session.get(f"{VFS_API_BASE}/health", allow_redirects=False) as resp:
+            async with session.get(f"{vfs_api_base}/health", allow_redirects=False) as resp:
                 return resp.status < 500
     except Exception as e:
         logger.debug(f"VFS API health check failed: {e}")

@@ -1,15 +1,13 @@
 """Dynamic CSS selector management system."""
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+from loguru import logger
 from playwright.async_api import Locator, Page
 
 from src.core.exceptions import SelectorNotFoundError
-
-logger = logging.getLogger(__name__)
 
 
 class CountryAwareSelectorManager:

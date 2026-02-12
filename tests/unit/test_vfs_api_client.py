@@ -9,7 +9,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
 from src.core.exceptions import VFSAuthenticationError, VFSSessionExpiredError
-from src.services.vfs_api_client import (
+from src.services.vfs import (
     SlotAvailability,
     VFSApiClient,
     VFSPasswordEncryption,

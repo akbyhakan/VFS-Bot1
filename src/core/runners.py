@@ -60,6 +60,24 @@ def parse_safe_port(env_var: str = "UVICORN_PORT", default: int = 8000) -> int:
         return default
 
 
+async def _graceful_cleanup(
+    db: Optional[Database], notifier: Optional[NotificationService] = None
+) -> None:
+    """Execute graceful shutdown with timeout protection.
+
+    Args:
+        db: Database instance to pass to shutdown handler
+        notifier: Optional notification service to pass to shutdown handler
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        await graceful_shutdown_with_timeout(loop, db, notifier)
+    except ShutdownTimeoutError as e:
+        logger.error(f"Shutdown timeout: {e}")
+    except Exception as e:
+        logger.error(f"Error during graceful shutdown: {e}")
+
+
 async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> None:
     """
     Run bot in automated mode.
@@ -136,14 +154,7 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
 
         # Graceful shutdown with timeout protection
         if shutdown_event and shutdown_event.is_set():
-            try:
-                loop = asyncio.get_running_loop()
-                await graceful_shutdown_with_timeout(loop, db, notifier)
-            except ShutdownTimeoutError as e:
-                logger.error(f"Shutdown timeout: {e}")
-                # Continue with cleanup anyway
-            except Exception as e:
-                logger.error(f"Error during graceful shutdown: {e}")
+            await _graceful_cleanup(db, notifier)
 
         # Safe cleanup of all resources
         await safe_shutdown_cleanup(
@@ -203,13 +214,7 @@ async def run_web_mode(
     finally:
         if not skip_shutdown:
             # Full shutdown path (standalone web mode)
-            try:
-                loop = asyncio.get_running_loop()
-                await graceful_shutdown_with_timeout(loop, db, None)
-            except ShutdownTimeoutError as e:
-                logger.error(f"Shutdown timeout: {e}")
-            except Exception as e:
-                logger.error(f"Error during graceful shutdown: {e}")
+            await _graceful_cleanup(db, None)
 
             # Safe cleanup of all resources
             await safe_shutdown_cleanup(
@@ -293,14 +298,7 @@ async def run_both_mode(config: BotConfigDict) -> None:
             logger.error(f"Error stopping bot: {e}")
 
         # Graceful shutdown with timeout protection
-        try:
-            loop = asyncio.get_running_loop()
-            await graceful_shutdown_with_timeout(loop, db, notifier)
-        except ShutdownTimeoutError as e:
-            logger.error(f"Shutdown timeout: {e}")
-            # Continue with cleanup anyway
-        except Exception as e:
-            logger.error(f"Error during graceful shutdown: {e}")
+        await _graceful_cleanup(db, notifier)
 
         # Safe cleanup - close shared database
         await safe_shutdown_cleanup(db=db, db_owned=True)
