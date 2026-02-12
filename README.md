@@ -139,7 +139,9 @@ The system learns over time which selectors work best and automatically promotes
    ```bash
    # Create user and database
    sudo -u postgres psql
-   CREATE USER vfs_bot WITH PASSWORD 'changeme';
+   # ⚠️ CRITICAL: Replace with a secure password before deploying!
+   # Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
+   CREATE USER vfs_bot WITH PASSWORD 'CHANGE_ME_TO_SECURE_PASSWORD';
    CREATE DATABASE vfs_bot OWNER vfs_bot;
    GRANT ALL PRIVILEGES ON DATABASE vfs_bot TO vfs_bot;
    \q
@@ -284,9 +286,12 @@ VFS_ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
 # Database Configuration
 # PostgreSQL connection URL
-DATABASE_URL=postgresql://vfs_bot:changeme@localhost:5432/vfs_bot
+# ⚠️ CRITICAL: Replace 'CHANGE_ME_TO_SECURE_PASSWORD' with a secure password!
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
+DATABASE_URL=postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot
 # PostgreSQL password (used by Docker Compose)
-POSTGRES_PASSWORD=changeme
+# ⚠️ CRITICAL: Must match the password in DATABASE_URL above!
+POSTGRES_PASSWORD=CHANGE_ME_TO_SECURE_PASSWORD
 DB_POOL_SIZE=10
 
 # Token Management
@@ -627,7 +632,9 @@ docker-compose -f docker-compose.monitoring.yml up -d
 
 # Access Grafana dashboard
 # URL: http://localhost:3000
-# Default credentials: admin / vfsbot_grafana
+# ⚠️ Set GRAFANA_ADMIN_PASSWORD in .env file before starting
+# Default username: admin
+# Password: Use value from GRAFANA_ADMIN_PASSWORD environment variable
 ```
 
 The dashboard includes:
