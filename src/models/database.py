@@ -92,6 +92,10 @@ class Database:
         self.pool_size = pool_size
         self._pool_lock = asyncio.Lock()
 
+        # Migration requirement flag (default: True for safety)
+        require_migrations_env = os.getenv("REQUIRE_MIGRATIONS", "true").lower()
+        self._require_migrations = require_migrations_env not in ("false", "0", "no")
+
         # State tracking for graceful degradation
         # Note: _state is not stored; it's computed by the state property
         self._last_successful_query: Optional[datetime] = None
@@ -319,7 +323,7 @@ class Database:
                     f"{_mask_database_url(self.database_url)}"
                 )
 
-                # Verify Alembic migration status (advisory only)
+                # Verify Alembic migration status
                 try:
                     async with self.pool.acquire() as conn:
                         has_alembic = await conn.fetchval(
@@ -327,17 +331,28 @@ class Database:
                             "WHERE table_name = 'alembic_version')"
                         )
                         if not has_alembic:
-                            logger.warning(
+                            error_msg = (
                                 "Alembic version table not found. "
                                 "Run 'alembic upgrade head' to initialize the database schema."
                             )
+                            if self._require_migrations:
+                                raise RuntimeError(error_msg)
+                            else:
+                                logger.warning(error_msg)
                         else:
                             current_rev = await conn.fetchval(
                                 "SELECT version_num FROM alembic_version LIMIT 1"
                             )
                             logger.info(f"Database schema at Alembic revision: {current_rev}")
                 except Exception as e:
-                    logger.warning(f"Could not verify Alembic migration status: {e}")
+                    # Don't catch RuntimeError - let it propagate for required migrations
+                    if isinstance(e, RuntimeError):
+                        raise
+                    error_msg = f"Could not verify Alembic migration status: {e}"
+                    if self._require_migrations:
+                        raise RuntimeError(error_msg) from e
+                    else:
+                        logger.warning(error_msg)
             except Exception:
                 # Clean up on error
                 if self.pool:

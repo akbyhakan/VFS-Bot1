@@ -1,15 +1,13 @@
 """Appointment slot selection utilities for VFS booking system."""
 
 import asyncio
-import logging
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays
 from .selector_utils import TURKISH_MONTHS, get_selector, resolve_selector, try_selectors
-
-logger = logging.getLogger(__name__)
 
 
 class SlotSelector:
@@ -242,14 +240,12 @@ class SlotSelector:
 
             if self.captcha_solver:
                 # Extract sitekey and solve
-                sitekey = await page.evaluate(
-                    """
+                sitekey = await page.evaluate("""
                     () => {
                         const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
                         return widget ? widget.getAttribute('data-sitekey') : null;
                     }
-                """
-                )
+                """)
 
                 if sitekey:
                     token = await self.captcha_solver.solve_turnstile(page.url, sitekey)

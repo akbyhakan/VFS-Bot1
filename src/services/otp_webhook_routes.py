@@ -1,16 +1,14 @@
 """FastAPI routes for SMS OTP webhook."""
 
-import logging
 import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from ..utils.webhook_utils import verify_webhook_signature
 from .otp_webhook import OTPWebhookService, get_otp_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 

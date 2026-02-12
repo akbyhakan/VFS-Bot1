@@ -2,15 +2,13 @@
 
 import asyncio
 import json
-import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from cryptography.fernet import Fernet, InvalidToken
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class SessionRecovery:
