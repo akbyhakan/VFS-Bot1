@@ -141,12 +141,7 @@
   logger.info("Sentry initialized")
   ```
 
-#### 78. ✅ src/utils/request_context.py
-- **Status**: No migration needed
-- **Reason**: Uses `logging.Filter` and `logging.Logger` for class inheritance
-- **Implementation**: Kept as-is (no module-level logger to migrate)
-
-#### 79. ✅ src/core/logger.py
+#### 78. ✅ src/core/logger.py
 - **Status**: No migration needed
 - **Reason**: Legacy backward-compat classes (`CorrelationIdFilter`, `JSONFormatter`)
 - **Implementation**: Kept as-is for backward compatibility
@@ -156,7 +151,7 @@
 ## Verification Results
 
 ### ✅ Syntax Check
-All 45 files compile without errors:
+All 44 files compile without errors:
 ```bash
 python -m py_compile [all files] ✓
 ```

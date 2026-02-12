@@ -20,7 +20,6 @@ This PR implements 6 coordinated improvements to enhance code quality, security,
 **Special Cases**:
 1. **src/core/retry.py**: Uses `import logging as stdlib_logging` because tenacity's `before_sleep_log()` requires a stdlib logger
 2. **src/core/monitoring.py**: Keeps `import logging` for Sentry's `LoggingIntegration` which uses `logging.INFO` and `logging.ERROR`
-3. **src/utils/request_context.py**: Keeps `import logging` for `logging.Filter` and `logging.Logger` class inheritance
 
 **Documentation**:
 - Updated `src/core/logger.py` docstrings to note backward compatibility for `CorrelationIdFilter` and `JSONFormatter`

@@ -167,25 +167,7 @@ def init_sentry():
     logger.info("Sentry initialized")  # Use loguru for app logging
 ```
 
-### 3. src/utils/request_context.py
-**Reason**: Uses `logging.Filter` and `logging.Logger` for class inheritance
-
-**Solution**: Keep stdlib logging as-is (no module-level logger to migrate)
-```python
-import logging
-
-class RequestIdFilter(logging.Filter):
-    """Logging filter that adds request_id to log records."""
-    pass
-
-def get_logger_with_request_id(name: str) -> logging.Logger:
-    """Get a logger with RequestIdFilter already applied."""
-    logger = logging.getLogger(name)
-    logger.addFilter(RequestIdFilter())
-    return logger
-```
-
-### 4. src/core/logger.py
+### 3. src/core/logger.py
 **Reason**: Legacy backward-compat classes (`CorrelationIdFilter`, `JSONFormatter`)
 
 **Solution**: Keep stdlib logging for backward compatibility
