@@ -1,10 +1,10 @@
 """Slot availability checking service for VFS appointments."""
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict, Optional, TypedDict
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays, Timeouts
@@ -13,8 +13,6 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import safe_navigate, smart_click
 from ...utils.security.rate_limiter import RateLimiter
-
-logger = logging.getLogger(__name__)
 
 
 class SlotInfo(TypedDict):

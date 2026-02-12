@@ -1,14 +1,12 @@
 """Auto-fetch available centres, categories, and subcategories from VFS website."""
 
 import asyncio
-import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class CacheEntry:

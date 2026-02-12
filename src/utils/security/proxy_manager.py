@@ -1,11 +1,10 @@
 """Rotate proxies with failure tracking."""
 
-import logging
 import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class ProxyManager:

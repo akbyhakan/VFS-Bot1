@@ -4,16 +4,15 @@ This module provides VFS account management with integrated webhook token system
 Each account automatically gets a unique webhook URL for SMS OTP delivery.
 """
 
-import logging
 import secrets
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from src.utils.encryption import decrypt_password, encrypt_password
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from src.utils.encryption import decrypt_password, encrypt_password
 
 
 @dataclass

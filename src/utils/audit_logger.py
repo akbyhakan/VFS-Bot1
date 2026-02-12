@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -10,10 +9,10 @@ from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
+from loguru import logger
+
 if TYPE_CHECKING:
     from ..models.database import Database
-
-logger = logging.getLogger(__name__)
 
 
 class AuditAction(Enum):
@@ -149,7 +148,7 @@ class AuditLogger:
         )
 
         # Log to standard logger
-        log_level = logging.INFO if success else logging.WARNING
+        log_level = "INFO" if success else "WARNING"
         logger.log(
             log_level,
             f"AUDIT: {action.value} | user={username or user_id} | "
