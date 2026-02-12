@@ -118,7 +118,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
         HTTPException: If credentials are invalid or environment not configured
     """
     from src.core.auth import verify_password
-    from src.core.settings import get_settings
+    from src.core.config.settings import get_settings
 
     # Get credentials from environment - fail if not set
     admin_username = os.getenv("ADMIN_USERNAME")

@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet
 from pydantic import ValidationError
 
 from src.core.security import APIKeyManager
-from src.core.settings import VFSSettings, reset_settings
+from src.core.config.settings import VFSSettings, reset_settings
 
 
 @pytest.fixture(autouse=True)

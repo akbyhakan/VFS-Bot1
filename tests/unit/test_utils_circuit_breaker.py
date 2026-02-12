@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.core.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
+from src.core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 
 
 class TestCircuitBreaker:

@@ -359,7 +359,7 @@ class TestR5SignalHandlerSimplification:
     @pytest.mark.asyncio
     async def test_fast_emergency_cleanup_runs_without_loop(self):
         """Test that fast_emergency_cleanup can be invoked via asyncio.run() when no loop is running."""
-        from src.core.shutdown import fast_emergency_cleanup
+        from src.core.infra.shutdown import fast_emergency_cleanup
 
         # This test verifies that the function can be called with asyncio.run()
         # Mock the database cleanup to avoid actual DB operations
@@ -481,7 +481,7 @@ class TestR6RuntimeSafetyFixes:
 
         # Should import parse_safe_port from src.core.runners
         assert (
-            "from src.core.runners import parse_safe_port" in content
+            "from src.core.infra.runners import parse_safe_port" in content
         ), "web/app.py should import parse_safe_port from src.core.runners"
 
         # Should use parse_safe_port()

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.core.config_hot_reload import ConfigHotReload, get_hot_reload_service
+from src.core.config.config_hot_reload import ConfigHotReload, get_hot_reload_service
 
 
 @pytest.mark.asyncio

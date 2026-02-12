@@ -20,7 +20,7 @@ from slowapi.errors import RateLimitExceeded
 from src.core.auth import init_token_blacklist, get_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.environment import Environment
-from src.core.startup_validator import log_security_warnings
+from src.core.infra.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware

@@ -12,15 +12,15 @@ import sys
 
 from loguru import logger
 
-from src.core.config_loader import load_config
-from src.core.config_validator import ConfigValidator
-from src.core.env_validator import EnvValidator
+from src.core.config.config_loader import load_config
+from src.core.config.config_validator import ConfigValidator
+from src.core.config.env_validator import EnvValidator
+from src.core.infra.monitoring import init_sentry
+from src.core.infra.runners import run_both_mode, run_bot_mode, run_web_mode
+from src.core.infra.shutdown import setup_signal_handlers
+from src.core.infra.startup import validate_environment, verify_critical_dependencies
+from src.core.infra.startup_validator import log_security_warnings
 from src.core.logger import setup_structured_logging
-from src.core.monitoring import init_sentry
-from src.core.runners import run_both_mode, run_bot_mode, run_web_mode
-from src.core.shutdown import setup_signal_handlers
-from src.core.startup import validate_environment, verify_critical_dependencies
-from src.core.startup_validator import log_security_warnings
 
 
 def main() -> None:

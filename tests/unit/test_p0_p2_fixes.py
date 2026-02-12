@@ -197,7 +197,7 @@ class TestGracefulShutdownTimeout:
     async def test_safe_shutdown_cleanup_with_db(self):
         """Test safe_shutdown_cleanup with database."""
         from src.constants import Database as DatabaseConfig
-        from src.core.shutdown import safe_shutdown_cleanup
+        from src.core.infra.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
@@ -229,7 +229,7 @@ class TestGracefulShutdownTimeout:
     async def test_safe_shutdown_cleanup_without_db_ownership(self):
         """Test safe_shutdown_cleanup respects db_owned flag."""
         from src.constants import Database as DatabaseConfig
-        from src.core.shutdown import safe_shutdown_cleanup
+        from src.core.infra.shutdown import safe_shutdown_cleanup
         from src.models.database import Database
 
         # Create a test database
@@ -261,7 +261,7 @@ class TestGracefulShutdownTimeout:
     @pytest.mark.asyncio
     async def test_safe_shutdown_cleanup_handles_errors(self):
         """Test safe_shutdown_cleanup handles errors gracefully."""
-        from src.core.shutdown import safe_shutdown_cleanup
+        from src.core.infra.shutdown import safe_shutdown_cleanup
 
         # Create a mock database that raises an error on close
         mock_db = AsyncMock()
@@ -273,7 +273,7 @@ class TestGracefulShutdownTimeout:
     @pytest.mark.asyncio
     async def test_graceful_shutdown_with_timeout_success(self):
         """Test graceful_shutdown_with_timeout completes successfully."""
-        from src.core.shutdown import graceful_shutdown_with_timeout
+        from src.core.infra.shutdown import graceful_shutdown_with_timeout
 
         loop = asyncio.get_running_loop()
 
@@ -285,7 +285,7 @@ class TestGracefulShutdownTimeout:
         """Test graceful_shutdown_with_timeout raises ShutdownTimeoutError on timeout."""
         from unittest.mock import patch
 
-        from src.core.shutdown import graceful_shutdown_with_timeout
+        from src.core.infra.shutdown import graceful_shutdown_with_timeout
 
         loop = asyncio.get_running_loop()
 
@@ -366,7 +366,7 @@ class TestEmergencyCleanup:
         """Test fast_emergency_cleanup closes DatabaseFactory."""
         from unittest.mock import AsyncMock, patch
 
-        from src.core.shutdown import fast_emergency_cleanup
+        from src.core.infra.shutdown import fast_emergency_cleanup
 
         with patch(
             "src.models.db_factory.DatabaseFactory.close_instance", new_callable=AsyncMock
@@ -379,7 +379,7 @@ class TestEmergencyCleanup:
         """Test fast_emergency_cleanup handles timeout gracefully."""
         from unittest.mock import AsyncMock, patch
 
-        from src.core.shutdown import fast_emergency_cleanup
+        from src.core.infra.shutdown import fast_emergency_cleanup
 
         # Mock close_instance to timeout
         with patch(
@@ -548,7 +548,7 @@ class TestStartupValidatorStrictMode:
 
     def test_strict_mode_raises_system_exit_in_production(self):
         """Test that strict mode raises SystemExit in production with placeholder secrets."""
-        from src.core.startup_validator import log_security_warnings
+        from src.core.infra.startup_validator import log_security_warnings
 
         old_env = os.getenv("ENV")
         old_api_key = os.getenv("API_SECRET_KEY")
@@ -580,7 +580,7 @@ class TestStartupValidatorStrictMode:
 
     def test_strict_mode_does_not_raise_in_development(self):
         """Test that strict mode does not raise in development environment."""
-        from src.core.startup_validator import log_security_warnings
+        from src.core.infra.startup_validator import log_security_warnings
 
         old_env = os.getenv("ENV")
         old_api_key = os.getenv("API_SECRET_KEY")
@@ -611,7 +611,7 @@ class TestStartupValidatorStrictMode:
 
     def test_non_strict_mode_returns_false_but_no_exit(self):
         """Test that non-strict mode returns False but does not exit."""
-        from src.core.startup_validator import log_security_warnings
+        from src.core.infra.startup_validator import log_security_warnings
 
         old_env = os.getenv("ENV")
         old_api_key = os.getenv("API_SECRET_KEY")
@@ -643,7 +643,7 @@ class TestStartupValidatorStrictMode:
         """Test that strict mode passes with properly generated secrets."""
         from cryptography.fernet import Fernet
 
-        from src.core.startup_validator import log_security_warnings
+        from src.core.infra.startup_validator import log_security_warnings
 
         old_env = os.getenv("ENV")
         old_api_key = os.getenv("API_SECRET_KEY")
@@ -685,7 +685,7 @@ class TestStartupValidatorStrictMode:
 
     def test_database_url_change_me_substring_detection(self):
         """Test that DATABASE_URL with CHANGE_ME substring is detected."""
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         old_env = os.getenv("ENV")
         old_db_url = os.getenv("DATABASE_URL")
@@ -719,7 +719,7 @@ class TestStartupValidatorStrictMode:
 
     def test_postgres_password_change_me_detection(self):
         """Test that POSTGRES_PASSWORD with CHANGE_ME is detected."""
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         old_env = os.getenv("ENV")
         old_pg_pass = os.getenv("POSTGRES_PASSWORD")
@@ -751,7 +751,7 @@ class TestStartupValidatorStrictMode:
 
     def test_redis_password_change_me_detection(self):
         """Test that REDIS_PASSWORD with CHANGE_ME is detected."""
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         old_env = os.getenv("ENV")
         old_redis_pass = os.getenv("REDIS_PASSWORD")

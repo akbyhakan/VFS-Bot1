@@ -9,7 +9,7 @@ from src.core.exceptions import (
     RateLimitError,
     SlotCheckError,
 )
-from src.core.retry import (
+from src.core.infra.retry import (
     get_captcha_retry,
     get_login_retry,
     get_network_retry,

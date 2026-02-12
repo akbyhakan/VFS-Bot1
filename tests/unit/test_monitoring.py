@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.monitoring import filter_sensitive_data, init_sentry
+from src.core.infra.monitoring import filter_sensitive_data, init_sentry
 
 
 class TestInitSentry:

@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from src.core.config_models import BotConfig, NotificationConfig
+from src.core.config.config_models import BotConfig, NotificationConfig
 from src.core.enums import AppointmentStatus
 from src.models.schemas import (
     AppointmentCreate,

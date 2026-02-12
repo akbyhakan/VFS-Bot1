@@ -3,7 +3,7 @@
 import pytest
 from cryptography.fernet import Fernet
 
-from src.core.env_validator import EnvValidator
+from src.core.config.env_validator import EnvValidator
 
 
 class TestEnvValidator:

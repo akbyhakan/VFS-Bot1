@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from src.core.env_validator import EnvValidator
+from src.core.config.env_validator import EnvValidator
 from src.repositories import UserRepository
 
 
