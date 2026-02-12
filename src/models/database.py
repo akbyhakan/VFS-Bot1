@@ -344,10 +344,10 @@ class Database:
                                 "SELECT version_num FROM alembic_version LIMIT 1"
                             )
                             logger.info(f"Database schema at Alembic revision: {current_rev}")
-                except RuntimeError:
-                    # Re-raise RuntimeError for missing migrations when required
-                    raise
                 except Exception as e:
+                    # Don't catch RuntimeError - let it propagate for required migrations
+                    if isinstance(e, RuntimeError):
+                        raise
                     error_msg = f"Could not verify Alembic migration status: {e}"
                     if self._require_migrations:
                         raise RuntimeError(error_msg) from e
