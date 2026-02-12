@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Database: PostgreSQL with asyncpg connection pooling
 - Updated all database operations to use asyncpg patterns
+- Migrated from deprecated `google-generativeai` (v0.3.x) to `google-genai` unified SDK (v1.62.0)
+- Updated AI model from `gemini-pro` to `gemini-2.5-flash` (stable, production-ready)
+- Updated `src/selector/ai_repair.py` to use new Client-based API pattern
+- Updated all AI repair tests to match new SDK interface
 
 ## [2.2.0] - 2026-01-24
 
@@ -43,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevents premature interactions with DOM-attached but invisible elements
 
 ### 📦 DEPENDENCIES
-- Added `google-generativeai>=0.3.0` (optional, for AI repair)
+- Added `google-genai>=1.62.0` (optional, for AI repair; replaces deprecated `google-generativeai`)
 
 ### ⚙️ CONFIGURATION
 - New environment variable: `GEMINI_API_KEY` (optional)

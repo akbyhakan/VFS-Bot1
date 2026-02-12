@@ -81,7 +81,7 @@ VFS-Bot uses a multi-layered approach to find elements on the page, making it hi
 - Optimized order based on learning system
 
 ### 4. AI Auto-Repair (Optional)
-- LLM-powered selector recovery using Google Gemini
+- LLM-powered selector recovery using Google GenAI SDK
 - Activates when all selectors fail
 - Auto-updates `config/selectors.yaml` with successful suggestions
 - Graceful degradation when API key not provided
@@ -104,7 +104,7 @@ cat data/selector_metrics.json
 When a selector fails:
 1. ✅ Try semantic locators (role, label, text)
 2. ✅ Try CSS selectors in optimized order (learning-based)
-3. 🤖 If all fail, ask Gemini AI to find new selector
+3. 🤖 If all fail, ask Gemini AI (gemini-2.5-flash) to find new selector
 4. 💾 Auto-update config and continue
 
 The system learns over time which selectors work best and automatically promotes them, reducing timeout delays and improving reliability.
