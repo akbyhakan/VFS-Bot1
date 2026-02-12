@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.models.vfs_account import VFSAccount, VFSAccountManager
+from src.models.vfs_account import VFSAccount
+from src.services.vfs_account_manager import VFSAccountManager
 from src.services.webhook_token_manager import WebhookTokenManager
 
 
