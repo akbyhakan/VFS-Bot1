@@ -24,3 +24,13 @@ __all__ = [
     "AISelectorRepair",
     "SelectorSelfHealing",
 ]
+
+
+# Import ResilienceManager at the end to avoid circular import
+def __getattr__(name):
+    """Lazy import for ResilienceManager to avoid circular imports."""
+    if name == "ResilienceManager":
+        from src.resilience import ResilienceManager
+
+        return ResilienceManager
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
