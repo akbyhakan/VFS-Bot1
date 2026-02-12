@@ -388,7 +388,7 @@ class TestStartupValidatorGrafana:
         """Test that default Grafana password is detected."""
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
 
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         warnings = validate_production_security()
 
@@ -403,7 +403,7 @@ class TestStartupValidatorGrafana:
             "ChangeMeNow",
         ]
 
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         for password in test_patterns:
             os.environ["GRAFANA_ADMIN_PASSWORD"] = password
@@ -415,7 +415,7 @@ class TestStartupValidatorGrafana:
         """Test that common default passwords are detected."""
         common_defaults = ["admin", "password", "grafana"]
 
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         for password in common_defaults:
             os.environ["GRAFANA_ADMIN_PASSWORD"] = password
@@ -427,7 +427,7 @@ class TestStartupValidatorGrafana:
         """Test that secure Grafana password passes validation."""
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
 
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         warnings = validate_production_security()
 
@@ -439,7 +439,7 @@ class TestStartupValidatorGrafana:
         # This ensures we're using exact match for 'vfsbot_grafana', not substring
         os.environ["GRAFANA_ADMIN_PASSWORD"] = "secure_vfsbot_integration_key_xyz789"
 
-        from src.core.startup_validator import validate_production_security
+        from src.core.infra.startup_validator import validate_production_security
 
         warnings = validate_production_security()
 

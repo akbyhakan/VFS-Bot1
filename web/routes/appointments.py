@@ -21,6 +21,7 @@ from web.models.appointments import (
     AppointmentRequestResponse,
 )
 from web.models.common import CountryResponse, WebhookUrlsResponse
+
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 

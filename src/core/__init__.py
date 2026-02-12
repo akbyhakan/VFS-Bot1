@@ -2,10 +2,10 @@
 
 from .auth import create_access_token, hash_password, verify_password, verify_token
 from .bot_controller import BotController
-from .config_loader import load_config
-from .config_validator import ConfigValidator
-from .config_version_checker import CURRENT_CONFIG_VERSION, check_config_version
-from .env_validator import EnvValidator
+from .config.config_loader import load_config
+from .config.config_validator import ConfigValidator
+from .config.config_version_checker import CURRENT_CONFIG_VERSION, check_config_version
+from .config.env_validator import EnvValidator
 from .exceptions import (
     AuthenticationError,
     BookingError,
@@ -18,16 +18,14 @@ from .exceptions import (
     SlotCheckError,
     VFSBotError,
 )
-from .logger import JSONFormatter, setup_structured_logging
-from .retry import (
+from .infra.retry import (
     get_captcha_retry,
     get_login_retry,
     get_network_retry,
     get_rate_limit_retry,
     get_slot_check_retry,
 )
-from .security import APIKeyManager, generate_api_key, verify_api_key
-from .shutdown import (
+from .infra.shutdown import (
     SHUTDOWN_TIMEOUT,
     fast_emergency_cleanup,
     get_shutdown_event,
@@ -37,7 +35,9 @@ from .shutdown import (
     set_shutdown_event,
     setup_signal_handlers,
 )
-from .startup import validate_environment, verify_critical_dependencies
+from .infra.startup import validate_environment, verify_critical_dependencies
+from .logger import JSONFormatter, setup_structured_logging
+from .security import APIKeyManager, generate_api_key, verify_api_key
 
 __all__ = [
     "load_config",

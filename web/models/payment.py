@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class PaymentCardRequest(BaseModel):
     """Payment card request model.
-    
+
     Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
     """
 
@@ -21,21 +21,21 @@ class PaymentCardRequest(BaseModel):
         # Luhn algorithm implementation
         total = 0
         is_even = False
-        
+
         for i in range(len(v) - 1, -1, -1):
             digit = int(v[i])
-            
+
             if is_even:
                 digit *= 2
                 if digit > 9:
                     digit -= 9
-            
+
             total += digit
             is_even = not is_even
-        
+
         if total % 10 != 0:
             raise ValueError("Invalid card number (failed Luhn check)")
-        
+
         return v
 
     @field_validator("card_holder_name")

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from src.core.config_models import (
+from src.core.config.config_models import (
     AppConfig,
     BotConfig,
     CaptchaConfig,

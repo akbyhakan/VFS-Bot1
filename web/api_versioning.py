@@ -13,10 +13,10 @@ api_v1_router = APIRouter(prefix="/api/v1")
 def setup_versioned_routes(app: FastAPI) -> None:
     """
     Configure versioned API routes on the FastAPI application.
-    
+
     This function should be called from the main app factory to register
     all versioned API routes under /api/v1 prefix.
-    
+
     Args:
         app: FastAPI application instance
     """
@@ -29,7 +29,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
         proxy_router,
         users_router,
     )
-    
+
     # Include all API routers under v1
     api_v1_router.include_router(auth_router)
     api_v1_router.include_router(users_router)
@@ -37,6 +37,6 @@ def setup_versioned_routes(app: FastAPI) -> None:
     api_v1_router.include_router(payment_router)
     api_v1_router.include_router(proxy_router)
     api_v1_router.include_router(bot_router)
-    
+
     # Register the v1 router with the app
     app.include_router(api_v1_router)

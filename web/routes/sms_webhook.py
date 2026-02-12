@@ -92,9 +92,7 @@ async def receive_sms(token: str, request: Request):
             # In production, HMAC is mandatory if secret is configured
             if not signature_header:
                 logger.warning("Missing X-Webhook-Signature header in production mode")
-                raise HTTPException(
-                    status_code=401, detail="Missing webhook signature"
-                )
+                raise HTTPException(status_code=401, detail="Missing webhook signature")
 
             # Get raw body for signature verification
             body_bytes = await request.body()
@@ -266,9 +264,11 @@ async def test_webhook(token: str, request: Request):
                 "status": "test_success",
                 "message": "Webhook is correctly configured",
                 "account_id": webhook_token.account_id,
-                "parsed_message": sms_payload.message[:30] + "..."
-                if len(sms_payload.message) > 30
-                else sms_payload.message,  # Truncate for safety
+                "parsed_message": (
+                    sms_payload.message[:30] + "..."
+                    if len(sms_payload.message) > 30
+                    else sms_payload.message
+                ),  # Truncate for safety
                 "parsed_phone": sms_payload.phone_number,
                 "note": "This is a test - OTP was NOT processed",
             }

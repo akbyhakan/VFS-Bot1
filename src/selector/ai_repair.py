@@ -36,8 +36,7 @@ class AISelectorRepair:
                 logger.info("🤖 AI-powered selector auto-repair enabled")
             except ImportError:
                 logger.warning(
-                    "google-genai package not installed. "
-                    "Install with: pip install google-genai"
+                    "google-genai package not installed. " "Install with: pip install google-genai"
                 )
             except Exception as e:
                 logger.warning(f"Failed to initialize Gemini API: {e}")
@@ -216,9 +215,7 @@ class AISelectorRepair:
 
             # Query LLM
             logger.info(f"🤖 Asking AI for selector suggestion for: {selector_path}")
-            response = self.client.models.generate_content(
-                model=self.model_name, contents=prompt
-            )
+            response = self.client.models.generate_content(model=self.model_name, contents=prompt)
 
             if response and response.text:
                 suggested_selector = response.text.strip()

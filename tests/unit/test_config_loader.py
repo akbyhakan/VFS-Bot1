@@ -6,13 +6,17 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.core.config_loader import load_config, load_env_variables, substitute_env_vars
+from src.core.config.config_loader import (
+    load_config,
+    load_env_variables,
+    substitute_env_vars,
+)
 
 
 class TestLoadEnvVariables:
     """Tests for load_env_variables function."""
 
-    @patch("src.core.config_loader.load_dotenv")
+    @patch("src.core.config.config_loader.load_dotenv")
     @patch("pathlib.Path.exists")
     def test_load_env_variables_file_exists(self, mock_exists, mock_load_dotenv):
         """Test loading environment variables when .env file exists."""
@@ -20,7 +24,7 @@ class TestLoadEnvVariables:
         load_env_variables()
         mock_load_dotenv.assert_called_once()
 
-    @patch("src.core.config_loader.load_dotenv")
+    @patch("src.core.config.config_loader.load_dotenv")
     @patch("pathlib.Path.exists")
     def test_load_env_variables_file_not_exists(self, mock_exists, mock_load_dotenv):
         """Test loading environment variables when .env file doesn't exist."""
@@ -102,7 +106,7 @@ class TestSubstituteEnvVars:
         import logging
 
         with patch.dict(os.environ, {"ENV": "development"}, clear=True):
-            with patch("src.core.config_loader.logger") as mock_logger:
+            with patch("src.core.config.config_loader.logger") as mock_logger:
                 result = substitute_env_vars("${VFS_ENCRYPTION_KEY}")
                 assert result == ""
                 # Verify warning was logged
@@ -122,7 +126,7 @@ class TestLoadConfig:
     """Tests for load_config function."""
 
     @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
-    @patch("src.core.config_loader.substitute_env_vars")
+    @patch("src.core.config.config_loader.substitute_env_vars")
     def test_load_config_basic(self, mock_substitute, mock_file):
         """Test loading basic config file."""
         mock_substitute.side_effect = lambda x: x

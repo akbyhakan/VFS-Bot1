@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from src.repositories import ProxyRepository
 from web.dependencies import get_proxy_repository, verify_jwt_token
 from web.models.proxy import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest
+
 router = APIRouter(prefix="/proxy", tags=["proxy"])
 
 

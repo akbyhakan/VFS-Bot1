@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from src.core.settings import VFSSettings, get_settings, reset_settings
+from src.core.config.settings import VFSSettings, get_settings, reset_settings
 
 
 @pytest.fixture(autouse=True)

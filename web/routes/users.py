@@ -11,6 +11,7 @@ from src.core.exceptions import ValidationError
 from src.repositories import UserRepository
 from web.dependencies import get_user_repository, verify_jwt_token
 from web.models.users import UserCreateRequest, UserModel, UserUpdateRequest
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 

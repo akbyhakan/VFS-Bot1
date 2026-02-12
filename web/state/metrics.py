@@ -10,7 +10,7 @@ from typing import Any, Dict
 class ThreadSafeMetrics:
     """
     Thread-safe metrics storage with asyncio support.
-    
+
     This class uses threading.Lock for synchronization. When used in async contexts,
     use the async_* methods which run operations in an executor to avoid blocking.
     """

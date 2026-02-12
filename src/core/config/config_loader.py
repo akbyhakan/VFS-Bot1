@@ -11,7 +11,7 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from src.core.config_version_checker import check_config_version
+from .config_version_checker import check_config_version
 from src.core.environment import Environment
 
 # Critical environment variables that must be set in production
@@ -235,7 +235,7 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     check_config_version(config)
 
     # Validate config with Pydantic schema
-    from src.core.config_validator import ConfigValidator
+    from .config_validator import ConfigValidator
 
     ConfigValidator.validate(config)
 

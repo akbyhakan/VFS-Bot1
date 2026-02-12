@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.core.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
+from src.core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 from src.models.database import Database
 from src.services.bot.vfs_bot import VFSBot
 from src.services.notification import NotificationService

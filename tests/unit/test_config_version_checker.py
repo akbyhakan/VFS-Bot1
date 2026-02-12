@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.core.config_version_checker import (
+from src.core.config.config_version_checker import (
     CURRENT_CONFIG_VERSION,
     SUPPORTED_CONFIG_VERSIONS,
     check_config_version,

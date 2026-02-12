@@ -13,7 +13,13 @@ from tenacity import (
     wait_random,
 )
 
-from .exceptions import CaptchaError, LoginError, NetworkError, RateLimitError, SlotCheckError
+from src.core.exceptions import (
+    CaptchaError,
+    LoginError,
+    NetworkError,
+    RateLimitError,
+    SlotCheckError,
+)
 
 # Stdlib logger needed for tenacity's before_sleep_log
 _stdlib_logger = stdlib_logging.getLogger(__name__)

@@ -8,8 +8,8 @@ import os
 
 from loguru import logger
 
-from .environment import Environment
-from .exceptions import ConfigurationError
+from src.core.environment import Environment
+from src.core.exceptions import ConfigurationError
 
 
 def validate_environment():
