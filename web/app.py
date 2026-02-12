@@ -35,7 +35,7 @@ from web.routes import (
     sms_webhook_router,
     webhook_router,
 )
-from web.routes.bot import websocket_endpoint
+from web.websocket.handler import websocket_endpoint
 from web.routes.dashboard import serve_react_app
 
 
