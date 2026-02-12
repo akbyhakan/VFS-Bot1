@@ -1,13 +1,10 @@
 """FastAPI web dashboard with WebSocket support for VFS-Bot."""
 
 import asyncio
-import ipaddress
 import os
-import re
 from contextlib import asynccontextmanager
-from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,17 +14,17 @@ from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from src.core.auth import init_token_blacklist, get_token_blacklist
+from src.core.auth import get_token_blacklist, init_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
-from src.core.environment import Environment
 from src.core.infra.startup_validator import log_security_warnings
 from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.models.db_factory import DatabaseFactory
 from src.services.otp_webhook_routes import router as otp_router
-from src.utils.log_sanitizer import sanitize_log_value
 from web.api_versioning import setup_versioned_routes
+from web.cors import validate_cors_origins
+from web.ip_utils import get_real_client_ip
 from web.middleware import SecurityHeadersMiddleware
 from web.routes import (
     dashboard_router,
@@ -35,17 +32,8 @@ from web.routes import (
     sms_webhook_router,
     webhook_router,
 )
-from web.websocket.handler import websocket_endpoint
 from web.routes.dashboard import serve_react_app
-
-
-def _is_valid_ip(ip_str: str) -> bool:
-    """Validate IP address format."""
-    try:
-        ipaddress.ip_address(ip_str)
-        return True
-    except ValueError:
-        return False
+from web.websocket.handler import websocket_endpoint
 
 
 @asynccontextmanager
@@ -111,138 +99,6 @@ async def lifespan(app: FastAPI):
 
 
 
-def get_validated_environment() -> str:
-    """
-    Get and validate environment name with whitelist check.
-
-    Returns:
-        Validated environment name (defaults to 'production' for unknown values)
-    """
-    env = Environment.current_raw()
-    if env not in Environment.VALID:
-        logger.warning(
-            f"Unknown environment '{sanitize_log_value(env, max_length=50)}', "
-            f"defaulting to 'production' for security"
-        )
-        return "production"
-    return env
-
-
-# Comprehensive localhost detection pattern
-_LOCALHOST_PATTERN = re.compile(
-    r'^https?://'
-    r'(localhost(\.|:|/|$)|127\.0\.0\.1|(\[::1\]|::1)|0\.0\.0\.0)'
-    r'(:\d+)?'
-    r'(/.*)?$',
-    re.IGNORECASE
-)
-
-
-def _is_localhost_origin(origin: str) -> bool:
-    """Check if origin is a localhost variant (including IPv6)."""
-    # Check for localhost subdomains and variations
-    # Extract hostname after protocol to avoid false positives
-    if '://' in origin:
-        # Extract the part after protocol (hostname and possibly port/path)
-        after_protocol = origin.split('://', 1)[1]
-        # Extract just the hostname (before port or path)
-        hostname = after_protocol.split(':')[0].split('/')[0].lower()
-        # Check if hostname starts with 'localhost.' or ends with '.localhost'
-        if hostname.startswith('localhost.') or hostname.endswith('.localhost'):
-            return True
-    return bool(_LOCALHOST_PATTERN.match(origin))
-
-
-def validate_cors_origins(origins_str: str) -> List[str]:
-    """
-    Validate and parse CORS origins, blocking wildcard and localhost in production.
-
-    Args:
-        origins_str: Comma-separated list of allowed origins
-
-    Returns:
-        List of validated origin strings
-
-    Raises:
-        ValueError: If wildcard is used in production environment
-    """
-    env = get_validated_environment()
-
-    # Parse origins first
-    origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-
-    # Fail-fast: Block wildcard in production BEFORE filtering
-    if env == "production" and "*" in origins:
-        raise ValueError("Wildcard CORS origin ('*') not allowed in production")
-
-    # Production-specific validation
-    if env not in {"development", "dev", "testing", "test", "local"}:
-        # More precise localhost detection
-        invalid = []
-        for o in origins:
-            # Check for wildcard
-            if o == "*":
-                invalid.append(o)
-            # Check for localhost variants (including IPv6, 0.0.0.0, subdomain bypass)
-            elif _is_localhost_origin(o):
-                invalid.append(o)
-
-        if invalid:
-            logger.warning(f"Removing insecure CORS origins in production: {invalid}")
-            origins = [o for o in origins if o not in invalid]
-
-            if not origins:
-                logger.error("All CORS origins were insecure and removed. Using empty list.")
-
-    return origins
-
-
-@lru_cache(maxsize=1)
-def _get_trusted_proxies() -> frozenset[str]:
-    """Parse trusted proxies once and cache."""
-    trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
-    return frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
-
-
-def get_real_client_ip(request: Request) -> str:
-    """
-    Get real client IP with trusted proxy validation and IP format verification.
-
-    Security: Only trust X-Forwarded-For from known proxies and validate
-    IPs to prevent rate limit bypass attacks.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        Client IP address
-    """
-    trusted_proxies = _get_trusted_proxies()
-
-    client_host = request.client.host if request.client else "unknown"
-
-    # Only trust forwarded headers from known proxies
-    if trusted_proxies and client_host in trusted_proxies:
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            # Parse all IPs in X-Forwarded-For chain
-            ips = [ip.strip() for ip in forwarded.split(",")]
-            # Return the first IP that is NOT a trusted proxy (rightmost untrusted IP)
-            for ip in reversed(ips):
-                if ip not in trusted_proxies and _is_valid_ip(ip):
-                    return ip
-
-        # Fallback to X-Real-IP if present and not a trusted proxy
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            real_ip = real_ip.strip()
-            if real_ip not in trusted_proxies and _is_valid_ip(real_ip):
-                return real_ip
-
-    # Return client_host if it's a valid IP, otherwise return "unknown"
-    return client_host if _is_valid_ip(client_host) else "unknown"
-
-
 def create_app(
     run_security_validation: bool = True,
     env_override: Optional[str] = None
@@ -257,6 +113,8 @@ def create_app(
     Returns:
         Configured FastAPI application instance
     """
+    from web.cors import get_validated_environment
+    
     # Determine environment for OpenAPI configuration
     env = env_override if env_override is not None else get_validated_environment()
     _is_dev = env in ("development", "dev", "local", "testing", "test")
