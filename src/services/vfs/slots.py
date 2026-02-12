@@ -1,6 +1,6 @@
 """VFS Slots Module - Handles centres, categories, and slot availability checking."""
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Awaitable, Callable, List
 
 import aiohttp
 from loguru import logger
@@ -11,7 +11,7 @@ from .encryption import get_vfs_api_base
 from .models import CentreInfo, SlotAvailability, VisaCategoryInfo, VisaSubcategoryInfo
 
 if TYPE_CHECKING:
-    from typing import Callable
+    pass
 
 
 class VFSSlots:
@@ -20,8 +20,8 @@ class VFSSlots:
     def __init__(
         self,
         endpoint_limiter: EndpointRateLimiter,
-        http_session_getter: "Callable[[], aiohttp.ClientSession]",
-        ensure_authenticated: "Callable[[], None]",
+        http_session_getter: Callable[[], aiohttp.ClientSession],
+        ensure_authenticated: Callable[[], Awaitable[None]],
     ):
         """
         Initialize VFS slots handler.

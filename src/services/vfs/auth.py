@@ -3,7 +3,7 @@
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import aiohttp
 from loguru import logger
@@ -29,7 +29,7 @@ class VFSAuth:
         self,
         mission_code: str,
         endpoint_limiter: EndpointRateLimiter,
-        http_session_getter,
+        http_session_getter: Callable[[], aiohttp.ClientSession],
     ):
         """
         Initialize VFS authentication handler.

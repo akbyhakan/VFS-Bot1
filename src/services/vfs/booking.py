@@ -1,6 +1,6 @@
 """VFS Booking Module - Handles appointment booking."""
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict
 
 import aiohttp
 from loguru import logger
@@ -11,7 +11,7 @@ from .encryption import get_vfs_api_base
 from .models import BookingResponse
 
 if TYPE_CHECKING:
-    from typing import Callable
+    pass
 
 
 class VFSBooking:
@@ -20,8 +20,8 @@ class VFSBooking:
     def __init__(
         self,
         endpoint_limiter: EndpointRateLimiter,
-        http_session_getter: "Callable[[], aiohttp.ClientSession]",
-        ensure_authenticated: "Callable[[], None]",
+        http_session_getter: Callable[[], aiohttp.ClientSession],
+        ensure_authenticated: Callable[[], Awaitable[None]],
     ):
         """
         Initialize VFS booking handler.
