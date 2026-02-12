@@ -234,36 +234,3 @@ class CloudflareHandler:
         except Exception as e:
             logger.error(f"Error handling Cloudflare challenge: {e}")
             return False
-
-    async def retry_with_backoff(self, func, *args, **kwargs):
-        """
-        Retry function with exponential backoff (1s, 2s, 4s).
-
-        Args:
-            func: Async function to retry
-            *args: Function arguments
-            **kwargs: Function keyword arguments
-
-        Returns:
-            Function result or None on failure
-        """
-        for attempt in range(self.max_retries):
-            try:
-                result = await func(*args, **kwargs)
-                if result:
-                    return result
-
-                # Exponential backoff
-                if attempt < self.max_retries - 1:
-                    delay = 2**attempt  # 1s, 2s, 4s
-                    logger.info(f"Retry attempt {attempt + 1}/{self.max_retries}, waiting {delay}s")
-                    await asyncio.sleep(delay)
-
-            except Exception as e:
-                logger.error(f"Error in retry attempt {attempt + 1}: {e}")
-                if attempt < self.max_retries - 1:
-                    delay = 2**attempt
-                    await asyncio.sleep(delay)
-
-        logger.error(f"All {self.max_retries} retry attempts failed")
-        return None
