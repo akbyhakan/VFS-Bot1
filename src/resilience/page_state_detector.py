@@ -728,39 +728,40 @@ class PageStateDetector:
                 should_abort=True,
             )
         
-        logger.info(
-            f"🧠 Applying learned action for state '{learned.state_name}': "
-            f"{learned.action_type}"
-        )
-        
-        success = await self._apply_action(
-            page,
-            learned.action_type,
-            learned.target_selector,
-            learned.fill_value,
-        )
-        
-        # Clean up temporary attribute
-        self._current_learned_action = None
-        
-        if success:
-            return StateHandlerResult(
-                success=True,
-                state=PageState.LEARNED_STATE,
-                action_taken=f"Applied learned action '{learned.action_type}' for state '{learned.state_name}'",
-                should_retry=True,
-                metadata={"learned_state_name": learned.state_name},
+        try:
+            logger.info(
+                f"🧠 Applying learned action for state '{learned.state_name}': "
+                f"{learned.action_type}"
             )
-        else:
-            logger.warning(
-                f"⚠️ Learned action failed for state '{learned.state_name}'"
+            
+            success = await self._apply_action(
+                page,
+                learned.action_type,
+                learned.target_selector,
+                learned.fill_value,
             )
-            return StateHandlerResult(
-                success=False,
-                state=PageState.LEARNED_STATE,
-                action_taken=f"Learned action '{learned.action_type}' failed for state '{learned.state_name}'",
-                should_abort=True,
-            )
+            
+            if success:
+                return StateHandlerResult(
+                    success=True,
+                    state=PageState.LEARNED_STATE,
+                    action_taken=f"Applied learned action '{learned.action_type}' for state '{learned.state_name}'",
+                    should_retry=True,
+                    metadata={"learned_state_name": learned.state_name},
+                )
+            else:
+                logger.warning(
+                    f"⚠️ Learned action failed for state '{learned.state_name}'"
+                )
+                return StateHandlerResult(
+                    success=False,
+                    state=PageState.LEARNED_STATE,
+                    action_taken=f"Learned action '{learned.action_type}' failed for state '{learned.state_name}'",
+                    should_abort=True,
+                )
+        finally:
+            # Always clean up temporary attribute
+            self._current_learned_action = None
 
     async def _handle_unknown_state(
         self, page: Page, context: Dict[str, Any]
