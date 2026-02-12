@@ -1,0 +1,22 @@
+# Learned Page States for VFS Bot
+# This file stores page states that the bot has learned through AI analysis.
+# Each state includes indicators for detection and the action to take.
+
+# Example learned state (this will be auto-populated by the bot):
+# sms_verification:
+#   indicators:
+#     url_patterns:
+#       - ".*sms.*"
+#       - ".*verify.*"
+#     text_indicators:
+#       - "Enter verification code"
+#       - "SMS code"
+#     css_selectors:
+#       - "#sms-code-input"
+#   action:
+#     action: "fill"
+#     selector: "#sms-code-input"
+#     fill_value: ""
+
+# The bot will automatically add new states here when it successfully
+# handles unknown pages using AI analysis.

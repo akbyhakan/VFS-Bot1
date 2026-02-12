@@ -458,6 +458,313 @@ class TestTransitionHistory:
         assert detector.transition_history[1]["state"] == "dashboard"
         assert detector.transition_history[2]["state"] == "waitlist_mode"
 
+
+class TestUnknownStateWithAI:
+    """Tests for unknown state handling with AI integration."""
+
+    @pytest.mark.asyncio
+    async def test_handle_unknown_state_with_learned_action(self):
+        """Test unknown state handling when learned action is available."""
+        from src.resilience.learned_state_store import LearnedAction
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/verify"
+        page.content = AsyncMock(return_value="<div>Enter code</div>")
+
+        learned_store = Mock()
+        learned_action = LearnedAction(
+            state_name="code_verification",
+            action_type="fill",
+            target_selector="#code",
+            fill_value="",
+            indicators={},
+            match_score=0.85,
+        )
+        learned_store.get_learned_action = Mock(return_value=learned_action)
+
+        # Mock locator for the action
+        locator = AsyncMock()
+        page.locator = Mock(return_value=locator)
+
+        detector = PageStateDetector(learned_store=learned_store)
+        result = await detector.handle_state(page, PageState.UNKNOWN)
+
+        # Should apply learned action
+        assert result.success is True
+        assert result.should_retry is True
+        assert "learned action" in result.action_taken.lower()
+        assert learned_store.get_learned_action.called
+
+    @pytest.mark.asyncio
+    async def test_handle_unknown_state_with_ai_success(self):
+        """Test unknown state handling when AI suggests successful action."""
+        from src.resilience.ai_page_analyzer import PageAction, PageAnalysisResult
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/unknown"
+        page.content = AsyncMock(return_value="<div>Click continue</div>")
+
+        # Mock AI analyzer
+        ai_analyzer = Mock()
+        analysis_result = PageAnalysisResult(
+            page_purpose="Confirmation page",
+            suggested_action=PageAction.CLICK,
+            target_selector="#continue-btn",
+            fill_value="",
+            confidence=0.9,
+            reasoning="Found continue button",
+            suggested_indicators={
+                "url_patterns": [".*unknown.*"],
+                "text_indicators": ["Click continue"],
+                "css_selectors": ["#continue-btn"],
+            },
+            suggested_state_name="confirmation_page",
+        )
+        ai_analyzer.analyze_page = AsyncMock(return_value=analysis_result)
+
+        # Mock learned store
+        learned_store = Mock()
+        learned_store.get_learned_action = Mock(return_value=None)
+        learned_store.save_learned_state = Mock(return_value=True)
+
+        # Mock locator for clicking
+        locator = AsyncMock()
+        page.locator = Mock(return_value=locator)
+        page.wait_for_load_state = AsyncMock()
+
+        # Mock detect to return a known state after action
+        detector = PageStateDetector(
+            ai_analyzer=ai_analyzer,
+            learned_store=learned_store,
+        )
+
+        # Patch detect to return known state after action
+        with patch.object(detector, "detect", return_value=PageState.DASHBOARD):
+            result = await detector.handle_state(page, PageState.UNKNOWN)
+
+        # Should apply AI action and save learned state
+        assert result.success is True
+        assert result.should_retry is True
+        assert "ai solved" in result.action_taken.lower()
+        assert ai_analyzer.analyze_page.called
+        assert learned_store.save_learned_state.called
+
+    @pytest.mark.asyncio
+    async def test_handle_unknown_state_ai_action_fails(self):
+        """Test unknown state handling when AI action fails."""
+        from src.resilience.ai_page_analyzer import PageAction, PageAnalysisResult
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/unknown"
+        page.content = AsyncMock(return_value="<div>Error</div>")
+
+        # Mock AI analyzer
+        ai_analyzer = Mock()
+        analysis_result = PageAnalysisResult(
+            page_purpose="Error page",
+            suggested_action=PageAction.CLICK,
+            target_selector="#nonexistent",
+            fill_value="",
+            confidence=0.8,
+            reasoning="Try clicking",
+            suggested_indicators={},
+            suggested_state_name="error_page",
+        )
+        ai_analyzer.analyze_page = AsyncMock(return_value=analysis_result)
+
+        # Mock learned store
+        learned_store = Mock()
+        learned_store.get_learned_action = Mock(return_value=None)
+
+        # Mock locator that throws error
+        locator = AsyncMock()
+        locator.click = AsyncMock(side_effect=Exception("Element not found"))
+        page.locator = Mock(return_value=locator)
+
+        forensic_logger = AsyncMock()
+        forensic_logger.capture_incident = AsyncMock()
+
+        detector = PageStateDetector(
+            ai_analyzer=ai_analyzer,
+            learned_store=learned_store,
+            forensic_logger=forensic_logger,
+        )
+
+        result = await detector.handle_state(page, PageState.UNKNOWN)
+
+        # Should fall back to abort
+        assert result.success is False
+        assert result.should_abort is True
+
+    @pytest.mark.asyncio
+    async def test_handle_unknown_state_ai_suggests_abort(self):
+        """Test unknown state handling when AI suggests abort."""
+        from src.resilience.ai_page_analyzer import PageAction, PageAnalysisResult
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/unknown"
+        page.content = AsyncMock(return_value="<div>Complex page</div>")
+
+        # Mock AI analyzer that suggests abort
+        ai_analyzer = Mock()
+        analysis_result = PageAnalysisResult(
+            page_purpose="Unknown complex page",
+            suggested_action=PageAction.ABORT,
+            target_selector="",
+            fill_value="",
+            confidence=0.5,
+            reasoning="Too complex to handle automatically",
+            suggested_indicators={},
+            suggested_state_name="unknown",
+        )
+        ai_analyzer.analyze_page = AsyncMock(return_value=analysis_result)
+
+        # Mock learned store
+        learned_store = Mock()
+        learned_store.get_learned_action = Mock(return_value=None)
+
+        forensic_logger = AsyncMock()
+        forensic_logger.capture_incident = AsyncMock()
+
+        detector = PageStateDetector(
+            ai_analyzer=ai_analyzer,
+            learned_store=learned_store,
+            forensic_logger=forensic_logger,
+        )
+
+        result = await detector.handle_state(page, PageState.UNKNOWN)
+
+        # Should abort
+        assert result.success is False
+        assert result.should_abort is True
+
+    @pytest.mark.asyncio
+    async def test_handle_unknown_state_no_ai_available(self):
+        """Test unknown state handling when AI is not available (legacy behavior)."""
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/unknown"
+
+        forensic_logger = AsyncMock()
+        forensic_logger.capture_incident = AsyncMock()
+        notifier = AsyncMock()
+        notifier.send_alert = AsyncMock()
+
+        # No AI analyzer or learned store
+        detector = PageStateDetector(
+            forensic_logger=forensic_logger,
+            notifier=notifier,
+        )
+
+        result = await detector.handle_state(page, PageState.UNKNOWN)
+
+        # Should fall back to legacy abort behavior
+        assert result.success is False
+        assert result.should_abort is True
+        assert forensic_logger.capture_incident.called
+        assert notifier.send_alert.called
+
+
+class TestApplyAction:
+    """Tests for _apply_action helper method."""
+
+    @pytest.mark.asyncio
+    async def test_apply_click_action(self):
+        """Test applying a click action."""
+        page = AsyncMock(spec=Page)
+        locator = AsyncMock()
+        page.locator = Mock(return_value=locator)
+        page.wait_for_load_state = AsyncMock()
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "click", "#button")
+
+        assert success is True
+        locator.click.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_wait_action(self):
+        """Test applying a wait action."""
+        page = AsyncMock(spec=Page)
+        detector = PageStateDetector()
+
+        success = await detector._apply_action(page, "wait")
+
+        assert success is True
+
+    @pytest.mark.asyncio
+    async def test_apply_fill_action(self):
+        """Test applying a fill action."""
+        page = AsyncMock(spec=Page)
+        locator = AsyncMock()
+        page.locator = Mock(return_value=locator)
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "fill", "#input", "test_value")
+
+        assert success is True
+        locator.fill.assert_called_once_with("test_value", timeout=10000)
+
+    @pytest.mark.asyncio
+    async def test_apply_dismiss_action_with_selector(self):
+        """Test applying a dismiss action with specific selector."""
+        page = AsyncMock(spec=Page)
+        locator = AsyncMock()
+        page.locator = Mock(return_value=locator)
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "dismiss", "#close-btn")
+
+        assert success is True
+        locator.click.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_navigate_back_action(self):
+        """Test applying a navigate back action."""
+        page = AsyncMock(spec=Page)
+        page.go_back = AsyncMock()
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "navigate_back")
+
+        assert success is True
+        page.go_back.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_refresh_action(self):
+        """Test applying a refresh action."""
+        page = AsyncMock(spec=Page)
+        page.reload = AsyncMock()
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "refresh")
+
+        assert success is True
+        page.reload.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_apply_invalid_action(self):
+        """Test applying an invalid action."""
+        page = AsyncMock(spec=Page)
+        detector = PageStateDetector()
+
+        success = await detector._apply_action(page, "invalid_action")
+
+        assert success is False
+
+    @pytest.mark.asyncio
+    async def test_apply_action_handles_exception(self):
+        """Test that _apply_action handles exceptions gracefully."""
+        page = AsyncMock(spec=Page)
+        locator = AsyncMock()
+        locator.click = AsyncMock(side_effect=Exception("Click failed"))
+        page.locator = Mock(return_value=locator)
+
+        detector = PageStateDetector()
+        success = await detector._apply_action(page, "click", "#button")
+
+        assert success is False
+
+
     @pytest.mark.asyncio
     async def test_transition_context_captured(self):
         """Test that transition context is captured."""
