@@ -82,6 +82,8 @@ class PageStateDetector:
         cloudflare_handler: Optional[Any] = None,
         captcha_solver: Optional[Any] = None,
         waitlist_handler: Optional[Any] = None,
+        ai_analyzer: Optional[Any] = None,
+        learned_store: Optional[Any] = None,
     ):
         """
         Initialize page state detector.
@@ -94,6 +96,8 @@ class PageStateDetector:
             cloudflare_handler: Optional CloudflareHandler for challenges
             captcha_solver: Optional CAPTCHA solver
             waitlist_handler: Optional WaitlistHandler
+            ai_analyzer: Optional AIPageAnalyzer for unknown page analysis
+            learned_store: Optional LearnedStateStore for persistent learning
         """
         self.states_config_path = states_config_path
         self.forensic_logger = forensic_logger
@@ -102,6 +106,8 @@ class PageStateDetector:
         self.cloudflare_handler = cloudflare_handler
         self.captcha_solver = captcha_solver
         self.waitlist_handler = waitlist_handler
+        self.ai_analyzer = ai_analyzer
+        self.learned_store = learned_store
 
         # Load page state indicators from config
         self.indicators = self._load_indicators()
@@ -610,21 +616,223 @@ class PageStateDetector:
             metadata={"retry_count": retry_count + 1},
         )
 
+    async def _apply_action(
+        self, page: Page, action_type: str, target_selector: str = "", fill_value: str = ""
+    ) -> bool:
+        """
+        Execute an action on the page.
+
+        Args:
+            page: Playwright page object
+            action_type: Type of action (CLICK, WAIT, FILL, DISMISS, NAVIGATE_BACK, REFRESH)
+            target_selector: CSS selector for target element (if applicable)
+            fill_value: Value to fill (if action is FILL)
+
+        Returns:
+            True if action was successful, False otherwise
+        """
+        try:
+            action_type = action_type.lower()
+
+            if action_type == "click":
+                if not target_selector:
+                    logger.error("CLICK action requires target_selector")
+                    return False
+                logger.info(f"🖱️ Clicking element: {target_selector}")
+                await page.locator(target_selector).click(timeout=10000)
+                await page.wait_for_load_state("networkidle", timeout=5000)
+                return True
+
+            elif action_type == "wait":
+                logger.info("⏱️ Waiting for page to change...")
+                await asyncio.sleep(3)
+                return True
+
+            elif action_type == "fill":
+                if not target_selector:
+                    logger.error("FILL action requires target_selector")
+                    return False
+                logger.info(f"✍️ Filling element: {target_selector}")
+                await page.locator(target_selector).fill(fill_value, timeout=10000)
+                return True
+
+            elif action_type == "dismiss":
+                if target_selector:
+                    logger.info(f"❌ Dismissing element: {target_selector}")
+                    await page.locator(target_selector).click(timeout=10000)
+                else:
+                    # Try to find and close common modal close buttons
+                    close_selectors = [
+                        'button[aria-label*="close" i]',
+                        'button[class*="close" i]',
+                        '.modal-close',
+                        '[data-dismiss="modal"]',
+                    ]
+                    for selector in close_selectors:
+                        if await page.locator(selector).count() > 0:
+                            logger.info(f"❌ Dismissing modal with: {selector}")
+                            await page.locator(selector).first.click(timeout=5000)
+                            return True
+                    logger.warning("No dismiss target found")
+                    return False
+                return True
+
+            elif action_type == "navigate_back":
+                logger.info("⬅️ Navigating back...")
+                await page.go_back(wait_until="networkidle", timeout=10000)
+                return True
+
+            elif action_type == "refresh":
+                logger.info("🔄 Refreshing page...")
+                await page.reload(wait_until="networkidle", timeout=10000)
+                return True
+
+            else:
+                logger.error(f"Unknown action type: {action_type}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to execute action {action_type}: {e}")
+            return False
+
     async def _handle_unknown_state(
         self, page: Page, context: Dict[str, Any]
     ) -> StateHandlerResult:
-        """Handle unknown state - forensic capture and notify."""
+        """Handle unknown state with AI-powered learning."""
         logger.error("❌ Unknown page state detected")
+        
+        url = page.url
+        
+        # Step 1: Check learned states first
+        if self.learned_store:
+            try:
+                html_content = await page.content()
+                learned = self.learned_store.get_learned_action(url, html_content)
+                if learned:
+                    # We've seen this before! Apply saved action directly
+                    logger.info(
+                        f"🧠 Applying learned action for state '{learned.state_name}': "
+                        f"{learned.action_type}"
+                    )
+                    success = await self._apply_action(
+                        page,
+                        learned.action_type,
+                        learned.target_selector,
+                        learned.fill_value,
+                    )
+                    if success:
+                        return StateHandlerResult(
+                            success=True,
+                            state=PageState.UNKNOWN,
+                            action_taken=f"Applied learned action: {learned.action_type}",
+                            should_retry=True,
+                        )
+                    else:
+                        logger.warning(
+                            f"⚠️ Learned action failed for state '{learned.state_name}'"
+                        )
+            except Exception as e:
+                logger.error(f"Failed to apply learned action: {e}")
 
-        # Capture forensic evidence
-        if self.forensic_logger:
+        # Step 2: Ask AI to analyze the page
+        if self.ai_analyzer:
+            try:
+                # Capture screenshot for forensic evidence
+                screenshot_path = None
+                if self.forensic_logger:
+                    try:
+                        await self.forensic_logger.capture_incident(
+                            page,
+                            VFSBotError("Unknown page state - requesting AI analysis"),
+                            context={
+                                "reason": "unknown_page_state_ai_analysis",
+                                "url": url,
+                                **context,
+                            },
+                        )
+                        # Note: Screenshot path would be available from forensic logger
+                        # but we'll proceed without it for now
+                    except Exception as e:
+                        logger.warning(f"Failed to capture forensic evidence: {e}")
+
+                html_content = await page.content()
+                analysis = await self.ai_analyzer.analyze_page(
+                    html_content, url, screenshot_path
+                )
+
+                if analysis and analysis.suggested_action.value != "abort":
+                    # Step 3: Apply AI's suggestion
+                    logger.info(
+                        f"🤖 AI suggests: {analysis.suggested_action.value} "
+                        f"for '{analysis.page_purpose}'"
+                    )
+                    success = await self._apply_action(
+                        page,
+                        analysis.suggested_action.value,
+                        analysis.target_selector,
+                        analysis.fill_value,
+                    )
+
+                    if success:
+                        # Wait a bit for page to transition
+                        await asyncio.sleep(1)
+
+                        # Step 4: Verify - detect state again
+                        new_state = await self.detect(page)
+                        
+                        if new_state != PageState.UNKNOWN:
+                            # Step 5: SUCCESS! Save to learned states
+                            if self.learned_store:
+                                try:
+                                    self.learned_store.save_learned_state(
+                                        analysis.suggested_state_name,
+                                        analysis.suggested_indicators,
+                                        {
+                                            "action": analysis.suggested_action.value,
+                                            "selector": analysis.target_selector,
+                                            "fill_value": analysis.fill_value,
+                                        },
+                                    )
+                                    logger.success(
+                                        f"🎓 Learned new state: {analysis.suggested_state_name}"
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Failed to save learned state: {e}")
+
+                            return StateHandlerResult(
+                                success=True,
+                                state=PageState.UNKNOWN,
+                                next_state=new_state,
+                                action_taken=f"AI solved unknown state: {analysis.page_purpose}",
+                                should_retry=True,
+                            )
+                        else:
+                            logger.warning(
+                                "⚠️ AI action didn't transition to known state"
+                            )
+                    else:
+                        logger.warning(f"⚠️ AI suggested action failed")
+                else:
+                    if analysis:
+                        logger.info(f"🤖 AI recommends abort: {analysis.reasoning}")
+                    else:
+                        logger.warning("AI analysis returned no result")
+
+            except Exception as e:
+                logger.error(f"AI page analysis failed: {e}")
+
+        # Step 6: Fallback - original abort behavior
+        logger.error("❌ Unable to handle unknown state, aborting")
+
+        # Capture forensic evidence (if not already captured)
+        if self.forensic_logger and not self.ai_analyzer:
             try:
                 await self.forensic_logger.capture_incident(
                     page,
                     VFSBotError("Unknown page state encountered"),
                     context={
                         "reason": "unknown_page_state",
-                        "url": page.url,
+                        "url": url,
                         **context,
                     },
                 )
@@ -636,7 +844,7 @@ class PageStateDetector:
         if self.notifier:
             try:
                 await self.notifier.send_alert(
-                    f"⚠️ Unknown page state encountered - URL: {page.url[:100]}"
+                    f"⚠️ Unknown page state encountered - URL: {url[:100]}"
                 )
             except Exception:
                 pass
