@@ -1,19 +1,17 @@
 """Waitlist handling service for VFS appointments."""
 
 import asyncio
-import logging
 import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.helpers import smart_click
-
-logger = logging.getLogger(__name__)
 
 
 class WaitlistHandler:

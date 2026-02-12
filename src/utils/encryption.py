@@ -2,15 +2,13 @@
 
 import asyncio
 import hashlib
-import logging
 import os
 import threading
 import time
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def _normalize_key(key: Optional[str | bytes]) -> str:

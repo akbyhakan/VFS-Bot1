@@ -5,16 +5,15 @@ This module handles processing of email messages to extract OTP codes.
 
 import email
 import email.utils
-import logging
 import re
 from email.header import decode_header
 from email.message import Message
 from typing import Optional
 
+from loguru import logger
+
 from .models import OTPEntry, OTPSource
 from .pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
-
-logger = logging.getLogger(__name__)
 
 
 class EmailProcessor:

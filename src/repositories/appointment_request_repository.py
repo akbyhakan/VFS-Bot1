@@ -1,16 +1,15 @@
 """Appointment request repository implementation."""
 
 import json
-import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+
+from loguru import logger
 
 from src.core.exceptions import ValidationError
 from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.validators import validate_email
-
-logger = logging.getLogger(__name__)
 
 
 class AppointmentRequest:

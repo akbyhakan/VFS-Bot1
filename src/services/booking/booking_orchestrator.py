@@ -1,10 +1,10 @@
 """Booking orchestrator - coordinates all booking steps."""
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...core.sensitive import SensitiveDict
@@ -13,8 +13,6 @@ from .form_filler import FormFiller
 from .payment_handler import PaymentHandler
 from .selector_utils import get_selector
 from .slot_selector import SlotSelector
-
-logger = logging.getLogger(__name__)
 
 
 class BookingOrchestrator:

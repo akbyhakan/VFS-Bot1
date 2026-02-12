@@ -5,7 +5,6 @@ for incoming OTP emails and routes them to appropriate sessions.
 """
 
 import imaplib
-import logging
 import threading
 import time
 from collections import deque
@@ -13,11 +12,11 @@ from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from typing import Optional
 
+from loguru import logger
+
 from .email_processor import EmailProcessor
 from .models import IMAPConfig
 from .session_registry import SessionRegistry
-
-logger = logging.getLogger(__name__)
 
 
 class IMAPListener:

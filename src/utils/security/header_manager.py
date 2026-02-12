@@ -1,10 +1,9 @@
 """Enhanced User-Agent rotation with real browser versions."""
 
-import logging
 import random
 from typing import Dict, List, Optional, TypedDict
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class UserAgentConfig(TypedDict):

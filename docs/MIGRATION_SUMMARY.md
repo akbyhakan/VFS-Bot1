@@ -1,12 +1,12 @@
 # Logging Migration Summary - stdlib to loguru
 
 ## Overview
-Successfully migrated 55 priority Python files from stdlib logging to loguru.
+Successfully migrated 76 priority Python files from stdlib logging to loguru.
 
 ## Migration Statistics
-- **Files Fully Migrated**: 55
+- **Files Fully Migrated**: 76 (55 previously + 21 newly migrated)
 - **Special Case Files**: 4 (partial migration or kept for compatibility)
-- **Lines Changed**: ~130 lines removed, ~75 lines added
+- **Lines Changed**: ~172 lines removed, ~97 lines added
 - **Test Result**: All files compile successfully ✅
 - **Security Scan**: No new vulnerabilities ✅
 
@@ -52,50 +52,71 @@ def some_function():
 - [x] src/models/database.py
 - [x] src/models/db_factory.py
 
-### Utils (13)
+### Utils (17)
 - [x] src/utils/token_utils.py
 - [x] src/utils/secure_memory.py
 - [x] src/utils/webhook_utils.py
 - [x] src/utils/idempotency.py
 - [x] src/utils/ai_selector_repair.py
 - [x] src/utils/anti_detection/fingerprint_bypass.py
+- [x] src/utils/anti_detection/cloudflare_handler.py
+- [x] src/utils/anti_detection/human_simulator.py
+- [x] src/utils/anti_detection/stealth_config.py
 - [x] src/utils/helpers.py
 - [x] src/utils/error_capture.py
 - [x] src/utils/selector_learning.py
 - [x] src/utils/metrics.py
+- [x] src/utils/encryption.py
 
-### Security Utils (4)
+### Security Utils (5)
 - [x] src/utils/security/rate_limiter.py
 - [x] src/utils/security/adaptive_rate_limiter.py
 - [x] src/utils/security/endpoint_rate_limiter.py
 - [x] src/utils/security/session_manager.py
+- [x] src/utils/security/header_manager.py
 
-### Services (10)
+### Services (17)
 - [x] src/services/booking/form_filler.py
 - [x] src/services/booking/selector_utils.py
+- [x] src/services/booking/payment_handler.py
+- [x] src/services/booking/booking_orchestrator.py
 - [x] src/services/bot/error_handler.py
 - [x] src/services/bot/vfs_bot.py
+- [x] src/services/bot/booking_workflow.py
+- [x] src/services/bot/waitlist_handler.py
+- [x] src/services/bot/service_context.py
+- [x] src/services/bot/browser_manager.py
 - [x] src/services/notification.py
 - [x] src/services/otp_webhook.py
 - [x] src/services/slot_analyzer.py
 - [x] src/services/email_otp_handler.py
 - [x] src/services/vfs/encryption.py
 - [x] src/services/vfs/client.py
+- [x] src/services/alert_service.py
+- [x] src/services/webhook_token_manager.py
+- [x] src/services/appointment_deduplication.py
 
 **Note**: `src/services/vfs/models.py` excluded - contains only TypedDict/dataclass definitions, no logging needed
 
-### Services - OTP Manager (2)
+### Services - OTP Manager (5)
 - [x] src/services/otp_manager/sms_handler.py
 - [x] src/services/otp_manager/session_registry.py
+- [x] src/services/otp_manager/email_processor.py
+- [x] src/services/otp_manager/manager.py
+- [x] src/services/otp_manager/imap_listener.py
 
 ### Selector (2)
 - [x] src/selector/watcher.py
 - [x] src/selector/manager.py
 
-### Repositories (3)
+### Repositories (7)
 - [x] src/repositories/log_repository.py
 - [x] src/repositories/appointment_repository.py
 - [x] src/repositories/audit_log_repository.py
+- [x] src/repositories/proxy_repository.py
+- [x] src/repositories/webhook_repository.py
+- [x] src/repositories/appointment_request_repository.py
+- [x] src/repositories/appointment_history_repository.py
 
 ### Web Application (10)
 - [x] web/app.py

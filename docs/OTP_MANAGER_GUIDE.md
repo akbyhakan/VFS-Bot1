@@ -514,17 +514,14 @@ manager = OTPManager(
 
 ## Logging
 
-OTP Manager, Python `logging` modülünü kullanır:
+OTP Manager, `loguru` kullanır:
 
 ```python
-import logging
+from loguru import logger
 
-# Debug seviyesinde logging aktif et
-logging.basicConfig(level=logging.DEBUG)
-
-# Sadece OTP Manager logları
-logger = logging.getLogger('src.services.otp_manager')
-logger.setLevel(logging.DEBUG)
+# Loguru handles log levels via environment or logger.add()
+# Default log level can be controlled by environment variable
+# LOGURU_LEVEL=DEBUG for debug mode
 ```
 
 ## Sorun Giderme

@@ -54,6 +54,28 @@ FULLY_MIGRATED = [
     "src/services/slot_analyzer.py",
     "src/services/email_otp_handler.py",
     "src/selector/manager.py",
+    # Current migration: 21 files migrated from stdlib logging to loguru
+    "src/repositories/proxy_repository.py",
+    "src/repositories/webhook_repository.py",
+    "src/repositories/appointment_request_repository.py",
+    "src/repositories/appointment_history_repository.py",
+    "src/services/otp_manager/email_processor.py",
+    "src/services/otp_manager/manager.py",
+    "src/services/otp_manager/imap_listener.py",
+    "src/services/booking/payment_handler.py",
+    "src/services/booking/booking_orchestrator.py",
+    "src/services/bot/booking_workflow.py",
+    "src/services/bot/waitlist_handler.py",
+    "src/services/bot/service_context.py",
+    "src/services/bot/browser_manager.py",
+    "src/services/alert_service.py",
+    "src/services/webhook_token_manager.py",
+    "src/services/appointment_deduplication.py",
+    "src/utils/anti_detection/cloudflare_handler.py",
+    "src/utils/anti_detection/human_simulator.py",
+    "src/utils/anti_detection/stealth_config.py",
+    "src/utils/security/header_manager.py",
+    "src/utils/encryption.py",
 ]
 
 # Files with special handling

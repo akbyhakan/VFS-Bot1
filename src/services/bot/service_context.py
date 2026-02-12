@@ -6,9 +6,10 @@ reducing complexity and improving testability by organizing related services int
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+
+from loguru import logger
 
 from src.selector import SelectorSelfHealing
 
@@ -34,8 +35,6 @@ from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .slot_checker import SlotChecker
 from .waitlist_handler import WaitlistHandler
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)

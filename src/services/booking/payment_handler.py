@@ -1,16 +1,14 @@
 """Payment handling utilities for VFS booking system."""
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ..otp_webhook import get_otp_service
 from .selector_utils import get_selector, resolve_selector, try_selectors
-
-logger = logging.getLogger(__name__)
 
 
 class PaymentHandler:

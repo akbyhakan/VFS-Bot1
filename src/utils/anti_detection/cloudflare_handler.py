@@ -1,15 +1,13 @@
 """Detect and bypass Cloudflare protections."""
 
 import asyncio
-import logging
 import time
 from typing import Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays
-
-logger = logging.getLogger(__name__)
 
 
 class CloudflareHandler:

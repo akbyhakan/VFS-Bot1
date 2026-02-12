@@ -1,10 +1,10 @@
 """Booking workflow orchestration - handles user booking flows."""
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from loguru import logger
 from playwright.async_api import Page
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
@@ -30,8 +30,6 @@ if TYPE_CHECKING:
     from .error_handler import ErrorHandler
     from .slot_checker import SlotChecker, SlotInfo
     from .waitlist_handler import WaitlistHandler
-
-logger = logging.getLogger(__name__)
 
 
 class BookingWorkflow:
