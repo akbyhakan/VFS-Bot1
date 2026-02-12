@@ -152,7 +152,12 @@ class VFSSettings(BaseSettings):
         try:
             key_value = v.get_secret_value()
             # Try to decode as base64
-            base64.b64decode(key_value)
+            decoded = base64.b64decode(key_value)
+            if len(decoded) != 32:
+                raise ValueError(
+                    f"ENCRYPTION_KEY must decode to exactly 32 bytes, got {len(decoded)}. "
+                    "Generate a valid key with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                )
             return v
         except Exception:
             raise ValueError("ENCRYPTION_KEY must be a valid base64-encoded string")
@@ -193,7 +198,7 @@ class VFSSettings(BaseSettings):
 
                 # Get encryption key
                 encryption_key = self.encryption_key.get_secret_value()
-                cipher = Fernet(encryption_key.encode())
+                cipher = Fernet(encryption_key)
 
                 # Decrypt the password
                 encrypted_password = self.vfs_password.get_secret_value()

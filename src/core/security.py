@@ -12,6 +12,8 @@ from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
 
+from src.core.environment import Environment
+
 security = HTTPBearer()
 
 
@@ -247,26 +249,6 @@ def generate_api_key() -> str:
         Secure random API key
     """
     return secrets.token_urlsafe(32)
-
-
-def load_api_keys() -> None:
-    """
-    Load API keys from environment or file.
-
-    .. deprecated::
-        Keys are now loaded lazily on first use via verify_key().
-        This function is kept for backward compatibility but is no longer
-        called automatically at module load time.
-    """
-    import warnings
-
-    warnings.warn(
-        "load_api_keys() is deprecated. Keys are now loaded lazily on first use.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    manager = APIKeyManager()
-    manager.load_keys()
 
 
 async def verify_api_key(
