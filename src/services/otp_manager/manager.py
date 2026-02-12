@@ -4,10 +4,11 @@ This module provides the central OTPManager class that coordinates
 all OTP management components.
 """
 
-import logging
 import threading
 import time
 from typing import Any, Dict, List, Optional
+
+from loguru import logger
 
 from .email_processor import EmailProcessor
 from .imap_listener import IMAPListener
@@ -15,8 +16,6 @@ from .models import IMAPConfig, SessionState
 from .pattern_matcher import OTPPatternMatcher
 from .session_registry import SessionRegistry
 from .sms_handler import SMSWebhookHandler
-
-logger = logging.getLogger(__name__)
 
 
 class OTPManager:

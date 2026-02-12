@@ -1,13 +1,12 @@
 """Alert service for sending critical notifications through multiple channels."""
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class AlertSeverity(Enum):

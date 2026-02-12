@@ -1,10 +1,7 @@
 """Playwright stealth configuration to hide automation detection."""
 
-import logging
-
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class StealthConfig:

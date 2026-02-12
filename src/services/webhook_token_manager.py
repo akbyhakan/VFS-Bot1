@@ -4,7 +4,6 @@ This module manages webhook tokens for VFS accounts, enabling each account
 to have a unique webhook URL for SMS OTP delivery via SMS Forwarder app.
 """
 
-import logging
 import os
 import re
 import secrets
@@ -13,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 @dataclass

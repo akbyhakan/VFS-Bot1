@@ -1,14 +1,13 @@
 """Proxy repository implementation."""
 
-import logging
 from typing import Any, Dict, List, Optional
+
+from loguru import logger
 
 from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.db_helpers import _parse_command_tag
 from src.utils.encryption import decrypt_password, encrypt_password
-
-logger = logging.getLogger(__name__)
 
 
 class Proxy:

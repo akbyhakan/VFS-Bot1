@@ -6,14 +6,12 @@ Requirements:
 """
 
 import asyncio
-import logging
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from loguru import logger
 from playwright.async_api import Page
-
-logger = logging.getLogger(__name__)
 
 
 class HumanSimulator:

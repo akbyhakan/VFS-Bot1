@@ -6,11 +6,10 @@ time window.
 """
 
 import asyncio
-import logging
 import time
 from typing import Dict, Optional
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 class AppointmentDeduplication:
