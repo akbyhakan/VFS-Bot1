@@ -156,7 +156,23 @@ else: \
 security:  ## Run security scans (bandit + safety)
 	@echo "🔒 Running security scans..."
 	@echo "\n=== Bandit Static Analysis ==="
-	bandit -r src/ --severity-level medium || true
+	@bandit -r src/ --severity-level medium; \
+	BANDIT_EXIT=$$?; \
+	if [ $$BANDIT_EXIT -eq 0 ]; then \
+		echo "✅ Bandit: No issues found"; \
+	elif [ $$BANDIT_EXIT -eq 1 ]; then \
+		echo "⚠️  Bandit: Security issues detected (see above)"; \
+	else \
+		echo "❌ Bandit: Scan failed with exit code $$BANDIT_EXIT"; \
+	fi
 	@echo "\n=== Safety Vulnerability Check ==="
-	safety check || true
+	@safety check; \
+	SAFETY_EXIT=$$?; \
+	if [ $$SAFETY_EXIT -eq 0 ]; then \
+		echo "✅ Safety: No vulnerabilities found"; \
+	elif [ $$SAFETY_EXIT -eq 64 ]; then \
+		echo "⚠️  Safety: Vulnerabilities detected (see above)"; \
+	else \
+		echo "❌ Safety: Check failed with exit code $$SAFETY_EXIT"; \
+	fi
 	@echo "\n✅ Security scan complete"
