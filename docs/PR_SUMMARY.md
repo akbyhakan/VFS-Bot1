@@ -242,6 +242,55 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 
 ---
 
+### ✅ 2.7 - README.md Security Improvements - Replace Insecure Placeholder Passwords
+
+**Objective**: Eliminate insecure `changeme` placeholder passwords in README.md and ensure consistency with `.env.example`.
+
+**Files Modified**: 
+- `README.md`
+- `src/core/startup_validator.py`
+
+**Changes Made**:
+
+1. **Database Creation Section (line ~142)**:
+   - Replaced `CREATE USER vfs_bot WITH PASSWORD 'changeme';` with `'CHANGE_ME_TO_SECURE_PASSWORD';`
+   - Added security warning comments with password generation command:
+     ```sql
+     # ⚠️ CRITICAL: Replace with a secure password before deploying!
+     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
+     ```
+
+2. **Environment Variables Section (lines ~287-294)**:
+   - Replaced `DATABASE_URL=postgresql://vfs_bot:changeme@localhost:5432/vfs_bot` with `CHANGE_ME_TO_SECURE_PASSWORD`
+   - Replaced `POSTGRES_PASSWORD=changeme` with `CHANGE_ME_TO_SECURE_PASSWORD`
+   - Added critical security warnings with password generation instructions
+   - Added note about password consistency between DATABASE_URL and POSTGRES_PASSWORD
+
+3. **Grafana Section (line ~630)**:
+   - Removed hardcoded credentials comment `# Default credentials: admin / vfsbot_grafana`
+   - Updated to reference environment variable:
+     ```bash
+     # ⚠️ Set GRAFANA_ADMIN_PASSWORD in .env file before starting
+     # Default username: admin
+     # Password: Use value from GRAFANA_ADMIN_PASSWORD environment variable
+     ```
+
+4. **startup_validator.py Enhancement**:
+   - Added `"changeme"` to `DANGEROUS_DEFAULTS` frozenset for consistency
+   - Now includes: `"change-me"`, `"CHANGE_ME"`, and `"changeme"`
+   - Complements existing substring detection for comprehensive protection
+
+**Security Impact**:
+- Prevents users from copy-pasting insecure examples from Quick Start guide
+- Ensures README.md is consistent with `.env.example` security practices
+- Eliminates risk of production deployments with default `changeme` passwords
+- Provides clear password generation guidance at every usage point
+
+**Rationale**:
+The `startup_validator.py` already catches `changeme` via substring matching at runtime, but README.md examples are the first thing users see. Since users typically follow Quick Start guides by copy-pasting, insecure examples in documentation can lead to production security vulnerabilities. This fix ensures documentation promotes secure practices from the start.
+
+---
+
 ## Ready for Merge ✅
 
 All tasks completed successfully. The PR is ready for review and merge.

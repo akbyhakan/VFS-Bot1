@@ -19,6 +19,7 @@ DANGEROUS_DEFAULTS = frozenset(
         "your-api-key-here",
         "change-me",
         "CHANGE_ME",
+        "changeme",
     }
 )
 
