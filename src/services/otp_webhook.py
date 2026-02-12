@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 from loguru import logger
 
 from src.services.otp_manager.pattern_matcher import OTPPatternMatcher, SMS_OTP_PATTERNS
+from src.utils.singleton import get_or_create_sync
 
 
 @dataclass
@@ -466,28 +467,11 @@ class OTPWebhookService:
                 logger.error(f"Error in OTP cleanup loop: {e}")
 
 
-# Global instance with thread-safe initialization
-_otp_service: Optional[OTPWebhookService] = None
-_otp_lock = threading.Lock()
-
-
 def get_otp_service() -> OTPWebhookService:
     """
     Get global OTP service instance (thread-safe singleton).
 
-    Uses double-checked locking pattern for efficiency.
+    Returns:
+        Global OTPWebhookService instance
     """
-    global _otp_service
-
-    # First check without lock (fast path)
-    if _otp_service is not None:
-        return _otp_service
-
-    # Acquire lock for initialization
-    with _otp_lock:
-        # Double-check after acquiring lock
-        if _otp_service is None:
-            _otp_service = OTPWebhookService()
-            logger.info("OTP service singleton initialized")
-
-        return _otp_service
+    return get_or_create_sync("otp_webhook_service", OTPWebhookService)

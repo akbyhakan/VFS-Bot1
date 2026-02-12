@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from src.utils.singleton import get_or_create_sync
+
 from .email_processor import EmailProcessor
 from .imap_listener import IMAPListener
 from .models import IMAPConfig, SessionState
@@ -455,11 +457,6 @@ class OTPManager:
         }
 
 
-# Global instance management
-_otp_manager: Optional[OTPManager] = None
-_manager_lock = threading.Lock()
-
-
 def get_otp_manager(
     email: Optional[str] = None, app_password: Optional[str] = None, **kwargs: Any
 ) -> OTPManager:
@@ -477,15 +474,10 @@ def get_otp_manager(
     Raises:
         ValueError: If email/password not provided on first initialization
     """
-    global _otp_manager
 
-    # Thread-safe singleton initialization
-    with _manager_lock:
-        if _otp_manager is None:
-            if not email or not app_password:
-                raise ValueError("Email and app_password required on first call")
+    def factory():
+        if not email or not app_password:
+            raise ValueError("Email and app_password required on first call")
+        return OTPManager(email, app_password, **kwargs)
 
-            _otp_manager = OTPManager(email, app_password, **kwargs)
-            logger.info("Global OTPManager initialized")
-
-        return _otp_manager
+    return get_or_create_sync("otp_manager", factory)

@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from src.services.otp_manager.pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
+from src.utils.singleton import get_or_create_sync
 
 
 @dataclass
@@ -409,11 +410,6 @@ class EmailOTPHandler:
         logger.info("EmailOTPHandler closed")
 
 
-# Global instance with thread-safe initialization
-_email_otp_handler: Optional[EmailOTPHandler] = None
-_handler_lock = threading.Lock()
-
-
 def get_email_otp_handler(
     email: Optional[str] = None, app_password: Optional[str] = None, **kwargs: Any
 ) -> EmailOTPHandler:
@@ -431,20 +427,10 @@ def get_email_otp_handler(
     Raises:
         ValueError: If email/password not provided on first initialization
     """
-    global _email_otp_handler
 
-    # Fast path when handler already exists
-    if _email_otp_handler is not None:
-        return _email_otp_handler
+    def factory():
+        if not email or not app_password:
+            raise ValueError("Email and app_password required on first call")
+        return EmailOTPHandler(email, app_password, **kwargs)
 
-    # Acquire lock for initialization
-    with _handler_lock:
-        # Double-check after acquiring lock
-        if _email_otp_handler is None:
-            if not email or not app_password:
-                raise ValueError("Email and app_password required on first call")
-
-            _email_otp_handler = EmailOTPHandler(email, app_password, **kwargs)
-            logger.info("Global EmailOTPHandler initialized")
-
-        return _email_otp_handler
+    return get_or_create_sync("email_otp_handler", factory)

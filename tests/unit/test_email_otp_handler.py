@@ -395,21 +395,22 @@ class TestEmailOTPHandlerSingleton:
 
     def test_get_handler_first_time(self):
         """Test getting handler for first time requires credentials."""
-        with pytest.raises(ValueError, match="Email and app_password required"):
-            # Reset global
-            import src.services.email_otp_handler as module
-            from src.services.email_otp_handler import get_email_otp_handler
+        from src.services.email_otp_handler import get_email_otp_handler
+        from src.utils.singleton import reset
 
-            module._email_otp_handler = None
+        # Reset singleton
+        reset("email_otp_handler")
+
+        with pytest.raises(ValueError, match="Email and app_password required"):
             get_email_otp_handler()
 
     def test_singleton_pattern(self):
         """Test that singleton returns same instance."""
-        import src.services.email_otp_handler as module
         from src.services.email_otp_handler import get_email_otp_handler
+        from src.utils.singleton import reset
 
-        # Reset global
-        module._email_otp_handler = None
+        # Reset singleton
+        reset("email_otp_handler")
 
         # First call with credentials
         handler1 = get_email_otp_handler(email="test@vizecep.com", app_password="test-password")
@@ -421,4 +422,4 @@ class TestEmailOTPHandlerSingleton:
         assert handler1 is handler2
 
         # Cleanup
-        module._email_otp_handler = None
+        reset("email_otp_handler")
