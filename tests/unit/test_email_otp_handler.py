@@ -10,79 +10,78 @@ import pytest
 from src.services.email_otp_handler import (
     EmailOTPEntry,
     EmailOTPHandler,
-    EmailOTPPatternMatcher,
-    HTMLTextExtractor,
     IMAPConfig,
 )
+from src.services.otp_manager.pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
 
 
-class TestEmailOTPPatternMatcher:
+class TestOTPPatternMatcher:
     """Tests for Email OTP pattern matching."""
 
     def test_extract_6_digit_otp_basic(self):
         """Test basic 6-digit OTP extraction."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Your code is 123456") == "123456"
 
     def test_extract_vfs_global_otp(self):
         """Test VFS Global specific pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         text = "VFS Global verification code: 987654"
         assert matcher.extract_otp(text) == "987654"
 
     def test_extract_turkish_dogrulama_kodu(self):
         """Test Turkish 'doğrulama kodu' pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Doğrulama kodu: 654321") == "654321"
 
     def test_extract_turkish_dogrulama(self):
         """Test Turkish 'doğrulama' pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Doğrulama: 111222") == "111222"
 
     def test_extract_turkish_tek_kullanimlik_sifre(self):
         """Test Turkish 'tek kullanımlık şifre' pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Tek kullanımlık şifre: 333444") == "333444"
 
     def test_extract_otp_keyword(self):
         """Test OTP keyword pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Your OTP: 555666") == "555666"
 
     def test_extract_kod_keyword(self):
         """Test Turkish 'kod' keyword pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Kod: 777888") == "777888"
 
     def test_extract_code_keyword(self):
         """Test 'code' keyword pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("verification code: 999000") == "999000"
 
     def test_extract_authentication_code(self):
         """Test authentication code pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Your authentication code: 112233") == "112233"
 
     def test_extract_fallback_6_digit(self):
         """Test fallback 6-digit pattern."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Please use 445566 to verify") == "445566"
 
     def test_no_otp_found(self):
         """Test when no OTP is present."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("Hello, no code here") is None
 
     def test_custom_pattern(self):
         """Test custom regex patterns."""
-        matcher = EmailOTPPatternMatcher(custom_patterns=[r"PIN:(\d{6})"])
+        matcher = OTPPatternMatcher(custom_patterns=[r"PIN:(\d{6})"])
         assert matcher.extract_otp("Your PIN:998877 is ready") == "998877"
 
     def test_multiline_text(self):
         """Test OTP extraction from multiline text."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         text = """
         Dear User,
 
@@ -95,7 +94,7 @@ class TestEmailOTPPatternMatcher:
 
     def test_case_insensitive(self):
         """Test case-insensitive matching."""
-        matcher = EmailOTPPatternMatcher()
+        matcher = OTPPatternMatcher()
         assert matcher.extract_otp("YOUR OTP: 567890") == "567890"
         assert matcher.extract_otp("your otp: 567890") == "567890"
 

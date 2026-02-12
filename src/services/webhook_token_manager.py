@@ -5,7 +5,6 @@ to have a unique webhook URL for SMS OTP delivery via SMS Forwarder app.
 """
 
 import os
-import re
 import secrets
 import threading
 from dataclasses import dataclass, field
@@ -13,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+
+from src.services.otp_manager.pattern_matcher import OTPPatternMatcher, SMS_OTP_PATTERNS
 
 
 @dataclass
@@ -132,14 +133,6 @@ class WebhookTokenManager:
     TOKEN_PREFIX = "tk_"
     TOKEN_LENGTH = 24  # Random hex characters after prefix
 
-    # OTP extraction patterns (in priority order - most specific first)
-    OTP_PATTERNS = [
-        r"(?:OTP|code|verification|passcode)[:\s]+(\d{4,8})",  # "OTP: 123456"
-        r"(?:OTP|code|verification|passcode)\s+is[:\s]+(\d{4,8})",  # "OTP is: 123456"
-        r"\b(\d{6})\b(?!\d)",  # Generic 6-digit (with word boundary, not followed by more digits)
-        r"\b(\d{4})\b(?!\d)",  # Generic 4-digit (with word boundary, not followed by more digits)
-    ]
-
     def __init__(self, base_url: Optional[str] = None):
         """
         Initialize webhook token manager.
@@ -162,6 +155,7 @@ class WebhookTokenManager:
         self._account_tokens: Dict[str, str] = {}  # account_id -> token
         self._phone_tokens: Dict[str, str] = {}  # phone_number -> token
         self._lock = threading.RLock()  # Re-entrant lock for thread safety
+        self._otp_matcher = OTPPatternMatcher(SMS_OTP_PATTERNS)
         logger.info(f"WebhookTokenManager initialized with base URL: {self.base_url}")
 
     def generate_token(self, account_id: str) -> str:
@@ -324,8 +318,8 @@ class WebhookTokenManager:
         # Update last used timestamp
         webhook_token.last_used_at = datetime.now(timezone.utc)
 
-        # Extract OTP from message
-        otp = self._extract_otp(sms_payload.message)
+        # Extract OTP from message using pattern matcher
+        otp = self._otp_matcher.extract_otp(sms_payload.message)
 
         if otp:
             logger.info(f"Extracted OTP for account {webhook_token.account_id}: {otp[:2]}****")
@@ -335,22 +329,6 @@ class WebhookTokenManager:
             )
 
         return otp
-
-    def _extract_otp(self, message: str) -> Optional[str]:
-        """
-        Extract OTP code from SMS message.
-
-        Args:
-            message: SMS message text
-
-        Returns:
-            Extracted OTP or None
-        """
-        for pattern in self.OTP_PATTERNS:
-            match = re.search(pattern, message, re.IGNORECASE)
-            if match:
-                return match.group(1)
-        return None
 
     def revoke_token(self, token: str) -> None:
         """
