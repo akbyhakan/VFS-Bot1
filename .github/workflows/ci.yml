@@ -165,11 +165,20 @@ jobs:
       with:
         python-version: '3.12'
     
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
     - name: Run safety check
       continue-on-error: true
       run: |
-        pip install safety==3.2.11
         safety check --json || true
+    
+    - name: Run bandit security scan
+      continue-on-error: true
+      run: |
+        bandit -r src/ --severity-level medium || true
         
     - name: Check for secrets
       continue-on-error: true
