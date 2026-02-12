@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, TypedDict
 
-from loguru import logger
-
 
 class CentreInfo(TypedDict):
     """Type definition for VFS Centre information."""
