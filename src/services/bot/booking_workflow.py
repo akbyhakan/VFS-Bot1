@@ -13,7 +13,6 @@ from ...core.exceptions import LoginError, VFSBotError
 from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository
-from ...resilience import PageState, PageStateDetector
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
@@ -90,11 +89,6 @@ class BookingWorkflow:
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
 
-        # Get page state detector from resilience manager if available
-        self.page_state_detector: Optional[PageStateDetector] = None
-        if self.resilience_manager and hasattr(self.resilience_manager, "page_state_detector"):
-            self.page_state_detector = self.resilience_manager.page_state_detector
-
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
         wait=wait_random_exponential(
@@ -127,21 +121,17 @@ class BookingWorkflow:
                 "logged_in", user["id"], {"masked_email": masked_email}
             )
 
-            # Detect and handle post-login state (if page state detection enabled)
-            if self.page_state_detector:
-                await self._handle_post_login_state(page, user)
-            else:
-                # Legacy flow: Check for waitlist mode first
-                is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
+            # Check for waitlist mode first
+            is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
 
-                if is_waitlist:
-                    logger.info(f"Waitlist mode detected for {masked_email}")
-                    # Handle waitlist flow
-                    await self.process_waitlist_flow(page, user)
-                else:
-                    # Normal appointment flow
-                    dedup_service = await get_deduplication_service()
-                    await self._process_normal_flow(page, user, dedup_service)
+            if is_waitlist:
+                logger.info(f"Waitlist mode detected for {masked_email}")
+                # Handle waitlist flow
+                await self.process_waitlist_flow(page, user)
+            else:
+                # Normal appointment flow
+                dedup_service = await get_deduplication_service()
+                await self._process_normal_flow(page, user, dedup_service)
 
         except VFSBotError as e:
             # Re-raise VFSBotError subclasses (LoginError, etc.) for retry
@@ -152,102 +142,6 @@ class BookingWorkflow:
             logger.error(f"Error processing user {masked_email}: {e}")
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
             raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
-
-    async def _handle_post_login_state(self, page: Page, user: Dict[str, Any]) -> None:
-        """
-        Handle page state after login using page state detector.
-
-        Args:
-            page: Playwright page object
-            user: User dictionary from database
-        """
-        masked_email = mask_email(user["email"])
-        max_retries = 3
-        retry_count = 0
-
-        while retry_count < max_retries:
-            # Detect current page state
-            state = await self.page_state_detector.detect(page)
-            logger.info(f"Post-login state detected: {state.value}")
-
-            # Handle state based on detection
-            if state == PageState.DASHBOARD:
-                # Normal flow - proceed to slot checking
-                logger.info(f"Dashboard detected - proceeding with normal flow for {masked_email}")
-                dedup_service = await get_deduplication_service()
-                await self._process_normal_flow(page, user, dedup_service)
-                return
-
-            elif state == PageState.WAITLIST_MODE:
-                # Waitlist flow
-                logger.info(f"Waitlist mode detected for {masked_email}")
-                await self.process_waitlist_flow(page, user)
-                return
-
-            elif state in [
-                PageState.SESSION_EXPIRED,
-                PageState.CLOUDFLARE_CHALLENGE,
-                PageState.CAPTCHA_PAGE,
-                PageState.MAINTENANCE_PAGE,
-                PageState.RATE_LIMITED,
-            ]:
-                # Handle recoverable states
-                context = {
-                    "email": user["email"],
-                    "password": user["password"],
-                    "user_id": user["id"],
-                    "masked_email": masked_email,
-                }
-                result = await self.page_state_detector.handle_state(page, state, context)
-
-                if result.should_abort:
-                    logger.error(f"State {state.value} handling aborted - cannot continue")
-                    raise VFSBotError(
-                        f"Cannot proceed due to {state.value}: {result.action_taken}",
-                        recoverable=False,
-                    )
-
-                if result.should_retry:
-                    logger.info(f"Retrying after handling {state.value}")
-                    retry_count += 1
-                    await asyncio.sleep(2)  # Brief pause before retry
-                    continue
-
-                # If neither abort nor retry, something went wrong
-                logger.error(f"Unexpected result from handling {state.value}")
-                raise VFSBotError(f"Unexpected state handling result: {state.value}")
-
-            elif state == PageState.UNKNOWN:
-                # Unknown state - try to handle it
-                context = {"user_id": user["id"], "masked_email": masked_email}
-                result = await self.page_state_detector.handle_state(page, state, context)
-                
-                logger.error(
-                    f"Unknown page state encountered - manual review required. "
-                    f"Action taken: {result.action_taken}"
-                )
-                raise VFSBotError(
-                    "Unknown page state - manual intervention required", recoverable=False
-                )
-
-            else:
-                # Other normal states - proceed with legacy flow
-                logger.warning(
-                    f"Unexpected state {state.value} - falling back to legacy detection"
-                )
-                is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
-                if is_waitlist:
-                    await self.process_waitlist_flow(page, user)
-                else:
-                    dedup_service = await get_deduplication_service()
-                    await self._process_normal_flow(page, user, dedup_service)
-                return
-
-        # Max retries exceeded
-        logger.error(f"Max retries ({max_retries}) exceeded in post-login state handling")
-        raise VFSBotError(
-            f"Could not handle page state after {max_retries} retries", recoverable=True
-        )
 
     async def process_waitlist_flow(self, page: Page, user: Dict[str, Any]) -> None:
         """
