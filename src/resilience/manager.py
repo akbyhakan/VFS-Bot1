@@ -10,7 +10,6 @@ from src.core.exceptions import SelectorNotFoundError
 from src.resilience.ai_repair_v2 import AIRepairV2
 from src.resilience.forensic_logger import ForensicLogger
 from src.resilience.hot_reload import HotReloadableSelectorManager
-from src.resilience.page_state_detector import PageStateDetector
 from src.resilience.smart_wait import SmartWait
 
 
@@ -25,11 +24,6 @@ class ResilienceManager:
         enable_ai_repair: bool = True,
         enable_hot_reload: bool = True,
         hot_reload_interval: float = Resilience.HOT_RELOAD_INTERVAL,
-        enable_page_state_detection: bool = False,
-        page_states_file: str = "config/page_states.yaml",
-        auth_service: Optional[Any] = None,
-        cloudflare_handler: Optional[Any] = None,
-        notifier: Optional[Any] = None,
     ):
         """
         Initialize resilience manager.
@@ -41,11 +35,6 @@ class ResilienceManager:
             enable_ai_repair: Enable AI-powered selector repair
             enable_hot_reload: Enable hot-reload for selectors
             hot_reload_interval: Hot-reload polling interval in seconds
-            enable_page_state_detection: Enable page state detection and recovery
-            page_states_file: Path to page states YAML file
-            auth_service: Optional AuthService for re-login
-            cloudflare_handler: Optional CloudflareHandler for challenges
-            notifier: Optional NotificationService for alerts
         """
         self.selectors_file = selectors_file
         self.country_code = country_code.lower()
@@ -53,13 +42,11 @@ class ResilienceManager:
         self.enable_ai_repair = enable_ai_repair
         self.enable_hot_reload = enable_hot_reload
         self.hot_reload_interval = hot_reload_interval
-        self.enable_page_state_detection = enable_page_state_detection
 
         # Initialize components
         logger.info(
             f"🛡️ Initializing ResilienceManager for country: {country_code} "
-            f"(AI repair: {enable_ai_repair}, hot-reload: {enable_hot_reload}, "
-            f"page state detection: {enable_page_state_detection})"
+            f"(AI repair: {enable_ai_repair}, hot-reload: {enable_hot_reload})"
         )
 
         # 1. Hot-reloadable selector manager (country-aware)
@@ -85,18 +72,6 @@ class ResilienceManager:
             selector_manager=self.selector_manager,
             ai_repair=self.ai_repair,
         )
-
-        # 5. Page state detector (if enabled)
-        self.page_state_detector: Optional[PageStateDetector] = None
-        if enable_page_state_detection:
-            self.page_state_detector = PageStateDetector(
-                states_config_path=page_states_file,
-                forensic_logger=self.forensic_logger,
-                notifier=notifier,
-                auth_service=auth_service,
-                cloudflare_handler=cloudflare_handler,
-            )
-            logger.info("🔍 Page state detection enabled")
 
         logger.info("✅ ResilienceManager initialized successfully")
 
@@ -250,20 +225,11 @@ class ResilienceManager:
         Returns:
             Status dictionary with all component metrics
         """
-        status = {
+        return {
             "country_code": self.country_code,
             "enable_ai_repair": self.enable_ai_repair,
             "enable_hot_reload": self.enable_hot_reload,
-            "enable_page_state_detection": self.enable_page_state_detection,
             "selector_manager": self.selector_manager.get_status(),
             "forensic_logger": self.forensic_logger.get_status(),
             "ai_repair_enabled": self.ai_repair.enabled if self.ai_repair else False,
         }
-        
-        if self.page_state_detector:
-            status["page_state_detector"] = {
-                "enabled": True,
-                "transition_count": len(self.page_state_detector.transition_history),
-            }
-        
-        return status
