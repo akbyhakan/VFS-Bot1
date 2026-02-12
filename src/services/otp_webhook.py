@@ -1,15 +1,17 @@
 """SMS OTP Webhook receiver for VFS authentication."""
 
 import asyncio
-import re
 import threading
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Pattern
+from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
+
+from src.services.otp_manager.pattern_matcher import OTPPatternMatcher, SMS_OTP_PATTERNS
+from src.utils.singleton import get_or_create_sync
 
 
 @dataclass
@@ -28,57 +30,6 @@ class OTPType(Enum):
 
     APPOINTMENT = "appointment"
     PAYMENT = "payment"
-
-
-class OTPPatternMatcher:
-    """Regex-based OTP code extractor from SMS messages."""
-
-    # Common OTP patterns - order matters (most specific first)
-    DEFAULT_PATTERNS: List[str] = [
-        # --- Keyword-based patterns (most specific, checked first) ---
-        r"(?:verification|doğrulama)\s*(?:code|kodu?)?[:\s]+(\d{4,6})",
-        r"(?:OTP|one.time)\s*(?:code|password)?[:\s]+(\d{4,6})",
-        r"(?:code|kod|şifre)[:\s]+(\d{4,6})",
-        r"VFS[^0-9]{0,20}(\d{4,6})",  # VFS-specific context
-        # --- Bare digit fallbacks (least specific, checked last) ---
-        r"\b(\d{6})\b",  # 6-digit code
-        r"\b(\d{5})\b",  # 5-digit code
-        # NOTE: 4-digit bare pattern removed — too many false positives
-        # (years, PINs, prices). Use keyword patterns above for 4-digit OTPs.
-    ]
-
-    def __init__(self, custom_patterns: Optional[List[str]] = None):
-        """
-        Initialize OTP pattern matcher.
-
-        Args:
-            custom_patterns: Optional list of custom regex patterns
-        """
-        patterns = custom_patterns or self.DEFAULT_PATTERNS
-        self._patterns: List[Pattern] = [re.compile(p, re.IGNORECASE) for p in patterns]
-
-    def extract_otp(self, message: str) -> Optional[str]:
-        """
-        Extract OTP code from SMS message.
-
-        Args:
-            message: Raw SMS message text
-
-        Returns:
-            Extracted OTP code or None
-        """
-        if not message:
-            return None
-
-        for pattern in self._patterns:
-            match = pattern.search(message)
-            if match:
-                otp = match.group(1)
-                logger.debug(f"OTP extracted: {otp[:2]}****")
-                return otp
-
-        logger.warning(f"No OTP found in message: {message[:50]}...")
-        return None
 
 
 class OTPWebhookService:
@@ -116,7 +67,7 @@ class OTPWebhookService:
         self._payment_otp_queue = self._queues[OTPType.PAYMENT]
 
         self._otp_timeout = otp_timeout_seconds
-        self._pattern_matcher = OTPPatternMatcher(custom_patterns)
+        self._pattern_matcher = OTPPatternMatcher(custom_patterns or SMS_OTP_PATTERNS)
         self._waiting_events: Dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
 
@@ -516,28 +467,11 @@ class OTPWebhookService:
                 logger.error(f"Error in OTP cleanup loop: {e}")
 
 
-# Global instance with thread-safe initialization
-_otp_service: Optional[OTPWebhookService] = None
-_otp_lock = threading.Lock()
-
-
 def get_otp_service() -> OTPWebhookService:
     """
     Get global OTP service instance (thread-safe singleton).
 
-    Uses double-checked locking pattern for efficiency.
+    Returns:
+        Global OTPWebhookService instance
     """
-    global _otp_service
-
-    # First check without lock (fast path)
-    if _otp_service is not None:
-        return _otp_service
-
-    # Acquire lock for initialization
-    with _otp_lock:
-        # Double-check after acquiring lock
-        if _otp_service is None:
-            _otp_service = OTPWebhookService()
-            logger.info("OTP service singleton initialized")
-
-        return _otp_service
+    return get_or_create_sync("otp_webhook_service", OTPWebhookService)

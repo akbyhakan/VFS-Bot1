@@ -6,8 +6,9 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import Delays
-from .selector_utils import TURKISH_MONTHS, get_selector, resolve_selector, try_selectors
+from src.constants import Delays, TURKISH_MONTHS
+
+from .selector_utils import get_selector, resolve_selector, try_selectors
 
 
 class SlotSelector:

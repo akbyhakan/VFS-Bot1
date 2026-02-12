@@ -40,22 +40,40 @@ class HTMLTextExtractor(HTMLParser):
         return " ".join(self.text)
 
 
+# Email OTP patterns (6-digit focused, used for email-based OTP)
+EMAIL_OTP_PATTERNS: List[str] = [
+    r"VFS\s+Global.*?(\d{6})",  # VFS Global specific
+    r"doğrulama\s+kodu[:\s]+(\d{6})",  # Turkish: verification code
+    r"doğrulama[:\s]+(\d{6})",  # Turkish: verification
+    r"tek\s+kullanımlık\s+şifre[:\s]+(\d{6})",  # Turkish: one-time password
+    r"OTP[:\s]+(\d{6})",  # OTP: 123456
+    r"kod[:\s]+(\d{6})",  # Turkish: code
+    r"code[:\s]+(\d{6})",  # code: 123456
+    r"verification\s+code[:\s]+(\d{6})",  # verification code: 123456
+    r"authentication\s+code[:\s]+(\d{6})",  # authentication code: 123456
+    r"\b(\d{6})\b",  # 6-digit code (fallback)
+]
+
+# SMS OTP patterns (4-6 digit range, used for SMS-based OTP)
+SMS_OTP_PATTERNS: List[str] = [
+    # --- Keyword-based patterns (most specific, checked first) ---
+    r"(?:verification|doğrulama)\s*(?:code|kodu?)?[:\s]+(\d{4,6})",
+    r"(?:OTP|one.time)\s*(?:code|password)?[:\s]+(\d{4,6})",
+    r"(?:code|kod|şifre)[:\s]+(\d{4,6})",
+    r"VFS[^0-9]{0,20}(\d{4,6})",  # VFS-specific context
+    # --- Bare digit fallbacks (least specific, checked last) ---
+    r"\b(\d{6})\b",  # 6-digit code
+    r"\b(\d{5})\b",  # 5-digit code
+    # NOTE: 4-digit bare pattern removed — too many false positives
+    # (years, PINs, prices). Use keyword patterns above for 4-digit OTPs.
+]
+
+
 class OTPPatternMatcher:
     """Regex-based OTP code extractor."""
 
-    # VFS Global and general OTP patterns - order matters (most specific first)
-    DEFAULT_PATTERNS: List[str] = [
-        r"VFS\s+Global.*?(\d{6})",  # VFS Global specific
-        r"doğrulama\s+kodu[:\s]+(\d{6})",  # Turkish: verification code
-        r"doğrulama[:\s]+(\d{6})",  # Turkish: verification
-        r"tek\s+kullanımlık\s+şifre[:\s]+(\d{6})",  # Turkish: one-time password
-        r"OTP[:\s]+(\d{6})",  # OTP: 123456
-        r"kod[:\s]+(\d{6})",  # Turkish: code
-        r"code[:\s]+(\d{6})",  # code: 123456
-        r"verification\s+code[:\s]+(\d{6})",  # verification code: 123456
-        r"authentication\s+code[:\s]+(\d{6})",  # authentication code: 123456
-        r"\b(\d{6})\b",  # 6-digit code (fallback)
-    ]
+    # Default patterns for backward compatibility
+    DEFAULT_PATTERNS: List[str] = EMAIL_OTP_PATTERNS
 
     def __init__(self, custom_patterns: Optional[List[str]] = None):
         """

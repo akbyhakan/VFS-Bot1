@@ -15,10 +15,12 @@ from datetime import datetime, timedelta, timezone
 from email import message_from_bytes
 from email.header import decode_header
 from email.message import Message
-from html.parser import HTMLParser
-from typing import Any, Dict, List, Optional, Pattern
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
+
+from src.services.otp_manager.pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
+from src.utils.singleton import get_or_create_sync
 
 
 @dataclass
@@ -41,86 +43,6 @@ class IMAPConfig:
     port: int = 993
     use_ssl: bool = True
     folder: str = "INBOX"
-
-
-class HTMLTextExtractor(HTMLParser):
-    """Extract plain text from HTML content."""
-
-    def __init__(self):
-        super().__init__()
-        self.text = []
-        self.in_script = False
-        self.in_style = False
-
-    def handle_starttag(self, tag, attrs):
-        if tag.lower() == "script":
-            self.in_script = True
-        elif tag.lower() == "style":
-            self.in_style = True
-
-    def handle_endtag(self, tag):
-        if tag.lower() == "script":
-            self.in_script = False
-        elif tag.lower() == "style":
-            self.in_style = False
-
-    def handle_data(self, data):
-        if not self.in_script and not self.in_style:
-            self.text.append(data)
-
-    def get_text(self) -> str:
-        return " ".join(self.text)
-
-
-class EmailOTPPatternMatcher:
-    """Regex-based OTP code extractor from email messages."""
-
-    # VFS Global and general OTP patterns - order matters (most specific first)
-    DEFAULT_PATTERNS: List[str] = [
-        r"VFS\s+Global.*?(\d{6})",  # VFS Global specific
-        r"doğrulama\s+kodu[:\s]+(\d{6})",  # Turkish: verification code
-        r"doğrulama[:\s]+(\d{6})",  # Turkish: verification
-        r"tek\s+kullanımlık\s+şifre[:\s]+(\d{6})",  # Turkish: one-time password
-        r"OTP[:\s]+(\d{6})",  # OTP: 123456
-        r"kod[:\s]+(\d{6})",  # Turkish: code
-        r"code[:\s]+(\d{6})",  # code: 123456
-        r"verification\s+code[:\s]+(\d{6})",  # verification code: 123456
-        r"authentication\s+code[:\s]+(\d{6})",  # authentication code: 123456
-        r"\b(\d{6})\b",  # 6-digit code (fallback)
-    ]
-
-    def __init__(self, custom_patterns: Optional[List[str]] = None):
-        """
-        Initialize OTP pattern matcher.
-
-        Args:
-            custom_patterns: Optional list of custom regex patterns
-        """
-        patterns = custom_patterns or self.DEFAULT_PATTERNS
-        self._patterns: List[Pattern] = [re.compile(p, re.IGNORECASE | re.DOTALL) for p in patterns]
-
-    def extract_otp(self, text: str) -> Optional[str]:
-        """
-        Extract OTP code from email text.
-
-        Args:
-            text: Email message text (plain or HTML)
-
-        Returns:
-            Extracted OTP code or None
-        """
-        if not text:
-            return None
-
-        for pattern in self._patterns:
-            match = pattern.search(text)
-            if match:
-                otp = match.group(1)
-                logger.debug("OTP code successfully extracted from message")
-                return otp
-
-        logger.warning(f"No OTP found in message: {text[:100]}...")
-        return None
 
 
 class EmailOTPHandler:
@@ -167,7 +89,7 @@ class EmailOTPHandler:
         self._otp_timeout = otp_timeout_seconds
         self._poll_interval = poll_interval_seconds
         self._max_email_age = max_email_age_seconds
-        self._pattern_matcher = EmailOTPPatternMatcher(custom_patterns)
+        self._pattern_matcher = OTPPatternMatcher(custom_patterns)
 
         # Thread-safe cache for OTP entries
         self._otp_cache: Dict[str, EmailOTPEntry] = {}
@@ -488,11 +410,6 @@ class EmailOTPHandler:
         logger.info("EmailOTPHandler closed")
 
 
-# Global instance with thread-safe initialization
-_email_otp_handler: Optional[EmailOTPHandler] = None
-_handler_lock = threading.Lock()
-
-
 def get_email_otp_handler(
     email: Optional[str] = None, app_password: Optional[str] = None, **kwargs: Any
 ) -> EmailOTPHandler:
@@ -510,20 +427,10 @@ def get_email_otp_handler(
     Raises:
         ValueError: If email/password not provided on first initialization
     """
-    global _email_otp_handler
 
-    # Fast path when handler already exists
-    if _email_otp_handler is not None:
-        return _email_otp_handler
+    def factory():
+        if not email or not app_password:
+            raise ValueError("Email and app_password required on first call")
+        return EmailOTPHandler(email, app_password, **kwargs)
 
-    # Acquire lock for initialization
-    with _handler_lock:
-        # Double-check after acquiring lock
-        if _email_otp_handler is None:
-            if not email or not app_password:
-                raise ValueError("Email and app_password required on first call")
-
-            _email_otp_handler = EmailOTPHandler(email, app_password, **kwargs)
-            logger.info("Global EmailOTPHandler initialized")
-
-        return _email_otp_handler
+    return get_or_create_sync("email_otp_handler", factory)

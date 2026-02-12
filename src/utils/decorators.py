@@ -17,10 +17,16 @@ def handle_errors(
     """
     Decorator for consistent error handling across async operations.
 
+    Wraps exceptions in VFSBotError for consistent error handling across the application.
+    For simple error logging without VFSBotError wrapping, use `log_errors` decorator instead.
+
     Args:
         operation_name: Name of the operation for logging
         reraise: Whether to reraise the exception
         log_level: Logging level for errors (error, warning, info)
+
+    See Also:
+        log_errors: Simpler decorator for error logging without VFSBotError wrapping
     """
 
     def decorator(func: F) -> F:
@@ -74,6 +80,9 @@ def log_errors(
     """
     Decorator to log errors from async functions.
 
+    Simple error logging for async functions. If you need VFSBotError wrapping
+    for consistent error handling, use `handle_errors` decorator instead.
+
     Args:
         reraise: Whether to reraise the exception after logging
         default_return: Value to return if not reraising
@@ -83,6 +92,9 @@ def log_errors(
         @log_errors(reraise=False, default_return=[])
         async def get_items():
             ...
+
+    See Also:
+        handle_errors: Error handler with VFSBotError wrapping and operation naming
     """
 
     def decorator(func: F) -> F:
