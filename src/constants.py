@@ -284,15 +284,3 @@ DOUBLE_MATCH_PATTERNS = [
     r"(\d+)\s*Başvuru sahipleri.*?:\s*(\d{2}-\d{2}-\d{4})",  # Turkish
     r"(\d+)\s*[Aa]pplicants?.*?:\s*(\d{2}-\d{2}-\d{4})",  # English
 ]
-
-
-class Resilience:
-    """Resilience system configuration."""
-
-    HOT_RELOAD_INTERVAL: Final[float] = 5.0
-    SMART_WAIT_MAX_RETRIES: Final[int] = 3
-    SMART_WAIT_BACKOFF_FACTOR: Final[float] = 1.5
-    AI_REPAIR_CONFIDENCE_THRESHOLD: Final[float] = 0.7
-    AI_REPAIR_MAX_HTML_SIZE: Final[int] = 50_000
-    FORENSIC_MAX_INCIDENTS: Final[int] = 500
-    FORENSIC_MAX_HTML_SIZE: Final[int] = 5_000_000
