@@ -89,31 +89,14 @@ class ResilienceManager:
         # 5. Page state detector (if enabled)
         self.page_state_detector: Optional[PageStateDetector] = None
         if enable_page_state_detection:
-            # Initialize AI page analyzer (if GEMINI_API_KEY is available)
-            from src.resilience.ai_page_analyzer import AIPageAnalyzer
-            from src.resilience.learned_state_store import LearnedStateStore
-
-            ai_analyzer = None
-            learned_store = None
-
-            # Create AI analyzer if API key is available
-            if os.getenv("GEMINI_API_KEY"):
-                ai_analyzer = AIPageAnalyzer()
-                logger.info("🧠 AI page analyzer initialized")
-
-            # Create learned state store
-            learned_store = LearnedStateStore()
-
             self.page_state_detector = PageStateDetector(
                 states_config_path=page_states_file,
                 forensic_logger=self.forensic_logger,
                 notifier=notifier,
                 auth_service=auth_service,
                 cloudflare_handler=cloudflare_handler,
-                ai_analyzer=ai_analyzer,
-                learned_store=learned_store,
             )
-            logger.info("🔍 Page state detection enabled with AI learning")
+            logger.info("🔍 Page state detection enabled")
 
         logger.info("✅ ResilienceManager initialized successfully")
 
