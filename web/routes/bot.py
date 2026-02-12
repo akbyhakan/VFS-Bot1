@@ -343,3 +343,42 @@ async def get_error_screenshot(request: Request, error_id: str, type: str = "ful
                     raise HTTPException(status_code=500, detail="Error accessing screenshot")
 
     raise HTTPException(status_code=404, detail="Screenshot not found")
+
+
+@router.get("/errors/{error_id}/html-snapshot")
+async def get_error_html_snapshot(request: Request, error_id: str):
+    """
+    Get error HTML snapshot.
+
+    Args:
+        request: FastAPI request object
+        error_id: Error ID
+
+    Returns:
+        HTML file
+    """
+    if hasattr(request.app.state, "error_capture"):
+        error = request.app.state.error_capture.get_error_by_id(error_id)
+        if error and "captures" in error:
+            if "html_snapshot" in error["captures"]:
+                html_path = Path(error["captures"]["html_snapshot"])
+                # Security: Ensure HTML path is within the expected directory
+                expected_dir = Path(request.app.state.error_capture.screenshots_dir).resolve()
+                try:
+                    resolved_path = html_path.resolve()
+                    # Check if path is within expected directory
+                    if not str(resolved_path).startswith(str(expected_dir)):
+                        logger.warning(f"Path traversal attempt: {html_path}")
+                        raise HTTPException(status_code=403, detail="Access denied")
+
+                    if resolved_path.exists():
+                        return FileResponse(
+                            resolved_path,
+                            media_type="text/html",
+                            filename=f"error_{error_id}.html",
+                        )
+                except Exception as e:
+                    logger.error(f"Error accessing HTML snapshot: {e}")
+                    raise HTTPException(status_code=500, detail="Error accessing HTML snapshot")
+
+    raise HTTPException(status_code=404, detail="HTML snapshot not found")

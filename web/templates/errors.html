@@ -238,6 +238,20 @@
                         `;
                     }
                     
+                    let htmlSnapshotHtml = '';
+                    if (error.captures && error.captures.html_snapshot) {
+                        htmlSnapshotHtml = `
+                            <div class="context-section">
+                                <a href="/api/errors/${error.id}/html-snapshot" 
+                                   download="error_${error.id}.html"
+                                   class="refresh-btn"
+                                   style="display: inline-block; text-decoration: none;">
+                                    📄 Download HTML Snapshot
+                                </a>
+                            </div>
+                        `;
+                    }
+                    
                     let urlHtml = '';
                     if (error.url) {
                         urlHtml = `
@@ -278,6 +292,7 @@
                         ${urlHtml}
                         ${contextHtml}
                         ${screenshotHtml}
+                        ${htmlSnapshotHtml}
                     `;
                     
                     container.appendChild(card);
