@@ -242,7 +242,7 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 
 ---
 
-### ✅ 7. README.md Security Improvements - Replace Insecure Placeholder Passwords
+### ✅ 2.7 - README.md Security Improvements - Replace Insecure Placeholder Passwords
 
 **Objective**: Eliminate insecure `changeme` placeholder passwords in README.md and ensure consistency with `.env.example`.
 

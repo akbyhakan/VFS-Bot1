@@ -139,8 +139,8 @@ The system learns over time which selectors work best and automatically promotes
    ```bash
    # Create user and database
    sudo -u postgres psql
-   # ⚠️ CRITICAL: Replace with a secure password before deploying!
-   # Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
+   -- ⚠️ CRITICAL: Replace with a secure password before deploying!
+   -- Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
    CREATE USER vfs_bot WITH PASSWORD 'CHANGE_ME_TO_SECURE_PASSWORD';
    CREATE DATABASE vfs_bot OWNER vfs_bot;
    GRANT ALL PRIVILEGES ON DATABASE vfs_bot TO vfs_bot;
@@ -286,7 +286,7 @@ VFS_ENCRYPTION_KEY=your-32-byte-encryption-key-here
 
 # Database Configuration
 # PostgreSQL connection URL
-# ⚠️ CRITICAL: Replace 'CHANGE_ME_TO_SECURE_PASSWORD' with a secure password!
+# ⚠️ CRITICAL: Replace CHANGE_ME_TO_SECURE_PASSWORD with a secure password!
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
 DATABASE_URL=postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot
 # PostgreSQL password (used by Docker Compose)
