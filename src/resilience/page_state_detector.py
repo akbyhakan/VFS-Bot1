@@ -53,6 +53,9 @@ class PageState(Enum):
     # UI states
     POPUP_MODAL = "popup_modal"
 
+    # AI-learned states
+    LEARNED_STATE = "learned_state"
+
     # Unknown/fallback
     UNKNOWN = "unknown"
 
@@ -254,6 +257,19 @@ class PageStateDetector:
                 logger.info("🔍 Page state detected: LOGIN_PAGE")
                 return PageState.LOGIN_PAGE
             
+            # 8. Check learned states (AI-learned states from previous encounters)
+            if self.learned_store:
+                try:
+                    html_content = await page.content()
+                    learned = self.learned_store.get_learned_action(page.url, html_content)
+                    if learned:
+                        logger.info(f"🧠 Learned state detected: {learned.state_name}")
+                        # Store the learned action in a temporary attribute for the handler to use
+                        self._current_learned_action = learned
+                        return PageState.LEARNED_STATE
+                except Exception as e:
+                    logger.error(f"Error checking learned states: {e}")
+            
             # Default: Unknown state
             logger.warning(f"🔍 Page state UNKNOWN - URL: {url[:100]}")
             return PageState.UNKNOWN
@@ -385,6 +401,9 @@ class PageStateDetector:
         
         elif state == PageState.RATE_LIMITED:
             return await self._handle_rate_limited(page, context)
+        
+        elif state == PageState.LEARNED_STATE:
+            return await self._handle_learned_state(page, context)
         
         elif state == PageState.UNKNOWN:
             return await self._handle_unknown_state(page, context)
@@ -695,45 +714,61 @@ class PageStateDetector:
             logger.error(f"Failed to execute action {action_type}: {e}")
             return False
 
+    async def _handle_learned_state(
+        self, page: Page, context: Dict[str, Any]
+    ) -> StateHandlerResult:
+        """Handle a previously learned state by applying the saved action."""
+        learned = getattr(self, "_current_learned_action", None)
+        if not learned:
+            logger.error("Learned state detected but no learned action available")
+            return StateHandlerResult(
+                success=False,
+                state=PageState.LEARNED_STATE,
+                action_taken="Learned action data missing",
+                should_abort=True,
+            )
+        
+        logger.info(
+            f"🧠 Applying learned action for state '{learned.state_name}': "
+            f"{learned.action_type}"
+        )
+        
+        success = await self._apply_action(
+            page,
+            learned.action_type,
+            learned.target_selector,
+            learned.fill_value,
+        )
+        
+        # Clean up temporary attribute
+        self._current_learned_action = None
+        
+        if success:
+            return StateHandlerResult(
+                success=True,
+                state=PageState.LEARNED_STATE,
+                action_taken=f"Applied learned action '{learned.action_type}' for state '{learned.state_name}'",
+                should_retry=True,
+                metadata={"learned_state_name": learned.state_name},
+            )
+        else:
+            logger.warning(
+                f"⚠️ Learned action failed for state '{learned.state_name}'"
+            )
+            return StateHandlerResult(
+                success=False,
+                state=PageState.LEARNED_STATE,
+                action_taken=f"Learned action '{learned.action_type}' failed for state '{learned.state_name}'",
+                should_abort=True,
+            )
+
     async def _handle_unknown_state(
         self, page: Page, context: Dict[str, Any]
     ) -> StateHandlerResult:
         """Handle unknown state with AI-powered learning."""
         logger.error("❌ Unknown page state detected")
         
-        # Step 1: Check learned states first
-        if self.learned_store:
-            try:
-                url = page.url
-                html_content = await page.content()
-                learned = self.learned_store.get_learned_action(url, html_content)
-                if learned:
-                    # We've seen this before! Apply saved action directly
-                    logger.info(
-                        f"🧠 Applying learned action for state '{learned.state_name}': "
-                        f"{learned.action_type}"
-                    )
-                    success = await self._apply_action(
-                        page,
-                        learned.action_type,
-                        learned.target_selector,
-                        learned.fill_value,
-                    )
-                    if success:
-                        return StateHandlerResult(
-                            success=True,
-                            state=PageState.UNKNOWN,
-                            action_taken=f"Applied learned action: {learned.action_type}",
-                            should_retry=True,
-                        )
-                    else:
-                        logger.warning(
-                            f"⚠️ Learned action failed for state '{learned.state_name}'"
-                        )
-            except Exception as e:
-                logger.error(f"Failed to apply learned action: {e}")
-
-        # Step 2: Ask AI to analyze the page
+        # Step 1: Ask AI to analyze the page
         if self.ai_analyzer:
             try:
                 url = page.url
@@ -761,7 +796,7 @@ class PageStateDetector:
                 )
 
                 if analysis and analysis.suggested_action.value != "abort":
-                    # Step 3: Apply AI's suggestion
+                    # Step 2: Apply AI's suggestion
                     logger.info(
                         f"🤖 AI suggests: {analysis.suggested_action.value} "
                         f"for '{analysis.page_purpose}'"
@@ -777,11 +812,11 @@ class PageStateDetector:
                         # Wait a bit for page to transition
                         await asyncio.sleep(1)
 
-                        # Step 4: Verify - detect state again
+                        # Step 3: Verify - detect state again
                         new_state = await self.detect(page)
                         
                         if new_state != PageState.UNKNOWN:
-                            # Step 5: SUCCESS! Save to learned states
+                            # Step 4: SUCCESS! Save to learned states
                             if self.learned_store:
                                 try:
                                     self.learned_store.save_learned_state(
@@ -821,7 +856,7 @@ class PageStateDetector:
             except Exception as e:
                 logger.error(f"AI page analysis failed: {e}")
 
-        # Step 6: Fallback - original abort behavior
+        # Step 5: Fallback - original abort behavior
         logger.error("❌ Unable to handle unknown state, aborting")
         
         url = page.url

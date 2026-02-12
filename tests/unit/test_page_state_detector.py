@@ -463,12 +463,13 @@ class TestUnknownStateWithAI:
     """Tests for unknown state handling with AI integration."""
 
     @pytest.mark.asyncio
-    async def test_handle_unknown_state_with_learned_action(self):
-        """Test unknown state handling when learned action is available."""
+    async def test_detect_learned_state(self):
+        """Test detection of a learned state."""
         from src.resilience.learned_state_store import LearnedAction
 
         page = AsyncMock(spec=Page)
         page.url = "https://example.com/verify"
+        page.title = AsyncMock(return_value="Verification")
         page.content = AsyncMock(return_value="<div>Enter code</div>")
 
         learned_store = Mock()
@@ -482,18 +483,81 @@ class TestUnknownStateWithAI:
         )
         learned_store.get_learned_action = Mock(return_value=learned_action)
 
+        detector = PageStateDetector(learned_store=learned_store)
+        state = await detector.detect(page)
+
+        # Should detect as LEARNED_STATE
+        assert state == PageState.LEARNED_STATE
+        assert learned_store.get_learned_action.called
+
+    @pytest.mark.asyncio
+    async def test_handle_learned_state_success(self):
+        """Test handling of a learned state when action is successful."""
+        from src.resilience.learned_state_store import LearnedAction
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/verify"
+        page.content = AsyncMock(return_value="<div>Enter code</div>")
+
+        learned_action = LearnedAction(
+            state_name="code_verification",
+            action_type="fill",
+            target_selector="#code",
+            fill_value="",
+            indicators={},
+            match_score=0.85,
+        )
+
         # Mock locator for the action
         locator = AsyncMock()
         page.locator = Mock(return_value=locator)
 
-        detector = PageStateDetector(learned_store=learned_store)
-        result = await detector.handle_state(page, PageState.UNKNOWN)
+        detector = PageStateDetector()
+        # Set the learned action as if it was detected
+        detector._current_learned_action = learned_action
+        
+        result = await detector.handle_state(page, PageState.LEARNED_STATE)
 
-        # Should apply learned action
+        # Should apply learned action successfully
         assert result.success is True
         assert result.should_retry is True
+        assert result.state == PageState.LEARNED_STATE
         assert "learned action" in result.action_taken.lower()
-        assert learned_store.get_learned_action.called
+        assert "code_verification" in result.action_taken
+
+    @pytest.mark.asyncio
+    async def test_handle_learned_state_failure(self):
+        """Test handling of a learned state when action fails."""
+        from src.resilience.learned_state_store import LearnedAction
+
+        page = AsyncMock(spec=Page)
+        page.url = "https://example.com/verify"
+        page.content = AsyncMock(return_value="<div>Enter code</div>")
+
+        learned_action = LearnedAction(
+            state_name="code_verification",
+            action_type="click",
+            target_selector="#nonexistent",
+            fill_value="",
+            indicators={},
+            match_score=0.85,
+        )
+
+        # Mock locator that fails
+        locator = AsyncMock()
+        locator.click = AsyncMock(side_effect=Exception("Element not found"))
+        page.locator = Mock(return_value=locator)
+
+        detector = PageStateDetector()
+        # Set the learned action as if it was detected
+        detector._current_learned_action = learned_action
+        
+        result = await detector.handle_state(page, PageState.LEARNED_STATE)
+
+        # Should fail and recommend abort
+        assert result.success is False
+        assert result.should_abort is True
+        assert result.state == PageState.LEARNED_STATE
 
     @pytest.mark.asyncio
     async def test_handle_unknown_state_with_ai_success(self):
@@ -522,7 +586,7 @@ class TestUnknownStateWithAI:
         )
         ai_analyzer.analyze_page = AsyncMock(return_value=analysis_result)
 
-        # Mock learned store
+        # Mock learned store - returns None to skip learned state check
         learned_store = Mock()
         learned_store.get_learned_action = Mock(return_value=None)
         learned_store.save_learned_state = Mock(return_value=True)
