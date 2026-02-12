@@ -1,0 +1,415 @@
+# VFS Page State Indicators Configuration
+# Defines fingerprints for detecting different page/screen states
+
+version: "1.0"
+last_updated: "2026-02-12"
+
+states:
+  # ============================================================================
+  # NORMAL FLOW STATES
+  # ============================================================================
+  
+  login_page:
+    description: "Login/signin page"
+    url_patterns:
+      - "/login"
+      - "/signin"
+      - "/auth"
+    text_indicators:
+      - "Email"
+      - "Password"
+      - "Giriş Yap"
+      - "Login"
+      - "Sign In"
+    css_selectors:
+      - "input[type='email']"
+      - "input[type='password']"
+      - "input[name='email']"
+      - "input[name='password']"
+    expected_transitions:
+      - dashboard
+      - otp_verification
+      - captcha_page
+    recovery_strategy: "none"  # This is entry point
+  
+  dashboard:
+    description: "Main dashboard/appointment page"
+    url_patterns:
+      - "/dashboard"
+      - "/appointment"
+      - "/home"
+    text_indicators:
+      - "Dashboard"
+      - "Randevu"
+      - "Appointment"
+    css_selectors:
+      - "#appointmentSection"
+      - ".appointment-container"
+    expected_transitions:
+      - application_details
+      - waitlist_mode
+      - appointment_selection
+    recovery_strategy: "none"  # This is a valid state
+  
+  application_details:
+    description: "Application details/personal info page"
+    url_patterns:
+      - "/application"
+      - "/details"
+    text_indicators:
+      - "Application Details"
+      - "Başvuru Detayları"
+      - "Personal Information"
+    css_selectors:
+      - "#applicationForm"
+      - ".application-details"
+    expected_transitions:
+      - applicant_form
+      - appointment_selection
+    recovery_strategy: "none"
+  
+  appointment_selection:
+    description: "Appointment date/time selection (calendar)"
+    url_patterns:
+      - "/appointment/select"
+      - "/calendar"
+    text_indicators:
+      - "Select Appointment"
+      - "Randevu Seçimi"
+    css_selectors:
+      - "a.fc-daygrid-day-number"
+      - ".calendar-view"
+      - ".appointment-calendar"
+    expected_transitions:
+      - applicant_form
+      - services_page
+    recovery_strategy: "none"
+  
+  applicant_form:
+    description: "Applicant personal details form"
+    text_indicators:
+      - "Applicant"
+      - "Başvuran"
+      - "First Name"
+      - "Last Name"
+      - "Passport"
+    css_selectors:
+      - "input[name='firstName']"
+      - "input[name='lastName']"
+      - "input[name='passportNumber']"
+    expected_transitions:
+      - services_page
+      - review_and_pay
+    recovery_strategy: "none"
+  
+  services_page:
+    description: "Additional services selection page"
+    text_indicators:
+      - "Additional Services"
+      - "Ek Hizmetler"
+      - "Select Services"
+    css_selectors:
+      - ".services-list"
+      - "#servicesSection"
+    expected_transitions:
+      - review_and_pay
+    recovery_strategy: "none"
+  
+  review_and_pay:
+    description: "Review and payment page"
+    text_indicators:
+      - "Review"
+      - "İnceleme"
+      - "Payment"
+      - "Ödeme"
+      - "Confirm"
+      - "Onayla"
+    css_selectors:
+      - "#reviewSection"
+      - ".review-container"
+      - "button[type='submit']"
+    expected_transitions:
+      - payment_page
+      - booking_confirmation
+    recovery_strategy: "none"
+  
+  payment_page:
+    description: "Payment processing page"
+    text_indicators:
+      - "Payment"
+      - "Ödeme"
+      - "Card Number"
+      - "Kart Numarası"
+    css_selectors:
+      - "input[name='cardNumber']"
+      - "#paymentForm"
+    expected_transitions:
+      - booking_confirmation
+    recovery_strategy: "none"
+  
+  booking_confirmation:
+    description: "Booking confirmation/success page"
+    text_indicators:
+      - "Confirmation"
+      - "Onay"
+      - "Reference"
+      - "Referans"
+      - "Successfully Booked"
+      - "Başarıyla"
+    css_selectors:
+      - ".confirmation-message"
+      - "#confirmationSection"
+    expected_transitions: []  # Final state
+    recovery_strategy: "none"
+
+  # ============================================================================
+  # WAITLIST STATES
+  # ============================================================================
+  
+  waitlist_mode:
+    description: "Waitlist registration mode"
+    text_indicators:
+      - "Bekleme Listesi"
+      - "Waitlist"
+      - "bekleme listesi"
+      - "waitlist"
+      - "Join Waitlist"
+    css_selectors:
+      - "input[type='checkbox'][name*='waitlist']"
+      - ".waitlist-option"
+    expected_transitions:
+      - applicant_form
+      - review_and_pay
+      - waitlist_success
+    recovery_strategy: "none"  # Valid flow
+  
+  waitlist_success:
+    description: "Waitlist registration success"
+    text_indicators:
+      - "Bekleme Listesinde"
+      - "İşlem Özeti"
+      - "Waitlist Registration Successful"
+      - "Successfully Added to Waitlist"
+    css_selectors:
+      - ".waitlist-confirmation"
+      - "#waitlistSuccess"
+    expected_transitions: []  # Final state
+    recovery_strategy: "none"
+
+  # ============================================================================
+  # AUTHENTICATION/VERIFICATION STATES
+  # ============================================================================
+  
+  captcha_page:
+    description: "CAPTCHA challenge page"
+    css_selectors:
+      - ".g-recaptcha"
+      - "iframe[src*='recaptcha']"
+      - "iframe[src*='hcaptcha']"
+      - ".h-captcha"
+    text_indicators:
+      - "verify you're human"
+      - "verify you are human"
+    expected_transitions:
+      - login_page
+      - dashboard
+    recovery_strategy: "captcha_solver"  # Attempt automatic solving
+  
+  otp_verification:
+    description: "OTP/2FA verification page"
+    css_selectors:
+      - "input[name='otp']"
+      - "input[type='tel'][name*='code']"
+      - "#otpInput"
+    text_indicators:
+      - "OTP"
+      - "Verification Code"
+      - "Doğrulama Kodu"
+      - "Two-Factor"
+      - "2FA"
+    expected_transitions:
+      - dashboard
+    recovery_strategy: "wait_for_otp"  # Wait for OTP service
+
+  # ============================================================================
+  # CHALLENGE/PROTECTION STATES
+  # ============================================================================
+  
+  cloudflare_challenge:
+    description: "Cloudflare protection challenge"
+    title_patterns:
+      - "just a moment"
+      - "waiting room"
+      - "please wait"
+    css_selectors:
+      - "iframe[src*='challenges.cloudflare.com']"
+      - "iframe[src*='cloudflare.com/cdn-cgi/challenge-platform']"
+    text_indicators:
+      - "checking your browser"
+      - "cloudflare"
+    expected_transitions:
+      - login_page
+      - dashboard
+    recovery_strategy: "cloudflare_handler"  # Use CloudflareHandler
+  
+  session_expired:
+    description: "Session expired/timeout page"
+    text_indicators:
+      - "session expired"
+      - "oturum süresi doldu"
+      - "please login again"
+      - "session timeout"
+      - "unauthorized"
+    url_patterns:
+      - "/login"
+      - "/auth"
+    expected_transitions:
+      - login_page
+      - dashboard
+    recovery_strategy: "re_login"  # Automatic re-login
+  
+  maintenance_page:
+    description: "Site under maintenance"
+    text_indicators:
+      - "under maintenance"
+      - "bakım"
+      - "maintenance mode"
+      - "temporarily unavailable"
+      - "site is down"
+    title_patterns:
+      - "maintenance"
+      - "unavailable"
+    expected_transitions:
+      - login_page
+    recovery_strategy: "wait_and_retry"  # Wait 5min + retry
+  
+  rate_limited:
+    description: "Rate limit/too many requests"
+    text_indicators:
+      - "too many requests"
+      - "rate limit"
+      - "please try again later"
+      - "çok fazla istek"
+    http_status:
+      - 429
+      - 503
+    expected_transitions:
+      - login_page
+      - dashboard
+    recovery_strategy: "exponential_backoff"  # Wait with backoff
+
+  # ============================================================================
+  # INFORMATION/ERROR STATES
+  # ============================================================================
+  
+  no_appointments:
+    description: "No appointments available message"
+    text_indicators:
+      - "no appointments available"
+      - "randevu bulunamadı"
+      - "no slots available"
+      - "currently no availability"
+    expected_transitions:
+      - dashboard
+    recovery_strategy: "none"  # Expected state
+  
+  error_page:
+    description: "Generic error page"
+    text_indicators:
+      - "error occurred"
+      - "hata oluştu"
+      - "something went wrong"
+      - "internal server error"
+      - "500"
+      - "404"
+    http_status:
+      - 500
+      - 404
+      - 502
+      - 503
+    expected_transitions:
+      - login_page
+      - dashboard
+    recovery_strategy: "retry_with_capture"  # Forensic + retry
+
+  # ============================================================================
+  # UI STATES
+  # ============================================================================
+  
+  popup_modal:
+    description: "Popup/modal dialog overlay"
+    css_selectors:
+      - ".cdk-overlay-container .cdk-overlay-pane"
+      - ".modal.show"
+      - ".popup-overlay"
+      - "div[role='dialog'][aria-modal='true']"
+    expected_transitions:
+      - any  # Can appear on any page
+    recovery_strategy: "dismiss_modal"  # Try to close/dismiss
+
+  # ============================================================================
+  # FALLBACK STATE
+  # ============================================================================
+  
+  unknown:
+    description: "Unknown/unrecognized page state"
+    expected_transitions: []
+    recovery_strategy: "forensic_capture_and_notify"  # Capture + alert
+
+
+# ============================================================================
+# RECOVERY STRATEGIES CONFIGURATION
+# ============================================================================
+
+recovery_strategies:
+  re_login:
+    description: "Automatically re-login with saved credentials"
+    timeout: 30000  # 30 seconds
+    retry_count: 2
+  
+  cloudflare_handler:
+    description: "Handle Cloudflare challenges"
+    timeout: 60000  # 60 seconds
+    retry_count: 3
+  
+  captcha_solver:
+    description: "Attempt automatic CAPTCHA solving"
+    timeout: 120000  # 2 minutes
+    fallback: "notify"  # Notify if fails
+  
+  wait_and_retry:
+    description: "Wait for maintenance to complete"
+    wait_time: 300  # 5 minutes
+    retry_count: 3
+  
+  exponential_backoff:
+    description: "Exponential backoff for rate limiting"
+    base_delay: 2  # seconds
+    max_delay: 300  # 5 minutes
+    retry_count: 5
+  
+  forensic_capture_and_notify:
+    description: "Capture forensic evidence and send notification"
+    capture_screenshot: true
+    capture_html: true
+    capture_network: true
+    notify: true
+  
+  retry_with_capture:
+    description: "Capture forensic evidence and retry"
+    capture_screenshot: true
+    retry_count: 2
+  
+  dismiss_modal:
+    description: "Attempt to dismiss popup/modal"
+    dismiss_selectors:
+      - "button[aria-label='Close']"
+      - "button.close"
+      - ".modal-close"
+      - "button[data-dismiss='modal']"
+    timeout: 5000
+  
+  wait_for_otp:
+    description: "Wait for OTP service to provide code"
+    timeout: 120000  # 2 minutes
+    polling_interval: 5000  # 5 seconds
