@@ -15,6 +15,7 @@ from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
 from web.dependencies import bot_state, verify_jwt_token
 from web.models.bot import BotCommand
+
 router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
 
@@ -28,10 +29,10 @@ BOT_NOT_CONFIGURED_ERROR = {
 async def _get_controller() -> BotController:
     """
     Get the BotController instance.
-    
+
     Returns:
         BotController instance
-        
+
     Raises:
         HTTPException: If controller is not configured
     """
@@ -48,7 +49,7 @@ async def _get_controller() -> BotController:
 async def _sync_bot_state(controller: BotController) -> None:
     """
     Sync real bot status to bot_state dict for WebSocket broadcast compatibility.
-    
+
     Args:
         controller: BotController instance
     """
@@ -342,4 +343,3 @@ async def get_error_screenshot(request: Request, error_id: str, type: str = "ful
                     raise HTTPException(status_code=500, detail="Error accessing screenshot")
 
     raise HTTPException(status_code=404, detail="Screenshot not found")
-

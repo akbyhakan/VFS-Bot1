@@ -73,4 +73,3 @@ class VFSAccount:
             data["vfs_password"] = self.vfs_password
 
         return data
-

@@ -25,10 +25,10 @@ class TestBug1EnvironmentImport:
     def test_environment_import_exists(self):
         """Verify that Environment can be imported."""
         from src.core.security import Environment
-        
+
         assert Environment is not None
-        assert hasattr(Environment, 'current')
-        assert hasattr(Environment, '_DEV_MODE')
+        assert hasattr(Environment, "current")
+        assert hasattr(Environment, "_DEV_MODE")
 
     def test_api_key_manager_loads_salt_in_dev_mode(self):
         """Test that APIKeyManager can load salt in development mode using Environment."""
@@ -36,7 +36,7 @@ class TestBug1EnvironmentImport:
             # Clear the singleton instance to force re-initialization
             APIKeyManager._instance = None
             manager = APIKeyManager()
-            
+
             # This should not raise NameError about Environment not being defined
             salt = manager.get_salt()
             assert salt is not None
@@ -48,7 +48,7 @@ class TestBug1EnvironmentImport:
             # Clear the singleton instance to force re-initialization
             APIKeyManager._instance = None
             manager = APIKeyManager()
-            
+
             # This should raise ValueError about missing salt, not NameError about Environment
             with pytest.raises(ValueError, match="API_KEY_SALT environment variable MUST be set"):
                 manager.get_salt()
@@ -60,34 +60,34 @@ class TestBug2EncryptionKeyLength:
     def test_encryption_key_too_short(self):
         """Test that encryption key shorter than 32 bytes is rejected."""
         import base64
-        
+
         # Create a base64 key that decodes to less than 32 bytes
         short_key = base64.b64encode(b"short").decode()
-        
+
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValidationError) as exc_info:
                 VFSSettings(
                     encryption_key=short_key,
                     api_secret_key="a" * 64,
                 )
-            
+
             error_str = str(exc_info.value)
             assert "must decode to exactly 32 bytes" in error_str
 
     def test_encryption_key_too_long(self):
         """Test that encryption key longer than 32 bytes is rejected."""
         import base64
-        
+
         # Create a base64 key that decodes to more than 32 bytes
         long_key = base64.b64encode(b"a" * 64).decode()
-        
+
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValidationError) as exc_info:
                 VFSSettings(
                     encryption_key=long_key,
                     api_secret_key="a" * 64,
                 )
-            
+
             error_str = str(exc_info.value)
             assert "must decode to exactly 32 bytes" in error_str
 
@@ -95,7 +95,7 @@ class TestBug2EncryptionKeyLength:
         """Test that encryption key of exactly 32 bytes is accepted."""
         # Generate a valid Fernet key (32 bytes)
         valid_key = Fernet.generate_key().decode()
-        
+
         with patch.dict(os.environ, {}, clear=True):
             # This should not raise an error
             settings = VFSSettings(
@@ -107,14 +107,14 @@ class TestBug2EncryptionKeyLength:
     def test_encryption_key_invalid_base64(self):
         """Test that invalid base64 is rejected."""
         invalid_key = "not_valid_base64!!!"
-        
+
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValidationError) as exc_info:
                 VFSSettings(
                     encryption_key=invalid_key,
                     api_secret_key="a" * 64,
                 )
-            
+
             error_str = str(exc_info.value)
             assert "base64" in error_str.lower()
 
@@ -127,11 +127,11 @@ class TestBug3DoubleEncode:
         # Generate a valid Fernet key
         fernet_key = Fernet.generate_key().decode()
         cipher = Fernet(fernet_key)
-        
+
         # Encrypt a test password
         test_password = "my_test_password"
         encrypted_password = cipher.encrypt(test_password.encode()).decode()
-        
+
         with patch.dict(os.environ, {}, clear=True):
             # Create settings with encrypted password
             settings = VFSSettings(
@@ -140,7 +140,7 @@ class TestBug3DoubleEncode:
                 vfs_password=encrypted_password,
                 vfs_password_encrypted=True,
             )
-            
+
             # Password should be decrypted correctly
             decrypted = settings.vfs_password.get_secret_value()
             assert decrypted == test_password
@@ -149,11 +149,11 @@ class TestBug3DoubleEncode:
         """Test that Fernet constructor accepts string without encoding."""
         # Generate a valid Fernet key
         fernet_key = Fernet.generate_key().decode()
-        
+
         # This should work without .encode()
         cipher = Fernet(fernet_key)
         assert cipher is not None
-        
+
         # Verify it can encrypt/decrypt
         test_data = b"test data"
         encrypted = cipher.encrypt(test_data)
@@ -167,13 +167,13 @@ class TestDeadCodeRemoval:
     def test_load_api_keys_function_removed(self):
         """Verify that load_api_keys function no longer exists."""
         import src.core.security as security_module
-        
+
         # The function should not exist
-        assert not hasattr(security_module, 'load_api_keys')
+        assert not hasattr(security_module, "load_api_keys")
 
     def test_load_api_keys_not_in_exports(self):
         """Verify that load_api_keys is not exported from core.__init__."""
         from src.core import __all__
-        
+
         # load_api_keys should not be in the exports
-        assert 'load_api_keys' not in __all__
+        assert "load_api_keys" not in __all__

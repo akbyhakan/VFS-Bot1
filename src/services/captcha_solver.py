@@ -112,14 +112,12 @@ class CaptchaSolver:
 
         for _ in range(total_checks):
             try:
-                token_result = await page.evaluate(
-                    """
+                token_result = await page.evaluate("""
                     () => {
                         const response = document.querySelector('[name="g-recaptcha-response"]');
                         return response ? response.value : null;
                     }
-                """
-                )
+                """)
 
                 token: Optional[str] = token_result if isinstance(token_result, str) else None
                 if token:

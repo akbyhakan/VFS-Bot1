@@ -1,12 +1,7 @@
 """Infrastructure utilities module."""
 
 from .circuit_breaker import CircuitBreaker
-from .monitoring import (
-    MonitoringConfig,
-    PerformanceMonitor,
-    get_monitoring_config,
-    record_metric,
-)
+from .monitoring import filter_sensitive_data, init_sentry
 from .retry import (
     get_captcha_retry,
     get_login_retry,
@@ -14,7 +9,6 @@ from .retry import (
     get_rate_limit_retry,
     get_slot_check_retry,
 )
-from .runners import BotRunner, run_bot_with_monitoring
 from .shutdown import (
     SHUTDOWN_TIMEOUT,
     fast_emergency_cleanup,
@@ -26,7 +20,7 @@ from .shutdown import (
     setup_signal_handlers,
 )
 from .startup import validate_environment, verify_critical_dependencies
-from .startup_validator import StartupValidator
+from .startup_validator import log_security_warnings, validate_production_security
 
 __all__ = [
     "CircuitBreaker",
@@ -37,7 +31,8 @@ __all__ = [
     "get_rate_limit_retry",
     "validate_environment",
     "verify_critical_dependencies",
-    "StartupValidator",
+    "log_security_warnings",
+    "validate_production_security",
     "SHUTDOWN_TIMEOUT",
     "get_shutdown_event",
     "set_shutdown_event",
@@ -46,10 +41,6 @@ __all__ = [
     "graceful_shutdown_with_timeout",
     "safe_shutdown_cleanup",
     "fast_emergency_cleanup",
-    "MonitoringConfig",
-    "PerformanceMonitor",
-    "get_monitoring_config",
-    "record_metric",
-    "BotRunner",
-    "run_bot_with_monitoring",
+    "init_sentry",
+    "filter_sensitive_data",
 ]

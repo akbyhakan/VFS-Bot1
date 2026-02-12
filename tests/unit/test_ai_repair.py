@@ -185,7 +185,9 @@ def test_ai_repair_init_import_error(temp_selectors_file):
         original_import = __builtins__["__import__"]
 
         def mock_import(name, *args, **kwargs):
-            if "google.genai" in name or (name == "google" and len(args) > 0 and "genai" in args[0]):
+            if "google.genai" in name or (
+                name == "google" and len(args) > 0 and "genai" in args[0]
+            ):
                 raise ImportError("No module named 'google.genai'")
             return original_import(name, *args, **kwargs)
 

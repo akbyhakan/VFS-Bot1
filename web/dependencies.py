@@ -39,22 +39,22 @@ security_scheme = HTTPBearer()
 def extract_raw_token(request: Request) -> str:
     """
     Extract raw JWT token from HttpOnly cookie or Authorization header.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Raw JWT token string, or None if not found
     """
     # First, try to get token from HttpOnly cookie (primary method)
     token = request.cookies.get("access_token")
-    
+
     # Fallback to Authorization header
     if not token:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-    
+
     return token
 
 
@@ -70,7 +70,7 @@ async def verify_jwt_token(
 ) -> Dict[str, Any]:
     """
     Verify JWT token from HttpOnly cookie or Authorization header.
-    
+
     Cookie-based authentication is preferred for security (XSS protection).
 
     Args:
@@ -83,9 +83,9 @@ async def verify_jwt_token(
         HTTPException: If token is invalid or missing
     """
     from fastapi import HTTPException
-    
+
     token = extract_raw_token(request)
-    
+
     # If no token found in either location, reject request
     if not token:
         raise HTTPException(
@@ -93,7 +93,7 @@ async def verify_jwt_token(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return await verify_token(token)
 
 
@@ -145,14 +145,14 @@ async def get_payment_repository(db: Database = Depends(get_db)) -> PaymentRepos
 
 
 async def get_appointment_request_repository(
-    db: Database = Depends(get_db)
+    db: Database = Depends(get_db),
 ) -> AppointmentRequestRepository:
     """Get AppointmentRequestRepository instance."""
     return AppointmentRequestRepository(db)
 
 
 async def get_appointment_history_repository(
-    db: Database = Depends(get_db)
+    db: Database = Depends(get_db),
 ) -> AppointmentHistoryRepository:
     """Get AppointmentHistoryRepository instance."""
     return AppointmentHistoryRepository(db)
@@ -164,7 +164,7 @@ async def get_audit_log_repository(db: Database = Depends(get_db)) -> AuditLogRe
 
 
 async def get_token_blacklist_repository(
-    db: Database = Depends(get_db)
+    db: Database = Depends(get_db),
 ) -> TokenBlacklistRepository:
     """Get TokenBlacklistRepository instance."""
     return TokenBlacklistRepository(db)

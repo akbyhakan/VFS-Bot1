@@ -66,8 +66,7 @@ class FingerprintBypass:
         assert config.RGB_SHIFT_MIN <= b_shift <= config.RGB_SHIFT_MAX
         assert config.ALPHA_SHIFT_MIN <= a_shift <= config.ALPHA_SHIFT_MAX
 
-        await page.add_init_script(
-            f"""
+        await page.add_init_script(f"""
             const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
             const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
             const originalToBlob = HTMLCanvasElement.prototype.toBlob;
@@ -112,8 +111,7 @@ class FingerprintBypass:
                 }}
                 return originalToBlob.apply(this, arguments);
             }};
-        """
-        )
+        """)
 
     @staticmethod
     async def _spoof_webgl(page: Page) -> None:
@@ -132,8 +130,7 @@ class FingerprintBypass:
         ]
         vendor, renderer = random.choice(vendors)
 
-        await page.add_init_script(
-            f"""
+        await page.add_init_script(f"""
             const getParameter = WebGLRenderingContext.prototype.getParameter;
             WebGLRenderingContext.prototype.getParameter = function(parameter) {{
                 if (parameter === 37445) {{
@@ -155,8 +152,7 @@ class FingerprintBypass:
                 }}
                 return getParameter2.apply(this, arguments);
             }};
-        """
-        )
+        """)
 
     @staticmethod
     async def _randomize_audio_context(page: Page) -> None:
@@ -164,8 +160,7 @@ class FingerprintBypass:
         # Generate random offset for audio timing
         offset = random.uniform(0.0001, 0.001)
 
-        await page.add_init_script(
-            f"""
+        await page.add_init_script(f"""
             const audioOffset = {offset};
 
             const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
@@ -200,5 +195,4 @@ class FingerprintBypass:
                     window.webkitAudioContext = AudioContextProxy;
                 }}
             }}
-        """
-        )
+        """)

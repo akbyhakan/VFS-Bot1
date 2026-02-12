@@ -113,4 +113,3 @@ class UserRepository(BaseRepository[User]):
     async def hard_delete(self, id: int) -> bool:
         """Permanently delete user from database."""
         return await self._write_repo.hard_delete(id)
-

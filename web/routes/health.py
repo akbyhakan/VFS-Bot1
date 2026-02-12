@@ -11,17 +11,19 @@ from fastapi.responses import PlainTextResponse
 from loguru import logger
 
 from web.dependencies import bot_state, metrics
+
 router = APIRouter(tags=["health"])
 
 
 def get_version() -> str:
     """
     Get application version from centralized source.
-    
+
     Returns:
         Version string
     """
     from src import __version__
+
     return __version__
 
 
@@ -71,7 +73,7 @@ async def health_check() -> Dict[str, Any]:
 
     # Check notification service health
     notification_health = await check_notification_health()
-    
+
     # Check Redis health
     redis_health = await check_redis()
 
@@ -206,7 +208,7 @@ async def detailed_health_check() -> Dict[str, Any]:
 
         # Check external services
         external_services = await check_external_services()
-        
+
         # Check Redis health
         redis_health = await check_redis()
 
@@ -256,7 +258,7 @@ async def detailed_health_check() -> Dict[str, Any]:
 
     # Check external services
     external_services = await check_external_services()
-    
+
     # Check Redis health
     redis_health = await check_redis()
 
@@ -343,47 +345,32 @@ async def check_database() -> Dict[str, Any]:
 async def check_redis() -> Dict[str, Any]:
     """
     Check Redis connectivity and health.
-    
+
     Returns:
         Dictionary with Redis status, backend info, and optional latency
     """
     redis_url = os.getenv("REDIS_URL")
-    
+
     if not redis_url:
-        return {
-            "status": "not_configured",
-            "backend": "in-memory"
-        }
-    
+        return {"status": "not_configured", "backend": "in-memory"}
+
     try:
         import redis
-        
+
         start_time = time.time()
         client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
-        
+
         # Test connection with PING
         result = client.ping()
         latency_ms = (time.time() - start_time) * 1000
-        
+
         if result:
-            return {
-                "status": "healthy",
-                "backend": "redis",
-                "latency_ms": round(latency_ms, 2)
-            }
+            return {"status": "healthy", "backend": "redis", "latency_ms": round(latency_ms, 2)}
         else:
-            return {
-                "status": "unhealthy",
-                "backend": "redis",
-                "error": "PING returned False"
-            }
+            return {"status": "unhealthy", "backend": "redis", "error": "PING returned False"}
     except Exception as e:
         logger.error(f"Redis health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "backend": "redis",
-            "error": str(e)
-        }
+        return {"status": "unhealthy", "backend": "redis", "error": str(e)}
 
 
 async def check_encryption() -> Dict[str, Any]:

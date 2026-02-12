@@ -10,11 +10,11 @@ from src.utils.log_sanitizer import sanitize_log_value
 
 # Comprehensive localhost detection pattern
 _LOCALHOST_PATTERN = re.compile(
-    r'^https?://'
-    r'(localhost(\.|:|/|$)|127\.0\.0\.1|(\[::1\]|::1)|0\.0\.0\.0)'
-    r'(:\d+)?'
-    r'(/.*)?$',
-    re.IGNORECASE
+    r"^https?://"
+    r"(localhost(\.|:|/|$)|127\.0\.0\.1|(\[::1\]|::1)|0\.0\.0\.0)"
+    r"(:\d+)?"
+    r"(/.*)?$",
+    re.IGNORECASE,
 )
 
 
@@ -39,13 +39,13 @@ def _is_localhost_origin(origin: str) -> bool:
     """Check if origin is a localhost variant (including IPv6)."""
     # Check for localhost subdomains and variations
     # Extract hostname after protocol to avoid false positives
-    if '://' in origin:
+    if "://" in origin:
         # Extract the part after protocol (hostname and possibly port/path)
-        after_protocol = origin.split('://', 1)[1]
+        after_protocol = origin.split("://", 1)[1]
         # Extract just the hostname (before port or path)
-        hostname = after_protocol.split(':')[0].split('/')[0].lower()
+        hostname = after_protocol.split(":")[0].split("/")[0].lower()
         # Check if hostname starts with 'localhost.' or ends with '.localhost'
-        if hostname.startswith('localhost.') or hostname.endswith('.localhost'):
+        if hostname.startswith("localhost.") or hostname.endswith(".localhost"):
             return True
     return bool(_LOCALHOST_PATTERN.match(origin))
 

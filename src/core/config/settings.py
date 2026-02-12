@@ -150,7 +150,7 @@ class VFSSettings(BaseSettings):
         import base64
 
         key_value = v.get_secret_value()
-        
+
         # Try URL-safe base64 first (Fernet standard), then regular base64
         decoded = None
         try:
@@ -160,14 +160,14 @@ class VFSSettings(BaseSettings):
                 decoded = base64.b64decode(key_value)
             except Exception:
                 raise ValueError("ENCRYPTION_KEY must be a valid base64-encoded string")
-        
+
         # Check length after successful decode
         if len(decoded) != 32:
             raise ValueError(
                 f"ENCRYPTION_KEY must decode to exactly 32 bytes, got {len(decoded)}. "
-                "Generate a valid key with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'Generate a valid key with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
-        
+
         return v
 
     @field_validator("env")

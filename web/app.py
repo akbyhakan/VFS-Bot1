@@ -52,11 +52,11 @@ async def lifespan(app: FastAPI):
         # Ensure database is connected
         db = await DatabaseFactory.ensure_connected()
         logger.info("Database connection established via DatabaseFactory")
-        
+
         # Initialize persistent token blacklist with database
         init_token_blacklist(db)
         logger.info("Token blacklist initialized with database persistence")
-        
+
         # Load existing blacklisted tokens from database
         # Non-critical: Allow app to start even if loading fails
         try:
@@ -98,23 +98,19 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error closing DatabaseFactory: {e}")
 
 
-
-def create_app(
-    run_security_validation: bool = True,
-    env_override: Optional[str] = None
-) -> FastAPI:
+def create_app(run_security_validation: bool = True, env_override: Optional[str] = None) -> FastAPI:
     """
     Factory function to create FastAPI application instance.
-    
+
     Args:
         run_security_validation: Whether to run security warnings check (default: True)
         env_override: Override environment name for testing (default: None)
-    
+
     Returns:
         Configured FastAPI application instance
     """
     from web.cors import get_validated_environment
-    
+
     # Determine environment for OpenAPI configuration
     env = env_override if env_override is not None else get_validated_environment()
     _is_dev = env in ("development", "dev", "local", "testing", "test")
@@ -284,7 +280,7 @@ API endpoints are rate-limited to prevent abuse:
     app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
     app.include_router(health_router)  # /health, /ready, /metrics
     app.include_router(dashboard_router)  # /errors.html
-    
+
     # Setup versioned API routes (v1)
     setup_versioned_routes(app)
 

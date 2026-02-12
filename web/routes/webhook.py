@@ -10,6 +10,7 @@ from src.repositories import UserRepository, WebhookRepository
 from src.services.otp_webhook import get_otp_service
 from src.utils.webhook_utils import verify_webhook_signature
 from web.dependencies import get_user_repository, get_webhook_repository, verify_jwt_token
+
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
 # OTP field priority order for webhook payloads

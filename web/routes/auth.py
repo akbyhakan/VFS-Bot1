@@ -14,6 +14,7 @@ from src.core.security import generate_api_key
 from src.models.database import Database
 from web.dependencies import extract_raw_token, get_db, verify_jwt_token
 from web.models.auth import LoginRequest, TokenResponse
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
@@ -21,10 +22,10 @@ limiter = Limiter(key_func=get_remote_address)
 async def _is_admin_secret_consumed(db: Database) -> bool:
     """
     Check if admin secret has been consumed (multi-worker safe).
-    
+
     Args:
         db: Database instance
-        
+
     Returns:
         True if admin secret has been consumed, False otherwise
     """
@@ -38,16 +39,14 @@ async def _is_admin_secret_consumed(db: Database) -> bool:
 async def _mark_admin_secret_consumed(db: Database) -> None:
     """
     Mark admin secret as consumed (multi-worker safe).
-    
+
     Args:
         db: Database instance
     """
     async with db.get_connection() as conn:
-        await conn.execute(
-            """INSERT INTO admin_secret_usage (id, consumed, consumed_at)
+        await conn.execute("""INSERT INTO admin_secret_usage (id, consumed, consumed_at)
                VALUES (1, true, NOW())
-               ON CONFLICT (id) DO UPDATE SET consumed = true, consumed_at = NOW()"""
-        )
+               ON CONFLICT (id) DO UPDATE SET consumed = true, consumed_at = NOW()""")
 
 
 @router.post("/generate-key")
@@ -77,9 +76,9 @@ async def create_api_key_endpoint(
         logger.warning(f"Attempt to reuse consumed admin secret from {client_ip}")
         raise HTTPException(
             status_code=403,
-            detail="Admin secret already used. Set a new ADMIN_SECRET in .env and restart the application to generate another key."
+            detail="Admin secret already used. Set a new ADMIN_SECRET in .env and restart the application to generate another key.",
         )
-    
+
     admin_secret = os.getenv("ADMIN_SECRET")
     if not admin_secret:
         raise HTTPException(status_code=500, detail="Server configuration error")
@@ -89,14 +88,14 @@ async def create_api_key_endpoint(
         raise HTTPException(status_code=403, detail="Invalid admin secret")
 
     new_key = generate_api_key()
-    
+
     # Mark admin secret as consumed (multi-worker safe)
     await _mark_admin_secret_consumed(db)
     logger.info("Admin secret consumed - one-time use enforced")
-    
+
     return {
         "api_key": new_key,
-        "note": "Save this key securely! It will not be shown again. The admin secret is now invalidated and cannot be used again."
+        "note": "Save this key securely! It will not be shown again. The admin secret is now invalidated and cannot be used again.",
     }
 
 
@@ -165,7 +164,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
     # Set HttpOnly cookie for security (primary auth method)
     settings = get_settings()
     is_production = settings.is_production()
-    
+
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -183,13 +182,11 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
 
 @router.post("/logout")
 async def logout(
-    request: Request,
-    response: Response,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Logout endpoint - clears the HttpOnly cookie and revokes the token.
-    
+
     Requires authentication to prevent unauthorized cookie manipulation.
 
     Args:
@@ -203,7 +200,7 @@ async def logout(
     # Revoke the JWT token to prevent reuse via Authorization header
     # Use shared helper to extract token consistently
     token = extract_raw_token(request)
-    
+
     if token:
         try:
             await revoke_token(token)
@@ -215,8 +212,8 @@ async def logout(
                 f"Failed to revoke token during logout for user {token_data.get('sub', 'unknown')}: "
                 f"{e.detail}"
             )
-    
+
     # Clear the access_token cookie
     response.delete_cookie(key="access_token", path="/")
-    
+
     return {"message": "Logged out successfully"}

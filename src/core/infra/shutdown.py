@@ -13,7 +13,7 @@ from typing import Optional
 
 from loguru import logger
 
-from .exceptions import ShutdownTimeoutError
+from src.core.exceptions import ShutdownTimeoutError
 
 # Graceful shutdown timeout in seconds (configurable via env)
 try:
