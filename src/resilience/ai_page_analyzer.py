@@ -304,7 +304,7 @@ Return a JSON object with:
 
         try:
             # Limit HTML size to avoid token limits
-            max_html_size = getattr(Resilience, "AI_REPAIR_MAX_HTML_SIZE", 50000)
+            max_html_size = Resilience.AI_PAGE_ANALYZER_MAX_HTML_SIZE
             if len(html_content) > max_html_size:
                 html_content = html_content[:max_html_size]
                 logger.debug(f"HTML truncated to {max_html_size} characters")

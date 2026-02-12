@@ -133,12 +133,26 @@ class LearnedStateStore:
                 # Extract ID or class from selector for simple matching
                 if "#" in selector:
                     id_match = re.search(r'#([\w-]+)', selector)
-                    if id_match and f'id="{id_match.group(1)}"' in html:
-                        selector_matches += 1
+                    if id_match:
+                        id_value = id_match.group(1)
+                        # Match various HTML attribute formats
+                        if re.search(
+                            rf'id\s*=\s*["\']?{re.escape(id_value)}["\']?',
+                            html,
+                            re.IGNORECASE,
+                        ):
+                            selector_matches += 1
                 elif "." in selector:
                     class_match = re.search(r'\.([\w-]+)', selector)
-                    if class_match and f'class="{class_match.group(1)}"' in html:
-                        selector_matches += 1
+                    if class_match:
+                        class_value = class_match.group(1)
+                        # Match class value anywhere in class attribute
+                        if re.search(
+                            rf'class\s*=\s*["\'][^"\']*\b{re.escape(class_value)}\b[^"\']*["\']',
+                            html,
+                            re.IGNORECASE,
+                        ):
+                            selector_matches += 1
             if selector_matches > 0:
                 score += min(selector_matches / len(css_selectors), 1.0)
 

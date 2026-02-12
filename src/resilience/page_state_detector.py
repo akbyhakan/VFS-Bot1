@@ -701,11 +701,10 @@ class PageStateDetector:
         """Handle unknown state with AI-powered learning."""
         logger.error("❌ Unknown page state detected")
         
-        url = page.url
-        
         # Step 1: Check learned states first
         if self.learned_store:
             try:
+                url = page.url
                 html_content = await page.content()
                 learned = self.learned_store.get_learned_action(url, html_content)
                 if learned:
@@ -737,6 +736,7 @@ class PageStateDetector:
         # Step 2: Ask AI to analyze the page
         if self.ai_analyzer:
             try:
+                url = page.url
                 # Capture screenshot for forensic evidence
                 screenshot_path = None
                 if self.forensic_logger:
@@ -823,6 +823,8 @@ class PageStateDetector:
 
         # Step 6: Fallback - original abort behavior
         logger.error("❌ Unable to handle unknown state, aborting")
+        
+        url = page.url
 
         # Capture forensic evidence (if not already captured)
         if self.forensic_logger and not self.ai_analyzer:
