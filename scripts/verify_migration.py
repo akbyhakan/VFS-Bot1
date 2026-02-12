@@ -51,6 +51,9 @@ FULLY_MIGRATED = [
     # Note: src/services/vfs/models.py excluded - no logging needed (only data structures)
     "src/services/vfs/encryption.py",
     "src/services/vfs/client.py",
+    "src/services/vfs/auth.py",
+    "src/services/vfs/slots.py",
+    "src/services/vfs/booking.py",
     "src/services/slot_analyzer.py",
     "src/services/email_otp_handler.py",
     "src/selector/manager.py",

@@ -1,24 +1,16 @@
 """VFS API Client - Main client implementation."""
 
-import asyncio
-import os
 import secrets
 import time
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import aiohttp
 from loguru import logger
 
-from ...core.countries import SOURCE_COUNTRY_CODE, get_country_info, get_route, validate_mission_code
-from ...core.exceptions import (
-    VFSAuthenticationError,
-    VFSRateLimitError,
-    VFSSessionExpiredError,
-)
+from ...core.countries import get_country_info, get_route, validate_mission_code
 from ...utils.security.endpoint_rate_limiter import EndpointRateLimiter
-from ...utils.token_utils import calculate_effective_expiry
-from .encryption import VFSPasswordEncryption, get_vfs_api_base
+from .auth import VFSAuth
+from .booking import VFSBooking
 from .models import (
     BookingResponse,
     CentreInfo,
@@ -27,6 +19,7 @@ from .models import (
     VisaCategoryInfo,
     VisaSubcategoryInfo,
 )
+from .slots import VFSSlots
 
 
 class VFSApiClient:
@@ -53,15 +46,28 @@ class VFSApiClient:
         self.captcha_solver = captcha_solver
         self.timeout = timeout
 
-        self.session: Optional[VFSSession] = None
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._client_source: Optional[str] = None
-        self._is_refreshing = False  # Guard flag for token refresh
-        self._refresh_complete_event = asyncio.Event()  # Signal when refresh completes
-        self._refresh_complete_event.set()  # Initially set (no refresh in progress)
 
         # Per-endpoint rate limiter (Issue 3.4)
         self.endpoint_limiter = EndpointRateLimiter()
+
+        # Initialize modular components
+        self._auth = VFSAuth(
+            mission_code=mission_code,
+            endpoint_limiter=self.endpoint_limiter,
+            http_session_getter=lambda: self._session,
+        )
+        self._slots = VFSSlots(
+            endpoint_limiter=self.endpoint_limiter,
+            http_session_getter=lambda: self._session,
+            ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+        )
+        self._booking = VFSBooking(
+            endpoint_limiter=self.endpoint_limiter,
+            http_session_getter=lambda: self._session,
+            ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+        )
 
         logger.info(
             f"VFSApiClient initialized for {self.country_info.name_en} "
@@ -137,6 +143,16 @@ class VFSApiClient:
             raise RuntimeError("HTTP session not initialized. Call _init_http_session() first.")
         return self._http_session
 
+    @property
+    def session(self) -> Optional[VFSSession]:
+        """Get current session (for backward compatibility)."""
+        return self._auth.session
+
+    @session.setter
+    def session(self, value: Optional[VFSSession]) -> None:
+        """Set session (for backward compatibility)."""
+        self._auth.session = value
+
     async def login(self, email: str, password: str, turnstile_token: str) -> VFSSession:
         """
         Login to VFS Global.
@@ -153,66 +169,7 @@ class VFSApiClient:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
         await self._init_http_session()
-
-        # Apply rate limiting for login endpoint
-        await self.endpoint_limiter.acquire("login")
-
-        encrypted_password = VFSPasswordEncryption.encrypt(password)
-
-        payload = {
-            "username": email,
-            "password": encrypted_password,
-            "missioncode": self.mission_code,
-            "countrycode": SOURCE_COUNTRY_CODE,
-            "captcha_version": "cloudflare-v1",
-            "captcha_api_key": turnstile_token,
-        }
-
-        logger.info(f"Logging in to VFS for mission: {self.mission_code}")
-
-        async with self._session.post(
-            f"{get_vfs_api_base()}/user/login",
-            data=payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        ) as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("login", retry_after)
-                logger.error(f"Rate limited by VFS on login (429), retry after {retry_after}s")
-                raise VFSRateLimitError(
-                    f"Rate limited on login endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            if response.status != 200:
-                error_text = await response.text()
-                logger.error(f"Login failed: {response.status}")
-                logger.debug(f"Error details: {error_text[:200]}...")
-                raise VFSAuthenticationError(f"Login failed with status {response.status}")
-
-            data = await response.json()
-
-            # Calculate token expiration time
-            # VFS tokens typically expire after 1 hour, but we add buffer for safety
-            token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
-            expires_in = data.get("expiresIn", 60)
-            effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
-            expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
-
-            self.session = VFSSession(
-                access_token=data["accessToken"],
-                refresh_token=data.get("refreshToken", ""),
-                expires_at=expires_at,
-                user_id=data.get("userId", ""),
-                email=email,
-            )
-
-            # Update session headers with auth token
-            self._session.headers.update({"Authorization": f"Bearer {self.session.access_token}"})
-
-            logger.info(f"Login successful for {email[:3]}***")
-            return self.session
+        return await self._auth.login(email, password, turnstile_token)
 
     async def get_centres(self) -> List[CentreInfo]:
         """
@@ -224,26 +181,7 @@ class VFSApiClient:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
-        await self._ensure_authenticated()
-
-        # Apply rate limiting for centres endpoint
-        await self.endpoint_limiter.acquire("centres")
-
-        async with self._session.get(f"{get_vfs_api_base()}/master/center") as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("centres", retry_after)
-                logger.error(f"Rate limited by VFS on centres (429), retry after {retry_after}s")
-                raise VFSRateLimitError(
-                    f"Rate limited on centres endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            data = await response.json()
-            logger.info(f"Retrieved {len(data)} centres")
-            result: List[CentreInfo] = data
-            return result
+        return await self._slots.get_centres()
 
     async def get_visa_categories(self, centre_id: str) -> List[VisaCategoryInfo]:
         """
@@ -258,29 +196,7 @@ class VFSApiClient:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
-        await self._ensure_authenticated()
-
-        # Apply rate limiting for centres endpoint
-        await self.endpoint_limiter.acquire("centres")
-
-        async with self._session.get(
-            f"{get_vfs_api_base()}/master/visacategory", params={"centerId": centre_id}
-        ) as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("centres", retry_after)
-                logger.error(
-                    f"Rate limited by VFS on visa categories (429), retry after {retry_after}s"
-                )
-                raise VFSRateLimitError(
-                    f"Rate limited on visa categories endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            data = await response.json()
-            result: List[VisaCategoryInfo] = data
-            return result
+        return await self._slots.get_visa_categories(centre_id)
 
     async def get_visa_subcategories(
         self, centre_id: str, category_id: str
@@ -298,31 +214,7 @@ class VFSApiClient:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
-        await self._ensure_authenticated()
-
-        # Apply rate limiting for centres endpoint
-        await self.endpoint_limiter.acquire("centres")
-
-        async with self._session.get(
-            f"{get_vfs_api_base()}/master/subvisacategory",
-            params={"centerId": centre_id, "visaCategoryId": category_id},
-        ) as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("centres", retry_after)
-                logger.error(
-                    f"Rate limited by VFS on visa subcategories (429), "
-                    f"retry after {retry_after}s"
-                )
-                raise VFSRateLimitError(
-                    f"Rate limited on visa subcategories endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            data = await response.json()
-            result: List[VisaSubcategoryInfo] = data
-            return result
+        return await self._slots.get_visa_subcategories(centre_id, category_id)
 
     async def check_slot_availability(
         self, centre_id: str, category_id: str, subcategory_id: str
@@ -341,50 +233,7 @@ class VFSApiClient:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
-        await self._ensure_authenticated()
-
-        # Apply rate limiting for slot check endpoint
-        await self.endpoint_limiter.acquire("slot_check")
-
-        params = {
-            "centerId": centre_id,
-            "visaCategoryId": category_id,
-            "subVisaCategoryId": subcategory_id,
-        }
-
-        async with self._session.get(
-            f"{get_vfs_api_base()}/appointment/slots", params=params
-        ) as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("slot_check", retry_after)
-                logger.error(f"Rate limited by VFS on slot check (429), retry after {retry_after}s")
-                raise VFSRateLimitError(
-                    f"Rate limited on slot check endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            if response.status != 200:
-                return SlotAvailability(
-                    available=False,
-                    dates=[],
-                    centre_id=centre_id,
-                    category_id=category_id,
-                    message=f"API error: {response.status}",
-                )
-
-            data = await response.json()
-
-            available_dates = data.get("availableDates", [])
-
-            return SlotAvailability(
-                available=len(available_dates) > 0,
-                dates=available_dates,
-                centre_id=centre_id,
-                category_id=category_id,
-                message=data.get("message"),
-            )
+        return await self._slots.check_slot_availability(centre_id, category_id, subcategory_id)
 
     async def book_appointment(
         self, slot_date: str, slot_time: str, applicant_data: Dict[str, Any]
@@ -403,123 +252,7 @@ class VFSApiClient:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
-        await self._ensure_authenticated()
-
-        # Apply rate limiting for booking endpoint
-        await self.endpoint_limiter.acquire("booking")
-
-        payload = {"appointmentDate": slot_date, "appointmentTime": slot_time, **applicant_data}
-
-        async with self._session.post(
-            f"{get_vfs_api_base()}/appointment/applicants", json=payload
-        ) as response:
-            # Handle 429 rate limiting
-            if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                self.endpoint_limiter.on_rate_limited("booking", retry_after)
-                logger.error(f"Rate limited by VFS on booking (429), retry after {retry_after}s")
-                raise VFSRateLimitError(
-                    f"Rate limited on booking endpoint. Retry after {retry_after}s",
-                    wait_time=retry_after,
-                )
-
-            data = await response.json()
-
-            if response.status == 200:
-                logger.info(f"Appointment booked: {slot_date} {slot_time}")
-            else:
-                logger.error(f"Booking failed: {data}")
-
-            result: BookingResponse = data
-            return result
-
-    async def _ensure_authenticated(self) -> None:
-        """
-        Ensure we have a valid session.
-
-        Raises:
-            VFSSessionExpiredError: If session is not valid or has expired
-        """
-        if not self.session:
-            raise VFSSessionExpiredError("Not authenticated. Call login() first.")
-
-        # Check if token has expired or is about to expire
-        if datetime.now(timezone.utc) >= self.session.expires_at:
-            logger.warning("Token has expired, attempting refresh")
-            await self._refresh_token()
-
-    async def _refresh_token(self) -> None:
-        """
-        Refresh the authentication token with guard against concurrent refresh.
-
-        Raises:
-            VFSAuthenticationError: If token refresh fails or already in progress
-        """
-        if self._is_refreshing:
-            logger.warning("Token refresh already in progress, waiting for completion...")
-            # Wait for ongoing refresh to complete (with timeout)
-            try:
-                await asyncio.wait_for(self._refresh_complete_event.wait(), timeout=10.0)
-                # Check if session is now valid
-                if self.session and datetime.now(timezone.utc) < self.session.expires_at:
-                    logger.info("Token refresh completed by another caller")
-                    return  # Another refresh completed successfully
-                else:
-                    raise VFSAuthenticationError("Token refresh completed but session invalid")
-            except asyncio.TimeoutError:
-                raise VFSAuthenticationError(
-                    "Token refresh timeout - another refresh taking too long"
-                )
-
-        # Clear the event to signal refresh in progress
-        self._refresh_complete_event.clear()
-        self._is_refreshing = True
-
-        try:
-            if not self.session or not self.session.refresh_token:
-                raise VFSAuthenticationError(
-                    "Cannot refresh token: No refresh token available. Please login again."
-                )
-
-            async with self._session.post(
-                f"{get_vfs_api_base()}/user/refresh",
-                json={"refreshToken": self.session.refresh_token},
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Token refresh failed: {response.status} - {error_text}")
-                    raise VFSAuthenticationError(
-                        f"Token refresh failed with status {response.status}"
-                    )
-
-                data = await response.json()
-
-                # Update session with new tokens
-                token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
-                expires_in = data.get("expiresIn", 60)
-                effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
-
-                self.session.access_token = data["accessToken"]
-                self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now(timezone.utc) + timedelta(
-                    minutes=effective_expiry
-                )
-
-                # Update session headers with new auth token
-                self._session.headers.update(
-                    {"Authorization": f"Bearer {self.session.access_token}"}
-                )
-
-                logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
-
-        except Exception as e:
-            logger.error(f"Token refresh failed: {e}")
-            if isinstance(e, VFSAuthenticationError):
-                raise
-            raise VFSSessionExpiredError(f"Token refresh failed: {e}")
-        finally:
-            self._is_refreshing = False
-            self._refresh_complete_event.set()  # Signal completion
+        return await self._booking.book_appointment(slot_date, slot_time, applicant_data)
 
     async def solve_turnstile(self, page_url: str, site_key: str) -> str:
         """

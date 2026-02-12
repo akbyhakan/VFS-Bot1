@@ -1,5 +1,7 @@
 """VFS API Client - Modular package for VFS Global API integration."""
 
+from src.services.vfs.auth import VFSAuth
+from src.services.vfs.booking import VFSBooking
 from src.services.vfs.client import VFSApiClient
 from src.services.vfs.encryption import (
     VFSPasswordEncryption,
@@ -15,9 +17,13 @@ from src.services.vfs.models import (
     VisaCategoryInfo,
     VisaSubcategoryInfo,
 )
+from src.services.vfs.slots import VFSSlots
 
 __all__ = [
     "VFSApiClient",
+    "VFSAuth",
+    "VFSSlots",
+    "VFSBooking",
     "VFSPasswordEncryption",
     "VFSSession",
     "SlotAvailability",
