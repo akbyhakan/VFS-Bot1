@@ -85,7 +85,6 @@ FULLY_MIGRATED = [
 SPECIAL_CASES = {
     "src/core/retry.py": "stdlib logging for tenacity",
     "src/core/monitoring.py": "stdlib logging for Sentry",
-    "src/utils/request_context.py": "stdlib logging for Filter/Logger classes",
 }
 
 def check_file(filepath):
@@ -145,24 +144,14 @@ for filepath, reason in SPECIAL_CASES.items():
     
     has_loguru, has_stdlib, has_getlogger = check_file(filepath)
     
-    # Special cases should have BOTH loguru and stdlib (except request_context)
-    if filepath == "src/utils/request_context.py":
-        # This one should NOT have loguru (only stdlib)
-        if has_loguru:
-            status = "⚠️ "
-            msg = f"Unexpectedly has loguru ({reason})"
-        else:
-            status = "✅"
-            msg = f"Correctly kept stdlib only ({reason})"
+    # Special cases should have BOTH loguru and stdlib
+    if has_loguru and has_stdlib:
+        status = "✅"
+        msg = f"Correctly has both ({reason})"
     else:
-        # retry.py and monitoring.py should have BOTH
-        if has_loguru and has_stdlib:
-            status = "✅"
-            msg = f"Correctly has both ({reason})"
-        else:
-            status = "❌"
-            msg = f"Missing loguru or stdlib ({reason})"
-            issues.append(f"{filepath}: {msg}")
+        status = "❌"
+        msg = f"Missing loguru or stdlib ({reason})"
+        issues.append(f"{filepath}: {msg}")
     
     print(f"{status} {filepath:60} {msg}")
 
