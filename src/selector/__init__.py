@@ -6,6 +6,7 @@ This module consolidates all selector-related functionality including:
 - Health monitoring and self-healing capabilities
 """
 
+from src.resilience import ResilienceManager
 from src.selector.ai_repair import AISelectorRepair
 from src.selector.learning import SelectorLearner
 from src.selector.manager import CountryAwareSelectorManager, get_selector_manager
@@ -23,4 +24,5 @@ __all__ = [
     "SelectorHealthCheck",
     "AISelectorRepair",
     "SelectorSelfHealing",
+    "ResilienceManager",
 ]

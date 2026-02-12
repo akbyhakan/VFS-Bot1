@@ -50,6 +50,7 @@ class BookingWorkflow:
         human_sim: Optional[HumanSimulator] = None,
         error_capture: Optional[ErrorCapture] = None,
         alert_service: Optional[Any] = None,
+        resilience_manager: Optional[Any] = None,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -68,6 +69,7 @@ class BookingWorkflow:
             human_sim: Optional human simulator for anti-detection
             error_capture: Optional error capture instance for detailed error diagnostics
             alert_service: Optional AlertService for critical notifications
+            resilience_manager: Optional ResilienceManager for advanced error handling
         """
         self.config = config
         self.db = db
@@ -82,6 +84,7 @@ class BookingWorkflow:
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
         self.alert_service = alert_service
+        self.resilience_manager = resilience_manager
 
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
@@ -255,15 +258,28 @@ class BookingWorkflow:
         """
         if self.config["bot"].get("screenshot_on_error", True):
             try:
-                await self.error_capture.capture(
-                    page,
-                    error,
-                    context={
-                        "step": step,
-                        "user_id": f"user_{user_id}",
-                        "email": masked_email,
-                    },
-                )
+                # Use resilience_manager's forensic logger if available
+                if self.resilience_manager:
+                    await self.resilience_manager.forensic_logger.capture_incident(
+                        page,
+                        error,
+                        context={
+                            "step": step,
+                            "user_id": f"user_{user_id}",
+                            "email": masked_email,
+                        },
+                    )
+                else:
+                    # Fall back to legacy error_capture
+                    await self.error_capture.capture(
+                        page,
+                        error,
+                        context={
+                            "step": step,
+                            "user_id": f"user_{user_id}",
+                            "email": masked_email,
+                        },
+                    )
             except Exception as capture_error:
                 logger.error(f"Failed to capture error: {capture_error}")
 
