@@ -15,6 +15,14 @@ src/services/bot/
 ├── slot_checker.py                # Slot availability (~133 lines)
 ├── circuit_breaker_service.py     # Fault tolerance (~141 lines)
 └── error_handler.py               # Error capture & screenshots (~131 lines)
+
+src/resilience/                    # Anti-fragile resilience system
+├── __init__.py                    # Resilience exports
+├── manager.py                     # ResilienceManager orchestrator
+├── hot_reload.py                  # HotReloadableSelectorManager
+├── forensic_logger.py             # ForensicLogger (black box)
+├── smart_wait.py                  # SmartWait (3-stage pipeline)
+└── ai_repair_v2.py                # AIRepairV2 (structured output)
 ```
 
 ## 🎯 Component Responsibilities
@@ -103,15 +111,101 @@ src/services/bot/
   - State checkpointing
   - Error context logging
 
+## 🛡️ Resilience Module (`src/resilience/`)
+
+The resilience module provides an anti-fragile system for handling VFS Global frontend changes.
+
+### 7. **ResilienceManager** (Central Orchestrator)
+- **File**: `manager.py`
+- **Responsibility**: Coordinate all resilience features
+- **Lines**: ~200
+- **Key Methods**:
+  - `start()` / `stop()` - Lifecycle management
+  - `find_element()` - 3-stage selector resolution
+  - `safe_click()`, `safe_fill()`, `safe_select()` - Convenience methods
+  - `reload_selectors()` - Manual selector reload
+  - `get_status()` - Status reporting
+- **Features**:
+  - Country-aware selector management
+  - Hot-reload integration
+  - Forensic logging on failures
+  - AI-powered repair
+  - Learning-based optimization
+
+### 8. **HotReloadableSelectorManager**
+- **File**: `hot_reload.py`
+- **Responsibility**: File-polling based selector hot-reload
+- **Lines**: ~150
+- **Parent**: Extends `CountryAwareSelectorManager`
+- **Key Methods**:
+  - `start_watching()` / `stop_watching()` - File watcher lifecycle
+  - `_has_file_changed()` - Change detection
+  - `get_status()` - Watcher status
+- **Features**:
+  - File polling (mtime/size change detection)
+  - Configurable poll interval (default: 5s)
+  - Reload counter for monitoring
+  - Country-aware selector inheritance
+
+### 9. **ForensicLogger** (Black Box)
+- **File**: `forensic_logger.py`
+- **Responsibility**: Country-aware incident capture
+- **Lines**: ~300
+- **Key Methods**:
+  - `capture_incident()` - Comprehensive error capture
+  - `get_recent_incidents()` - Retrieve recent errors
+  - `get_incident_by_id()` - Specific incident lookup
+  - `get_status()` - Logger metrics
+- **Features**:
+  - Directory structure: `logs/errors/{country}/{date}/{incident_id}_*`
+  - Full-page screenshots
+  - Raw DOM dumps (with size limits)
+  - Masked context JSON (cookies, localStorage, sessionStorage)
+  - Automatic cleanup (max incidents limit)
+  - Traceback capture
+
+### 10. **SmartWait** (3-Stage Pipeline)
+- **File**: `smart_wait.py`
+- **Responsibility**: Intelligent selector resolution
+- **Lines**: ~250
+- **Key Methods**:
+  - `find_element()` - Main pipeline entry point
+  - `_try_semantic_locator()` - Stage 1 (semantic)
+  - `_try_css_selectors()` - Stage 2 (CSS with backoff)
+  - `_try_ai_repair()` - Stage 3 (AI-powered)
+- **Features**:
+  - **Stage 1**: Playwright semantic locators (role, label, text, placeholder)
+  - **Stage 2**: CSS selectors with exponential backoff retry
+  - **Stage 3**: AI repair with validation
+  - Learning integration (success/failure tracking)
+  - Forensic logging on total failure
+
+### 11. **AIRepairV2** (Structured Output)
+- **File**: `ai_repair_v2.py`
+- **Responsibility**: AI-powered selector suggestions
+- **Lines**: ~350
+- **Key Methods**:
+  - `repair_selector()` - Get AI suggestion with structured output
+  - `persist_to_yaml()` - Auto-update selectors YAML
+  - `_sanitize_html()` - Remove sensitive data
+- **Features**:
+  - Pydantic `RepairResult` model for structured output
+  - JSON schema validation
+  - Confidence filtering (threshold: 0.7)
+  - HTML sanitization (scripts, values, tokens)
+  - Graceful degradation when GenAI unavailable
+  - Configurable model and temperature
+
 ## 📊 Metrics
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| **Files** | 1 | 7 | Better organization |
+| **Files** | 1 | 12 | Better organization |
 | **Main Class Lines** | 860 | 460 | 46.5% reduction |
 | **Responsibilities** | 7 in 1 class | 1 per class | SRP compliant |
 | **Test Isolation** | Low | High | Easy mocking |
 | **Coupling** | Tight | Loose | Independent components |
+| **Resilience** | Partial | Unified | Anti-fragile system |
 
 ## 🔄 Migration Guide
 
@@ -121,6 +215,32 @@ from src.services.bot import VFSBot
 
 # Same interface, modular implementation
 bot = VFSBot(config, db, notifier)
+```
+
+### Using Resilience Manager
+```python
+from src.resilience import ResilienceManager
+
+# Initialize with country-aware configuration
+resilience = ResilienceManager(
+    country_code="fra",
+    enable_ai_repair=True,
+    enable_hot_reload=True,
+)
+
+# Lifecycle
+await resilience.start()
+
+# Use resilience features
+locator = await resilience.find_element(page, "login.email_input")
+await resilience.safe_click(page, "login.submit_button")
+await resilience.safe_fill(page, "login.email", "user@example.com")
+
+# Manual reload
+resilience.reload_selectors()
+
+# Cleanup
+await resilience.stop()
 ```
 
 ### Using Individual Components
@@ -153,6 +273,8 @@ if await circuit_breaker.is_available():
 6. **Backward Compatibility**: Existing code continues to work
 7. **Type Safety**: Full type hints throughout
 8. **Documentation**: Comprehensive docstrings
+9. **Anti-Fragile**: System benefits from UI changes (learning + forensics)
+10. **Country-Aware**: All resilience features respect country configuration
 
 ## 🧪 Testing
 
@@ -170,13 +292,25 @@ async def test_circuit_breaker():
     assert stats["consecutive_errors"] == 1
 ```
 
+Resilience tests:
+```python
+from src.resilience import ResilienceManager, ForensicLogger
+
+async def test_forensic_capture():
+    logger = ForensicLogger(country_code="fra")
+    incident = await logger.capture_incident(page, error, context)
+    assert "screenshot" in incident["captures"]
+```
+
 ## 🔧 Deprecation Timeline
 
 - **v2.0**: Modular structure introduced with deprecation warnings
 - **v3.0**: Backward compatibility layer removed (completed)
+- **v3.1**: Resilience module added (current)
 
 ## 📚 Related Documentation
 
 - [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)
 - [Single Responsibility Principle](https://en.wikipedia.org/wiki/Single-responsibility_principle)
 - [God Object Anti-Pattern](https://en.wikipedia.org/wiki/God_object)
+- [RESILIENCE_GUIDE.md](./RESILIENCE_GUIDE.md) - Detailed resilience usage guide
