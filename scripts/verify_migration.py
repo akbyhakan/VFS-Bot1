@@ -47,6 +47,13 @@ FULLY_MIGRATED = [
     "src/core/config_hot_reload.py",
     "src/core/bot_controller.py",
     "src/core/circuit_breaker.py",
+    # REFACTOR 5.4: Logger migration to loguru
+    "src/services/vfs/models.py",
+    "src/services/vfs/encryption.py",
+    "src/services/vfs/client.py",
+    "src/services/slot_analyzer.py",
+    "src/services/email_otp_handler.py",
+    "src/selector/manager.py",
 ]
 
 # Files with special handling
