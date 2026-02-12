@@ -48,7 +48,7 @@ FULLY_MIGRATED = [
     "src/core/bot_controller.py",
     "src/core/circuit_breaker.py",
     # REFACTOR 5.4: Logger migration to loguru
-    "src/services/vfs/models.py",
+    # Note: src/services/vfs/models.py excluded - no logging needed (only data structures)
     "src/services/vfs/encryption.py",
     "src/services/vfs/client.py",
     "src/services/slot_analyzer.py",
