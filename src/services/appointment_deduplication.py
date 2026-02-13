@@ -43,9 +43,12 @@ class DeduplicationBackend(ABC):
         pass
 
     @abstractmethod
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self, ttl_seconds: int) -> int:
         """
         Clean up expired entries.
+
+        Args:
+            ttl_seconds: Time-to-live in seconds
 
         Returns:
             Number of entries removed
@@ -138,12 +141,11 @@ class InMemoryDeduplicationBackend(DeduplicationBackend):
 
         return len(expired_keys)
 
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self, ttl_seconds: int) -> int:
         """Clean up expired cache entries (public, thread-safe)."""
         async with self._lock:
-            # Note: We can't know TTL without context, so this is a no-op for in-memory
-            # Cleanup happens inline during is_duplicate checks
-            return 0
+            current_time = time.time()
+            return await self._cleanup_expired_unsafe(current_time, ttl_seconds)
 
     async def get_stats(self, ttl_seconds: int) -> Dict[str, int]:
         """Get cache statistics."""
@@ -198,7 +200,7 @@ class RedisDeduplicationBackend(DeduplicationBackend):
         # Use SETEX for atomic set with expiration
         await asyncio.to_thread(self._redis.setex, redis_key, ttl_seconds, "1")
 
-    async def cleanup_expired(self) -> int:
+    async def cleanup_expired(self, ttl_seconds: int) -> int:
         """
         Clean up expired entries.
 
@@ -361,7 +363,7 @@ class AppointmentDeduplication:
         Returns:
             Number of entries removed
         """
-        return await self._backend.cleanup_expired()
+        return await self._backend.cleanup_expired(self._ttl_seconds)
 
     async def get_stats(self) -> Dict[str, int]:
         """
