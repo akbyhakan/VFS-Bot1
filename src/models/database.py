@@ -98,33 +98,22 @@ class Database:
             self._consecutive_failures = 0
             self._last_successful_query = datetime.now(timezone.utc)
             return result
-        except (DatabaseNotConnectedError, asyncpg.exceptions.PostgresError) as e:
-            # Increment failure counter
-            self._consecutive_failures += 1
-
-            # Log warning if entering DEGRADED state
-            if self._consecutive_failures == self._max_failures_before_degraded:
-                logger.warning(
-                    f"Database entering DEGRADED state after {self._consecutive_failures} "
-                    f"consecutive failures (database error): {e}"
-                )
-
-            # If critical, re-raise the exception
-            if critical:
-                raise
-
-            # Otherwise, log and return fallback value
-            logger.error(f"Database query failed (database error, non-critical): {e}")
-            return fallback_value
         except Exception as e:
             # Increment failure counter
             self._consecutive_failures += 1
 
+            # Determine error type for logging
+            error_type = (
+                "database"
+                if isinstance(e, (DatabaseNotConnectedError, asyncpg.exceptions.PostgresError))
+                else "unexpected"
+            )
+
             # Log warning if entering DEGRADED state
             if self._consecutive_failures == self._max_failures_before_degraded:
                 logger.warning(
                     f"Database entering DEGRADED state after {self._consecutive_failures} "
-                    f"consecutive failures (unexpected error): {e}"
+                    f"consecutive failures ({error_type} error): {e}"
                 )
 
             # If critical, re-raise the exception
@@ -132,7 +121,7 @@ class Database:
                 raise
 
             # Otherwise, log and return fallback value
-            logger.error(f"Database query failed (unexpected error, non-critical): {e}")
+            logger.error(f"Database query failed ({error_type} error, non-critical): {e}")
             return fallback_value
 
     async def reconnect(self) -> bool:

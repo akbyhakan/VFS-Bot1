@@ -25,6 +25,7 @@ from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
 
 if TYPE_CHECKING:
+    from ...core.infra.runners import BotConfigDict
     from ..booking import BookingOrchestrator
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
@@ -37,7 +38,7 @@ class BookingWorkflow:
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: "BotConfigDict",
         db: Database,
         notifier: NotificationService,
         auth_service: "AuthService",
