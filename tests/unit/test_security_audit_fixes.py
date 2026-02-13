@@ -65,13 +65,14 @@ class TestPaymentCardLoggingSecurity:
         generic_error_detail = "Invalid card data format"
         assert "4111111111111111" not in generic_error_detail
         assert "Luhn" not in generic_error_detail
-        assert "failed" not in generic_error_detail
+        assert "check" not in generic_error_detail.lower()  # Avoid specific technical terms
         
         # Verify log message pattern doesn't expose sensitive data
         log_message_pattern = "Payment card validation failed for user %s"
         log_message = log_message_pattern % user_id
         assert "4111111111111111" not in log_message
         assert "Luhn" not in log_message
+        assert "check" not in log_message.lower()  # Avoid exposing technical validation details
         assert user_id in log_message
 
     def test_payment_error_response_security(self):

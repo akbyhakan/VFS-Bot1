@@ -157,9 +157,6 @@ class PasswordEncryption:
         except Exception as e:
             logger.error(f"Failed to migrate encryption data: {e}")
             raise ValueError(f"Encryption migration failed: {e}") from e
-        except Exception as e:
-            logger.error(f"Failed to migrate encryption data: {e}")
-            raise ValueError(f"Encryption migration failed: {e}") from e
 
     @staticmethod
     def migrate_data(old_key: str, new_key: str, encrypted_data: str) -> str:
