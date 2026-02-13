@@ -10,13 +10,6 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random_
 
 from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
-
-
-def _is_recoverable_vfs_error(exception: BaseException) -> bool:
-    """Only retry VFSBotError subclasses that are recoverable."""
-    return isinstance(exception, VFSBotError) and getattr(exception, "recoverable", False)
-
-
 from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
@@ -39,6 +32,11 @@ if TYPE_CHECKING:
     from .error_handler import ErrorHandler
     from .slot_checker import SlotChecker, SlotInfo
     from .waitlist_handler import WaitlistHandler
+
+
+def _is_recoverable_vfs_error(exception: BaseException) -> bool:
+    """Only retry VFSBotError subclasses that are recoverable."""
+    return isinstance(exception, VFSBotError) and getattr(exception, "recoverable", False)
 
 
 class BookingWorkflow:
