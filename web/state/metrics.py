@@ -8,7 +8,15 @@ from typing import Any, Dict
 
 
 class ThreadSafeMetrics:
-    """Thread-safe metrics storage with asyncio support."""
+    """Thread-safe metrics storage with asyncio support.
+    
+    WARNING: To avoid race conditions, code should consistently use EITHER:
+    - Sync methods (increment, get, set, etc.) from synchronous/threaded contexts
+    - Async methods (async_increment, async_get, async_set, etc.) from async contexts
+    
+    Mixing sync and async method calls on the same instance creates race conditions
+    as they use separate locks (threading.Lock vs asyncio.Lock).
+    """
 
     def __init__(self):
         self._lock = threading.Lock()

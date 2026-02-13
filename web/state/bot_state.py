@@ -10,7 +10,15 @@ from typing import Any, Dict
 
 @dataclass
 class ThreadSafeBotState:
-    """Thread-safe wrapper for bot state with asyncio support."""
+    """Thread-safe wrapper for bot state with asyncio support.
+    
+    WARNING: To avoid race conditions, code should consistently use EITHER:
+    - Sync methods (get, set, __getitem__, __setitem__, etc.) from synchronous/threaded contexts
+    - Async methods (async_get, async_set, async_to_dict) from async contexts
+    
+    Mixing sync and async method calls on the same instance creates race conditions
+    as they use separate locks (threading.Lock vs asyncio.Lock).
+    """
 
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _async_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
