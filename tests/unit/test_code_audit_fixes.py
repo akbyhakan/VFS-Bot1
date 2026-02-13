@@ -670,5 +670,122 @@ class TestPersistentTokenBlacklistInit:
             assert len(call_args[0]) == 2  # jti and exp
 
 
+class TestDatabaseURLProductionValidation:
+    """Test DATABASE_URL production validation."""
+
+    def test_database_url_default_rejected_in_production(self, monkeypatch):
+        """Test that default DATABASE_URL is rejected in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment to test default value
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        with pytest.raises(ValueError) as exc_info:
+            VFSSettings(
+                env="production",
+                encryption_key=test_encryption_key,
+                api_secret_key=test_api_secret_key,
+                database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+            )
+
+        error_msg = str(exc_info.value)
+        assert "default DATABASE_URL" in error_msg or "cannot use default" in error_msg
+
+    def test_database_url_without_auth_rejected_in_production(self, monkeypatch):
+        """Test that DATABASE_URL without auth credentials is rejected in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        with pytest.raises(ValueError) as exc_info:
+            VFSSettings(
+                env="production",
+                encryption_key=test_encryption_key,
+                api_secret_key=test_api_secret_key,
+                database_url="postgresql://localhost:5432/mydb",  # No @ symbol
+            )
+
+        error_msg = str(exc_info.value)
+        assert "authentication credentials" in error_msg
+        assert "@" in error_msg or "user:password" in error_msg
+
+    def test_database_url_with_auth_accepted_in_production(self, monkeypatch):
+        """Test that DATABASE_URL with auth credentials is accepted in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise
+        settings = VFSSettings(
+            env="production",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://user:pass@localhost:5432/mydb",
+        )
+
+        assert settings.database_url == "postgresql://user:pass@localhost:5432/mydb"
+
+    def test_database_url_default_allowed_in_development(self, monkeypatch):
+        """Test that default DATABASE_URL is allowed in development."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise - use explicit default
+        settings = VFSSettings(
+            env="development",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+        )
+
+        assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
+
+    def test_database_url_default_allowed_in_testing(self, monkeypatch):
+        """Test that default DATABASE_URL is allowed in testing."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise - use explicit default
+        settings = VFSSettings(
+            env="testing",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+        )
+
+        assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

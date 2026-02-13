@@ -222,6 +222,37 @@ class VFSSettings(BaseSettings):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_database_url_in_production(self) -> "VFSSettings":
+        """
+        Validate database URL in production environment.
+
+        Ensures production deployments don't use insecure default database URLs
+        without authentication credentials.
+
+        Returns:
+            Self if validation passes
+
+        Raises:
+            ValueError: If production environment uses insecure database URL
+        """
+        if self.env == "production":
+            # Check if using the default insecure URL
+            if self.database_url == "postgresql://localhost:5432/vfs_bot":
+                raise ValueError(
+                    "Production environment cannot use default DATABASE_URL. "
+                    "Set DATABASE_URL with proper credentials in environment variables."
+                )
+
+            # Check if database URL contains authentication (@ symbol)
+            if "@" not in self.database_url:
+                raise ValueError(
+                    "Production DATABASE_URL must contain authentication credentials. "
+                    "Format: postgresql://user:password@host:port/database"
+                )
+
+        return self
+
     def get_cors_origins(self) -> List[str]:
         """
         Get CORS allowed origins as a list.
