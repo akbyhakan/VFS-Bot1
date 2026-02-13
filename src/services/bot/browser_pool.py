@@ -226,8 +226,8 @@ class BrowserPool:
                     for session_id, browser in self._browsers.items():
                         if browser.is_idle:
                             # Check if browser has been idle for too long
-                            if browser._last_activity:
-                                idle_duration = datetime.now(timezone.utc) - browser._last_activity
+                            if browser.last_activity:
+                                idle_duration = datetime.now(timezone.utc) - browser.last_activity
                                 if idle_duration > idle_threshold:
                                     sessions_to_close.append(session_id)
 

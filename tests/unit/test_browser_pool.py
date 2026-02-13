@@ -98,10 +98,10 @@ class TestBrowserPool:
             browser2 = await pool.acquire("session2")
 
             assert len(pool._browsers) == 2
-
-            # Try to acquire 3rd browser (should wait)
-            # We'll test this implicitly by checking semaphore
-            assert pool._semaphore._value == 0
+            
+            # Verify stats show no available slots
+            stats = pool.get_stats()
+            assert stats["available_slots"] == 0
 
     @pytest.mark.asyncio
     async def test_release_browser_idle(self, test_config):

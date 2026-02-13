@@ -217,7 +217,7 @@ export default function AuditLogs() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-dark-400">Son 24s Hata</p>
+                  <p className="text-sm text-dark-400">Son 24 Saat Hata</p>
                   <p className="text-2xl font-bold text-red-400">{stats.recent_failures}</p>
                 </div>
                 <XCircle className="w-8 h-8 text-red-500 opacity-50" />

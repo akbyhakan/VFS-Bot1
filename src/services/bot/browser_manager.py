@@ -290,6 +290,16 @@ class BrowserManager:
         from datetime import datetime, timedelta, timezone
         idle_threshold = timedelta(minutes=10)
         return datetime.now(timezone.utc) - self._last_activity > idle_threshold
+    
+    @property
+    def last_activity(self) -> Optional[Any]:
+        """
+        Get the timestamp of last activity.
+
+        Returns:
+            Datetime of last activity or None if never active
+        """
+        return self._last_activity
 
     async def __aenter__(self) -> "BrowserManager":
         """Async context manager entry."""
