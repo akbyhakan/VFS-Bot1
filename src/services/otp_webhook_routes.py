@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from src.core.environment import Environment
+
 from ..utils.webhook_utils import verify_webhook_signature
 from .otp_webhook import OTPWebhookService, get_otp_service
 
@@ -44,10 +46,9 @@ async def get_verified_otp_service(
     Production mode STRICTLY requires signature verification.
     """
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-    env = os.getenv("ENV", "production").lower()
 
     # Explicit development mode check (must be exactly "development")
-    is_development_mode = env == "development"
+    is_development_mode = Environment.current() == Environment.DEVELOPMENT
 
     # MANDATORY: Webhook secret MUST be configured in production
     if not is_development_mode and not webhook_secret:
@@ -61,7 +62,10 @@ async def get_verified_otp_service(
         # Signature header is mandatory when secret is configured
         if not x_webhook_signature:
             client_ip = request.client.host if request.client else "unknown"
-            logger.warning(f"⚠️ Webhook signature missing from IP: {client_ip} " f"(ENV: {env})")
+            logger.warning(
+                f"⚠️ Webhook signature missing from IP: {client_ip} "
+                f"(ENV: {Environment.current()})"
+            )
             raise HTTPException(status_code=401, detail="X-Webhook-Signature header required")
 
         # Verify signature

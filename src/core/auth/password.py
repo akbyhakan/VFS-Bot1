@@ -181,14 +181,13 @@ def validate_admin_password_format() -> bool:
         ValueError: If ADMIN_PASSWORD is not properly formatted in production
     """
     admin_password = os.getenv("ADMIN_PASSWORD")
-    env = os.getenv("ENV", "production").lower()
 
     # Skip validation if no password is set (optional var)
     if not admin_password:
         return True
 
     # In production, require bcrypt hash format
-    if env == "production":
+    if Environment.is_production():
         bcrypt_prefixes = ("$2b$", "$2a$", "$2y$")
         if not admin_password.startswith(bcrypt_prefixes):
             raise ValueError(

@@ -1,13 +1,14 @@
 """Payment processing service for VFS appointment booking."""
 
 import asyncio
-import os
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
 from loguru import logger
 from playwright.async_api import Page
+
+from src.core.environment import Environment
 
 
 class PaymentMethod(Enum):
@@ -25,9 +26,8 @@ class PaymentService:
     @staticmethod
     def _is_automated_payments_disabled() -> bool:
         """Check if automated payments are disabled based on environment."""
-        env = os.getenv("ENV", "production").lower()
         # Allow in test/development, disable in production/staging
-        return env not in ("development", "dev", "testing", "test")
+        return Environment.is_production()
 
     def __init__(self, config: Dict[str, Any]):
         """

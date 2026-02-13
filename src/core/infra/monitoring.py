@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from src.core.environment import Environment
+
 
 def init_sentry() -> None:
     """Initialize Sentry with PCI-DSS compliant filtering."""
@@ -21,7 +23,7 @@ def init_sentry() -> None:
 
         sentry_sdk.init(
             dsn=sentry_dsn,
-            environment=os.getenv("ENV", "production"),
+            environment=Environment.current_raw(),
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
             integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
             before_send=filter_sensitive_data,

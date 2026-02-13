@@ -11,6 +11,8 @@ from fastapi import HTTPException, status
 from jwt.exceptions import InvalidTokenError as JWTError
 from loguru import logger
 
+from src.core.environment import Environment
+
 from .token_blacklist import check_blacklisted, get_token_blacklist
 
 # Supported JWT algorithms whitelist
@@ -249,7 +251,7 @@ async def verify_token(token: str) -> Dict[str, Any]:
                 pass
 
         # Production: Don't expose internal error details for security
-        if os.getenv("ENV", "production").lower() == "production":
+        if Environment.is_production():
             detail = "Could not validate credentials"
         else:
             detail = f"Could not validate credentials: {str(primary_error)}"
