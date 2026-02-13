@@ -8,6 +8,14 @@ from src.utils.helpers import mask_sensitive_data
 from src.utils.masking import mask_email
 
 
+@pytest.fixture(autouse=True)
+def reset_api_key_manager():
+    """Reset APIKeyManager singleton before and after each test to prevent state leakage."""
+    APIKeyManager.reset()
+    yield
+    APIKeyManager.reset()
+
+
 def test_generate_api_key():
     """Test API key generation."""
     key1 = generate_api_key()

@@ -259,11 +259,7 @@ def test_api_key_hash_with_salt(monkeypatch):
     monkeypatch.setenv("API_KEY_SALT", "test-salt-12345-with-sufficient-length-for-security")
 
     # Reset the singleton instance to force reload
-    import src.core.security as security_module
-
-    if security_module.APIKeyManager._instance is not None:
-        security_module.APIKeyManager._instance._salt = None
-        security_module.APIKeyManager._instance._keys_loaded = False
+    APIKeyManager.reset()
 
     api_key = "my-secret-api-key-123"
     hash1 = APIKeyManager()._hash_key(api_key)
@@ -284,22 +280,16 @@ def test_api_key_hash_with_salt(monkeypatch):
 @pytest.mark.security
 def test_api_key_hash_different_with_different_salt(monkeypatch):
     """Test that different salts produce different hashes."""
-    import src.core.security as security_module
-
     api_key = "my-api-key"
 
     # First hash with salt1 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt1-with-enough-characters-to-be-secure-and-valid")
-    if security_module.APIKeyManager._instance is not None:
-        security_module.APIKeyManager._instance._salt = None
-        security_module.APIKeyManager._instance._keys_loaded = False
+    APIKeyManager.reset()
     hash1 = APIKeyManager()._hash_key(api_key)
 
     # Second hash with salt2 (at least 32 characters)
     monkeypatch.setenv("API_KEY_SALT", "salt2-with-enough-characters-to-be-secure-and-valid")
-    if security_module.APIKeyManager._instance is not None:
-        security_module.APIKeyManager._instance._salt = None
-        security_module.APIKeyManager._instance._keys_loaded = False
+    APIKeyManager.reset()
     hash2 = APIKeyManager()._hash_key(api_key)
 
     # Hashes should be different
@@ -309,14 +299,10 @@ def test_api_key_hash_different_with_different_salt(monkeypatch):
 @pytest.mark.security
 def test_api_key_hash_uses_default_salt_when_env_not_set(monkeypatch):
     """Test that a default salt is used when API_KEY_SALT env var is not set."""
-    import src.core.security as security_module
-
     # Ensure env var is not set and set ENV to development to allow default salt
     monkeypatch.delenv("API_KEY_SALT", raising=False)
     monkeypatch.setenv("ENV", "development")
-    if security_module.APIKeyManager._instance is not None:
-        security_module.APIKeyManager._instance._salt = None
-        security_module.APIKeyManager._instance._keys_loaded = False
+    APIKeyManager.reset()
 
     api_key = "test-key"
     hash_value = APIKeyManager()._hash_key(api_key)

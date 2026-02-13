@@ -41,6 +41,12 @@ class APIKeyManager:
         """Initialize is a no-op since we use __new__ for singleton."""
         pass
 
+    @classmethod
+    def reset(cls) -> None:
+        """Reset singleton instance for testing. Not for production use."""
+        with cls._lock:
+            cls._instance = None
+
     def get_salt(self) -> bytes:
         """Get API key salt from environment variable - REQUIRED in production."""
         with self._lock:

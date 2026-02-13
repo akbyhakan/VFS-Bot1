@@ -34,7 +34,7 @@ class TestBug1EnvironmentImport:
         """Test that APIKeyManager can load salt in development mode using Environment."""
         with patch.dict(os.environ, {"ENV": "development"}, clear=False):
             # Clear the singleton instance to force re-initialization
-            APIKeyManager._instance = None
+            APIKeyManager.reset()
             manager = APIKeyManager()
 
             # This should not raise NameError about Environment not being defined
@@ -46,12 +46,13 @@ class TestBug1EnvironmentImport:
         """Test that APIKeyManager requires salt in production mode using Environment."""
         with patch.dict(os.environ, {"ENV": "production"}, clear=True):
             # Clear the singleton instance to force re-initialization
-            APIKeyManager._instance = None
+            APIKeyManager.reset()
             manager = APIKeyManager()
 
             # This should raise ValueError about missing salt, not NameError about Environment
             with pytest.raises(ValueError, match="API_KEY_SALT environment variable MUST be set"):
                 manager.get_salt()
+
 
 
 class TestBug2EncryptionKeyLength:

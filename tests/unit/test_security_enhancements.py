@@ -20,11 +20,7 @@ class TestAPIKeySaltSecurity:
     def test_api_key_salt_required_in_production(self, monkeypatch):
         """Test that API_KEY_SALT is required in production."""
         # Reset the singleton instance to force reload
-        from src.core import security
-
-        if security.APIKeyManager._instance is not None:
-            security.APIKeyManager._instance._salt = None
-            security.APIKeyManager._instance._keys_loaded = False
+        APIKeyManager.reset()
 
         # Set production environment
         monkeypatch.setenv("ENV", "production")
@@ -40,11 +36,7 @@ class TestAPIKeySaltSecurity:
         caplog.set_level(logging.WARNING)
 
         # Reset the singleton instance to force reload
-        from src.core import security
-
-        if security.APIKeyManager._instance is not None:
-            security.APIKeyManager._instance._salt = None
-            security.APIKeyManager._instance._keys_loaded = False
+        APIKeyManager.reset()
 
         # Set development environment
         monkeypatch.setenv("ENV", "development")
@@ -58,11 +50,7 @@ class TestAPIKeySaltSecurity:
     def test_api_key_salt_minimum_length(self, monkeypatch):
         """Test that API_KEY_SALT must be at least 32 characters."""
         # Reset the singleton instance to force reload
-        from src.core import security
-
-        if security.APIKeyManager._instance is not None:
-            security.APIKeyManager._instance._salt = None
-            security.APIKeyManager._instance._keys_loaded = False
+        APIKeyManager.reset()
 
         monkeypatch.setenv("API_KEY_SALT", "short")
 
@@ -72,11 +60,7 @@ class TestAPIKeySaltSecurity:
     def test_api_key_salt_valid_length(self, monkeypatch):
         """Test that valid API_KEY_SALT is accepted."""
         # Reset the singleton instance to force reload
-        from src.core import security
-
-        if security.APIKeyManager._instance is not None:
-            security.APIKeyManager._instance._salt = None
-            security.APIKeyManager._instance._keys_loaded = False
+        APIKeyManager.reset()
 
         valid_salt = "a" * 32  # 32 character salt
         monkeypatch.setenv("API_KEY_SALT", valid_salt)
