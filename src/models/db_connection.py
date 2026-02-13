@@ -58,6 +58,9 @@ class DatabaseConnectionManager:
         require_migrations_env = os.getenv("REQUIRE_MIGRATIONS", "true").lower()
         self._require_migrations = require_migrations_env not in ("false", "0", "no")
 
+        # Track if migration check has been performed to avoid redundant checks
+        self._migration_verified: bool = False
+
     def _get_container_cpu_count(self) -> Optional[int]:
         """
         Read CPU count from cgroups for container-aware resource detection.
@@ -165,36 +168,44 @@ class DatabaseConnectionManager:
                     f"{_mask_database_url(self.database_url)}"
                 )
 
-                # Verify Alembic migration status
-                try:
-                    async with self.pool.acquire() as conn:
-                        has_alembic = await conn.fetchval(
-                            "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
-                            "WHERE table_name = 'alembic_version')"
-                        )
-                        if not has_alembic:
-                            error_msg = (
-                                "Alembic version table not found. "
-                                "Run 'alembic upgrade head' to initialize the database schema."
+                # Verify Alembic migration status (only on first connect)
+                if not self._migration_verified:
+                    try:
+                        async with self.pool.acquire() as conn:
+                            has_alembic = await conn.fetchval(
+                                "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
+                                "WHERE table_name = 'alembic_version')"
                             )
-                            if self._require_migrations:
-                                raise RuntimeError(error_msg)
+                            if not has_alembic:
+                                error_msg = (
+                                    "Alembic version table not found. "
+                                    "Run 'alembic upgrade head' to initialize the database schema."
+                                )
+                                if self._require_migrations:
+                                    raise RuntimeError(error_msg)
+                                else:
+                                    logger.warning(error_msg)
                             else:
-                                logger.warning(error_msg)
-                        else:
-                            current_rev = await conn.fetchval(
-                                "SELECT version_num FROM alembic_version LIMIT 1"
-                            )
-                            logger.info(f"Database schema at Alembic revision: {current_rev}")
-                except Exception as e:
-                    # Don't catch RuntimeError - let it propagate for required migrations
-                    if isinstance(e, RuntimeError):
+                                current_rev = await conn.fetchval(
+                                    "SELECT version_num FROM alembic_version LIMIT 1"
+                                )
+                                logger.info(f"Database schema at Alembic revision: {current_rev}")
+                        
+                        # Mark migration as verified after successful check
+                        self._migration_verified = True
+                    except RuntimeError:
+                        # Don't catch RuntimeError - let it propagate for required migrations
                         raise
-                    error_msg = f"Could not verify Alembic migration status: {e}"
-                    if self._require_migrations:
-                        raise RuntimeError(error_msg) from e
-                    else:
-                        logger.warning(error_msg)
+                    except Exception as e:
+                        error_msg = f"Could not verify Alembic migration status: {e}"
+                        if self._require_migrations:
+                            raise RuntimeError(error_msg) from e
+                        else:
+                            logger.warning(error_msg)
+                            # Mark as verified even on warning (non-critical failure)
+                            self._migration_verified = True
+                else:
+                    logger.debug("Skipping migration check (already verified)")
             except Exception:
                 # Clean up on error
                 if self.pool:
