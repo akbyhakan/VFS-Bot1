@@ -30,6 +30,7 @@ try:
 
     _HAS_METRICS = True
 except ImportError:
+    _get_metrics = None  # type: ignore
     _HAS_METRICS = False
 
 
