@@ -7,8 +7,6 @@ if TYPE_CHECKING:
     from .database import Database as Database
     from .schemas import AppointmentCreate as AppointmentCreate
     from .schemas import AppointmentResponse as AppointmentResponse
-    from .schemas import BotConfig as BotConfig
-    from .schemas import NotificationConfig as NotificationConfig
     from .schemas import UserCreate as UserCreate
     from .schemas import UserResponse as UserResponse
 
@@ -19,8 +17,6 @@ _LAZY_MODULE_MAP = {
     "UserResponse": ("src.models.schemas", "UserResponse"),
     "AppointmentCreate": ("src.models.schemas", "AppointmentCreate"),
     "AppointmentResponse": ("src.models.schemas", "AppointmentResponse"),
-    "BotConfig": ("src.models.schemas", "BotConfig"),
-    "NotificationConfig": ("src.models.schemas", "NotificationConfig"),
 }
 
 # Auto-derive __all__ from _LAZY_MODULE_MAP to prevent manual sync issues
