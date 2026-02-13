@@ -22,7 +22,7 @@ class CaptchaSolver:
         """
         if not api_key:
             raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
-        
+
         self.api_key = api_key
         logger.info("CaptchaSolver initialized with 2Captcha")
 

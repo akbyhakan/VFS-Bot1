@@ -34,7 +34,6 @@ def minimal_config():
         },
         "captcha": {
             "api_key": "test_key",
-            "manual_timeout": 120,
         },
         "anti_detection": {
             "enabled": True,
