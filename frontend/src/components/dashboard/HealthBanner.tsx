@@ -59,8 +59,8 @@ export function HealthBanner() {
                 isUnhealthy && 'text-red-400'
               )}
             >
-              {isDegraded && 'System Performance Degraded'}
-              {isUnhealthy && 'System Unhealthy'}
+              {isDegraded && 'Sistem Performansı Düşük'}
+              {isUnhealthy && 'Sistem Sağlıksız'}
             </h3>
 
             <button
@@ -74,9 +74,9 @@ export function HealthBanner() {
 
           <p className="text-dark-300 text-sm mb-3">
             {isDegraded &&
-              'Some system components are experiencing issues. Functionality may be limited.'}
+              'Bazı sistem bileşenleri sorun yaşıyor. İşlevsellik sınırlı olabilir.'}
             {isUnhealthy &&
-              'Critical system components are down. Service is severely impacted.'}
+              'Kritik sistem bileşenleri çalışmıyor. Hizmet ciddi şekilde etkilendi.'}
           </p>
 
           {/* Component Details Toggle */}
@@ -91,12 +91,12 @@ export function HealthBanner() {
                 {isExpanded ? (
                   <>
                     <ChevronUp className="w-4 h-4" />
-                    Hide component details
+                    Bileşen detaylarını gizle
                   </>
                 ) : (
                   <>
                     <ChevronDown className="w-4 h-4" />
-                    Show affected components ({componentIssues.length})
+                    Etkilenen bileşenleri göster ({componentIssues.length})
                   </>
                 )}
               </button>
