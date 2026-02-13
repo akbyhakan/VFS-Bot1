@@ -12,6 +12,7 @@ from src.core.config.config_models import (
     NotificationConfig,
     VFSConfig,
 )
+from src.types.user import UserDict, UserDictWithOptionals
 
 __all__ = [
     "VFSConfig",
@@ -20,4 +21,6 @@ __all__ = [
     "AntiDetectionConfig",
     "NotificationConfig",
     "AppConfig",
+    "UserDict",
+    "UserDictWithOptionals",
 ]
