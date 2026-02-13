@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
-import { Calendar, Plus, Trash2, User, MapPin, Globe, Eye, Copy, RotateCcw } from 'lucide-react';
+import { Calendar, Plus, Trash2, User, MapPin, Globe, Eye, Copy, RotateCcw, List } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
@@ -24,6 +24,7 @@ import {
   validateEmail,
   validateTurkishPhone,
 } from '@/utils/validators/appointment';
+import { AppointmentCalendar } from '@/components/appointments/AppointmentCalendar';
 
 // Alias for consistency with existing code
 const validatePhoneNumber = validateTurkishPhone;
@@ -36,6 +37,7 @@ export default function AppointmentRequest() {
   const [dateInput, setDateInput] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [viewingRequest, setViewingRequest] = useState<AppointmentRequestResponse | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirmDialog();
 
   const { data: countries, isLoading: loadingCountries } = useCountries();
@@ -401,60 +403,84 @@ export default function AppointmentRequest() {
       {/* Mevcut Talepler */}
       <Card>
         <CardHeader>
-          <CardTitle>Mevcut Talepler</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Mevcut Talepler</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'list' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4 mr-2" />
+                Liste
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Takvim
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loadingRequests ? (
             <Loading />
           ) : requests && requests.length > 0 ? (
-            <div className="space-y-4">
-              {requests.map((request) => (
-                <div
-                  key={request.id}
-                  className="p-4 border border-gray-600 rounded-md bg-gray-800"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">
-                        Talep #{request.id} - {request.status}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Ülke: {request.country_code} | {request.person_count} Kişi
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Tarih: {new Date(request.created_at).toLocaleDateString('tr-TR')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(request)}
-                        title="Detay Görüntüle"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCopyRequest(request)}
-                        title="Forma Kopyala"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(request.id)}
-                        title="Sil"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            viewMode === 'calendar' ? (
+              <AppointmentCalendar appointments={requests} />
+            ) : (
+              <div className="space-y-4">
+                {requests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="p-4 border border-gray-600 rounded-md bg-gray-800"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">
+                          Talep #{request.id} - {request.status}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          Ülke: {request.country_code} | {request.person_count} Kişi
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          Tarih: {new Date(request.created_at).toLocaleDateString('tr-TR')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleView(request)}
+                          title="Detay Görüntüle"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyRequest(request)}
+                          title="Forma Kopyala"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDelete(request.id)}
+                          title="Sil"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           ) : (
             <p className="text-gray-400 text-center">Henüz talep yok</p>
           )}
