@@ -366,6 +366,12 @@ class BotServiceFactory:
             core.otp_service,
         )
 
+        # Create page state detector
+        page_state_detector = PageStateDetector(
+            config=config,
+            cloudflare_handler=anti_detection.cloudflare_handler,
+        )
+
         # Create slot checker
         slot_checker = SlotChecker(
             config,
@@ -373,12 +379,7 @@ class BotServiceFactory:
             anti_detection.human_sim,
             anti_detection.cloudflare_handler,
             core.error_capture,
-        )
-
-        # Create page state detector
-        page_state_detector = PageStateDetector(
-            config=config,
-            cloudflare_handler=anti_detection.cloudflare_handler,
+            page_state_detector,
         )
 
         return WorkflowServicesContext(

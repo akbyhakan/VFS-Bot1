@@ -8,6 +8,7 @@ from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import Delays, Timeouts
+from ...core.exceptions import VFSBotError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
@@ -32,7 +33,7 @@ class SlotChecker:
         human_sim: Optional[HumanSimulator] = None,
         cloudflare_handler: Optional[CloudflareHandler] = None,
         error_capture: Optional[ErrorCapture] = None,
-        selectors: Optional[Dict[str, Any]] = None,
+        page_state_detector: Optional[Any] = None,
     ):
         """
         Initialize slot checker.
@@ -43,13 +44,14 @@ class SlotChecker:
             human_sim: Optional HumanSimulator for realistic interactions
             cloudflare_handler: Optional CloudflareHandler for bypassing challenges
             error_capture: Optional ErrorCapture for capturing errors
-            selectors: Optional selector configuration (uses hardcoded fallbacks if not provided)
+            page_state_detector: Optional PageStateDetector for smart navigation
         """
         self.config = config
         self.rate_limiter = rate_limiter
         self.human_sim = human_sim
         self.cloudflare_handler = cloudflare_handler
         self.error_capture = error_capture or ErrorCapture()
+        self.page_state_detector = page_state_detector
 
         # Initialize SelectorManager for country-aware selectors
         from src.selector import get_selector_manager
@@ -96,9 +98,33 @@ class SlotChecker:
             mission = self.config["vfs"]["mission"]
             appointment_url = f"{base}/{country}/{language}/{mission}/appointment"
 
-            if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
-                logger.error("Failed to navigate to appointment page")
-                return None
+            # Smart navigation: check page state before deciding to navigate
+            needs_navigation = True
+            if self.page_state_detector is not None:
+                try:
+                    state = await self.page_state_detector.detect(page)
+
+                    if state.needs_recovery:
+                        # Session expired, Cloudflare, maintenance, etc.
+                        # Raise a recoverable error so the bot loop can re-login
+                        raise VFSBotError(
+                            f"Page recovery needed: {state.state.name}",
+                            recoverable=True,
+                        )
+
+                    if state.is_on_appointment_page and state.confidence >= 0.70:
+                        # Already on appointment page with valid session
+                        needs_navigation = False
+                        logger.debug("Smart navigation: already on appointment page, skipping reload")
+                except VFSBotError:
+                    raise  # Re-raise VFSBotError
+                except Exception as e:
+                    logger.debug(f"Page state detection failed, falling back to navigation: {e}")
+
+            if needs_navigation:
+                if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
+                    logger.error("Failed to navigate to appointment page")
+                    return None
 
             # Check for Cloudflare challenge
             if self.cloudflare_handler:

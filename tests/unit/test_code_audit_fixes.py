@@ -949,6 +949,7 @@ class TestNonRecoverableErrorsNotRetried:
         mock_alert_service = AsyncMock()
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
+        mock_page_state_detector = MagicMock()
 
         # Create workflow instance
         workflow = BookingWorkflow(
@@ -962,6 +963,7 @@ class TestNonRecoverableErrorsNotRetried:
             error_handler=mock_error_handler,
             slot_analyzer=mock_slot_analyzer,
             session_recovery=mock_session_recovery,
+            page_state_detector=mock_page_state_detector,
             alert_service=mock_alert_service,
             human_sim=mock_human_sim,
             error_capture=mock_error_capture,
@@ -1007,6 +1009,7 @@ class TestNonRecoverableErrorsNotRetried:
         mock_alert_service = AsyncMock()
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
+        mock_page_state_detector = MagicMock()
 
         workflow = BookingWorkflow(
             config=config,
@@ -1019,6 +1022,7 @@ class TestNonRecoverableErrorsNotRetried:
             error_handler=mock_error_handler,
             slot_analyzer=mock_slot_analyzer,
             session_recovery=mock_session_recovery,
+            page_state_detector=mock_page_state_detector,
             alert_service=mock_alert_service,
             human_sim=mock_human_sim,
             error_capture=mock_error_capture,
@@ -1062,6 +1066,7 @@ class TestNonRecoverableErrorsNotRetried:
         mock_alert_service = AsyncMock()
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
+        mock_page_state_detector = MagicMock()
 
         workflow = BookingWorkflow(
             config=config,
@@ -1074,6 +1079,7 @@ class TestNonRecoverableErrorsNotRetried:
             error_handler=mock_error_handler,
             slot_analyzer=mock_slot_analyzer,
             session_recovery=mock_session_recovery,
+            page_state_detector=mock_page_state_detector,
             alert_service=mock_alert_service,
             human_sim=mock_human_sim,
             error_capture=mock_error_capture,
@@ -1115,6 +1121,7 @@ class TestNonRecoverableErrorsNotRetried:
         mock_alert_service = AsyncMock()
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
+        mock_page_state_detector = MagicMock()
 
         workflow = BookingWorkflow(
             config=config,
@@ -1127,6 +1134,7 @@ class TestNonRecoverableErrorsNotRetried:
             error_handler=mock_error_handler,
             slot_analyzer=mock_slot_analyzer,
             session_recovery=mock_session_recovery,
+            page_state_detector=mock_page_state_detector,
             alert_service=mock_alert_service,
             human_sim=mock_human_sim,
             error_capture=mock_error_capture,
