@@ -165,13 +165,18 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
     settings = get_settings()
     is_production = settings.is_production()
 
+    # Calculate cookie max_age from JWT expiry (dynamically)
+    from src.core.auth.jwt_tokens import get_token_expire_hours
+
+    max_age = get_token_expire_hours() * 3600  # Convert hours to seconds
+
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,  # Prevents JavaScript access (XSS protection)
         secure=is_production,  # HTTPS only in production
         samesite="strict",  # CSRF protection
-        max_age=86400,  # 24 hours (matches JWT expiry)
+        max_age=max_age,  # Dynamically set from JWT expiry
         path="/",
     )
 

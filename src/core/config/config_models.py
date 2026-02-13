@@ -228,7 +228,6 @@ class SecurityConfig(BaseModel):
     api_key_salt: SecretStr = Field(default=SecretStr(""))
     encryption_key: SecretStr = Field(default=SecretStr(""))
     jwt_algorithm: str = Field(default="HS384")
-    jwt_expiration_minutes: int = Field(default=60, ge=1)
 
 
 # Complete Application Configuration
