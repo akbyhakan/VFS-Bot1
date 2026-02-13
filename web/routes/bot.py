@@ -1,6 +1,5 @@
 """Bot control routes for VFS-Bot web application."""
 
-import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
