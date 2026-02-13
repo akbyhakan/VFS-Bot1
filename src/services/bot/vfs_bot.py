@@ -4,7 +4,8 @@ import asyncio
 import os
 import random
 import time
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from loguru import logger
 from playwright.async_api import Page
@@ -20,13 +21,33 @@ from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .service_context import BotServiceContext, BotServiceFactory
 
+if TYPE_CHECKING:
+    from ...core.infra.runners import BotConfigDict
+
+# Module-level optional import for metrics
+try:
+    from ...utils.metrics import get_metrics as _get_metrics
+
+    _HAS_METRICS = True
+except ImportError:
+    _HAS_METRICS = False
+
+
+@dataclass
+class UserCache:
+    """Cache for active users to support graceful degradation."""
+
+    users: List[Dict[str, Any]] = field(default_factory=list)
+    timestamp: float = 0.0
+    ttl: float = 300.0
+
 
 class VFSBot:
     """VFS appointment booking bot orchestrator using modular components."""
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: "BotConfigDict",
         db: Database,
         notifier: NotificationService,
         services: Optional[BotServiceContext] = None,
@@ -66,9 +87,7 @@ class VFSBot:
         self._active_booking_tasks: set = set()
 
         # User cache for graceful degradation (Issue 3.3)
-        self._cached_users: List[Dict[str, Any]] = []
-        self._cached_users_time: float = 0
-        self._USERS_CACHE_TTL: float = float(os.getenv("USERS_CACHE_TTL", "300.0"))
+        self._user_cache = UserCache(ttl=float(os.getenv("USERS_CACHE_TTL", "300.0")))
 
         # Initialize services context
         if services is None:
@@ -370,18 +389,18 @@ class VFSBot:
 
         if users is not None:
             # Success - update cache
-            self._cached_users = users
-            self._cached_users_time = time.time()
+            self._user_cache.users = users
+            self._user_cache.timestamp = time.time()
             return users
 
         # DB failure - check if cache is still fresh
-        cache_age = time.time() - self._cached_users_time
-        if cache_age < self._USERS_CACHE_TTL and self._cached_users:
+        cache_age = time.time() - self._user_cache.timestamp
+        if cache_age < self._user_cache.ttl and self._user_cache.users:
             logger.warning(
                 f"Database unavailable, using cached users (age: {cache_age:.1f}s, "
-                f"count: {len(self._cached_users)})"
+                f"count: {len(self._user_cache.users)})"
             )
-            return self._cached_users
+            return self._user_cache.users
 
         # Cache expired or empty
         logger.error(
@@ -423,11 +442,11 @@ class VFSBot:
         This method checks if the circuit breaker is in OPEN state and records
         the trip metric. Failures to record metrics are logged but do not raise exceptions.
         """
+        if not _HAS_METRICS:
+            return
         if self.circuit_breaker.state == CircuitState.OPEN:
             try:
-                from ...utils.metrics import get_metrics
-
-                metrics = await get_metrics()
+                metrics = await _get_metrics()
                 await metrics.record_circuit_breaker_trip()
             except Exception as e:
                 logger.debug(f"Failed to record circuit breaker trip metric: {e}")
