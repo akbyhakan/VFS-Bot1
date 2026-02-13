@@ -74,7 +74,7 @@ describe('useApi hooks', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toEqual(mockResponse);
-      expect(api.post).toHaveBeenCalledWith('/api/bot/start', {
+      expect(api.post).toHaveBeenCalledWith('/api/v1/bot/start', {
         action: 'start',
       });
     });
@@ -92,7 +92,7 @@ describe('useApi hooks', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toEqual(mockResponse);
-      expect(api.post).toHaveBeenCalledWith('/api/bot/stop');
+      expect(api.post).toHaveBeenCalledWith('/api/v1/bot/stop');
     });
   });
 
@@ -109,7 +109,7 @@ describe('useApi hooks', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toEqual(mockUsers);
-      expect(api.get).toHaveBeenCalledWith('/api/users');
+      expect(api.get).toHaveBeenCalledWith('/api/v1/users');
     });
   });
 });

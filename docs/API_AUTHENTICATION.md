@@ -28,7 +28,7 @@ ADMIN_PASSWORD=your-secure-password
 
 ### Login Endpoint
 
-**POST** `/api/auth/login`
+**POST** `/api/v1/auth/login`
 
 Request body:
 ```json
@@ -52,14 +52,18 @@ Include the token in the Authorization header for protected endpoints:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     http://localhost:8000/api/logs
+     http://localhost:8000/api/v1/bot/logs
 ```
 
 ### Protected Endpoints
 
 The following endpoints require JWT authentication:
 
-- `GET /api/logs` - Retrieve bot logs
+- `GET /api/v1/bot/logs` - Retrieve bot logs
+- `GET /api/v1/users` - Retrieve users
+- `POST /api/v1/users` - Create user
+- `PUT /api/v1/users/{id}` - Update user
+- `DELETE /api/v1/users/{id}` - Delete user
 
 ## API Key Authentication
 
@@ -75,8 +79,10 @@ DASHBOARD_API_KEY=your-secure-api-key-here
 
 The following endpoints require API key authentication:
 
-- `POST /api/bot/start` - Start the bot
-- `POST /api/bot/stop` - Stop the bot
+- `POST /api/v1/bot/start` - Start the bot
+- `POST /api/v1/bot/stop` - Stop the bot
+- `POST /api/v1/bot/restart` - Restart the bot
+- `POST /api/v1/bot/check-now` - Trigger manual check
 
 Include the API key in the Authorization header:
 
@@ -85,12 +91,12 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
      -X POST \
      -H "Content-Type: application/json" \
      -d '{"action": "start", "config": {}}' \
-     http://localhost:8000/api/bot/start
+     http://localhost:8000/api/v1/bot/start
 ```
 
 ## Generate New API Key
 
-**POST** `/api/auth/generate-key`
+**POST** `/api/v1/auth/generate-key`
 
 Requires admin secret (one-time use):
 

@@ -15,7 +15,7 @@ export function useBotStatus() {
 export function useStartBot() {
   const queryClient = useQueryClient();
   return useMutation<{ status: string; message: string }, Error, BotCommand>({
-    mutationFn: (command) => api.post('/api/bot/start', command),
+    mutationFn: (command) => api.post('/api/v1/bot/start', command),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-status'] });
     },
@@ -25,7 +25,7 @@ export function useStartBot() {
 export function useStopBot() {
   const queryClient = useQueryClient();
   return useMutation<{ status: string; message: string }, Error>({
-    mutationFn: () => api.post('/api/bot/stop'),
+    mutationFn: () => api.post('/api/v1/bot/stop'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-status'] });
     },
@@ -35,7 +35,7 @@ export function useStopBot() {
 export function useRestartBot() {
   const queryClient = useQueryClient();
   return useMutation<{ status: string; message: string }, Error>({
-    mutationFn: () => api.post('/api/bot/restart'),
+    mutationFn: () => api.post('/api/v1/bot/restart'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-status'] });
     },
@@ -45,7 +45,7 @@ export function useRestartBot() {
 export function useCheckNow() {
   const queryClient = useQueryClient();
   return useMutation<{ status: string; message: string }, Error>({
-    mutationFn: () => api.post('/api/bot/check-now'),
+    mutationFn: () => api.post('/api/v1/bot/check-now'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-status'] });
     },
@@ -71,7 +71,7 @@ export function useHealthCheck() {
 export function useLogs(limit: number = 100) {
   return useQuery<{ logs: string[] }>({
     queryKey: ['logs', limit],
-    queryFn: () => api.get<{ logs: string[] }>('/api/logs', { limit }),
+    queryFn: () => api.get<{ logs: string[] }>('/api/v1/bot/logs', { limit }),
     refetchInterval: 10000,
   });
 }
@@ -80,14 +80,14 @@ export function useLogs(limit: number = 100) {
 export function useUsers() {
   return useQuery<User[]>({
     queryKey: ['users'],
-    queryFn: () => api.get<User[]>('/api/users'),
+    queryFn: () => api.get<User[]>('/api/v1/users'),
   });
 }
 
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation<User, Error, CreateUserRequest>({
-    mutationFn: (user) => api.post<User>('/api/users', user),
+    mutationFn: (user) => api.post<User>('/api/v1/users', user),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
@@ -97,7 +97,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation<User, Error, { id: number } & UpdateUserRequest>({
-    mutationFn: ({ id, ...data }) => api.put<User>(`/api/users/${id}`, data),
+    mutationFn: ({ id, ...data }) => api.put<User>(`/api/v1/users/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
@@ -107,7 +107,7 @@ export function useUpdateUser() {
 export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, number>({
-    mutationFn: (id) => api.delete(`/api/users/${id}`),
+    mutationFn: (id) => api.delete(`/api/v1/users/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
@@ -118,7 +118,7 @@ export function useToggleUserStatus() {
   const queryClient = useQueryClient();
   return useMutation<User, Error, { id: number; is_active: boolean }>({
     mutationFn: ({ id, is_active }) =>
-      api.patch<User>(`/api/users/${id}`, { is_active }),
+      api.patch<User>(`/api/v1/users/${id}`, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
