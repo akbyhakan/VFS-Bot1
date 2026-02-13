@@ -360,8 +360,8 @@ class VFSBot:
         """
         Wait for the specified duration or until shutdown/trigger is requested.
 
-        Uses polling with short sleep intervals to avoid creating/canceling tasks
-        on each call, reducing GC pressure in high-frequency loops.
+        Uses event-based waiting with asyncio.wait() for efficient resource usage.
+        Responds instantly to shutdown or trigger events without polling overhead.
 
         Args:
             seconds: Number of seconds to wait
@@ -369,27 +369,37 @@ class VFSBot:
         Returns:
             True if shutdown was requested during wait, False on normal timeout or trigger
         """
-        end_time = asyncio.get_event_loop().time() + seconds
-        poll_interval = 0.1  # Poll every 100ms
+        shutdown_task = asyncio.create_task(self.shutdown_event.wait())
+        trigger_task = asyncio.create_task(self._trigger_event.wait())
 
-        while True:
-            # Check shutdown event first (highest priority)
-            if self.shutdown_event.is_set():
+        try:
+            done, pending = await asyncio.wait(
+                {shutdown_task, trigger_task},
+                timeout=seconds,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            # Cancel pending tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+            if shutdown_task in done:
                 return True
 
-            # Check trigger event
-            if self._trigger_event.is_set():
+            if trigger_task in done:
                 self._trigger_event.clear()
                 return False
 
-            # Calculate remaining time
-            remaining = end_time - asyncio.get_event_loop().time()
-            if remaining <= 0:
-                # Timeout - normal sleep completion
-                return False
-
-            # Sleep for short interval or remaining time, whichever is smaller
-            await asyncio.sleep(min(remaining, poll_interval))
+            # Timeout - normal completion
+            return False
+        except asyncio.CancelledError:
+            shutdown_task.cancel()
+            trigger_task.cancel()
+            raise
 
     async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
         """
@@ -702,6 +712,12 @@ class VFSBot:
                     await page.close()
                 except Exception as close_error:
                     logger.error(f"Failed to close page: {close_error}")
+                    # Force browser restart on next cycle to prevent orphan page accumulation
+                    self.browser_manager._page_count = self.browser_manager._max_pages_before_restart
+                    logger.warning(
+                        "Browser restart forced due to page close failure - "
+                        "orphan pages may cause memory leaks"
+                    )
 
     async def book_appointment_for_request(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """

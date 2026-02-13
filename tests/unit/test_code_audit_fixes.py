@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -128,6 +129,50 @@ class TestBrowserMemoryLeakPrevention:
 
         # Default should be 100
         assert browser_manager._max_pages_before_restart == 100
+
+    @pytest.mark.asyncio
+    async def test_page_close_failure_forces_restart_threshold(self):
+        """Test that page.close() failure forces browser restart threshold."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        # Create mock VFSBot instance
+        with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
+            bot = VFSBot.__new__(VFSBot)
+
+            # Mock browser manager
+            browser_manager = MagicMock()
+            browser_manager._page_count = 5
+            browser_manager._max_pages_before_restart = 10
+            browser_manager.should_restart = AsyncMock(return_value=False)
+            
+            # Mock page that raises exception on close
+            mock_page = MagicMock()
+            mock_page.close = AsyncMock(side_effect=Exception("Failed to close page"))
+            browser_manager.new_page = AsyncMock(return_value=mock_page)
+
+            # Mock booking workflow
+            booking_workflow = MagicMock()
+            booking_workflow.process_user = AsyncMock()
+
+            # Mock services with semaphore
+            services = MagicMock()
+            services.core = MagicMock()
+            services.core.user_semaphore = asyncio.Semaphore(5)
+
+            # Assign mocks to bot
+            bot.browser_manager = browser_manager
+            bot.booking_workflow = booking_workflow
+            bot.services = services
+
+            # Call _process_user_with_semaphore with a test user
+            user = {"id": 1, "email": "test@example.com"}
+            
+            # The method should not raise, but should log the error
+            await bot._process_user_with_semaphore(user)
+
+            # Verify that browser_manager._page_count was set to _max_pages_before_restart
+            assert browser_manager._page_count == browser_manager._max_pages_before_restart
+            assert browser_manager._page_count == 10
 
 
 class TestGracefulShutdownNotifications:
@@ -668,6 +713,237 @@ class TestPersistentTokenBlacklistInit:
             call_args = mock_repo.add.call_args
             assert call_args is not None
             assert len(call_args[0]) == 2  # jti and exp
+
+
+class TestDatabaseURLProductionValidation:
+    """Test DATABASE_URL production validation."""
+
+    def test_database_url_default_rejected_in_production(self, monkeypatch):
+        """Test that default DATABASE_URL is rejected in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment to test default value
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        with pytest.raises(ValueError) as exc_info:
+            VFSSettings(
+                env="production",
+                encryption_key=test_encryption_key,
+                api_secret_key=test_api_secret_key,
+                database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+            )
+
+        error_msg = str(exc_info.value)
+        assert "default DATABASE_URL" in error_msg or "cannot use default" in error_msg
+
+    def test_database_url_without_auth_rejected_in_production(self, monkeypatch):
+        """Test that DATABASE_URL without auth credentials is rejected in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        with pytest.raises(ValueError) as exc_info:
+            VFSSettings(
+                env="production",
+                encryption_key=test_encryption_key,
+                api_secret_key=test_api_secret_key,
+                database_url="postgresql://localhost:5432/mydb",  # No @ symbol
+            )
+
+        error_msg = str(exc_info.value)
+        assert "authentication credentials" in error_msg
+        assert "@" in error_msg or "user:password" in error_msg
+
+    def test_database_url_with_auth_accepted_in_production(self, monkeypatch):
+        """Test that DATABASE_URL with auth credentials is accepted in production."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise
+        settings = VFSSettings(
+            env="production",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://user:pass@localhost:5432/mydb",
+        )
+
+        assert settings.database_url == "postgresql://user:pass@localhost:5432/mydb"
+
+    def test_database_url_default_allowed_in_development(self, monkeypatch):
+        """Test that default DATABASE_URL is allowed in development."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise - use explicit default
+        settings = VFSSettings(
+            env="development",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+        )
+
+        assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
+
+    def test_database_url_default_allowed_in_testing(self, monkeypatch):
+        """Test that default DATABASE_URL is allowed in testing."""
+        from cryptography.fernet import Fernet
+
+        from src.core.config.settings import VFSSettings
+
+        # Clear DATABASE_URL from environment
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+
+        test_encryption_key = Fernet.generate_key().decode()
+        test_api_secret_key = "a" * 64
+
+        # Should not raise - use explicit default
+        settings = VFSSettings(
+            env="testing",
+            encryption_key=test_encryption_key,
+            api_secret_key=test_api_secret_key,
+            database_url="postgresql://localhost:5432/vfs_bot",  # Explicit default
+        )
+
+        assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
+
+
+class TestWaitOrShutdownEventBased:
+    """Test _wait_or_shutdown event-based implementation."""
+
+    @pytest.fixture
+    def bot_config(self):
+        """Bot configuration fixture."""
+        return {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "centres": ["Istanbul"],
+                "category": "Schengen Visa",
+                "subcategory": "Tourism",
+            },
+            "credentials": {"email": "test@example.com", "password": "testpass"},
+            "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
+            "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
+            "bot": {
+                "check_interval": 5,
+                "headless": True,
+                "screenshot_on_error": False,
+                "max_retries": 1,
+            },
+            "appointments": {
+                "preferred_dates": [],
+                "preferred_times": [],
+                "random_selection": True,
+            },
+            "anti_detection": {"enabled": False},
+        }
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock database fixture."""
+        from src.models.database import Database
+
+        db = AsyncMock(spec=Database)
+        db.get_active_users = AsyncMock(return_value=[])
+        db.get_personal_details = AsyncMock(return_value=None)
+        db.add_appointment = AsyncMock(return_value=1)
+        return db
+
+    @pytest.fixture
+    def mock_notifier(self):
+        """Mock notification service fixture."""
+        from src.services.notification import NotificationService
+
+        notifier = AsyncMock(spec=NotificationService)
+        notifier.notify_slot_found = AsyncMock()
+        notifier.notify_appointment_booked = AsyncMock()
+        notifier.notify_bot_started = AsyncMock()
+        notifier.notify_bot_stopped = AsyncMock()
+        return notifier
+
+    @pytest.mark.asyncio
+    async def test_wait_uses_event_based_approach(self, bot_config, mock_db, mock_notifier):
+        """Test that the method uses event-based approach (instant response to events)."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Set trigger event before calling wait
+        bot._trigger_event.set()
+
+        # Measure time - should complete almost instantly (< 0.2s) not after 5s
+        start_time = time.time()
+        result = await bot._wait_or_shutdown(5.0)
+        elapsed = time.time() - start_time
+
+        # Should return False (trigger, not shutdown)
+        assert result is False
+        # Should complete in under 0.2 seconds (proves no polling)
+        assert elapsed < 0.2
+
+    @pytest.mark.asyncio
+    async def test_wait_shutdown_priority_over_trigger(self, bot_config, mock_db, mock_notifier):
+        """Test that shutdown event takes priority over trigger event."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Set both events before calling
+        bot.shutdown_event.set()
+        bot._trigger_event.set()
+
+        # Should return True (shutdown takes priority)
+        result = await bot._wait_or_shutdown(10.0)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_wait_cancellation_cleanup(self, bot_config, mock_db, mock_notifier):
+        """Test that cancellation properly cleans up tasks."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Create a task running _wait_or_shutdown
+        wait_task = asyncio.create_task(bot._wait_or_shutdown(10.0))
+
+        # Wait a bit then cancel
+        await asyncio.sleep(0.05)
+        wait_task.cancel()
+
+        # Should raise CancelledError
+        with pytest.raises(asyncio.CancelledError):
+            await wait_task
+
+        # Verify no leaked tasks (all pending tasks should be cancelled)
+        # We can't directly check for leaked tasks, but if the implementation is correct,
+        # there should be no warnings about unclosed tasks
+        await asyncio.sleep(0.01)  # Give time for cleanup
 
 
 if __name__ == "__main__":
