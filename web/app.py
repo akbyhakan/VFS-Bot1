@@ -187,6 +187,10 @@ API endpoints are rate-limited to prevent abuse:
                 "description": "Appointment request and booking operations",
             },
             {
+                "name": "audit",
+                "description": "Audit log and security monitoring operations",
+            },
+            {
                 "name": "payment",
                 "description": "Payment card and transaction management",
             },
