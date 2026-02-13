@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBotStore } from '@/store/botStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useHealthCheck } from '@/hooks/useApi';
 import { Button } from '@/components/ui/Button';
 import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-react';
 import { cn, getStatusColor } from '@/utils/helpers';
@@ -14,6 +15,7 @@ interface HeaderProps {
 export function Header({ onMenuClick }: HeaderProps) {
   const { logout } = useAuth();
   const { status, isConnected } = useBotStore();
+  const { data: health } = useHealthCheck();
   const { theme, toggleTheme } = useThemeStore();
   const { i18n } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -56,6 +58,19 @@ export function Header({ onMenuClick }: HeaderProps) {
             {status === 'stopped' && 'Durduruldu'}
             {status === 'idle' && 'Beklemede'}
           </span>
+          
+          {/* System Health Indicator */}
+          {health && health.status !== 'healthy' && (
+            <div
+              className={cn(
+                'ml-2 w-2 h-2 rounded-full',
+                health.status === 'degraded' && 'bg-yellow-500 animate-pulse',
+                health.status === 'unhealthy' && 'bg-red-500 animate-pulse'
+              )}
+              title={`System: ${health.status}`}
+              aria-label={`System health: ${health.status}`}
+            />
+          )}
         </div>
 
         {/* WebSocket Status */}

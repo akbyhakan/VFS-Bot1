@@ -1,6 +1,7 @@
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { LiveLogs } from '@/components/dashboard/LiveLogs';
 import { BotControls } from '@/components/dashboard/BotControls';
+import { HealthBanner } from '@/components/dashboard/HealthBanner';
 import { useBotStore } from '@/store/botStore';
 import { useBotStatus } from '@/hooks/useApi';
 import { Target, Calendar, Users as UsersIcon, Clock, RefreshCw } from 'lucide-react';
@@ -38,6 +39,9 @@ export function Dashboard() {
           {isRefetching ? 'Yenileniyor...' : 'Yenile'}
         </Button>
       </div>
+
+      {/* Health Banner */}
+      <HealthBanner />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

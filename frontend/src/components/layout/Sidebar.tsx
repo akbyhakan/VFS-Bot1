@@ -7,6 +7,7 @@ import {
   FileText,
   Activity,
   Calendar,
+  HeartPulse,
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
 
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'Randevu Talebi', href: ROUTES.APPOINTMENTS, icon: Calendar },
   { name: 'Loglar', href: ROUTES.LOGS, icon: FileText },
   { name: 'Ayarlar', href: ROUTES.SETTINGS, icon: Settings },
+  { name: 'Sistem Sağlığı', href: ROUTES.SYSTEM_HEALTH, icon: HeartPulse },
 ];
 
 export function Sidebar() {
