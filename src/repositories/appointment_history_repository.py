@@ -3,12 +3,12 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+if TYPE_CHECKING:
+    from src.models.database import Database
+
 from loguru import logger
 
 from src.repositories.base import BaseRepository
-
-if TYPE_CHECKING:
-    from src.models.database import Database
 
 
 class AppointmentHistory:
