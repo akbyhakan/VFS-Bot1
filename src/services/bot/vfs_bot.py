@@ -259,6 +259,10 @@ class VFSBot:
 
         logger.info("VFS-Bot stopped")
 
+    def trigger_immediate_check(self) -> None:
+        """Trigger an immediate slot check by setting the trigger event."""
+        self._trigger_event.set()
+
     async def _send_alert_safe(
         self,
         message: str,
