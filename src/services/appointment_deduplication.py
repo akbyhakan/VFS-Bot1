@@ -205,7 +205,7 @@ class RedisDeduplicationBackend(DeduplicationBackend):
 
     async def get_stats(self, ttl_seconds: int) -> Dict[str, int]:
         """Get cache statistics."""
-        # Count all dedup keys
+        # Note: Using KEYS can be slow on large datasets. Consider SCAN for production.
         keys = await asyncio.to_thread(self._redis.keys, "dedup:*")
         return {
             "total_entries": len(keys),
@@ -215,6 +215,7 @@ class RedisDeduplicationBackend(DeduplicationBackend):
 
     async def clear(self) -> None:
         """Clear all cache entries."""
+        # Note: Using KEYS can be slow on large datasets. Consider SCAN for production.
         keys = await asyncio.to_thread(self._redis.keys, "dedup:*")
         if keys:
             await asyncio.to_thread(self._redis.delete, *keys)
