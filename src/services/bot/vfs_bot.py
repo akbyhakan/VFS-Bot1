@@ -494,7 +494,8 @@ class VFSBot:
         Process batch of users with parallel processing and error handling.
 
         Creates tasks for each user, executes them in parallel with semaphore control,
-        analyzes results, and updates circuit breaker state. Sends alerts on batch errors.
+        analyzes results, and updates circuit breaker state based on error rate.
+        Sends alerts on batch errors.
 
         Args:
             users: List of user dictionaries to process
@@ -513,10 +514,20 @@ class VFSBot:
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Check results and update circuit breaker
+        # Calculate error rate
         errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
-        if errors_in_batch > 0:
-            logger.warning(f"{errors_in_batch}/{len(users)} users failed processing")
+        total_users = len(users)
+        error_rate = errors_in_batch / total_users if total_users > 0 else 0.0
+
+        # Use error rate threshold from constants
+        threshold = CircuitBreakerConfig.BATCH_ERROR_RATE_THRESHOLD
+
+        if error_rate >= threshold:
+            # Systememic issue - high error rate (>= 50%)
+            logger.error(
+                f"High error rate in batch: {errors_in_batch}/{total_users} "
+                f"({error_rate:.1%}) >= threshold ({threshold:.1%})"
+            )
             await self.circuit_breaker.record_failure()
 
             # Record circuit breaker trip in metrics if it just opened
@@ -525,13 +536,40 @@ class VFSBot:
             # Send alert for batch errors (ERROR severity)
             await self._send_alert_safe(
                 message=(
-                    f"Batch processing errors: {errors_in_batch}/" f"{len(users)} users failed"
+                    f"High batch error rate: {errors_in_batch}/{total_users} "
+                    f"({error_rate:.1%}) - systememic issue"
                 ),
                 severity=AlertSeverity.ERROR,
-                metadata={"errors": errors_in_batch, "total_users": len(users)},
+                metadata={
+                    "errors": errors_in_batch,
+                    "total_users": total_users,
+                    "error_rate": error_rate,
+                },
+            )
+        elif error_rate > 0:
+            # Isolated errors - low error rate (< 50%)
+            logger.warning(
+                f"Isolated errors in batch: {errors_in_batch}/{total_users} "
+                f"({error_rate:.1%}) < threshold ({threshold:.1%})"
+            )
+            # Record success to reset consecutive failure count
+            await self.circuit_breaker.record_success()
+
+            # Send alert for tracking (WARNING severity)
+            await self._send_alert_safe(
+                message=(
+                    f"Batch errors (isolated): {errors_in_batch}/{total_users} "
+                    f"({error_rate:.1%})"
+                ),
+                severity=AlertSeverity.WARNING,
+                metadata={
+                    "errors": errors_in_batch,
+                    "total_users": total_users,
+                    "error_rate": error_rate,
+                },
             )
         else:
-            # Successful batch - reset consecutive errors
+            # Perfect success - no errors
             await self.circuit_breaker.record_success()
 
     async def _wait_adaptive_interval(self) -> bool:

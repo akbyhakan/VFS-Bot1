@@ -1,6 +1,5 @@
 """Thread-safe bot state management."""
 
-import asyncio
 import copy
 import threading
 from collections import deque
@@ -10,18 +9,16 @@ from typing import Any, Dict
 
 @dataclass
 class ThreadSafeBotState:
-    """Thread-safe wrapper for bot state with asyncio support.
+    """Thread-safe wrapper for bot state with unified lock for sync and async methods.
     
-    WARNING: To avoid race conditions, code should consistently use EITHER:
-    - Sync methods (get, set, __getitem__, __setitem__, etc.) from synchronous/threaded contexts
-    - Async methods (async_get, async_set, async_to_dict) from async contexts
+    Uses a single threading.Lock for all operations (both sync and async methods).
+    This ensures thread-safety across all contexts without race conditions.
     
-    Mixing sync and async method calls on the same instance creates race conditions
-    as they use separate locks (threading.Lock vs asyncio.Lock).
+    The threading.Lock works correctly in async contexts as state operations are
+    microsecond-level (dict get/set), so event loop blocking is negligible.
     """
 
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _async_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     _state: Dict[str, Any] = field(
         default_factory=lambda: {
             "running": False,
@@ -64,18 +61,18 @@ class ThreadSafeBotState:
             return state_copy
 
     async def async_get(self, key: str, default: Any = None) -> Any:
-        """Async get - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async get - uses threading.Lock (safe in async context)."""
+        with self._lock:
             return self._state.get(key, default)
 
     async def async_set(self, key: str, value: Any) -> None:
-        """Async set - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async set - uses threading.Lock (safe in async context)."""
+        with self._lock:
             self._state[key] = value
 
     async def async_to_dict(self) -> Dict[str, Any]:
-        """Async to_dict - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async to_dict - uses threading.Lock (safe in async context)."""
+        with self._lock:
             state_copy = {}
             for key, value in self._state.items():
                 if isinstance(value, deque):

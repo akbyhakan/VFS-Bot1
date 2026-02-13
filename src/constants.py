@@ -107,6 +107,7 @@ class CircuitBreaker:
     HALF_OPEN_MAX_CALLS: Final[int] = 3
     BACKOFF_BASE_SECONDS: Final[int] = 60
     BACKOFF_MAX_SECONDS: Final[int] = 600
+    BATCH_ERROR_RATE_THRESHOLD: Final[float] = 0.5
 
 
 class OTP:

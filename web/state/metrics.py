@@ -1,6 +1,5 @@
 """Thread-safe metrics storage."""
 
-import asyncio
 import copy
 import threading
 from datetime import datetime, timezone
@@ -8,19 +7,17 @@ from typing import Any, Dict
 
 
 class ThreadSafeMetrics:
-    """Thread-safe metrics storage with asyncio support.
+    """Thread-safe metrics storage with unified lock for sync and async methods.
     
-    WARNING: To avoid race conditions, code should consistently use EITHER:
-    - Sync methods (increment, get, set, etc.) from synchronous/threaded contexts
-    - Async methods (async_increment, async_get, async_set, etc.) from async contexts
+    Uses a single threading.Lock for all operations (both sync and async methods).
+    This ensures thread-safety across all contexts without race conditions.
     
-    Mixing sync and async method calls on the same instance creates race conditions
-    as they use separate locks (threading.Lock vs asyncio.Lock).
+    The threading.Lock works correctly in async contexts as metrics operations are
+    microsecond-level (dict get/set), so event loop blocking is negligible.
     """
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._async_lock = asyncio.Lock()
         self._data = {
             "requests_total": 0,
             "requests_success": 0,
@@ -64,24 +61,24 @@ class ThreadSafeMetrics:
             return copy.deepcopy(self._data)
 
     async def async_increment(self, key: str, value: int = 1) -> None:
-        """Async increment - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async increment - uses threading.Lock (safe in async context)."""
+        with self._lock:
             if key in self._data and isinstance(self._data[key], (int, float)):
                 self._data[key] += value
 
     async def async_get(self, key: str, default: Any = None) -> Any:
-        """Async get - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async get - uses threading.Lock (safe in async context)."""
+        with self._lock:
             return self._data.get(key, default)
 
     async def async_set(self, key: str, value: Any) -> None:
-        """Async set - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async set - uses threading.Lock (safe in async context)."""
+        with self._lock:
             self._data[key] = value
 
     async def async_to_dict(self) -> Dict[str, Any]:
-        """Async to_dict - uses asyncio.Lock for native async support."""
-        async with self._async_lock:
+        """Async to_dict - uses threading.Lock (safe in async context)."""
+        with self._lock:
             return copy.deepcopy(self._data)
 
     def __setitem__(self, key: str, value: Any) -> None:
