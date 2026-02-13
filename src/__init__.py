@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from .selector import SelectorManager as SelectorManager
     from .selector import get_selector_manager as get_selector_manager
     from .services.bot.vfs_bot import VFSBot as VFSBot
-    from .services.captcha_solver import CaptchaProvider as CaptchaProvider
     from .services.captcha_solver import CaptchaSolver as CaptchaSolver
     from .services.centre_fetcher import CentreFetcher as CentreFetcher
     from .services.notification import NotificationService as NotificationService
@@ -45,7 +44,6 @@ _LAZY_MODULE_MAP = {
     # Services
     "VFSBot": ("src.services.bot.vfs_bot", "VFSBot"),
     "CaptchaSolver": ("src.services.captcha_solver", "CaptchaSolver"),
-    "CaptchaProvider": ("src.services.captcha_solver", "CaptchaProvider"),
     "CentreFetcher": ("src.services.centre_fetcher", "CentreFetcher"),
     "NotificationService": ("src.services.notification", "NotificationService"),
     # Utils

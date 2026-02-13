@@ -9,27 +9,20 @@ from src.services.payment_service import PaymentMethod, PaymentService
 
 def test_captcha_solver_initialization():
     """Test CaptchaSolver initialization."""
-    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
+    solver = CaptchaSolver(api_key="test_key")
     assert solver is not None
     assert solver.api_key == "test_key"
 
 
-def test_captcha_solver_manual_provider():
-    """Test manual captcha mode (no API key)."""
-    solver = CaptchaSolver(api_key="", manual_timeout=60)
-    assert solver.api_key == ""
-    assert solver.manual_timeout == 60
+def test_captcha_solver_no_api_key():
+    """Test CaptchaSolver raises ValueError without API key."""
+    with pytest.raises(ValueError, match="2Captcha API key is required"):
+        CaptchaSolver(api_key="")
 
 
 def test_captcha_solver_2captcha_provider():
     """Test 2captcha provider initialization."""
-    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
-    assert solver.api_key == "test_key"
-
-
-def test_captcha_solver_nopecha_provider():
-    """Test initialization with API key (2Captcha only)."""
-    solver = CaptchaSolver(api_key="test_key", manual_timeout=120)
+    solver = CaptchaSolver(api_key="test_key")
     assert solver.api_key == "test_key"
 
 

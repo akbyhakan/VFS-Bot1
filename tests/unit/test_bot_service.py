@@ -289,7 +289,6 @@ def test_bot_with_custom_captcha_config(mock_db, mock_notifier):
         "captcha": {
             "provider": "2captcha",
             "api_key": "test_key",
-            "manual_timeout": 60,
         },
         "credentials": {"email": "test@example.com", "password": "testpass"},
         "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
@@ -311,7 +310,7 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
             "country": "tur",
             "mission": "deu",
         },
-        "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
+        "captcha": {"provider": "2captcha", "api_key": "test_key"},
         "credentials": {"email": "test@example.com", "password": "testpass"},
         "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
         "bot": {"check_interval": 5, "headless": True, "screenshot_on_error": False},

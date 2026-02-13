@@ -14,25 +14,9 @@ def test_captcha_solver_initialization():
 
 
 def test_captcha_solver_initialization_no_key():
-    """Test captcha solver initialization without API key (manual mode)."""
-    solver = CaptchaSolver(api_key="")
-    assert solver.api_key == ""
-    assert solver.manual_timeout == 120  # Default timeout
-
-
-def test_manual_solver_timeout():
-    """Test manual solver with timeout."""
-    solver = CaptchaSolver(api_key="test_key", manual_timeout=60)
-    assert solver.manual_timeout == 60
-
-
-@pytest.mark.asyncio
-async def test_captcha_solver_manual_fallback():
-    """Test captcha solver fallback to manual on 2captcha failure."""
-    solver = CaptchaSolver(api_key="invalid_key")
-    # This would require mocking the page and 2captcha service
-    # Just verify the solver was initialized
-    assert solver.api_key == "invalid_key"
+    """Test captcha solver initialization without API key raises ValueError."""
+    with pytest.raises(ValueError, match="2Captcha API key is required"):
+        CaptchaSolver(api_key="")
 
 
 @pytest.mark.asyncio
@@ -51,19 +35,6 @@ async def test_solve_turnstile_success():
 
         assert token == "mock-turnstile-token"
         mock_solver_instance.turnstile.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_solve_turnstile_no_api_key():
-    """Test Turnstile solving without API key."""
-    solver = CaptchaSolver(api_key="")
-
-    token = await solver.solve_turnstile(
-        page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key"
-    )
-
-    # Should return None when no API key
-    assert token is None
 
 
 @pytest.mark.asyncio
@@ -95,3 +66,4 @@ async def test_solve_turnstile_custom_timeout():
         )
 
         assert token == "token"
+

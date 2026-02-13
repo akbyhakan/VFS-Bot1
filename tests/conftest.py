@@ -135,7 +135,6 @@ def config() -> Dict[str, Any]:
         "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
         "captcha": {
             "api_key": "test_dummy_key_not_real",
-            "manual_timeout": 10,
         },
         "bot": {
             "check_interval": 5,

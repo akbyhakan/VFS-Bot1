@@ -57,7 +57,6 @@ class CaptchaConfig(BaseModel):
 
     provider: str = Field(default="2captcha")
     api_key: SecretStr = Field(default=SecretStr(""))
-    manual_timeout: int = Field(default=120, ge=30, le=600)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CaptchaConfig":

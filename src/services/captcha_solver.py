@@ -6,39 +6,29 @@ from typing import Any, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-# Maximum manual timeout limit (5 minutes)
-MAX_MANUAL_TIMEOUT = 300
-
 
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
 
-    def __init__(self, api_key: str = "", manual_timeout: int = 120):
+    def __init__(self, api_key: str):
         """
         Initialize 2Captcha solver.
 
         Args:
-            api_key: 2Captcha API key (empty string for manual-only mode)
-            manual_timeout: Timeout for fallback manual solving in seconds
+            api_key: 2Captcha API key (required)
+
+        Raises:
+            ValueError: If api_key is empty or missing
         """
+        if not api_key:
+            raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
+
         self.api_key = api_key
-
-        # Enforce maximum timeout limit
-        if manual_timeout > MAX_MANUAL_TIMEOUT:
-            logger.warning(
-                f"manual_timeout {manual_timeout}s exceeds maximum {MAX_MANUAL_TIMEOUT}s, "
-                f"capping to {MAX_MANUAL_TIMEOUT}s"
-            )
-        self.manual_timeout = min(manual_timeout, MAX_MANUAL_TIMEOUT)
-
-        if api_key:
-            logger.info("CaptchaSolver initialized with 2Captcha")
-        else:
-            logger.warning("CaptchaSolver initialized without API key - manual mode only")
+        logger.info("CaptchaSolver initialized with 2Captcha")
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
-        Solve reCAPTCHA v2/v3 using 2Captcha or manual fallback.
+        Solve reCAPTCHA v2/v3 using 2Captcha.
 
         Args:
             page: Playwright page object
@@ -46,19 +36,15 @@ class CaptchaSolver:
             url: Page URL
 
         Returns:
-            Captcha solution token or None
+            Captcha solution token or None if solving failed
         """
-        if not self.api_key:
-            logger.warning("No 2Captcha API key, using manual solving")
-            return await self._solve_manually(page)
-
         logger.info("Solving reCAPTCHA with 2Captcha...")
 
         try:
             return await self._solve_with_2captcha(site_key, url)
         except Exception as e:
-            logger.error(f"2Captcha failed: {e}, falling back to manual solving")
-            return await self._solve_manually(page)
+            logger.error(f"2Captcha failed: {e}")
+            return None
 
     async def _solve_with_2captcha(self, site_key: str, url: str) -> Optional[str]:
         """
@@ -94,43 +80,6 @@ class CaptchaSolver:
             logger.error(f"2Captcha error: {e}")
             return None
 
-    async def _solve_manually(self, page: Page) -> Optional[str]:
-        """
-        Fallback: Wait for manual captcha solving.
-
-        Args:
-            page: Playwright page object
-
-        Returns:
-            Captcha solution token
-        """
-        logger.info(f"Waiting {self.manual_timeout}s for manual captcha solving...")
-
-        # Check every 2 seconds to reduce browser load
-        check_interval = 2
-        total_checks = self.manual_timeout // check_interval
-
-        for _ in range(total_checks):
-            try:
-                token_result = await page.evaluate("""
-                    () => {
-                        const response = document.querySelector('[name="g-recaptcha-response"]');
-                        return response ? response.value : null;
-                    }
-                """)
-
-                token: Optional[str] = token_result if isinstance(token_result, str) else None
-                if token:
-                    logger.info("Manual captcha solved")
-                    return token
-            except Exception as e:
-                logger.warning(f"Captcha check error: {e}")
-
-            await asyncio.sleep(check_interval)
-
-        logger.warning("Manual captcha solving timeout")
-        return None
-
     async def solve_turnstile(
         self, page_url: str, site_key: str, timeout: int = 120
     ) -> Optional[str]:
@@ -145,11 +94,8 @@ class CaptchaSolver:
             timeout: Solving timeout in seconds
 
         Returns:
-            Turnstile token or None
+            Turnstile token or None if solving failed
         """
-        if not self.api_key:
-            logger.warning("No 2Captcha API key for Turnstile")
-            return None
 
         try:
             from twocaptcha import TwoCaptcha

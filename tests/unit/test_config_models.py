@@ -20,26 +20,22 @@ class TestCaptchaConfig:
         config = CaptchaConfig()
         assert config.provider == "2captcha"
         assert config.api_key.get_secret_value() == ""
-        assert config.manual_timeout == 120
 
     def test_from_dict_empty(self):
         """Test from_dict with empty dict."""
         config = CaptchaConfig.from_dict({})
         assert config.provider == "2captcha"
         assert config.api_key.get_secret_value() == ""
-        assert config.manual_timeout == 120
 
     def test_from_dict_with_values(self):
         """Test from_dict with custom values."""
         data = {
-            "provider": "anticaptcha",
+            "provider": "2captcha",
             "api_key": "test_key_123",
-            "manual_timeout": 180,
         }
         config = CaptchaConfig.from_dict(data)
-        assert config.provider == "anticaptcha"
+        assert config.provider == "2captcha"
         assert config.api_key.get_secret_value() == "test_key_123"
-        assert config.manual_timeout == 180
 
     def test_from_dict_partial(self):
         """Test from_dict with partial data."""
@@ -47,17 +43,6 @@ class TestCaptchaConfig:
         config = CaptchaConfig.from_dict(data)
         assert config.provider == "2captcha"
         assert config.api_key.get_secret_value() == "partial_key"
-        assert config.manual_timeout == 120
-
-    def test_validation_manual_timeout(self):
-        """Test manual_timeout validation constraints."""
-        # Too low
-        with pytest.raises(ValidationError):
-            CaptchaConfig(manual_timeout=20)  # Less than 30
-
-        # Too high
-        with pytest.raises(ValidationError):
-            CaptchaConfig(manual_timeout=700)  # Greater than 600
 
 
 class TestVFSConfig:

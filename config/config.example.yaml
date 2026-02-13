@@ -42,7 +42,6 @@ notifications:
 captcha:
   provider: "2captcha"  # Only 2captcha is supported
   api_key: "${CAPTCHA_API_KEY}"
-  manual_timeout: 120  # Timeout for manual solving or Cloudflare Turnstile
 
 # SMS OTP Configuration
 otp:
