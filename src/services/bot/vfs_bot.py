@@ -92,7 +92,7 @@ class VFSBot:
 
         # Initialize services context
         if services is None:
-            services = BotServiceFactory.create_services(config, db, notifier)
+            services = BotServiceFactory.create(config, db, notifier)
         self.services = services
 
         # Initialize browser manager (needs anti-detection services)
@@ -360,55 +360,54 @@ class VFSBot:
         """
         Wait for the specified duration or until shutdown/trigger is requested.
 
+        Uses polling with short sleep intervals to avoid creating/canceling tasks
+        on each call, reducing GC pressure in high-frequency loops.
+
         Args:
             seconds: Number of seconds to wait
 
         Returns:
             True if shutdown was requested during wait, False on normal timeout or trigger
         """
-        try:
-            # Wait for either shutdown or trigger event
-            shutdown_task = asyncio.create_task(self.shutdown_event.wait())
-            trigger_task = asyncio.create_task(self._trigger_event.wait())
+        end_time = asyncio.get_event_loop().time() + seconds
+        poll_interval = 0.1  # Poll every 100ms
 
-            done, pending = await asyncio.wait(
-                [shutdown_task, trigger_task], timeout=seconds, return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # Cancel pending tasks
-            for task in pending:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-            # Check which event was triggered
-            if shutdown_task in done:
-                # Shutdown was requested
+        while True:
+            # Check shutdown event first (highest priority)
+            if self.shutdown_event.is_set():
                 return True
-            elif trigger_task in done:
-                # Trigger event - clear it and continue loop
+
+            # Check trigger event
+            if self._trigger_event.is_set():
                 self._trigger_event.clear()
                 return False
-            else:
+
+            # Calculate remaining time
+            remaining = end_time - asyncio.get_event_loop().time()
+            if remaining <= 0:
                 # Timeout - normal sleep completion
                 return False
-        except asyncio.TimeoutError:
-            # Normal timeout - no shutdown requested
-            return False
+
+            # Sleep for short interval or remaining time, whichever is smaller
+            await asyncio.sleep(min(remaining, poll_interval))
 
     async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
         """
         Get active users with fallback support for graceful degradation.
 
-        Uses execute_with_fallback() to implement caching layer.
-        On DB failure, returns cached users if available.
+        Uses cache as primary strategy with TTL. Only queries DB when cache
+        is empty or TTL expired. On DB failure, returns cached users if available.
 
         Returns:
             List of active users with decrypted passwords
         """
-        # Try to get users from database using fallback mechanism
+        # Check cache first - if valid and not expired, return immediately
+        cache_age = time.time() - self._user_cache.timestamp
+        if cache_age < self._user_cache.ttl and self._user_cache.users:
+            # Cache is fresh - return without DB query
+            return self._user_cache.users
+
+        # Cache expired or empty - query database
         users = await self.db.execute_with_fallback(
             query_func=self.user_repo.get_all_active_with_passwords,
             fallback_value=None,
@@ -421,20 +420,16 @@ class VFSBot:
             self._user_cache.timestamp = time.time()
             return users
 
-        # DB failure - check if cache is still fresh
-        cache_age = time.time() - self._user_cache.timestamp
-        if cache_age < self._user_cache.ttl and self._user_cache.users:
+        # DB failure - check if we have expired cache to fall back to
+        if self._user_cache.users:
             logger.warning(
-                f"Database unavailable, using cached users (age: {cache_age:.1f}s, "
+                f"Database unavailable, using expired cached users (age: {cache_age:.1f}s, "
                 f"count: {len(self._user_cache.users)})"
             )
             return self._user_cache.users
 
-        # Cache expired or empty
-        logger.error(
-            f"Database unavailable and cache expired (age: {cache_age:.1f}s) - "
-            "returning empty user list"
-        )
+        # No cache available at all
+        logger.error("Database unavailable and no cached users available - returning empty list")
         return []
 
     async def _ensure_db_connection(self) -> None:

@@ -1,6 +1,6 @@
 """User write repository implementation."""
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from src.models.database import Database
@@ -507,3 +507,23 @@ class UserWriteRepository(BaseRepository[User]):
                 logger.warning(f"Hard deleted user {id}")
 
             return deleted
+
+    # Read operations - not supported in write-only repository
+    # These are implemented to satisfy BaseRepository abstract methods
+    async def get_by_id(self, id: int) -> Optional[User]:
+        """
+        Get operation not supported in write-only repository.
+
+        Raises:
+            NotImplementedError: Always raised
+        """
+        raise NotImplementedError("Get operation not supported in write-only repository")
+
+    async def get_all(self, limit: int = 100) -> List[User]:
+        """
+        Get operation not supported in write-only repository.
+
+        Raises:
+            NotImplementedError: Always raised
+        """
+        raise NotImplementedError("Get operation not supported in write-only repository")

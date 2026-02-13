@@ -356,16 +356,16 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
 
 
 @pytest.mark.asyncio
-async def test_bot_get_users_with_fallback_uses_cache_on_db_failure(bot_config, mock_notifier):
-    """Test that _get_users_with_fallback returns cached users when DB fails."""
+async def test_bot_get_users_with_fallback_uses_cache_when_ttl_valid(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback returns cached users without DB query when TTL is valid."""
     import time
 
     from src.models.database import DatabaseState
 
-    # Create mock database that simulates failure
+    # Create mock database
     mock_db = AsyncMock(spec=Database)
-    mock_db.execute_with_fallback = AsyncMock(return_value=None)  # Simulate DB failure
-    mock_db.state = DatabaseState.DEGRADED
+    mock_db.execute_with_fallback = AsyncMock(return_value=None)
+    mock_db.state = DatabaseState.CONNECTED
 
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
@@ -380,16 +380,71 @@ async def test_bot_get_users_with_fallback_uses_cache_on_db_failure(bot_config, 
     # Call the method
     users = await bot._get_users_with_fallback()
 
-    # Assert cached users are returned
+    # Assert cached users are returned WITHOUT calling DB
     assert users == test_users
     assert len(users) == 2
+    mock_db.execute_with_fallback.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
-    bot_config, mock_notifier
-):
-    """Test that _get_users_with_fallback returns empty list when cache is expired."""
+async def test_bot_get_users_with_fallback_queries_db_when_ttl_expired(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback queries DB when TTL is expired."""
+    import time
+
+    from src.models.database import DatabaseState
+
+    # Create mock database that succeeds
+    test_users = [
+        {"id": 3, "email": "user3@test.com", "password": "pass3"},
+    ]
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=test_users)
+    mock_db.state = DatabaseState.CONNECTED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Pre-populate cache with old timestamp (expired)
+    old_users = [{"id": 1, "email": "old@test.com", "password": "oldpass"}]
+    bot._user_cache.users = old_users
+    bot._user_cache.timestamp = time.time() - 400  # 400 seconds ago (> 300s TTL)
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert DB was queried and new users returned
+    assert users == test_users
+    mock_db.execute_with_fallback.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_queries_db_when_cache_empty(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback queries DB when cache is empty."""
+    from src.models.database import DatabaseState
+
+    # Create mock database that succeeds
+    test_users = [
+        {"id": 1, "email": "user1@test.com", "password": "pass1"},
+    ]
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=test_users)
+    mock_db.state = DatabaseState.CONNECTED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Ensure cache is empty
+    assert bot._user_cache.users == []
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert DB was queried
+    assert users == test_users
+    mock_db.execute_with_fallback.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_uses_cache_on_db_failure(bot_config, mock_notifier):
+    """Test that _get_users_with_fallback returns expired cached users when DB fails."""
     import time
 
     from src.models.database import DatabaseState
@@ -401,15 +456,46 @@ async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
 
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
-    # Pre-populate cache with old timestamp (expired)
-    test_users = [{"id": 1, "email": "user1@test.com", "password": "pass1"}]
+    # Pre-populate cache with old/expired data
+    test_users = [
+        {"id": 1, "email": "user1@test.com", "password": "pass1"},
+        {"id": 2, "email": "user2@test.com", "password": "pass2"},
+    ]
     bot._user_cache.users = test_users
-    bot._user_cache.timestamp = time.time() - 400  # 400 seconds ago (> 300s TTL)
+    bot._user_cache.timestamp = time.time() - 400  # Expired cache
 
     # Call the method
     users = await bot._get_users_with_fallback()
 
-    # Assert empty list is returned due to expired cache
+    # Assert expired cached users are returned as fallback
+    assert users == test_users
+    assert len(users) == 2
+
+
+@pytest.mark.asyncio
+async def test_bot_get_users_with_fallback_returns_empty_when_cache_expired(
+    bot_config, mock_notifier
+):
+    """Test that _get_users_with_fallback returns empty list when cache is expired and DB fails."""
+    import time
+
+    from src.models.database import DatabaseState
+
+    # Create mock database that simulates failure
+    mock_db = AsyncMock(spec=Database)
+    mock_db.execute_with_fallback = AsyncMock(return_value=None)  # Simulate DB failure
+    mock_db.state = DatabaseState.DEGRADED
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Start with empty cache (no fallback available)
+    assert bot._user_cache.users == []
+    bot._user_cache.timestamp = time.time() - 400  # Expired timestamp
+
+    # Call the method
+    users = await bot._get_users_with_fallback()
+
+    # Assert empty list is returned (no cache AND DB failed)
     assert users == []
 
 
