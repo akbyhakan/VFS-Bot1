@@ -20,7 +20,7 @@ def _is_valid_ip(ip_str: str) -> bool:
 # TTL-based cache for trusted proxies (replaces lru_cache for runtime updates)
 _trusted_proxies_cache: Optional[frozenset[str]] = None
 _trusted_proxies_cache_time: float = 0
-_TRUSTED_PROXIES_TTL: int = 300  # 5 minutes TTL
+_TRUSTED_PROXIES_TTL: int = 300  # 5 minutes TTL (matches JWT settings cache)
 
 
 def _get_trusted_proxies() -> frozenset[str]:
