@@ -523,7 +523,7 @@ class VFSBot:
         threshold = CircuitBreakerConfig.BATCH_ERROR_RATE_THRESHOLD
 
         if error_rate >= threshold:
-            # Systememic issue - high error rate (>= 50%)
+            # Systemic issue - high error rate (>= 50%)
             logger.error(
                 f"High error rate in batch: {errors_in_batch}/{total_users} "
                 f"({error_rate:.1%}) >= threshold ({threshold:.1%})"
@@ -537,7 +537,7 @@ class VFSBot:
             await self._send_alert_safe(
                 message=(
                     f"High batch error rate: {errors_in_batch}/{total_users} "
-                    f"({error_rate:.1%}) - systememic issue"
+                    f"({error_rate:.1%}) - systemic issue"
                 ),
                 severity=AlertSeverity.ERROR,
                 metadata={
