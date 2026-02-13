@@ -2,7 +2,8 @@
 
 import ipaddress
 import os
-from functools import lru_cache
+import time
+from typing import Optional
 
 from fastapi import Request
 
@@ -16,11 +17,48 @@ def _is_valid_ip(ip_str: str) -> bool:
         return False
 
 
-@lru_cache(maxsize=1)
+# TTL-based cache for trusted proxies (replaces lru_cache for runtime updates)
+_trusted_proxies_cache: Optional[frozenset[str]] = None
+_trusted_proxies_cache_time: float = 0
+_TRUSTED_PROXIES_TTL: int = 300  # 5 minutes TTL
+
+
 def _get_trusted_proxies() -> frozenset[str]:
-    """Parse trusted proxies once and cache."""
+    """
+    Get trusted proxies with lazy initialization and TTL-based cache.
+
+    This replaces lru_cache to support runtime configuration updates.
+    Settings are cached for 5 minutes, then refreshed from environment.
+
+    Returns:
+        Frozenset of trusted proxy IP addresses
+    """
+    global _trusted_proxies_cache, _trusted_proxies_cache_time
+
+    now = time.monotonic()
+
+    # Return cached proxies if still valid
+    if _trusted_proxies_cache is not None and (now - _trusted_proxies_cache_time) < _TRUSTED_PROXIES_TTL:
+        return _trusted_proxies_cache
+
+    # Load fresh proxies from environment
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
-    return frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+    _trusted_proxies_cache = frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+    _trusted_proxies_cache_time = now
+
+    return _trusted_proxies_cache
+
+
+def invalidate_trusted_proxies_cache() -> None:
+    """
+    Invalidate trusted proxies cache.
+
+    This forces a reload of proxies from environment on next access.
+    Useful for testing or when proxy configuration is updated at runtime.
+    """
+    global _trusted_proxies_cache, _trusted_proxies_cache_time
+    _trusted_proxies_cache = None
+    _trusted_proxies_cache_time = 0
 
 
 def get_real_client_ip(request: Request) -> str:
