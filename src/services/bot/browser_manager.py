@@ -271,14 +271,11 @@ class BrowserManager:
         logger.info("Restarting browser for memory management...")
         await self.close()
         
-        # Rotate fingerprint on restart if needed or if rotator is enabled
+        # Rotate fingerprint on restart if rotator is enabled
         if self._anti_detection_enabled and self._fingerprint_rotator:
-            if self._needs_rotation:
-                logger.info("Rotating to new fingerprint profile (deferred rotation)...")
-                self._fingerprint_rotator.rotate()
-            else:
-                logger.info("Rotating to new fingerprint profile on restart...")
-                self._fingerprint_rotator.rotate()
+            rotation_reason = "deferred rotation" if self._needs_rotation else "restart"
+            logger.info(f"Rotating to new fingerprint profile ({rotation_reason})...")
+            self._fingerprint_rotator.rotate()
         
         await self.start()
         self._page_count = 0

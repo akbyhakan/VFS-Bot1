@@ -7,8 +7,9 @@ from unittest.mock import MagicMock, Mock, patch, AsyncMock
 class TestBrowserManagerEncapsulation:
     """Test BrowserManager encapsulation fixes."""
 
-    def test_force_restart_on_next_cycle(self):
-        """Test force_restart_on_next_cycle method."""
+    @pytest.mark.asyncio
+    async def test_force_restart_on_next_cycle(self):
+        """Test force_restart_on_next_cycle method triggers restart."""
         from src.services.bot.browser_manager import BrowserManager
 
         config = {
@@ -17,15 +18,13 @@ class TestBrowserManagerEncapsulation:
         }
         manager = BrowserManager(config)
 
-        # Initially page count is 0
-        assert manager._page_count == 0
-        assert manager._max_pages_before_restart == 100
-
         # Call force_restart_on_next_cycle
         manager.force_restart_on_next_cycle()
 
-        # Page count should be set to max
-        assert manager._page_count == 100
+        # Verify it triggers restart through public interface
+        # should_restart() increments page count, so we check if it returns True
+        should_restart = await manager.should_restart()
+        assert should_restart is True
 
 
 class TestBrowserManagerRotationDeferral:

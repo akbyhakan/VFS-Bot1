@@ -24,6 +24,7 @@ from ..booking import get_selector
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
+from .page_state_detector import PageState
 
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
@@ -127,8 +128,6 @@ class BookingWorkflow:
                 raise LoginError(f"Login failed for {masked_email}")
 
             # Wait for page to stabilize after login
-            from .page_state_detector import PageState
-
             state = await self.page_state_detector.wait_for_stable_state(
                 page,
                 expected_states=frozenset(
