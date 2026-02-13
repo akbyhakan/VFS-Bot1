@@ -20,6 +20,9 @@ def require_connection(func: F) -> F:
     """
     Decorator to ensure database connection exists before method execution.
 
+    Note: This decorator is currently not used in the codebase but is kept
+    for potential future use or dynamic application.
+
     Args:
         func: Function to wrap
 
