@@ -114,9 +114,7 @@ class InMemoryDeduplicationBackend(DeduplicationBackend):
         async with self._lock:
             self._cache[key] = current_time
 
-    async def _cleanup_expired_unsafe(
-        self, current_time: float, ttl_seconds: int
-    ) -> int:
+    async def _cleanup_expired_unsafe(self, current_time: float, ttl_seconds: int) -> int:
         """
         Clean up expired entries (internal, assumes lock is held).
 
@@ -128,9 +126,7 @@ class InMemoryDeduplicationBackend(DeduplicationBackend):
             Number of entries removed
         """
         expired_keys = [
-            key
-            for key, timestamp in self._cache.items()
-            if current_time - timestamp >= ttl_seconds
+            key for key, timestamp in self._cache.items() if current_time - timestamp >= ttl_seconds
         ]
 
         for key in expired_keys:
@@ -152,9 +148,7 @@ class InMemoryDeduplicationBackend(DeduplicationBackend):
         async with self._lock:
             current_time = time.time()
             active_entries = sum(
-                1
-                for timestamp in self._cache.values()
-                if current_time - timestamp < ttl_seconds
+                1 for timestamp in self._cache.values() if current_time - timestamp < ttl_seconds
             )
             return {
                 "total_entries": len(self._cache),
@@ -243,9 +237,7 @@ class AppointmentDeduplication:
     Supports both in-memory (single-worker) and Redis (multi-worker) backends.
     """
 
-    def __init__(
-        self, ttl_seconds: int = 3600, backend: Optional[DeduplicationBackend] = None
-    ):
+    def __init__(self, ttl_seconds: int = 3600, backend: Optional[DeduplicationBackend] = None):
         """
         Initialize deduplication service.
 
@@ -281,9 +273,7 @@ class AppointmentDeduplication:
             try:
                 import redis
 
-                client = redis.from_url(
-                    redis_url, decode_responses=True, socket_connect_timeout=5
-                )
+                client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
                 logger.info(f"AppointmentDeduplication using Redis backend")
@@ -327,15 +317,15 @@ class AppointmentDeduplication:
             True if this is a duplicate booking attempt
         """
         key = self._make_key(user_id, centre, category, date)
-        
+
         is_dup = await self._backend.is_duplicate(key, self._ttl_seconds)
-        
+
         if is_dup:
             logger.warning(
                 f"Duplicate booking attempt detected for user {user_id}: "
                 f"{centre}/{category}/{date}"
             )
-        
+
         return is_dup
 
     async def mark_booked(self, user_id: int, centre: str, category: str, date: str) -> None:
@@ -350,7 +340,7 @@ class AppointmentDeduplication:
         """
         key = self._make_key(user_id, centre, category, date)
         await self._backend.mark_booked(key, self._ttl_seconds)
-        
+
         logger.info(
             f"Booking marked for user {user_id}: {centre}/{category}/{date} "
             f"(expires in {self._ttl_seconds}s)"
