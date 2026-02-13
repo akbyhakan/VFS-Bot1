@@ -583,7 +583,7 @@ REDIS_URL=redis://:your-password@redis:6379/0
 
 ### Network Security
 
-1. **Use HTTPS only** in production
+1. **Use HTTPS only** in production - `HTTPSRedirectMiddleware` automatically redirects HTTP→HTTPS in production mode
 2. **Configure firewall rules** - Whitelist only required ports
 3. **Use VPN/private networks** for database access
 4. **Enable rate limiting** - Configured in `RateLimits` class

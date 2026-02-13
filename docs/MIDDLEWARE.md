@@ -10,9 +10,10 @@ This document clarifies the middleware architecture and separation of concerns i
 
 The `web/middleware/` directory contains **HTTP-specific middleware** for the FastAPI web application:
 
+- **HTTPS Redirect** (`web/middleware/https_redirect.py`) - Redirects HTTP to HTTPS in production (excludes health checks)
 - **CORS Middleware** (`web/middleware/cors.py`) - Cross-Origin Resource Sharing configuration
-- **CSP Middleware** (`web/middleware/security.py`) - Content Security Policy headers
-- **Security Headers** (`web/middleware/security.py`) - HSTS, X-Frame-Options, etc.
+- **CSP Middleware** (`web/middleware/security_headers.py`) - Content Security Policy headers
+- **Security Headers** (`web/middleware/security_headers.py`) - HSTS, X-Frame-Options, etc.
 - **Rate Limit Headers** - HTTP rate limiting response headers
 
 **Purpose**: These middleware components operate at the HTTP request/response layer and are specific to the web API.

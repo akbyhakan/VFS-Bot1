@@ -167,6 +167,7 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
 async def run_web_mode(
     config: BotConfigDict,
     start_cleanup: bool = True,
+    start_backup: bool = True,
     db: Optional[Database] = None,
     skip_shutdown: bool = False,
 ) -> None:
@@ -176,6 +177,7 @@ async def run_web_mode(
     Args:
         config: Configuration dictionary
         start_cleanup: Whether to start the cleanup service (default True)
+        start_backup: Whether to start the backup service (default True)
         db: Optional shared database instance
         skip_shutdown: Whether to skip graceful shutdown and full cleanup,
             delegating it to the caller (used by run_both_mode). Default False.
@@ -193,6 +195,18 @@ async def run_web_mode(
         from src.models.db_factory import DatabaseFactory
 
         db = await DatabaseFactory.ensure_connected()
+
+    # Database backup service (PostgreSQL)
+    backup_service = None
+    if start_backup:
+        try:
+            from src.utils.db_backup import get_backup_service
+
+            backup_service = get_backup_service()
+            await backup_service.start_scheduled_backups()
+            logger.info("Database backup service started (pg_dump, encrypted)")
+        except Exception as e:
+            logger.warning(f"Failed to start backup service (non-critical): {e}")
 
     cleanup_service = None  # Initialize to None
     cleanup_task = None
@@ -215,6 +229,14 @@ async def run_web_mode(
         server = uvicorn.Server(config_uvicorn)
         await server.serve()
     finally:
+        # Stop backup service
+        if backup_service:
+            try:
+                await backup_service.stop_scheduled_backups()
+                logger.info("Database backup service stopped")
+            except Exception as e:
+                logger.error(f"Error stopping backup service: {e}")
+
         if not skip_shutdown:
             # Full shutdown path (standalone web mode)
             await _graceful_cleanup(db, None)
@@ -264,6 +286,17 @@ async def run_both_mode(config: BotConfigDict) -> None:
     # Initialize notification service
     notifier = NotificationService(config.get("notifications", {}))
 
+    # Database backup service (PostgreSQL) - shared across both modes
+    backup_service = None
+    try:
+        from src.utils.db_backup import get_backup_service
+
+        backup_service = get_backup_service()
+        await backup_service.start_scheduled_backups()
+        logger.info("Database backup service started (pg_dump, encrypted)")
+    except Exception as e:
+        logger.warning(f"Failed to start backup service (non-critical): {e}")
+
     # Get and configure BotController singleton
     controller = await BotController.get_instance()
     await controller.configure(config, db, notifier)
@@ -283,7 +316,7 @@ async def run_both_mode(config: BotConfigDict) -> None:
         # Run web mode (with cleanup service enabled, skip its shutdown)
         # Web starts regardless of bot status for diagnostics
         web_task = asyncio.create_task(
-            run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True)
+            run_web_mode(config, start_cleanup=True, start_backup=False, db=db, skip_shutdown=True)
         )
 
         # Wait for web task to complete
@@ -293,6 +326,14 @@ async def run_both_mode(config: BotConfigDict) -> None:
         logger.error(f"Error in combined mode: {e}", exc_info=True)
         raise
     finally:
+        # Stop backup service
+        if backup_service:
+            try:
+                await backup_service.stop_scheduled_backups()
+                logger.info("Database backup service stopped")
+            except Exception as e:
+                logger.error(f"Error stopping backup service: {e}")
+
         # Stop the bot via controller
         logger.info("Stopping bot via BotController...")
         try:

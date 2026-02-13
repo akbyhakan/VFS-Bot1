@@ -25,7 +25,7 @@ from src.services.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
 from web.ip_utils import get_real_client_ip
-from web.middleware import SecurityHeadersMiddleware
+from web.middleware import HTTPSRedirectMiddleware, SecurityHeadersMiddleware
 from web.routes import (
     dashboard_router,
     health_router,
@@ -218,7 +218,13 @@ API endpoints are rate-limited to prevent abuse:
         log_security_warnings(strict=True)
 
     # Configure middleware (order matters!)
-    # 1. Error handling middleware first (catches all errors)
+    
+    # 0. HTTPS redirect - must be FIRST (before any other middleware)
+    # Only active in production environments
+    if not _is_dev:
+        app.add_middleware(HTTPSRedirectMiddleware)
+
+    # 1. Error handling middleware (catches all errors)
     app.add_middleware(ErrorHandlerMiddleware)
 
     # 2. Security headers middleware
