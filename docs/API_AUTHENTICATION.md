@@ -18,7 +18,7 @@ Add these environment variables to your `.env` file:
 ```env
 # JWT Configuration
 API_SECRET_KEY=your-secret-key-here-min-32-characters
-JWT_ALGORITHM=HS256
+JWT_ALGORITHM=HS384
 JWT_EXPIRY_HOURS=24
 
 # Admin Credentials
