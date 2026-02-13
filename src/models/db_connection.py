@@ -168,6 +168,10 @@ class DatabaseConnectionManager:
                     f"{_mask_database_url(self.database_url)}"
                 )
 
+                # Record pool size metric
+                from src.utils.prometheus_metrics import MetricsHelper
+                MetricsHelper.set_db_pool_size(self.pool_size)
+
                 # Verify Alembic migration status (only on first connect)
                 if not self._migration_verified:
                     try:
@@ -259,10 +263,20 @@ class DatabaseConnectionManager:
         """
         if self.pool is None:
             raise DatabaseNotConnectedError()
+        
+        import time
+        from src.utils.prometheus_metrics import MetricsHelper
+        
+        start_time = time.time()
         try:
             async with self.pool.acquire() as conn:
+                # Record successful acquisition time
+                acquire_duration = time.time() - start_time
+                MetricsHelper.record_db_pool_acquire(acquire_duration)
                 yield conn
         except asyncio.TimeoutError:
+            # Record timeout
+            MetricsHelper.record_db_pool_timeout()
             logger.error(
                 f"Database connection pool exhausted "
                 f"(timeout: {timeout}s, pool_size: {self.pool_size})"
@@ -337,3 +351,39 @@ class DatabaseConnectionManager:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
+
+    def get_pool_stats(self) -> Dict[str, Any]:
+        """
+        Get current database connection pool statistics.
+
+        Returns:
+            Dictionary containing pool statistics:
+            - pool_size: Maximum pool size
+            - pool_free: Number of idle connections
+            - pool_used: Number of active connections
+            - utilization: Pool utilization ratio (0.0 to 1.0)
+        """
+        if self.pool is None:
+            return {
+                "pool_size": self.pool_size,
+                "pool_free": 0,
+                "pool_used": 0,
+                "utilization": 0.0,
+            }
+        
+        pool_total = self.pool.get_size()
+        pool_idle = self.pool.get_idle_size()
+        pool_used = pool_total - pool_idle
+        utilization = pool_used / self.pool_size if self.pool_size > 0 else 0.0
+        
+        # Update metrics
+        from src.utils.prometheus_metrics import MetricsHelper
+        MetricsHelper.set_db_pool_idle(pool_idle)
+        MetricsHelper.set_db_pool_utilization(utilization)
+        
+        return {
+            "pool_size": self.pool_size,
+            "pool_free": pool_idle,
+            "pool_used": pool_used,
+            "utilization": round(utilization, 2),
+        }

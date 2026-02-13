@@ -54,7 +54,16 @@ export interface HealthCheck {
   version: string;
   uptime_seconds: number;
   components: {
-    database: { status: string };
+    database: {
+      status: string;
+      latency_ms?: number;
+      pool?: {
+        size: number;
+        idle: number;
+        used: number;
+        utilization: number;
+      };
+    };
     redis: { status: string; backend?: string };
     bot: { status: string; running: boolean; success_rate: number };
     circuit_breaker: { status: string; trips: number };

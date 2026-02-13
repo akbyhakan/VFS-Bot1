@@ -396,3 +396,57 @@ class TestRFC7807ErrorResponses:
         # Verify generic message, not the internal error
         assert "Internal implementation detail" not in data["detail"]
         assert data["detail"] == "An unexpected error occurred. Please try again later."
+
+
+class TestHealthEndpointPoolStats:
+    """Tests for database pool stats in health endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_health_includes_pool_stats(self, client):
+        """Test that /health endpoint includes database pool stats."""
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        client_test = TestClient(app)
+        
+        response = client_test.get("/health")
+        data = response.json()
+        
+        assert "components" in data
+        assert "database" in data["components"]
+        db_component = data["components"]["database"]
+        
+        # Check that pool stats are present
+        if db_component.get("status") == "healthy":
+            assert "pool" in db_component
+            pool_stats = db_component["pool"]
+            assert "size" in pool_stats
+            assert "idle" in pool_stats
+            assert "used" in pool_stats
+            assert "utilization" in pool_stats
+            
+            # Validate types and ranges
+            assert isinstance(pool_stats["size"], int)
+            assert isinstance(pool_stats["idle"], int)
+            assert isinstance(pool_stats["used"], int)
+            assert isinstance(pool_stats["utilization"], (int, float))
+            assert 0.0 <= pool_stats["utilization"] <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_ready_endpoint_includes_pool_stats(self, client):
+        """Test that /ready endpoint includes database pool stats."""
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        client_test = TestClient(app)
+        
+        response = client_test.get("/ready")
+        data = response.json()
+        
+        assert "checks" in data
+        assert "database" in data["checks"]
+        db_check = data["checks"]["database"]
+        
+        # Check that pool stats are present
+        if db_check.get("status") == "healthy":
+            assert "pool" in db_check

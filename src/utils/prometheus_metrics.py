@@ -78,6 +78,26 @@ DB_QUERY_DURATION = Histogram(
     registry=REGISTRY,
 )
 
+# Database pool metrics
+DB_POOL_SIZE = Gauge(
+    "vfs_db_pool_size", "Maximum database connection pool size", registry=REGISTRY
+)
+DB_POOL_IDLE = Gauge(
+    "vfs_db_pool_idle_connections", "Number of idle connections in pool", registry=REGISTRY
+)
+DB_POOL_UTILIZATION = Gauge(
+    "vfs_db_pool_utilization_ratio", "Pool utilization ratio (0.0 to 1.0)", registry=REGISTRY
+)
+DB_POOL_ACQUIRE_DURATION = Histogram(
+    "vfs_db_pool_acquire_duration_seconds",
+    "Time to acquire a connection from pool",
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0),
+    registry=REGISTRY,
+)
+DB_POOL_TIMEOUTS_TOTAL = Counter(
+    "vfs_db_pool_timeouts_total", "Total number of pool acquisition timeouts", registry=REGISTRY
+)
+
 # OTP metrics
 OTP_RECEIVED_TOTAL = Counter(
     "vfs_otp_received_total", "Total OTPs received via webhook", ["type"], registry=REGISTRY
@@ -213,6 +233,51 @@ class MetricsHelper:
             count: Number of active connections
         """
         DB_CONNECTIONS_ACTIVE.set(count)
+
+    @staticmethod
+    def set_db_pool_size(size: int) -> None:
+        """
+        Set database connection pool size.
+
+        Args:
+            size: Maximum pool size
+        """
+        DB_POOL_SIZE.set(size)
+
+    @staticmethod
+    def set_db_pool_idle(count: int) -> None:
+        """
+        Set idle database connections count.
+
+        Args:
+            count: Number of idle connections
+        """
+        DB_POOL_IDLE.set(count)
+
+    @staticmethod
+    def set_db_pool_utilization(ratio: float) -> None:
+        """
+        Set database pool utilization ratio.
+
+        Args:
+            ratio: Utilization ratio between 0.0 and 1.0
+        """
+        DB_POOL_UTILIZATION.set(ratio)
+
+    @staticmethod
+    def record_db_pool_acquire(duration: float) -> None:
+        """
+        Record database pool connection acquisition duration.
+
+        Args:
+            duration: Acquisition duration in seconds
+        """
+        DB_POOL_ACQUIRE_DURATION.observe(duration)
+
+    @staticmethod
+    def record_db_pool_timeout() -> None:
+        """Record a database pool acquisition timeout."""
+        DB_POOL_TIMEOUTS_TOTAL.inc()
 
     @staticmethod
     def record_otp_received(otp_type: str) -> None:

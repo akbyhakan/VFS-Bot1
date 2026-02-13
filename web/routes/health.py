@@ -57,7 +57,8 @@ async def health_check() -> Dict[str, Any]:
     """
     from src.utils.metrics import get_metrics
 
-    db_healthy = await check_database_health()
+    db_health_result = await check_database()
+    db_healthy = db_health_result.get("status") == "healthy"
     bot_metrics = await get_metrics()
 
     # Check if bot is experiencing errors
@@ -95,9 +96,7 @@ async def health_check() -> Dict[str, Any]:
         "version": get_version(),
         "uptime_seconds": snapshot.uptime_seconds,
         "components": {
-            "database": {
-                "status": "healthy" if db_healthy else "unhealthy",
-            },
+            "database": db_health_result,
             "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
@@ -194,7 +193,8 @@ async def detailed_health_check() -> Dict[str, Any]:
         # If psutil is not installed, provide basic health check
         from src.utils.metrics import get_metrics
 
-        db_healthy = await check_database_health()
+        db_health_result = await check_database()
+        db_healthy = db_health_result.get("status") == "healthy"
         bot_metrics = await get_metrics()
         snapshot = await bot_metrics.get_snapshot()
 
@@ -219,9 +219,7 @@ async def detailed_health_check() -> Dict[str, Any]:
             "python_version": sys.version,
             "system": {"note": "psutil not installed - install for detailed system metrics"},
             "components": {
-                "database": {
-                    "status": "healthy" if db_healthy else "unhealthy",
-                },
+                "database": db_health_result,
                 "redis": redis_health,
                 "bot": {
                     "status": "healthy" if bot_healthy else "degraded",
@@ -242,7 +240,8 @@ async def detailed_health_check() -> Dict[str, Any]:
     disk = psutil.disk_usage("/")
 
     # Database check
-    db_healthy = await check_database_health()
+    db_health_result = await check_database()
+    db_healthy = db_health_result.get("status") == "healthy"
 
     # Bot metrics
     bot_metrics = await get_metrics()
@@ -281,9 +280,7 @@ async def detailed_health_check() -> Dict[str, Any]:
             },
         },
         "components": {
-            "database": {
-                "status": "healthy" if db_healthy else "unhealthy",
-            },
+            "database": db_health_result,
             "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
@@ -333,9 +330,19 @@ async def check_database() -> Dict[str, Any]:
             result = await conn.fetchval("SELECT 1")
             latency_ms = (time.time() - start_time) * 1000
             is_healthy = result is not None
+        
+        # Get pool stats
+        pool_stats = db.get_pool_stats()
+        
         return {
             "status": "healthy" if is_healthy else "unhealthy",
             "latency_ms": round(latency_ms, 2),
+            "pool": {
+                "size": pool_stats["pool_size"],
+                "idle": pool_stats["pool_free"],
+                "used": pool_stats["pool_used"],
+                "utilization": pool_stats["utilization"],
+            },
         }
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
