@@ -249,10 +249,13 @@ class BotServiceFactory:
         # Create or use provided captcha solver
         captcha_config = config.get("captcha", {})
         if captcha_solver is None:
-            captcha_solver = CaptchaSolver(
-                api_key=captcha_config.get("api_key", ""),
-                manual_timeout=captcha_config.get("manual_timeout", 120),
-            )
+            api_key = captcha_config.get("api_key", "")
+            if not api_key:
+                raise ValueError(
+                    "Captcha API key is required. "
+                    "Please configure CAPTCHA_API_KEY in environment or captcha.api_key in config."
+                )
+            captcha_solver = CaptchaSolver(api_key=api_key)
 
         # Create or use provided centre fetcher
         vfs_config = config.get("vfs", {})

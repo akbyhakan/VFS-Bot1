@@ -50,14 +50,13 @@ class CaptchaConfig(BaseModel):
 
     provider: str = Field(..., description="Captcha provider")
     api_key: str = Field(default="", description="Captcha API key")
-    manual_timeout: int = Field(default=120, ge=30, le=600, description="Manual timeout (30-600s)")
 
     @validator("provider")
     def validate_provider(cls, v):
         """Validate captcha provider."""
-        valid_providers = ["manual", "2captcha", "anticaptcha", "nopecha"]
+        valid_providers = ["2captcha"]
         if v not in valid_providers:
-            raise ValueError(f'provider must be one of: {", ".join(valid_providers)}')
+            raise ValueError(f'provider must be: {", ".join(valid_providers)}')
         return v
 
 

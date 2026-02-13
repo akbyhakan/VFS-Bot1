@@ -16,7 +16,7 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - 🚀 **Playwright Automation** - Faster and more reliable than Selenium with stealth mode
 - 📊 **Web Dashboard** - Real-time monitoring and control via browser
 - 🔔 **Multi-Channel Notifications** - Telegram and Email alerts
-- 🧩 **Multiple Captcha Solvers** - Support for 2captcha, anticaptcha, nopecha, and manual solving
+- 🧩 **Captcha Solver** - Integrated 2Captcha support for automated solving
 - 👥 **Multi-User Support** - Handle multiple users and centres simultaneously
 - 🗄️ **PostgreSQL Database** - Scalable, production-ready database with connection pooling
 - 🐳 **Docker Support** - Easy deployment with Docker and Docker Compose
@@ -330,8 +330,8 @@ bot:
   max_retries: 3
 
 captcha:
-  provider: "manual"  # Options: 2captcha, anticaptcha, nopecha, manual
-  manual_timeout: 120
+  provider: "2captcha"  # Only 2captcha is supported
+  api_key: "${CAPTCHA_API_KEY}"
 
 notifications:
   telegram:

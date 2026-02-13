@@ -25,7 +25,6 @@ class Timeouts:
     WEBSOCKET_PING_SECONDS: Final[int] = 30
     GRACEFUL_SHUTDOWN_SECONDS: Final[int] = 5
     SHUTDOWN_TIMEOUT: Final[int] = 30
-    MAX_MANUAL_TIMEOUT: Final[int] = 300
     GRACEFUL_SHUTDOWN_GRACE_PERIOD: Final[int] = 120  # Grace period for active bookings
 
 
