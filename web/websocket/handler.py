@@ -30,14 +30,14 @@ async def websocket_endpoint(websocket: WebSocket):
     token = websocket.cookies.get("access_token")
     if token:
         logger.debug("WebSocket auth via cookie")
-    
+
     # Method 2: Try to get token from query parameter (for API clients)
     if not token:
         query_params = dict(websocket.query_params)
         token = query_params.get("token")
         if token:
             logger.debug("WebSocket auth via query parameter")
-    
+
     # Method 3: Wait for authentication message (legacy fallback for backward compatibility)
     if not token:
         try:
