@@ -14,39 +14,59 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for real-time updates.
 
-    Authentication: Send token in first message as {"token": "your-jwt-token"}
+    Authentication methods (in order of priority):
+    1. HttpOnly cookie (access_token) - automatically sent by browser
+    2. Query parameter (?token=xxx) - for API clients
+    3. First message as {"token": "your-jwt-token"} - legacy fallback
 
     Args:
         websocket: WebSocket connection
     """
     await websocket.accept()
 
-    try:
-        # Wait for authentication message
-        auth_data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+    token = None
 
-        if not isinstance(auth_data, dict) or "token" not in auth_data:
-            await websocket.close(code=4001, reason="Authentication required")
-            return
+    # Method 1: Try to get token from HttpOnly cookie (primary method for web browsers)
+    token = websocket.cookies.get("access_token")
+    if token:
+        logger.debug("WebSocket auth via cookie")
 
-        token = auth_data.get("token")
-        if not token:
-            await websocket.close(code=4001, reason="Token missing")
-            return
+    # Method 2: Try to get token from query parameter (for API clients)
+    if not token:
+        query_params = dict(websocket.query_params)
+        token = query_params.get("token")
+        if token:
+            logger.debug("WebSocket auth via query parameter")
 
-        # Verify token
+    # Method 3: Wait for authentication message (legacy fallback for backward compatibility)
+    if not token:
         try:
-            verify_token(token)
-        except HTTPException:
-            await websocket.close(code=4001, reason="Invalid token")
+            logger.debug("WebSocket waiting for auth message (legacy method)")
+            auth_data = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+
+            if not isinstance(auth_data, dict) or "token" not in auth_data:
+                await websocket.close(code=4001, reason="Authentication required")
+                return
+
+            token = auth_data.get("token")
+            if not token:
+                await websocket.close(code=4001, reason="Token missing")
+                return
+            logger.debug("WebSocket auth via message (legacy)")
+
+        except asyncio.TimeoutError:
+            await websocket.close(code=4001, reason="Authentication timeout")
+            return
+        except Exception as e:
+            logger.error(f"WebSocket authentication error: {e}")
+            await websocket.close(code=4000, reason="Authentication error")
             return
 
-    except asyncio.TimeoutError:
-        await websocket.close(code=4001, reason="Authentication timeout")
-        return
-    except Exception as e:
-        logger.error(f"WebSocket authentication error: {e}")
-        await websocket.close(code=4000, reason="Authentication error")
+    # Verify token
+    try:
+        await verify_token(token)
+    except HTTPException:
+        await websocket.close(code=4001, reason="Invalid token")
         return
 
     # Try to connect with limit enforcement

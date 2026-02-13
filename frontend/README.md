@@ -152,14 +152,17 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 
 ### Endpoints Used
 
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout (clears HttpOnly cookie)
-- `GET /api/status` - Bot status
-- `POST /api/bot/start` - Start bot
-- `POST /api/bot/stop` - Stop bot
-- `GET /api/logs` - Fetch logs
-- `GET /api/metrics` - Bot metrics
-- `GET /health` - Health check
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/logout` - User logout (clears HttpOnly cookie)
+- `GET /api/status` - Bot status (non-versioned health endpoint)
+- `POST /api/v1/bot/start` - Start bot
+- `POST /api/v1/bot/stop` - Stop bot
+- `POST /api/v1/bot/restart` - Restart bot
+- `POST /api/v1/bot/check-now` - Manual check trigger
+- `GET /api/v1/bot/logs` - Fetch logs
+- `GET /api/metrics` - Bot metrics (non-versioned health endpoint)
+- `GET /health` - Health check (non-versioned)
+- `GET /api/v1/users` - User management
 - `WS /ws` - WebSocket for real-time updates
 
 ### WebSocket Messages

@@ -68,17 +68,56 @@ async def expired_token() -> str:
 class TestWebSocketEndpoint:
     """Integration tests for WebSocket endpoint at /ws."""
 
+    def test_websocket_cookie_based_auth(self, test_app: TestClient, valid_token: str):
+        """
+        Test successful WebSocket connection with cookie-based authentication.
+
+        This validates:
+        - WebSocket accepts connection with cookie
+        - Valid token from cookie is accepted
+        - Initial status message is sent
+        """
+        # Set cookie in the test client
+        test_app.cookies.set("access_token", valid_token)
+        
+        with test_app.websocket_connect("/ws") as websocket:
+            # No need to send token message - cookie handles auth
+            # Should receive initial status message immediately
+            message = websocket.receive_json()
+            assert message["type"] == "status"
+            assert "data" in message
+            assert "running" in message["data"]
+            assert "status" in message["data"]
+
+    def test_websocket_query_param_auth(self, test_app: TestClient, valid_token: str):
+        """
+        Test successful WebSocket connection with query parameter authentication.
+
+        This validates:
+        - WebSocket accepts connection with query param
+        - Valid token from query param is accepted
+        - Initial status message is sent
+        """
+        with test_app.websocket_connect(f"/ws?token={valid_token}") as websocket:
+            # No need to send token message - query param handles auth
+            # Should receive initial status message immediately
+            message = websocket.receive_json()
+            assert message["type"] == "status"
+            assert "data" in message
+            assert "running" in message["data"]
+            assert "status" in message["data"]
+
     def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
         """
-        Test successful WebSocket connection with valid authentication.
+        Test successful WebSocket connection with legacy message-based authentication.
 
         This validates:
         - WebSocket accepts connection
-        - Valid token is accepted
+        - Valid token message is accepted (backward compatibility)
         - Initial status message is sent
         """
         with test_app.websocket_connect("/ws") as websocket:
-            # Send authentication message
+            # Send authentication message (legacy method for backward compatibility)
             websocket.send_json({"token": valid_token})
 
             # Should receive initial status message

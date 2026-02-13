@@ -1,6 +1,5 @@
 """Bot control routes for VFS-Bot web application."""
 
-import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -13,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from src.core.bot_controller import BotController
 from src.core.security import verify_api_key
-from web.dependencies import bot_state, verify_jwt_token
+from web.dependencies import bot_state, broadcast_message, verify_jwt_token
 from web.models.bot import BotCommand
 
 router = APIRouter(prefix="/bot", tags=["bot"])
@@ -58,7 +57,7 @@ async def _sync_bot_state(controller: BotController) -> None:
     bot_state["status"] = status["status"]
 
 
-@router.post("/bot/start")
+@router.post("/start")
 @limiter.limit("5/minute")
 async def start_bot(
     request: Request, command: BotCommand, api_key: dict = Depends(verify_api_key)
@@ -105,7 +104,7 @@ async def start_bot(
     return result
 
 
-@router.post("/bot/stop")
+@router.post("/stop")
 @limiter.limit("5/minute")
 async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
@@ -149,7 +148,7 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
     return result
 
 
-@router.post("/bot/restart")
+@router.post("/restart")
 @limiter.limit("5/minute")
 async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
@@ -201,7 +200,7 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
     return result
 
 
-@router.post("/bot/check-now")
+@router.post("/check-now")
 @limiter.limit("10/minute")
 async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
     """
