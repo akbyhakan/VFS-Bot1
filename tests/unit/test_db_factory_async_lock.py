@@ -44,7 +44,7 @@ class TestDatabaseFactoryAsyncLock:
         mock_db.pool = None
         
         async def connect_side_effect():
-            # Simulate connect setting the pool property
+            # Simulate successful connection by setting pool to non-None value
             mock_db.pool = "connection_pool"
         
         mock_db.connect = AsyncMock(side_effect=connect_side_effect)

@@ -15,7 +15,7 @@ if test_env_file.exists():
 
 # Test constants - generate dynamically if not in .env.test
 TEST_API_SECRET_KEY = os.getenv(
-    "TEST_API_SECRET_KEY", secrets.token_urlsafe(48)  # Generate 64+ character key
+    "TEST_API_SECRET_KEY", secrets.token_urlsafe(48)  # 48 bytes = ~64 chars when base64url-encoded
 )
 
 # CRITICAL: Set environment variables BEFORE any src imports
