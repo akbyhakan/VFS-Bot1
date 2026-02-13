@@ -34,6 +34,7 @@ telegram/
 .env.*.local
 *.env
 .venv
+tests/.env.test
 
 # API Keys and secrets
 config/api_keys.json
