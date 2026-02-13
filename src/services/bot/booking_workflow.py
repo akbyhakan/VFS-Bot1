@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..booking import BookingOrchestrator
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
+    from .page_state_detector import PageStateDetector
     from .slot_checker import SlotChecker, SlotInfo
     from .waitlist_handler import WaitlistHandler
 
@@ -54,6 +55,7 @@ class BookingWorkflow:
         error_handler: "ErrorHandler",
         slot_analyzer: SlotPatternAnalyzer,
         session_recovery: SessionRecovery,
+        page_state_detector: "PageStateDetector",
         human_sim: Optional[HumanSimulator] = None,
         error_capture: Optional[ErrorCapture] = None,
         alert_service: Optional[Any] = None,
@@ -72,6 +74,7 @@ class BookingWorkflow:
             error_handler: Error handler instance
             slot_analyzer: Slot pattern analyzer instance
             session_recovery: Session recovery instance
+            page_state_detector: Page state detector instance
             human_sim: Optional human simulator for anti-detection
             error_capture: Optional error capture instance for detailed error diagnostics
             alert_service: Optional AlertService for critical notifications
@@ -86,6 +89,7 @@ class BookingWorkflow:
         self.error_handler = error_handler
         self.slot_analyzer = slot_analyzer
         self.session_recovery = session_recovery
+        self.page_state_detector = page_state_detector
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
         self.alert_service = alert_service
@@ -121,6 +125,25 @@ class BookingWorkflow:
             if not await self.auth_service.login(page, user["email"], user["password"]):
                 logger.error(f"Login failed for {masked_email}")
                 raise LoginError(f"Login failed for {masked_email}")
+
+            # Wait for page to stabilize after login
+            from .page_state_detector import PageState
+
+            state = await self.page_state_detector.wait_for_stable_state(
+                page,
+                expected_states=frozenset(
+                    {
+                        PageState.DASHBOARD,
+                        PageState.APPOINTMENT_PAGE,
+                        PageState.OTP_LOGIN,
+                        PageState.SESSION_EXPIRED,
+                        PageState.CLOUDFLARE_CHALLENGE,
+                    }
+                ),
+            )
+
+            if state.needs_recovery:
+                raise VFSBotError(f"Post-login error: {state.state.name}", recoverable=True)
 
             # Save checkpoint after successful login
             self.session_recovery.save_checkpoint(

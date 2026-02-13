@@ -127,6 +127,7 @@ class VFSBot:
             error_handler=self.services.workflow.error_handler,
             slot_analyzer=self.services.automation.slot_analyzer,
             session_recovery=self.services.automation.session_recovery,
+            page_state_detector=self.services.workflow.page_state_detector,
             human_sim=self.services.anti_detection.human_sim,
             error_capture=self.services.core.error_capture,
             alert_service=self.services.workflow.alert_service,
