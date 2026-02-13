@@ -1,10 +1,12 @@
 """Proxy repository implementation."""
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.db_helpers import _parse_command_tag
 from src.utils.encryption import decrypt_password, encrypt_password
@@ -57,7 +59,7 @@ class Proxy:
 class ProxyRepository(BaseRepository[Proxy]):
     """Repository for proxy CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize proxy repository.
 

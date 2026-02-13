@@ -1,10 +1,12 @@
 """User read repository implementation."""
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.repositories.user_entity import User
 from src.utils.encryption import decrypt_password
@@ -13,7 +15,7 @@ from src.utils.encryption import decrypt_password
 class UserReadRepository(BaseRepository[User]):
     """Repository for user read operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize user read repository.
 

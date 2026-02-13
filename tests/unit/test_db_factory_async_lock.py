@@ -42,7 +42,12 @@ class TestDatabaseFactoryAsyncLock:
         """Test that concurrent ensure_connected calls are properly serialized."""
         mock_db = MagicMock()
         mock_db.pool = None
-        mock_db.connect = AsyncMock()
+        
+        async def connect_side_effect():
+            # Simulate connect setting the pool property
+            mock_db.pool = "connection_pool"
+        
+        mock_db.connect = AsyncMock(side_effect=connect_side_effect)
 
         with patch.object(DatabaseFactory, "get_instance", return_value=mock_db):
             # Call ensure_connected multiple times concurrently
@@ -69,7 +74,8 @@ class TestDatabaseFactoryAsyncLock:
     def test_class_lock_exists(self):
         """Test that _class_lock exists and is a threading.Lock."""
         assert hasattr(DatabaseFactory, "_class_lock")
-        assert isinstance(DatabaseFactory._class_lock, threading.Lock)
+        # threading.Lock() returns a lock type, check instance against the type
+        assert isinstance(DatabaseFactory._class_lock, type(threading.Lock()))
 
     def test_class_lock_persists_after_reset(self):
         """Test that _class_lock is NOT reset during reset_instance()."""

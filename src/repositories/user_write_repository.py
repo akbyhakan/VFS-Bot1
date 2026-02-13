@@ -1,12 +1,14 @@
 """User write repository implementation."""
 
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
 from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_USER_UPDATE_FIELDS
 from src.core.exceptions import BatchOperationError, RecordNotFoundError, ValidationError
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.repositories.user_entity import User
 from src.utils.db_helpers import _parse_command_tag
@@ -17,7 +19,7 @@ from src.utils.validators import validate_email, validate_phone
 class UserWriteRepository(BaseRepository[User]):
     """Repository for user write operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize user write repository.
 

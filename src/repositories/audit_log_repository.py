@@ -1,11 +1,13 @@
 """Audit log repository implementation."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 
 
@@ -53,7 +55,7 @@ class AuditLogEntry:
 class AuditLogRepository(BaseRepository[AuditLogEntry]):
     """Repository for audit log CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize audit log repository.
 
