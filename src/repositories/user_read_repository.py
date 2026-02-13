@@ -341,3 +341,32 @@ class UserReadRepository(BaseRepository[User]):
             row = await conn.fetchrow("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
             count: int = row[0] if row else 0
             return count
+
+    # Write operations - not supported in read-only repository
+    # These are implemented to satisfy BaseRepository abstract methods
+    async def create(self, data: Dict[str, Any]) -> int:
+        """
+        Create operation not supported in read-only repository.
+
+        Raises:
+            NotImplementedError: Always raised
+        """
+        raise NotImplementedError("Create operation not supported in read-only repository")
+
+    async def update(self, id: int, data: Dict[str, Any]) -> bool:
+        """
+        Update operation not supported in read-only repository.
+
+        Raises:
+            NotImplementedError: Always raised
+        """
+        raise NotImplementedError("Update operation not supported in read-only repository")
+
+    async def delete(self, id: int) -> bool:
+        """
+        Delete operation not supported in read-only repository.
+
+        Raises:
+            NotImplementedError: Always raised
+        """
+        raise NotImplementedError("Delete operation not supported in read-only repository")

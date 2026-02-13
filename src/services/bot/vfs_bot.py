@@ -92,7 +92,7 @@ class VFSBot:
 
         # Initialize services context
         if services is None:
-            services = BotServiceFactory.create_services(config, db, notifier)
+            services = BotServiceFactory.create(config, db, notifier)
         self.services = services
 
         # Initialize browser manager (needs anti-detection services)
@@ -402,13 +402,19 @@ class VFSBot:
         """
         Get active users with fallback support for graceful degradation.
 
-        Uses execute_with_fallback() to implement caching layer.
-        On DB failure, returns cached users if available.
+        Uses cache as primary strategy with TTL. Only queries DB when cache
+        is empty or TTL expired. On DB failure, returns cached users if available.
 
         Returns:
             List of active users with decrypted passwords
         """
-        # Try to get users from database using fallback mechanism
+        # Check cache first - if valid and not expired, return immediately
+        cache_age = time.time() - self._user_cache.timestamp
+        if cache_age < self._user_cache.ttl and self._user_cache.users:
+            # Cache is fresh - return without DB query
+            return self._user_cache.users
+
+        # Cache expired or empty - query database
         users = await self.db.execute_with_fallback(
             query_func=self.user_repo.get_all_active_with_passwords,
             fallback_value=None,
@@ -421,20 +427,16 @@ class VFSBot:
             self._user_cache.timestamp = time.time()
             return users
 
-        # DB failure - check if cache is still fresh
-        cache_age = time.time() - self._user_cache.timestamp
-        if cache_age < self._user_cache.ttl and self._user_cache.users:
+        # DB failure - check if we have expired cache to fall back to
+        if self._user_cache.users:
             logger.warning(
-                f"Database unavailable, using cached users (age: {cache_age:.1f}s, "
+                f"Database unavailable, using expired cached users (age: {cache_age:.1f}s, "
                 f"count: {len(self._user_cache.users)})"
             )
             return self._user_cache.users
 
-        # Cache expired or empty
-        logger.error(
-            f"Database unavailable and cache expired (age: {cache_age:.1f}s) - "
-            "returning empty user list"
-        )
+        # No cache available at all
+        logger.error("Database unavailable and no cached users available - returning empty list")
         return []
 
     async def _ensure_db_connection(self) -> None:
