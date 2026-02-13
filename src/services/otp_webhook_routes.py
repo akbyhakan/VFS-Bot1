@@ -3,13 +3,13 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.core.environment import Environment
+from src.utils.webhook_utils import verify_webhook_signature
 
-from ..utils.webhook_utils import verify_webhook_signature
 from .otp_webhook import OTPWebhookService, get_otp_service
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
@@ -34,69 +34,74 @@ class OTPResponse(BaseModel):
     message: str
 
 
-async def get_verified_otp_service(
-    request: Request,
-    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
-) -> OTPWebhookService:
+async def verify_webhook_signature_local(request: Request) -> None:
     """
-    Dependency to verify webhook signature and return OTP service.
-
-    Signature verification is MANDATORY by default.
-    Explicit development mode with ENV=development allows bypassing if no secret is set.
-    Production mode STRICTLY requires signature verification.
+    Local webhook signature verification dependency.
+    
+    This is a duplicate of verify_webhook_request from web.dependencies
+    to avoid circular import issues.
+    
+    - Production: SMS_WEBHOOK_SECRET required, signature required, reject on failure
+    - Development: If secret configured, signature required and verified (reject on failure)
+    - Development without secret: Warning log, bypass
+    
+    Raises:
+        HTTPException: If signature verification fails or secret is not configured in production
     """
     webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-    # Explicit development mode check (must be exactly "development")
-    is_development_mode = Environment.current() == Environment.DEVELOPMENT
-
-    # MANDATORY: Webhook secret MUST be configured in production
-    if not is_development_mode and not webhook_secret:
-        logger.error("🚨 SMS_WEBHOOK_SECRET not set in production environment")
+    
+    # Production mode: secret is REQUIRED
+    if Environment.is_production() and not webhook_secret:
+        logger.error("SMS_WEBHOOK_SECRET not configured in production")
         raise HTTPException(
-            status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
+            status_code=500,
+            detail="SMS_WEBHOOK_SECRET must be configured in production"
         )
-
-    # DEFAULT: Signature verification is REQUIRED (unless explicitly in dev mode without secret)
+    
+    # If secret is configured, verify signature
     if webhook_secret:
-        # Signature header is mandatory when secret is configured
-        if not x_webhook_signature:
-            client_ip = request.client.host if request.client else "unknown"
-            logger.warning(
-                f"⚠️ Webhook signature missing from IP: {client_ip} "
-                f"(ENV: {Environment.current()})"
+        signature = request.headers.get("X-Webhook-Signature")
+        if not signature:
+            logger.warning("Missing X-Webhook-Signature header")
+            raise HTTPException(
+                status_code=401,
+                detail="Missing webhook signature"
             )
-            raise HTTPException(status_code=401, detail="X-Webhook-Signature header required")
-
-        # Verify signature
+        
+        # Get raw body for signature verification
         body = await request.body()
-        if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
-            client_ip = request.client.host if request.client else "unknown"
-            logger.error(
-                f"❌ Invalid webhook signature from IP: {client_ip} "
-                f"(ENV: {Environment.current()})"
+        if not verify_webhook_signature(body, signature, webhook_secret):
+            logger.error("Invalid webhook signature")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid webhook signature"
             )
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-        logger.debug(f"✅ Webhook signature verified (ENV: {Environment.current()})")
-
-    elif is_development_mode:
-        # Only bypass in explicit development mode without secret
+        
+        logger.debug("Webhook signature verified")
+    
+    elif Environment.is_development():
+        # Development mode without secret: log warning but allow
         logger.warning(
-            "⚠️ DEVELOPMENT MODE: No webhook secret configured - "
+            "DEVELOPMENT MODE: No SMS_WEBHOOK_SECRET configured - "
             "signature validation disabled. DO NOT use in production!"
         )
-    else:
-        # Not development mode and no secret = production mode violation
-        logger.error("🚨 Production mode requires SMS_WEBHOOK_SECRET")
-        raise HTTPException(status_code=500, detail="Webhook secret required in production mode")
 
+
+async def get_verified_otp_service() -> OTPWebhookService:
+    """
+    Dependency to return OTP service.
+    
+    Note: Webhook signature verification is now handled separately.
+    This function now only returns the OTP service.
+    """
     return get_otp_service()
 
 
 @router.post("/sms", response_model=OTPResponse)
 async def receive_sms(
-    payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
+    payload: SMSWebhookPayload,
+    otp_service: OTPWebhookService = Depends(get_verified_otp_service),
+    _: None = Depends(verify_webhook_signature_local),
 ) -> OTPResponse:
     """
     Receive SMS webhook from provider (legacy endpoint - routes to appointment).
@@ -129,7 +134,9 @@ async def receive_sms(
 
 @router.post("/sms/appointment", response_model=OTPResponse)
 async def receive_appointment_sms(
-    payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
+    payload: SMSWebhookPayload,
+    otp_service: OTPWebhookService = Depends(get_verified_otp_service),
+    _: None = Depends(verify_webhook_signature_local),
 ) -> OTPResponse:
     """
     Receive appointment SMS webhook from provider.
@@ -162,7 +169,9 @@ async def receive_appointment_sms(
 
 @router.post("/sms/payment", response_model=OTPResponse)
 async def receive_payment_sms(
-    payload: SMSWebhookPayload, otp_service: OTPWebhookService = Depends(get_verified_otp_service)
+    payload: SMSWebhookPayload,
+    otp_service: OTPWebhookService = Depends(get_verified_otp_service),
+    _: None = Depends(verify_webhook_signature_local),
 ) -> OTPResponse:
     """
     Receive payment SMS webhook from provider.

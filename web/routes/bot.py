@@ -11,8 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.bot_controller import BotController
-from src.core.security import verify_api_key
-from web.dependencies import bot_state, broadcast_message, verify_jwt_token
+from web.dependencies import bot_state, broadcast_message, verify_hybrid_auth
 from web.models.bot import BotCommand
 
 router = APIRouter(prefix="/bot", tags=["bot"])
@@ -60,7 +59,7 @@ async def _sync_bot_state(controller: BotController) -> None:
 @router.post("/start")
 @limiter.limit("5/minute")
 async def start_bot(
-    request: Request, command: BotCommand, api_key: dict = Depends(verify_api_key)
+    request: Request, command: BotCommand, auth_data: dict = Depends(verify_hybrid_auth)
 ) -> Dict[str, str]:
     """
     Start the bot - requires authentication.
@@ -68,7 +67,7 @@ async def start_bot(
     Args:
         request: FastAPI request object (required for rate limiter)
         command: Bot command with configuration
-        api_key: Verified API key metadata
+        auth_data: Verified authentication metadata
 
     Returns:
         Response dictionary
@@ -92,7 +91,7 @@ async def start_bot(
                 "data": {"running": True, "status": "running", "message": result["message"]},
             }
         )
-        logger.info(f"Bot started via dashboard by {api_key.get('name', 'unknown')}")
+        logger.info(f"Bot started via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
     else:
         await broadcast_message(
             {
@@ -106,13 +105,13 @@ async def start_bot(
 
 @router.post("/stop")
 @limiter.limit("5/minute")
-async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+async def stop_bot(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
     """
     Stop the bot - requires authentication.
 
     Args:
         request: FastAPI request object (required for rate limiter)
-        api_key: Verified API key metadata
+        auth_data: Verified authentication metadata
 
     Returns:
         Response dictionary
@@ -136,7 +135,7 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
                 "data": {"running": False, "status": "stopped", "message": result["message"]},
             }
         )
-        logger.info(f"Bot stopped via dashboard by {api_key.get('name', 'unknown')}")
+        logger.info(f"Bot stopped via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
     else:
         await broadcast_message(
             {
@@ -150,13 +149,13 @@ async def stop_bot(request: Request, api_key: dict = Depends(verify_api_key)) ->
 
 @router.post("/restart")
 @limiter.limit("5/minute")
-async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+async def restart_bot(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
     """
     Restart the bot - requires authentication.
 
     Args:
         request: FastAPI request object (required for rate limiter)
-        api_key: Verified API key metadata
+        auth_data: Verified authentication metadata
 
     Returns:
         Response dictionary
@@ -188,7 +187,7 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
                 "data": {"running": True, "status": "running", "message": result["message"]},
             }
         )
-        logger.info(f"Bot restarted via dashboard by {api_key.get('name', 'unknown')}")
+        logger.info(f"Bot restarted via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
     else:
         await broadcast_message(
             {
@@ -202,13 +201,13 @@ async def restart_bot(request: Request, api_key: dict = Depends(verify_api_key))
 
 @router.post("/check-now")
 @limiter.limit("10/minute")
-async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -> Dict[str, str]:
+async def check_now(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
     """
     Trigger a manual slot check - requires authentication.
 
     Args:
         request: FastAPI request object (required for rate limiter)
-        api_key: Verified API key metadata
+        auth_data: Verified authentication metadata
 
     Returns:
         Response dictionary
@@ -232,21 +231,21 @@ async def check_now(request: Request, api_key: dict = Depends(verify_api_key)) -
             }
         )
 
-        logger.info(f"Manual check triggered via dashboard by {api_key.get('name', 'unknown')}")
+        logger.info(f"Manual check triggered via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
 
     return result
 
 
 @router.get("/logs")
 async def get_logs(
-    limit: int = 100, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    limit: int = 100, auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)
 ) -> Dict[str, List[str]]:
     """
     Get recent logs - requires authentication.
 
     Args:
         limit: Maximum number of logs to return
-        token_data: Verified token data
+        auth_data: Verified authentication metadata
 
     Returns:
         Dictionary with logs list

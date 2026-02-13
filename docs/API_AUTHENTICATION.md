@@ -4,10 +4,11 @@ This document describes the authentication mechanisms available for the VFS-Bot 
 
 ## Overview
 
-The VFS-Bot web dashboard provides two authentication methods:
+The VFS-Bot web dashboard provides three authentication methods:
 
 1. **JWT Token Authentication** - Recommended for web/mobile applications
 2. **API Key Authentication** - Recommended for server-to-server communication
+3. **Hybrid Authentication** - Automatically accepts either JWT or API Key (used for bot control endpoints)
 
 ## JWT Token Authentication
 
@@ -59,11 +60,51 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 The following endpoints require JWT authentication:
 
-- `GET /api/v1/bot/logs` - Retrieve bot logs
 - `GET /api/v1/users` - Retrieve users
 - `POST /api/v1/users` - Create user
 - `PUT /api/v1/users/{id}` - Update user
 - `DELETE /api/v1/users/{id}` - Delete user
+- `GET /api/v1/audit-logs` - View audit logs
+- `GET /api/v1/payments` - View payments
+
+## Hybrid Authentication
+
+Hybrid authentication accepts **either** JWT tokens or API keys, automatically detecting which one is provided. This provides maximum flexibility for API consumers.
+
+### How It Works
+
+1. The system first attempts to validate the token as a JWT
+2. If JWT validation fails, it tries to validate as an API key
+3. If both fail, a 401 Unauthorized error is returned
+4. The authentication metadata includes an `auth_method` field indicating which method was used
+
+### Endpoints Using Hybrid Authentication
+
+The following bot control endpoints accept both JWT tokens and API keys:
+
+- `POST /api/v1/bot/start` - Start the bot
+- `POST /api/v1/bot/stop` - Stop the bot
+- `POST /api/v1/bot/restart` - Restart the bot
+- `POST /api/v1/bot/check-now` - Trigger manual check
+- `GET /api/v1/bot/logs` - Retrieve bot logs
+
+### Using Hybrid Authentication
+
+You can use either a JWT token or an API key - the system will accept both:
+
+```bash
+# Using JWT token
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -X POST \
+     http://localhost:8000/api/v1/bot/start
+
+# Using API key
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     -X POST \
+     http://localhost:8000/api/v1/bot/start
+```
+
+Both requests will work identically, giving you flexibility in how you authenticate.
 
 ## API Key Authentication
 
@@ -77,12 +118,7 @@ DASHBOARD_API_KEY=your-secure-api-key-here
 
 ### Using API Key
 
-The following endpoints require API key authentication:
-
-- `POST /api/v1/bot/start` - Start the bot
-- `POST /api/v1/bot/stop` - Stop the bot
-- `POST /api/v1/bot/restart` - Restart the bot
-- `POST /api/v1/bot/check-now` - Trigger manual check
+API keys can be used directly for hybrid authentication endpoints (see above) or for any other endpoints that specifically require API key authentication.
 
 Include the API key in the Authorization header:
 
@@ -123,13 +159,71 @@ These endpoints do not require authentication:
 - `GET /metrics` - Metrics endpoint
 - `WS /ws` - WebSocket connection
 
+## Webhook Security
+
+Webhook endpoints use HMAC signature verification to ensure requests come from trusted sources.
+
+### Configuration
+
+Add the webhook secret to your `.env` file:
+
+```env
+SMS_WEBHOOK_SECRET=your-webhook-secret-32-chars-minimum
+```
+
+### Webhook Signature Verification
+
+All webhook endpoints (`/api/webhook/sms`, `/api/webhook/otp/*`, etc.) require signature verification:
+
+- **Production**: `SMS_WEBHOOK_SECRET` is required; unsigned requests are rejected
+- **Development with secret**: Signatures are verified; invalid signatures are rejected
+- **Development without secret**: Warning is logged; unsigned requests are allowed
+
+### Generating Webhook Signatures
+
+Signatures use HMAC-SHA256 with the format: `t=<timestamp>,v1=<signature>`
+
+Example in Python:
+```python
+import hmac
+import hashlib
+import time
+import json
+
+payload = {"from": "+1234567890", "text": "Your OTP is 123456"}
+secret = "your-webhook-secret"
+timestamp = int(time.time())
+
+# Create signed payload
+signed_payload = f"{timestamp}.{json.dumps(payload)}"
+signature = hmac.new(
+    secret.encode(),
+    signed_payload.encode(),
+    hashlib.sha256
+).hexdigest()
+
+# Header value
+header = f"t={timestamp},v1={signature}"
+```
+
+Send the signature in the `X-Webhook-Signature` header:
+```bash
+curl -X POST \
+     -H "Content-Type: application/json" \
+     -H "X-Webhook-Signature: t=1234567890,v1=abc123..." \
+     -d '{"from": "+1234567890", "text": "Your OTP is 123456"}' \
+     http://localhost:8000/api/webhook/sms
+```
+
 ## Security Best Practices
 
-1. **Use Strong Secrets**: Generate random, long secret keys
+1. **Use Strong Secrets**: Generate random, long secret keys (minimum 32 characters)
 2. **HTTPS Only**: Always use HTTPS in production
-3. **Rotate Keys**: Regularly rotate API keys and JWT secrets
+3. **Rotate Keys**: Regularly rotate API keys, JWT secrets, and webhook secrets
 4. **Environment Variables**: Never commit secrets to version control
 5. **Token Expiry**: Set appropriate JWT expiry times (default: 24 hours)
+6. **Webhook Signatures**: Always configure `SMS_WEBHOOK_SECRET` in production
+7. **Timestamp Validation**: Webhook signatures include timestamps to prevent replay attacks (5-minute tolerance)
 
 ## Example: Python Client
 
