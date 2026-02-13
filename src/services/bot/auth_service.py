@@ -92,10 +92,13 @@ class AuthService:
                 if password and password in safe_error:
                     safe_error = safe_error.replace(password, "[REDACTED]")
 
-                # Capture error with sanitized message
+                # Create sanitized exception for error capture
+                sanitized_exception = LoginError(f"Login form error: {safe_error}")
+                
+                # Capture error with sanitized exception
                 await self.error_capture.capture(
                     page,
-                    e,
+                    sanitized_exception,
                     context={"step": "login", "action": "filling login form"},
                     element_selector='input[name="email"]',
                 )
@@ -132,8 +135,15 @@ class AuthService:
                 logger.error("Login failed - not redirected to dashboard")
                 return False
 
+        except LoginError:
+            # Already sanitized, just re-raise
+            raise
         except Exception as e:
-            logger.error(f"Login error: {e}")
+            # Sanitize password in error message before logging
+            safe_error = str(e)
+            if password and password in safe_error:
+                safe_error = safe_error.replace(password, "[REDACTED]")
+            logger.error(f"Login error: {safe_error}")
             return False
 
     async def handle_otp_verification(self, page: Page, timeout: int = 120) -> bool:

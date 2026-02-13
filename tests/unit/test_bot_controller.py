@@ -31,29 +31,10 @@ async def database():
 
 
 @pytest.fixture
-def config():
-    """Test configuration."""
-    return {
-        "vfs": {
-            "base_url": "https://visa.vfsglobal.com",
-            "country": "tur",
-            "mission": "deu",
-            "centres": ["Istanbul"],
-            "category": "Schengen Visa",
-            "subcategory": "Tourism",
-        },
-        "credentials": {"email": "test@example.com", "password": "testpass"},
-        "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
-        "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
-        "bot": {
-            "check_interval": 5,
-            "headless": True,
-            "screenshot_on_error": False,
-            "max_retries": 1,
-        },
-        "appointments": {"preferred_dates": [], "preferred_times": [], "random_selection": True},
-        "selector_health_check": {"enabled": False},
-    }
+def config(config):
+    """Extended config with selector health check disabled."""
+    config["selector_health_check"] = {"enabled": False}
+    return config
 
 
 @pytest_asyncio.fixture
