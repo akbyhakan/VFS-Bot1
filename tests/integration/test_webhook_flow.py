@@ -290,18 +290,11 @@ class TestWebhookSecurity:
     def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
         """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET is not configured in production."""
         # Remove secret and set production environment
-        with patch.dict("os.environ", {"ENV": "production"}, clear=False):
-            # Remove SMS_WEBHOOK_SECRET if it exists
-            import os
-
-            old_secret = os.environ.pop("SMS_WEBHOOK_SECRET", None)
-            try:
-                response = client.post(
-                    "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}
-                )
-                # Should return 500 in production without secret
-                assert response.status_code == 500
-            finally:
-                # Restore secret if it existed
-                if old_secret:
-                    os.environ["SMS_WEBHOOK_SECRET"] = old_secret
+        with patch.dict(
+            "os.environ", {"ENV": "production", "SMS_WEBHOOK_SECRET": ""}, clear=False
+        ):
+            response = client.post(
+                "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}
+            )
+            # Should return 500 in production without secret
+            assert response.status_code == 500

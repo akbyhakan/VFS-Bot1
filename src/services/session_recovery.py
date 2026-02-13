@@ -124,9 +124,9 @@ class SessionRecovery:
                     logger.debug("Checkpoint loaded (encrypted)")
                 except InvalidToken:
                     # Backward compatibility: migrate legacy plaintext to encrypted format
-                    logger.critical(
-                        "SECURITY WARNING: Checkpoint file is in legacy plaintext format. "
-                        "Migrating to encrypted format immediately."
+                    logger.warning(
+                        "Found legacy unencrypted checkpoint file. "
+                        "Migrating to encrypted format for security."
                     )
                     checkpoint = json.loads(raw_data.decode("utf-8"))
                     # Re-encrypt and overwrite immediately
