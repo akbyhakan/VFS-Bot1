@@ -30,9 +30,9 @@ export class WebSocketService {
       logger.info('WebSocket connected');
       this.reconnectAttempts = 0;
 
-      // Authentication is handled via HttpOnly cookie during WebSocket handshake
-      // The cookie is automatically sent by the browser for same-origin WebSocket connections
-      // No need to send token manually
+      // Cookie is automatically sent during WebSocket handshake for same-origin connections.
+      // Backend extracts token from cookie (primary method), query params (API clients),
+      // or first message (legacy fallback).
 
       // Start heartbeat
       this.startHeartbeat();

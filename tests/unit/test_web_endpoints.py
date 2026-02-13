@@ -248,6 +248,37 @@ class TestApiStatusEndpoint:
 class TestWebSocketAuthentication:
     """Tests for WebSocket authentication."""
 
+    def test_websocket_cookie_auth(self, client):
+        """Test WebSocket connection with cookie-based authentication."""
+        from src.core.auth import create_access_token
+
+        # Create a valid token
+        token = create_access_token({"sub": "test_user"})
+
+        # Set cookie in client
+        client.cookies.set("access_token", token)
+
+        # Connect - auth should happen automatically via cookie
+        with client.websocket_connect("/ws") as websocket:
+            # Should receive initial status message without sending token message
+            data = websocket.receive_json()
+            assert data["type"] == "status"
+            assert "data" in data
+
+    def test_websocket_query_param_auth(self, client):
+        """Test WebSocket connection with query parameter authentication."""
+        from src.core.auth import create_access_token
+
+        # Create a valid token
+        token = create_access_token({"sub": "test_user"})
+
+        # Connect with token in query param
+        with client.websocket_connect(f"/ws?token={token}") as websocket:
+            # Should receive initial status message without sending token message
+            data = websocket.receive_json()
+            assert data["type"] == "status"
+            assert "data" in data
+
     def test_websocket_requires_token(self, client):
         """Test that WebSocket connection requires a token."""
         # Try to connect without sending authentication
@@ -264,13 +295,13 @@ class TestWebSocketAuthentication:
             # Should be closed with auth error
 
     def test_websocket_accepts_valid_token(self, client):
-        """Test WebSocket connection with valid token."""
+        """Test WebSocket connection with valid token (legacy message-based auth)."""
         from src.core.auth import create_access_token
 
         # Create a valid token
         token = create_access_token({"sub": "test_user"})
 
-        # Connect and send valid token
+        # Connect and send valid token (legacy method for backward compatibility)
         with client.websocket_connect("/ws") as websocket:
             # Send authentication message
             websocket.send_json({"token": token})
