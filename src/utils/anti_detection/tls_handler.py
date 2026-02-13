@@ -14,12 +14,12 @@ from loguru import logger
 class TLSHandler:
     """Handle TLS fingerprinting bypass using curl-cffi."""
 
-    def __init__(self, impersonate: str = "chrome120"):
+    def __init__(self, impersonate: str = "chrome136"):
         """
         Initialize TLS handler.
 
         Args:
-            impersonate: Browser to impersonate (e.g., chrome120, chrome119)
+            impersonate: Browser to impersonate (e.g., chrome136, chrome135)
         """
         self.impersonate = impersonate
         self.session: Optional[AsyncSession] = None

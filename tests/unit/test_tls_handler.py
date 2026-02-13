@@ -21,7 +21,7 @@ def mock_async_session():
 async def test_tls_handler_initialization_default():
     """Test TLS handler initialization with default impersonation."""
     handler = TLSHandler()
-    assert handler.impersonate == "chrome120"
+    assert handler.impersonate == "chrome136"
     assert handler.session is None
 
 
@@ -39,7 +39,7 @@ async def test_create_session_with_curl_cffi(mock_async_session):
     with patch(
         "src.utils.anti_detection.tls_handler.AsyncSession", return_value=mock_async_session
     ):
-        handler = TLSHandler(impersonate="chrome120")
+        handler = TLSHandler(impersonate="chrome136")
         await handler.create_session()
         assert handler.session == mock_async_session
 
