@@ -24,5 +24,35 @@
     "appointmentsBooked": "Alınan Randevular",
     "activeUsers": "Aktif Kullanıcılar",
     "lastCheck": "Son Kontrol"
+  },
+  "errors": {
+    "generic": "Bir hata oluştu",
+    "apiFailed": "İşlem başarısız",
+    "networkError": "Bağlantı hatası",
+    "unauthorized": "Yetkisiz erişim",
+    "rateLimited": "Çok fazla istek gönderildi, lütfen bekleyiniz",
+    "serverError": "Sunucu hatası",
+    "validationFailed": "Doğrulama hatası",
+    "connectionLost": "Bağlantı kesildi",
+    "reconnecting": "Yeniden bağlanılıyor...",
+    "maxReconnectReached": "Maksimum yeniden bağlanma denemesi aşıldı"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "selectCsvFile": "Lütfen .csv uzantılı bir dosya seçin",
+    "webhookUrls": "Webhook URL'leri",
+    "proxySettings": "Proxy Ayarları"
+  },
+  "notifications": {
+    "botStarted": "Bot başlatıldı",
+    "botStopped": "Bot durduruldu",
+    "checkTriggered": "Manuel kontrol tetiklendi",
+    "settingsSaved": "Ayarlar kaydedildi"
+  },
+  "validation": {
+    "required": "Bu alan zorunludur",
+    "invalidEmail": "Geçersiz e-posta adresi",
+    "minLength": "En az {{min}} karakter olmalıdır",
+    "maxLength": "En fazla {{max}} karakter olabilir"
   }
 }

@@ -24,5 +24,35 @@
     "appointmentsBooked": "Appointments Booked",
     "activeUsers": "Active Users",
     "lastCheck": "Last Check"
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "apiFailed": "Operation failed",
+    "networkError": "Network error",
+    "unauthorized": "Unauthorized access",
+    "rateLimited": "Too many requests, please wait",
+    "serverError": "Server error",
+    "validationFailed": "Validation error",
+    "connectionLost": "Connection lost",
+    "reconnecting": "Reconnecting...",
+    "maxReconnectReached": "Maximum reconnection attempts reached"
+  },
+  "settings": {
+    "title": "Settings",
+    "selectCsvFile": "Please select a .csv file",
+    "webhookUrls": "Webhook URLs",
+    "proxySettings": "Proxy Settings"
+  },
+  "notifications": {
+    "botStarted": "Bot started",
+    "botStopped": "Bot stopped",
+    "checkTriggered": "Manual check triggered",
+    "settingsSaved": "Settings saved"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address",
+    "minLength": "Must be at least {{min}} characters",
+    "maxLength": "Must be at most {{max}} characters"
   }
 }
