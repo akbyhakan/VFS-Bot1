@@ -306,6 +306,15 @@ class TestCORSValidation:
 class TestXForwardedFor:
     """Tests for X-Forwarded-For IP detection."""
 
+    @pytest.fixture(autouse=True)
+    def reset_trusted_proxies_cache(self):
+        """Reset trusted proxies cache before each test to ensure clean state."""
+        from web.ip_utils import invalidate_trusted_proxies_cache
+
+        invalidate_trusted_proxies_cache()
+        yield
+        invalidate_trusted_proxies_cache()
+
     def test_untrusted_proxy_uses_direct_ip(self, monkeypatch):
         """Test that untrusted proxies don't affect IP detection."""
         from unittest.mock import Mock
@@ -360,3 +369,45 @@ class TestXForwardedFor:
 
         ip = get_real_client_ip(mock_request)
         assert ip == "unknown"
+
+    def test_trusted_proxies_ttl_cache_refresh(self, monkeypatch):
+        """Test that TTL cache refreshes after invalidation."""
+        from web.ip_utils import _get_trusted_proxies, invalidate_trusted_proxies_cache
+
+        # Set initial value and verify it's cached
+        monkeypatch.setenv("TRUSTED_PROXIES", "192.168.1.1,192.168.1.2")
+        proxies1 = _get_trusted_proxies()
+        assert "192.168.1.1" in proxies1
+        assert "192.168.1.2" in proxies1
+
+        # Change environment variable
+        monkeypatch.setenv("TRUSTED_PROXIES", "10.0.0.1,10.0.0.2")
+
+        # Without invalidation, cached value is still returned (TTL not expired)
+        proxies2 = _get_trusted_proxies()
+        assert proxies2 == proxies1  # Still the old cached value
+
+        # After invalidation, new value is returned
+        invalidate_trusted_proxies_cache()
+        proxies3 = _get_trusted_proxies()
+        assert "10.0.0.1" in proxies3
+        assert "10.0.0.2" in proxies3
+        assert "192.168.1.1" not in proxies3
+
+    def test_invalidate_trusted_proxies_cache(self, monkeypatch):
+        """Test that invalidate_trusted_proxies_cache() works correctly."""
+        from web.ip_utils import _get_trusted_proxies, invalidate_trusted_proxies_cache
+
+        # Set up and cache a value
+        monkeypatch.setenv("TRUSTED_PROXIES", "192.168.1.1")
+        proxies1 = _get_trusted_proxies()
+        assert "192.168.1.1" in proxies1
+
+        # Invalidate the cache
+        invalidate_trusted_proxies_cache()
+
+        # Change environment variable and verify new value is picked up
+        monkeypatch.setenv("TRUSTED_PROXIES", "10.0.0.1")
+        proxies2 = _get_trusted_proxies()
+        assert "10.0.0.1" in proxies2
+        assert "192.168.1.1" not in proxies2
