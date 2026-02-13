@@ -57,6 +57,9 @@ class BrowserManager:
         # Optional session ID for browser pool support
         self.session_id: Optional[str] = None
         self._last_activity = None
+        
+        # Deferred rotation flag to prevent state loss during new_page()
+        self._needs_rotation: bool = False
 
     async def start(self) -> None:
         """Launch browser and create context with anti-detection features."""
@@ -168,16 +171,11 @@ class BrowserManager:
         if self.context is None:
             raise RuntimeError("Browser context is not initialized. Call start() first.")
 
-        # Check if fingerprint should be rotated
+        # Check if fingerprint should be rotated - defer to safe restart point
         if self._anti_detection_enabled and self._fingerprint_rotator:
             if self._fingerprint_rotator.should_rotate(increment_page_count=True):
-                logger.info("Rotating fingerprint profile...")
-                profile = self._fingerprint_rotator.rotate()
-                
-                # Restart browser with new profile
-                logger.info("Restarting browser with new fingerprint profile...")
-                await self.close()
-                await self.start()
+                logger.info("Fingerprint rotation needed - deferring to next restart cycle")
+                self._needs_rotation = True
 
         page = await self.context.new_page()
         
@@ -254,6 +252,12 @@ class BrowserManager:
             True if browser should be restarted, False otherwise
         """
         self._page_count += 1
+        
+        # Check if fingerprint rotation is needed
+        if self._needs_rotation:
+            logger.info("Browser restart triggered by fingerprint rotation flag")
+            return True
+        
         if self._page_count >= self._max_pages_before_restart:
             logger.info(
                 f"Browser restart threshold reached ({self._page_count} pages created). "
@@ -269,12 +273,19 @@ class BrowserManager:
         
         # Rotate fingerprint on restart if rotator is enabled
         if self._anti_detection_enabled and self._fingerprint_rotator:
-            logger.info("Rotating to new fingerprint profile on restart...")
+            rotation_reason = "deferred rotation" if self._needs_rotation else "restart"
+            logger.info(f"Rotating to new fingerprint profile ({rotation_reason})...")
             self._fingerprint_rotator.rotate()
         
         await self.start()
         self._page_count = 0
+        self._needs_rotation = False  # Clear rotation flag after restart
         logger.info("Browser restarted successfully for memory management")
+
+    def force_restart_on_next_cycle(self) -> None:
+        """Force browser restart on next should_restart() check."""
+        self._page_count = self._max_pages_before_restart
+        logger.info("Browser restart forced - will restart on next cycle")
     
     @property
     def is_idle(self) -> bool:

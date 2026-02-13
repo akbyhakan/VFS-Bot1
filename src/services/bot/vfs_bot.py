@@ -127,6 +127,7 @@ class VFSBot:
             error_handler=self.services.workflow.error_handler,
             slot_analyzer=self.services.automation.slot_analyzer,
             session_recovery=self.services.automation.session_recovery,
+            page_state_detector=self.services.workflow.page_state_detector,
             human_sim=self.services.anti_detection.human_sim,
             error_capture=self.services.core.error_capture,
             alert_service=self.services.workflow.alert_service,
@@ -716,9 +717,7 @@ class VFSBot:
                 except Exception as close_error:
                     logger.error(f"Failed to close page: {close_error}")
                     # Force browser restart on next cycle to prevent orphan page accumulation
-                    self.browser_manager._page_count = (
-                        self.browser_manager._max_pages_before_restart
-                    )
+                    self.browser_manager.force_restart_on_next_cycle()
                     logger.warning(
                         "Browser restart forced due to page close failure - "
                         "orphan pages may cause memory leaks"

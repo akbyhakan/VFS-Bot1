@@ -33,6 +33,7 @@ from ..slot_analyzer import SlotPatternAnalyzer
 from ..token_sync_service import TokenSyncService
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
+from .page_state_detector import PageStateDetector
 from .slot_checker import SlotChecker
 from .waitlist_handler import WaitlistHandler
 
@@ -103,6 +104,7 @@ class WorkflowServicesContext:
         booking_service: Appointment booking service
         waitlist_handler: Waitlist management service
         error_handler: Error handling and checkpoint service
+        page_state_detector: Page state detection service
         payment_service: Payment processing service (optional)
         alert_service: Alert and notification service (optional)
     """
@@ -112,6 +114,7 @@ class WorkflowServicesContext:
     booking_service: BookingOrchestrator
     waitlist_handler: WaitlistHandler
     error_handler: ErrorHandler
+    page_state_detector: PageStateDetector
     payment_service: Optional[Any] = None  # PaymentService type (optional import)
     alert_service: Optional[AlertService] = None
 
@@ -372,12 +375,19 @@ class BotServiceFactory:
             core.error_capture,
         )
 
+        # Create page state detector
+        page_state_detector = PageStateDetector(
+            config=config,
+            cloudflare_handler=anti_detection.cloudflare_handler,
+        )
+
         return WorkflowServicesContext(
             auth_service=auth_service,
             slot_checker=slot_checker,
             booking_service=booking_service,
             waitlist_handler=waitlist_handler,
             error_handler=error_handler,
+            page_state_detector=page_state_detector,
             payment_service=payment_service,
             alert_service=alert_service,
         )
