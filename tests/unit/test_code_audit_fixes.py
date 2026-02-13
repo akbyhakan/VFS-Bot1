@@ -161,7 +161,7 @@ class TestGracefulShutdownNotifications:
             bot.services.workflow = MagicMock()
             bot.services.workflow.alert_service = MagicMock()
             bot.services.workflow.alert_service.send_alert = AsyncMock()
-            
+
             # Mock error_handler for checkpoint tests
             bot.services.workflow.error_handler = MagicMock()
             bot.services.workflow.error_handler.save_checkpoint = AsyncMock()

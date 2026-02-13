@@ -256,7 +256,7 @@ class VFSBot:
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
-                
+
                 # Collect task information for checkpoint before cancellation
                 task_names = []
                 for task in self._active_booking_tasks:
