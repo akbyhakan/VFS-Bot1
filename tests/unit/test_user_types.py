@@ -61,6 +61,8 @@ def test_user_dict_with_optionals_partial():
 
 def test_user_dict_structure_compatibility():
     """Test that dict literals are structurally compatible with UserDict."""
+    from typing import cast
+
     # This is how user dicts are created from database queries
     db_row = {
         "id": 4,
@@ -71,8 +73,8 @@ def test_user_dict_structure_compatibility():
         "subcategory": "Work Permit",
     }
 
-    # Should be type-compatible with UserDict
-    user: UserDict = db_row  # type: ignore[assignment]
+    # Cast demonstrates runtime compatibility - dict from DB can be used as UserDict
+    user: UserDict = cast(UserDict, db_row)
 
     assert user["id"] == 4
     assert user["category"] == "Work"

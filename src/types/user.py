@@ -1,7 +1,5 @@
 """Type definitions for user data structures."""
 
-from typing import Optional
-
 from typing_extensions import TypedDict
 
 
