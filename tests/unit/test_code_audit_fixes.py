@@ -836,33 +836,9 @@ class TestWaitOrShutdownEventBased:
     """Test _wait_or_shutdown event-based implementation."""
 
     @pytest.fixture
-    def bot_config(self):
-        """Bot configuration fixture."""
-        return {
-            "vfs": {
-                "base_url": "https://visa.vfsglobal.com",
-                "country": "tur",
-                "mission": "deu",
-                "centres": ["Istanbul"],
-                "category": "Schengen Visa",
-                "subcategory": "Tourism",
-            },
-            "credentials": {"email": "test@example.com", "password": "testpass"},
-            "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
-            "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
-            "bot": {
-                "check_interval": 5,
-                "headless": True,
-                "screenshot_on_error": False,
-                "max_retries": 1,
-            },
-            "appointments": {
-                "preferred_dates": [],
-                "preferred_times": [],
-                "random_selection": True,
-            },
-            "anti_detection": {"enabled": False},
-        }
+    def bot_config(self, config):
+        """Bot config based on shared test config."""
+        return config
 
     @pytest.fixture
     def mock_db(self):
@@ -944,6 +920,432 @@ class TestWaitOrShutdownEventBased:
         # We can't directly check for leaked tasks, but if the implementation is correct,
         # there should be no warnings about unclosed tasks
         await asyncio.sleep(0.01)  # Give time for cleanup
+
+
+class TestNonRecoverableErrorsNotRetried:
+    """Test that non-recoverable errors are not retried in process_user."""
+
+    @pytest.mark.asyncio
+    async def test_selector_not_found_error_not_retried(self):
+        """Test SelectorNotFoundError (recoverable=False) is not retried."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from src.core.exceptions import SelectorNotFoundError
+        from src.services.bot.booking_workflow import BookingWorkflow
+
+        # Create mock dependencies
+        config = {
+            "vfs": {"base_url": "https://visa.vfsglobal.com"},
+            "bot": {"headless": True},
+        }
+        mock_db = AsyncMock()
+        mock_notifier = AsyncMock()
+        mock_auth_service = AsyncMock()
+        mock_slot_checker = AsyncMock()
+        mock_booking_service = AsyncMock()
+        mock_waitlist_handler = AsyncMock()
+        mock_error_handler = AsyncMock()
+        mock_slot_analyzer = MagicMock()
+        mock_session_recovery = MagicMock()
+        mock_alert_service = AsyncMock()
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+
+        # Create workflow instance
+        workflow = BookingWorkflow(
+            config=config,
+            db=mock_db,
+            notifier=mock_notifier,
+            auth_service=mock_auth_service,
+            slot_checker=mock_slot_checker,
+            booking_service=mock_booking_service,
+            waitlist_handler=mock_waitlist_handler,
+            error_handler=mock_error_handler,
+            slot_analyzer=mock_slot_analyzer,
+            session_recovery=mock_session_recovery,
+            alert_service=mock_alert_service,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+        )
+
+        # Mock page and user
+        mock_page = AsyncMock()
+        user = {"id": 1, "email": "test@example.com", "password": "testpass"}
+
+        # Mock auth_service.login to raise non-recoverable error
+        mock_auth_service.login = AsyncMock(
+            side_effect=SelectorNotFoundError("login_button", ["button.login", "input[type=submit]"])
+        )
+
+        # Call process_user - should raise without retry
+        with pytest.raises(SelectorNotFoundError):
+            await workflow.process_user(mock_page, user)
+
+        # Verify login was called only once (no retry for non-recoverable)
+        assert mock_auth_service.login.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_session_binding_error_not_retried(self):
+        """Test SessionBindingError (recoverable=False) is not retried."""
+        from unittest.mock import AsyncMock, MagicMock
+        from src.core.exceptions import SessionBindingError
+        from src.services.bot.booking_workflow import BookingWorkflow
+
+        # Create mock dependencies
+        config = {
+            "vfs": {"base_url": "https://visa.vfsglobal.com"},
+            "bot": {"headless": True},
+        }
+        mock_db = AsyncMock()
+        mock_notifier = AsyncMock()
+        mock_auth_service = AsyncMock()
+        mock_slot_checker = AsyncMock()
+        mock_booking_service = AsyncMock()
+        mock_waitlist_handler = AsyncMock()
+        mock_error_handler = AsyncMock()
+        mock_slot_analyzer = MagicMock()
+        mock_session_recovery = MagicMock()
+        mock_alert_service = AsyncMock()
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+
+        workflow = BookingWorkflow(
+            config=config,
+            db=mock_db,
+            notifier=mock_notifier,
+            auth_service=mock_auth_service,
+            slot_checker=mock_slot_checker,
+            booking_service=mock_booking_service,
+            waitlist_handler=mock_waitlist_handler,
+            error_handler=mock_error_handler,
+            slot_analyzer=mock_slot_analyzer,
+            session_recovery=mock_session_recovery,
+            alert_service=mock_alert_service,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+        )
+
+        mock_page = AsyncMock()
+        user = {"id": 1, "email": "test@example.com", "password": "testpass"}
+
+        # Mock to raise SessionBindingError
+        mock_auth_service.login = AsyncMock(
+            side_effect=SessionBindingError("Session fingerprint mismatch")
+        )
+
+        # Should raise without retry
+        with pytest.raises(SessionBindingError):
+            await workflow.process_user(mock_page, user)
+
+        # Verify called only once
+        assert mock_auth_service.login.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_database_not_connected_error_not_retried(self):
+        """Test DatabaseNotConnectedError (recoverable=False) is not retried."""
+        from unittest.mock import AsyncMock, MagicMock
+        from src.core.exceptions import DatabaseNotConnectedError
+        from src.services.bot.booking_workflow import BookingWorkflow
+
+        config = {
+            "vfs": {"base_url": "https://visa.vfsglobal.com"},
+            "bot": {"headless": True},
+        }
+        mock_db = AsyncMock()
+        mock_notifier = AsyncMock()
+        mock_auth_service = AsyncMock()
+        mock_slot_checker = AsyncMock()
+        mock_booking_service = AsyncMock()
+        mock_waitlist_handler = AsyncMock()
+        mock_error_handler = AsyncMock()
+        mock_slot_analyzer = MagicMock()
+        mock_session_recovery = MagicMock()
+        mock_alert_service = AsyncMock()
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+
+        workflow = BookingWorkflow(
+            config=config,
+            db=mock_db,
+            notifier=mock_notifier,
+            auth_service=mock_auth_service,
+            slot_checker=mock_slot_checker,
+            booking_service=mock_booking_service,
+            waitlist_handler=mock_waitlist_handler,
+            error_handler=mock_error_handler,
+            slot_analyzer=mock_slot_analyzer,
+            session_recovery=mock_session_recovery,
+            alert_service=mock_alert_service,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+        )
+
+        mock_page = AsyncMock()
+        user = {"id": 1, "email": "test@example.com", "password": "testpass"}
+
+        # Mock to raise DatabaseNotConnectedError
+        mock_auth_service.login = AsyncMock(side_effect=DatabaseNotConnectedError())
+
+        # Should raise without retry
+        with pytest.raises(DatabaseNotConnectedError):
+            await workflow.process_user(mock_page, user)
+
+        # Verify called only once
+        assert mock_auth_service.login.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_recoverable_error_is_retried(self):
+        """Test that recoverable errors (e.g., LoginError with recoverable=True) are retried."""
+        from unittest.mock import AsyncMock, MagicMock
+        from src.core.exceptions import LoginError
+        from src.services.bot.booking_workflow import BookingWorkflow
+
+        config = {
+            "vfs": {"base_url": "https://visa.vfsglobal.com"},
+            "bot": {"headless": True},
+        }
+        mock_db = AsyncMock()
+        mock_notifier = AsyncMock()
+        mock_auth_service = AsyncMock()
+        mock_slot_checker = AsyncMock()
+        mock_booking_service = AsyncMock()
+        mock_waitlist_handler = AsyncMock()
+        mock_error_handler = AsyncMock()
+        mock_slot_analyzer = MagicMock()
+        mock_session_recovery = MagicMock()
+        mock_alert_service = AsyncMock()
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+
+        workflow = BookingWorkflow(
+            config=config,
+            db=mock_db,
+            notifier=mock_notifier,
+            auth_service=mock_auth_service,
+            slot_checker=mock_slot_checker,
+            booking_service=mock_booking_service,
+            waitlist_handler=mock_waitlist_handler,
+            error_handler=mock_error_handler,
+            slot_analyzer=mock_slot_analyzer,
+            session_recovery=mock_session_recovery,
+            alert_service=mock_alert_service,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+        )
+
+        mock_page = AsyncMock()
+        user = {"id": 1, "email": "test@example.com", "password": "testpass"}
+
+        # Mock to raise recoverable LoginError
+        mock_auth_service.login = AsyncMock(side_effect=LoginError("Temporary network issue", recoverable=True))
+
+        # Should retry and eventually raise
+        with pytest.raises(LoginError):
+            await workflow.process_user(mock_page, user)
+
+        # Verify retries happened (should be called MAX_PROCESS_USER times)
+        # Default Retries.MAX_PROCESS_USER is typically 3
+        assert mock_auth_service.login.call_count > 1
+
+
+class TestTokenRefreshBufferSafeParsing:
+    """Test safe parsing of TOKEN_REFRESH_BUFFER_MINUTES."""
+
+    def test_get_token_refresh_buffer_valid(self):
+        """Test _get_token_refresh_buffer with valid integer."""
+        from unittest.mock import patch
+        from src.services.vfs.auth import _get_token_refresh_buffer
+
+        with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "10"}):
+            assert _get_token_refresh_buffer() == 10
+
+    def test_get_token_refresh_buffer_invalid(self):
+        """Test _get_token_refresh_buffer with invalid value returns default."""
+        from unittest.mock import patch
+        from src.services.vfs.auth import _get_token_refresh_buffer
+
+        with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "invalid"}):
+            assert _get_token_refresh_buffer() == 5  # Default
+
+    def test_get_token_refresh_buffer_negative(self):
+        """Test _get_token_refresh_buffer with negative value returns default."""
+        from unittest.mock import patch
+        from src.services.vfs.auth import _get_token_refresh_buffer
+
+        with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "-5"}):
+            assert _get_token_refresh_buffer() == 5  # Default
+
+    def test_get_token_refresh_buffer_not_set(self):
+        """Test _get_token_refresh_buffer when env var not set returns default."""
+        from unittest.mock import patch
+        from src.services.vfs.auth import _get_token_refresh_buffer
+
+        with patch.dict(os.environ, {}, clear=True):
+            assert _get_token_refresh_buffer() == 5  # Default
+
+
+class TestSecurityConfigValidation:
+    """Test SecurityConfig empty string validation."""
+
+    def test_security_config_warns_in_production(self):
+        """Test that SecurityConfig warns about empty keys in production."""
+        import warnings
+        from unittest.mock import patch
+        from src.core.config.config_models import SecurityConfig
+
+        with patch.dict(os.environ, {"ENV": "production"}):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                config = SecurityConfig()
+                
+                # Should have warning about security keys
+                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                assert len(security_warnings) > 0
+                assert "Empty security keys detected" in str(security_warnings[0].message)
+
+    def test_security_config_no_warn_in_testing(self):
+        """Test that SecurityConfig doesn't warn in testing environment."""
+        import warnings
+        from unittest.mock import patch
+        from src.core.config.config_models import SecurityConfig
+
+        with patch.dict(os.environ, {"ENV": "testing"}):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                config = SecurityConfig()
+                
+                # Should not have warning about security keys
+                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                assert len(security_warnings) == 0
+
+    def test_security_config_with_keys_no_warning(self):
+        """Test that SecurityConfig with proper keys doesn't warn."""
+        import warnings
+        from unittest.mock import patch
+        from pydantic import SecretStr
+        from src.core.config.config_models import SecurityConfig
+
+        with patch.dict(os.environ, {"ENV": "production"}):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                config = SecurityConfig(
+                    api_secret_key=SecretStr("very-secure-key-here"),
+                    api_key_salt=SecretStr("secure-salt"),
+                    encryption_key=SecretStr("encryption-key-32-chars-long"),
+                )
+                
+                # Should not have warning
+                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                assert len(security_warnings) == 0
+
+
+class TestPasswordLeakPrevention:
+    """Test password leak prevention in auth_service."""
+
+    @pytest.mark.asyncio
+    async def test_error_capture_receives_sanitized_exception(self):
+        """Test that error_capture receives sanitized exception, not raw."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from src.services.bot.auth_service import AuthService
+        from src.core.exceptions import LoginError
+
+        # Create mocks
+        config = {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "language": "tr",
+            },
+            "bot": {"headless": True},
+        }
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+        mock_captcha_solver = AsyncMock()
+        mock_cloudflare_handler = AsyncMock()
+        mock_cloudflare_handler.handle_challenge = AsyncMock(return_value=True)
+
+        auth_service = AuthService(
+            config=config,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+            captcha_solver=mock_captcha_solver,
+            cloudflare_handler=mock_cloudflare_handler,
+        )
+
+        # Mock page
+        mock_page = AsyncMock()
+        mock_page.goto = AsyncMock()
+        mock_page.wait_for_load_state = AsyncMock()
+        mock_page.locator = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=0)))
+        
+        # Mock smart_fill to raise exception with password in message
+        password = "secretpassword123"
+        with patch('src.services.bot.auth_service.safe_navigate', return_value=True):
+            with patch('src.services.bot.auth_service.smart_fill', side_effect=Exception(f"Error with {password}")):
+                try:
+                    await auth_service.login(mock_page, "test@example.com", password)
+                except LoginError:
+                    pass
+
+        # Verify error_capture was called
+        assert mock_error_capture.capture.called
+        
+        # Get the exception passed to error_capture
+        call_args = mock_error_capture.capture.call_args
+        captured_exception = call_args[0][1]  # Second positional arg
+        
+        # Verify it's a LoginError (sanitized) and doesn't contain password
+        assert isinstance(captured_exception, LoginError)
+        assert password not in str(captured_exception)
+        assert "[REDACTED]" in str(captured_exception)
+
+    @pytest.mark.asyncio
+    async def test_outer_except_sanitizes_password_in_logs(self):
+        """Test that outer except block sanitizes password before logging."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from src.services.bot.auth_service import AuthService
+
+        config = {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "language": "tr",
+            },
+            "bot": {"headless": True},
+        }
+        mock_human_sim = MagicMock()
+        mock_error_capture = AsyncMock()
+        mock_captcha_solver = AsyncMock()
+        mock_cloudflare_handler = AsyncMock()
+
+        auth_service = AuthService(
+            config=config,
+            human_sim=mock_human_sim,
+            error_capture=mock_error_capture,
+            captcha_solver=mock_captcha_solver,
+            cloudflare_handler=mock_cloudflare_handler,
+        )
+
+        mock_page = AsyncMock()
+        password = "secretpassword456"
+        
+        # Mock safe_navigate to raise exception with password
+        with patch('src.services.bot.auth_service.safe_navigate', side_effect=Exception(f"Network error with {password}")):
+            # Capture logger calls
+            with patch('src.services.bot.auth_service.logger') as mock_logger:
+                result = await auth_service.login(mock_page, "test@example.com", password)
+                
+                # Should return False
+                assert result is False
+                
+                # Verify logger.error was called with sanitized message
+                assert mock_logger.error.called
+                error_message = mock_logger.error.call_args[0][0]
+                
+                # Password should be redacted in log
+                assert password not in error_message
+                assert "[REDACTED]" in error_message
 
 
 if __name__ == "__main__":

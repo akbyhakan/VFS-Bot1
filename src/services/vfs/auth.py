@@ -22,6 +22,20 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
+def _get_token_refresh_buffer() -> int:
+    """Get token refresh buffer from environment with safe parsing."""
+    raw = os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5")
+    try:
+        value = int(raw)
+        if value < 0:
+            logger.warning(f"TOKEN_REFRESH_BUFFER_MINUTES must be >= 0, got {value}. Using default 5.")
+            return 5
+        return value
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid TOKEN_REFRESH_BUFFER_MINUTES: '{raw}'. Using default 5.")
+        return 5
+
+
 class VFSAuth:
     """Handles VFS authentication - login, token refresh, and session validation."""
 
@@ -112,7 +126,7 @@ class VFSAuth:
 
             # Calculate token expiration time
             # VFS tokens typically expire after 1 hour, but we add buffer for safety
-            token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
+            token_refresh_buffer = _get_token_refresh_buffer()
             expires_in = data.get("expiresIn", 60)
             effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=effective_expiry)
@@ -193,7 +207,7 @@ class VFSAuth:
                 data = await response.json()
 
                 # Update session with new tokens
-                token_refresh_buffer = int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5"))
+                token_refresh_buffer = _get_token_refresh_buffer()
                 expires_in = data.get("expiresIn", 60)
                 effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
 

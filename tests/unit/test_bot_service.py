@@ -12,33 +12,9 @@ from src.services.notification import NotificationService
 
 
 @pytest.fixture
-def bot_config():
-    """Bot configuration fixture."""
-    return {
-        "vfs": {
-            "base_url": "https://visa.vfsglobal.com",
-            "country": "tur",
-            "mission": "deu",
-            "centres": ["Istanbul"],
-            "category": "Schengen Visa",
-            "subcategory": "Tourism",
-        },
-        "credentials": {"email": "test@example.com", "password": "testpass"},
-        "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
-        "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
-        "bot": {
-            "check_interval": 5,
-            "headless": True,
-            "screenshot_on_error": False,
-            "max_retries": 1,
-        },
-        "appointments": {
-            "preferred_dates": [],
-            "preferred_times": [],
-            "random_selection": True,
-        },
-        "anti_detection": {"enabled": False},
-    }
+def bot_config(config):
+    """Bot config based on shared test config."""
+    return config
 
 
 @pytest.fixture

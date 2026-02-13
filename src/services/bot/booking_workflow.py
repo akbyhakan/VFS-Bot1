@@ -6,10 +6,15 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from loguru import logger
 from playwright.async_api import Page
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random_exponential
 
 from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
+
+
+def _is_recoverable_vfs_error(exception: BaseException) -> bool:
+    """Only retry VFSBotError subclasses that are recoverable."""
+    return isinstance(exception, VFSBotError) and getattr(exception, 'recoverable', False)
 from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
@@ -96,7 +101,7 @@ class BookingWorkflow:
             min=Retries.BACKOFF_MIN_SECONDS,
             max=Retries.BACKOFF_MAX_SECONDS,
         ),
-        retry=retry_if_exception_type(VFSBotError),
+        retry=retry_if_exception(_is_recoverable_vfs_error),
         reraise=True,
     )
     async def process_user(self, page: Page, user: Dict[str, Any]) -> None:
@@ -134,8 +139,16 @@ class BookingWorkflow:
                 await self._process_normal_flow(page, user, dedup_service)
 
         except VFSBotError as e:
-            # Re-raise VFSBotError subclasses (LoginError, etc.) for retry
+            # Capture error
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
+            
+            # Log and handle based on recoverability
+            if not getattr(e, 'recoverable', False):
+                logger.error(
+                    f"Non-recoverable error for {masked_email}: {e.__class__.__name__}: {e}"
+                )
+            
+            # Only retry if recoverable
             raise
         except Exception as e:
             # Wrap unexpected exceptions in VFSBotError and re-raise for retry

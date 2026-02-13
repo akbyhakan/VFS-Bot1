@@ -7,7 +7,7 @@ src/types/config.py, src/core/config_models.py, and src/models/schemas.py.
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 # VFS Configuration Models
 
@@ -224,10 +224,32 @@ class DatabaseConfig(BaseModel):
 class SecurityConfig(BaseModel):
     """Security configuration."""
 
-    api_secret_key: SecretStr = Field(default=SecretStr(""))
-    api_key_salt: SecretStr = Field(default=SecretStr(""))
-    encryption_key: SecretStr = Field(default=SecretStr(""))
+    api_secret_key: Optional[SecretStr] = Field(default=None)
+    api_key_salt: Optional[SecretStr] = Field(default=None)
+    encryption_key: Optional[SecretStr] = Field(default=None)
     jwt_algorithm: str = Field(default="HS384")
+
+    @model_validator(mode='after')
+    def validate_security_keys(self) -> 'SecurityConfig':
+        """Warn if security keys are empty (actual enforcement is in VFSSettings)."""
+        import os
+        env = os.getenv("ENV", "production").lower()
+        if env not in ("testing", "test", "development", "dev"):
+            missing = []
+            for field_name in ('api_secret_key', 'api_key_salt', 'encryption_key'):
+                value = getattr(self, field_name)
+                if value is None:
+                    missing.append(field_name)
+                elif value.get_secret_value() == "":
+                    missing.append(field_name)
+            if missing:
+                import warnings
+                warnings.warn(
+                    f"SecurityConfig: Empty security keys detected: {missing}. "
+                    "This is insecure for production use.",
+                    stacklevel=2,
+                )
+        return self
 
 
 # Complete Application Configuration
