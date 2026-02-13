@@ -7,12 +7,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from web.app import app
+from web.app import create_app
 
 
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
+    app = create_app(run_security_validation=False, env_override="testing")
     return TestClient(app)
 
 

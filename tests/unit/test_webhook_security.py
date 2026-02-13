@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from src.utils.webhook_utils import generate_webhook_signature
 
-# Import app after all patches are in place
-from web.app import app
+# Import create_app
+from web.app import create_app
 
 
 class TestWebhookSecurity:
@@ -18,6 +18,7 @@ class TestWebhookSecurity:
 
     def setup_method(self):
         """Setup test client."""
+        app = create_app(run_security_validation=False, env_override="testing")
         self.client = TestClient(app)
 
     def test_webhook_rejects_missing_signature_in_production(self):

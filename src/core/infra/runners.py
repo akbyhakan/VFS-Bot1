@@ -185,7 +185,7 @@ async def run_web_mode(
     import uvicorn
 
     from src.services.cleanup_service import CleanupService
-    from web.app import app
+    from web.app import create_app
 
     # Initialize database if not provided
     db_owned = db is None
@@ -204,6 +204,9 @@ async def run_web_mode(
                 cleanup_service.run_periodic_cleanup(interval_hours=24)
             )
             logger.info("Cleanup service started (runs every 24 hours)")
+
+        # Create the app instance
+        app = create_app()
 
         # Run uvicorn server with configurable host and port
         host = os.getenv("UVICORN_HOST", "127.0.0.1")

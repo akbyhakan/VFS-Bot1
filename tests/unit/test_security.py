@@ -208,7 +208,7 @@ class TestCORSValidation:
         """Test that wildcard CORS is blocked in production."""
         import os
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
 
@@ -222,7 +222,7 @@ class TestCORSValidation:
         """Test that wildcard CORS is allowed in development."""
         import os
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "development")
 
@@ -232,7 +232,7 @@ class TestCORSValidation:
 
     def test_cors_specific_origins_allowed(self, monkeypatch):
         """Test that specific origins are always allowed."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
 
@@ -243,7 +243,7 @@ class TestCORSValidation:
 
     def test_cors_ipv6_localhost_blocked_in_production(self, monkeypatch):
         """Test that IPv6 localhost is blocked in production."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
         origins = validate_cors_origins("http://[::1]:3000")
@@ -251,7 +251,7 @@ class TestCORSValidation:
 
     def test_cors_zero_ip_blocked_in_production(self, monkeypatch):
         """Test that 0.0.0.0 is blocked in production."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
         origins = validate_cors_origins("http://0.0.0.0:8000")
@@ -259,7 +259,7 @@ class TestCORSValidation:
 
     def test_cors_localhost_subdomain_blocked_in_production(self, monkeypatch):
         """Test that localhost subdomain bypass is blocked in production."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
         origins = validate_cors_origins("http://localhost.evil.com")
@@ -267,7 +267,7 @@ class TestCORSValidation:
 
     def test_cors_reverse_localhost_subdomain_blocked_in_production(self, monkeypatch):
         """Test that reverse localhost subdomain (evil.localhost) is blocked in production."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
         origins = validate_cors_origins("http://evil.localhost")
@@ -275,7 +275,7 @@ class TestCORSValidation:
 
     def test_cors_ipv6_localhost_allowed_in_development(self, monkeypatch):
         """Test that IPv6 localhost is allowed in development."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "development")
         origins = validate_cors_origins("http://[::1]:3000")
@@ -283,7 +283,7 @@ class TestCORSValidation:
 
     def test_cors_legitimate_domains_not_blocked(self, monkeypatch):
         """Test that legitimate domains containing 'localhost' substring are not blocked."""
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         monkeypatch.setenv("ENV", "production")
         # These should NOT be blocked as they don't start with localhost.
@@ -304,7 +304,7 @@ class TestXForwardedFor:
 
         from fastapi import Request
 
-        from web.app import get_real_client_ip
+        from web.ip_utils import get_real_client_ip
 
         monkeypatch.setenv("TRUSTED_PROXIES", "")
 
@@ -324,7 +324,7 @@ class TestXForwardedFor:
 
         from fastapi import Request
 
-        from web.app import get_real_client_ip
+        from web.ip_utils import get_real_client_ip
 
         monkeypatch.setenv("TRUSTED_PROXIES", "192.168.1.1")
 
@@ -344,7 +344,7 @@ class TestXForwardedFor:
 
         from fastapi import Request
 
-        from web.app import get_real_client_ip
+        from web.ip_utils import get_real_client_ip
 
         mock_request = Mock(spec=Request)
         mock_request.client = None
