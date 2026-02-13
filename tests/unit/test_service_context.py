@@ -62,7 +62,7 @@ def disabled_anti_detection_config():
             "country": "tur",
             "mission": "deu",
         },
-        "captcha": {},
+        "captcha": {"api_key": "test_key"},
         "anti_detection": {
             "enabled": False,
         },
@@ -331,7 +331,7 @@ class TestBotServiceFactoryCoreServices:
 
     def test_create_core_services_missing_vfs_config(self):
         """Test that missing VFS config raises ValueError."""
-        config = {"captcha": {}}
+        config = {"captcha": {"api_key": "test_key"}}
 
         with pytest.raises(ValueError) as exc_info:
             BotServiceFactory.create_core_services(config)
