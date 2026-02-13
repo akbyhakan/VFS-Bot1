@@ -1,6 +1,7 @@
 """Tests for DatabaseFactory async lock."""
 
 import asyncio
+import threading
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -41,7 +42,12 @@ class TestDatabaseFactoryAsyncLock:
         """Test that concurrent ensure_connected calls are properly serialized."""
         mock_db = MagicMock()
         mock_db.pool = None
-        mock_db.connect = AsyncMock()
+        
+        async def connect_side_effect():
+            # Simulate successful connection by setting pool to non-None value
+            mock_db.pool = "connection_pool"
+        
+        mock_db.connect = AsyncMock(side_effect=connect_side_effect)
 
         with patch.object(DatabaseFactory, "get_instance", return_value=mock_db):
             # Call ensure_connected multiple times concurrently
@@ -64,3 +70,45 @@ class TestDatabaseFactoryAsyncLock:
 
         # Lock should be None
         assert DatabaseFactory._async_lock is None
+
+    def test_class_lock_exists(self):
+        """Test that _class_lock exists and is a threading.Lock."""
+        assert hasattr(DatabaseFactory, "_class_lock")
+        # threading.Lock() returns a lock type, check instance against the type
+        assert isinstance(DatabaseFactory._class_lock, type(threading.Lock()))
+
+    def test_class_lock_persists_after_reset(self):
+        """Test that _class_lock is NOT reset during reset_instance()."""
+        original_lock = DatabaseFactory._class_lock
+
+        # Reset instance
+        DatabaseFactory.reset_instance()
+
+        # _class_lock should be the same instance (not reset)
+        assert DatabaseFactory._class_lock is original_lock
+
+    def test_thread_safe_async_lock_creation(self):
+        """Test that multiple threads calling _get_async_lock() get the same lock instance."""
+        DatabaseFactory.reset_instance()
+        locks_from_threads = []
+        barrier = threading.Barrier(5)  # Synchronize 5 threads
+
+        def get_lock_from_thread():
+            # Wait for all threads to be ready
+            barrier.wait()
+            # All threads call _get_async_lock() simultaneously
+            lock = DatabaseFactory._get_async_lock()
+            locks_from_threads.append(lock)
+
+        # Create and start 5 threads
+        threads = [threading.Thread(target=get_lock_from_thread) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+
+        # All threads should have gotten the same lock instance
+        assert len(locks_from_threads) == 5
+        assert all(lock is locks_from_threads[0] for lock in locks_from_threads)

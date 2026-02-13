@@ -1,11 +1,13 @@
 """Appointment history repository implementation."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 
 
@@ -62,7 +64,7 @@ class AppointmentHistory:
 class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
     """Repository for appointment history CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize appointment history repository.
 

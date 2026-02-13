@@ -1,11 +1,13 @@
 """Token blacklist repository implementation."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.db_helpers import _parse_command_tag
 
@@ -29,7 +31,7 @@ class TokenBlacklistEntry:
 class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
     """Repository for token blacklist operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize token blacklist repository.
 

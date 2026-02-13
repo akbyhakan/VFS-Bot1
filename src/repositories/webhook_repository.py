@@ -1,11 +1,13 @@
 """Webhook repository implementation."""
 
 import secrets
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 
 
@@ -44,7 +46,7 @@ class Webhook:
 class WebhookRepository(BaseRepository[Webhook]):
     """Repository for webhook CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize webhook repository.
 

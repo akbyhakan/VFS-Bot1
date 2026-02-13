@@ -1,11 +1,13 @@
 """Log repository implementation."""
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
 from src.core.enums import LogLevel
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 
 
@@ -41,7 +43,7 @@ class LogEntry:
 class LogRepository(BaseRepository[LogEntry]):
     """Repository for log CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize log repository.
 

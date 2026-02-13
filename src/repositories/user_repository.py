@@ -1,8 +1,10 @@
 """User repository implementation with backward compatibility."""
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from src.models.database import Database
+if TYPE_CHECKING:
+    from src.models.database import Database
+
 from src.repositories.base import BaseRepository
 from src.repositories.user_entity import User
 from src.repositories.user_read_repository import UserReadRepository
@@ -12,7 +14,7 @@ from src.repositories.user_write_repository import UserWriteRepository
 class UserRepository(BaseRepository[User]):
     """Repository for user CRUD operations with backward compatibility."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize user repository.
 

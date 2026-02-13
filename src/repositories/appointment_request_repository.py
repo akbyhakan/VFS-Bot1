@@ -2,12 +2,14 @@
 
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
 from src.core.exceptions import ValidationError
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.validators import validate_email
 
@@ -65,7 +67,7 @@ class AppointmentRequest:
 class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
     """Repository for appointment request CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize appointment request repository.
 

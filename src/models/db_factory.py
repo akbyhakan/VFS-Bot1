@@ -1,6 +1,7 @@
 """Database factory with singleton pattern for connection management."""
 
 import asyncio
+import threading
 from typing import Optional
 
 from loguru import logger
@@ -28,12 +29,14 @@ class DatabaseFactory:
 
     _instance: Optional[Database] = None
     _async_lock: Optional[asyncio.Lock] = None
+    _class_lock = threading.Lock()  # Thread-safe guard for async lock creation
 
     @classmethod
     def _get_async_lock(cls) -> asyncio.Lock:
         """Get or create the async lock (lazy initialization for event loop safety)."""
-        if cls._async_lock is None:
-            cls._async_lock = asyncio.Lock()
+        with cls._class_lock:
+            if cls._async_lock is None:
+                cls._async_lock = asyncio.Lock()
         return cls._async_lock
 
     @classmethod
@@ -66,7 +69,8 @@ class DatabaseFactory:
         Call close() on the instance before resetting.
         """
         cls._instance = None
-        cls._async_lock = None  # Reset lock too
+        with cls._class_lock:
+            cls._async_lock = None  # Reset lock too
         logger.info("Reset database singleton instance")
 
     @classmethod

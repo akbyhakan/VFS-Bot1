@@ -1,10 +1,12 @@
 """Payment repository implementation."""
 
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 from loguru import logger
 
-from src.models.database import Database
 from src.repositories.base import BaseRepository
 from src.utils.encryption import decrypt_password, encrypt_password
 
@@ -53,7 +55,7 @@ class PaymentCard:
 class PaymentRepository(BaseRepository[PaymentCard]):
     """Repository for payment card CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize payment repository.
 

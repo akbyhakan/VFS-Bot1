@@ -1,9 +1,10 @@
 """Base repository class."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, TypeVar
 
-from src.models.database import Database
+if TYPE_CHECKING:
+    from src.models.database import Database
 
 T = TypeVar("T")
 
@@ -11,7 +12,7 @@ T = TypeVar("T")
 class BaseRepository(ABC, Generic[T]):
     """Base repository with common CRUD operations."""
 
-    def __init__(self, database: Database):
+    def __init__(self, database: "Database"):
         """
         Initialize repository with database connection.
 
