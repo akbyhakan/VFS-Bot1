@@ -189,6 +189,8 @@ class SlotChecker:
                 logger.info(f"No slots available for {centre}/{category}/{subcategory}")
                 return None
 
+        except VFSBotError:
+            raise  # Re-raise VFSBotError without capturing
         except Exception as e:
             logger.error(f"Error checking slots: {e}")
             # Capture error with context
