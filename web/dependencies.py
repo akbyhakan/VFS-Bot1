@@ -8,7 +8,7 @@ web.state/, and WebSocket management to web.websocket/. This file maintains
 re-exports of all these components.
 """
 
-from typing import Any, AsyncIterator, Dict
+from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -36,7 +36,7 @@ from web.websocket.manager import ConnectionManager
 security_scheme = HTTPBearer()
 
 
-def extract_raw_token(request: Request) -> str:
+def extract_raw_token(request: Request) -> Optional[str]:
     """
     Extract raw JWT token from HttpOnly cookie or Authorization header.
 
@@ -44,7 +44,7 @@ def extract_raw_token(request: Request) -> str:
         request: FastAPI request object
 
     Returns:
-        Raw JWT token string, or None if not found
+        Optional[str]: Raw JWT token string, or None if not found
     """
     # First, try to get token from HttpOnly cookie (primary method)
     token = request.cookies.get("access_token")

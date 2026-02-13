@@ -256,14 +256,41 @@ class VFSBot:
                 logger.info("All active bookings completed")
             except asyncio.TimeoutError:
                 logger.warning("Booking grace period expired, forcing shutdown")
-                # Notify about forced cancellation
+
+                # Collect task information for checkpoint before cancellation
+                task_names = []
+                for task in self._active_booking_tasks:
+                    try:
+                        task_name = task.get_name()
+                        task_names.append(task_name)
+                    except Exception:
+                        task_names.append("unknown")
+                
+                # Save checkpoint state before cancelling tasks
+                try:
+                    checkpoint_state = {
+                        "event": "forced_shutdown",
+                        "cancelled_task_count": len(self._active_booking_tasks),
+                        "cancelled_tasks": task_names,
+                        "reason": "grace_period_timeout",
+                    }
+                    await self.services.workflow.error_handler.save_checkpoint(checkpoint_state)
+                    logger.info(f"Checkpoint saved for {len(self._active_booking_tasks)} cancelled tasks")
+                except Exception as checkpoint_error:
+                    # Don't let checkpoint failure block shutdown
+                    logger.error(f"Failed to save checkpoint during shutdown: {checkpoint_error}")
+                
+                # Notify about forced cancellation with checkpoint info
                 await self._send_alert_safe(
                     message=(
                         f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
                         f"booking(s) cancelled after {grace_period_display} timeout"
                     ),
                     severity=AlertSeverity.ERROR,
-                    metadata={"cancelled_bookings": len(self._active_booking_tasks)},
+                    metadata={
+                        "cancelled_bookings": len(self._active_booking_tasks),
+                        "cancelled_tasks": task_names,
+                    },
                 )
                 for task in self._active_booking_tasks:
                     task.cancel()

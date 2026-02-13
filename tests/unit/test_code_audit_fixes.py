@@ -154,12 +154,17 @@ class TestGracefulShutdownNotifications:
             bot.browser_manager = browser_manager
             bot.notifier = notifier
             bot._active_booking_tasks = []
+            bot._health_task = None  # Add missing health task attribute
 
             # Mock services.workflow.alert_service
             bot.services = MagicMock()
             bot.services.workflow = MagicMock()
             bot.services.workflow.alert_service = MagicMock()
             bot.services.workflow.alert_service.send_alert = AsyncMock()
+
+            # Mock error_handler for checkpoint tests
+            bot.services.workflow.error_handler = MagicMock()
+            bot.services.workflow.error_handler.save_checkpoint = AsyncMock()
 
             return bot
 
@@ -198,6 +203,40 @@ class TestGracefulShutdownNotifications:
         assert bot.browser_manager.close.call_count == 1
         # Notifier should only be called once
         assert bot.notifier.notify_bot_stopped.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_stop_saves_checkpoint_on_timeout(self, mock_vfs_bot):
+        """Test that stop() saves checkpoint when timeout occurs."""
+        from src.constants import Timeouts
+        
+        bot = mock_vfs_bot
+
+        # Create a long-running task that will timeout
+        async def long_running_task():
+            await asyncio.sleep(Timeouts.GRACEFUL_SHUTDOWN_GRACE_PERIOD + 10)
+
+        # Create task with a name
+        task = asyncio.create_task(long_running_task(), name="test_booking_task")
+        bot._active_booking_tasks = {task}
+
+        # Call stop - should timeout and save checkpoint
+        await bot.stop()
+
+        # Verify checkpoint was saved
+        assert bot.services.workflow.error_handler.save_checkpoint.called
+        call_args = bot.services.workflow.error_handler.save_checkpoint.call_args[0][0]
+        
+        # Verify checkpoint contains expected data
+        assert call_args["event"] == "forced_shutdown"
+        assert call_args["cancelled_task_count"] == 1
+        assert "test_booking_task" in call_args["cancelled_tasks"]
+        assert call_args["reason"] == "grace_period_timeout"
+        
+        # Verify alert was sent with task info
+        assert bot.services.workflow.alert_service.send_alert.called
+        alert_call = bot.services.workflow.alert_service.send_alert.call_args[1]
+        assert "cancelled_tasks" in alert_call["metadata"]
+        assert "test_booking_task" in alert_call["metadata"]["cancelled_tasks"]
 
 
 class TestBotLoopErrorRecoveryJitter:

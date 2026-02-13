@@ -1,6 +1,5 @@
 """HTTPS redirect middleware for production environments."""
 
-import os
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
 from fastapi import Request
