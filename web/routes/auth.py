@@ -10,6 +10,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import create_access_token, revoke_token
+from src.core.auth.jwt_tokens import get_token_expire_hours
 from src.core.security import generate_api_key
 from src.models.database import Database
 from web.dependencies import extract_raw_token, get_db, verify_jwt_token
@@ -166,8 +167,6 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
     is_production = settings.is_production()
 
     # Calculate cookie max_age from JWT expiry (dynamically)
-    from src.core.auth.jwt_tokens import get_token_expire_hours
-
     max_age = get_token_expire_hours() * 3600  # Convert hours to seconds
 
     response.set_cookie(
