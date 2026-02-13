@@ -59,7 +59,7 @@ class Database:
     @property
     def _require_migrations(self) -> bool:
         """Get the migration requirement flag from the connection manager."""
-        return self._connection_manager._require_migrations
+        return self._connection_manager.require_migrations
 
     @property
     def state(self) -> str:

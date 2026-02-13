@@ -56,7 +56,7 @@ class DatabaseConnectionManager:
 
         # Migration requirement flag (default: True for safety)
         require_migrations_env = os.getenv("REQUIRE_MIGRATIONS", "true").lower()
-        self._require_migrations = require_migrations_env not in ("false", "0", "no")
+        self.require_migrations = require_migrations_env not in ("false", "0", "no")
 
         # Track if migration check has been performed to avoid redundant checks
         self._migration_verified: bool = False
@@ -181,7 +181,7 @@ class DatabaseConnectionManager:
                                     "Alembic version table not found. "
                                     "Run 'alembic upgrade head' to initialize the database schema."
                                 )
-                                if self._require_migrations:
+                                if self.require_migrations:
                                     raise RuntimeError(error_msg)
                                 else:
                                     logger.warning(error_msg)
@@ -198,7 +198,7 @@ class DatabaseConnectionManager:
                         raise
                     except Exception as e:
                         error_msg = f"Could not verify Alembic migration status: {e}"
-                        if self._require_migrations:
+                        if self.require_migrations:
                             raise RuntimeError(error_msg) from e
                         else:
                             logger.warning(error_msg)

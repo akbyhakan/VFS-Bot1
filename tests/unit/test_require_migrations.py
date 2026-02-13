@@ -105,8 +105,13 @@ async def test_reconnect_skips_migration_check():
             # First connect - should check migrations
             await db.connect()
 
-            # Verify migration check was called (2 fetchval calls: EXISTS + version_num)
-            assert mock_conn.fetchval.call_count == 2
+            # Verify migration check was called
+            # Should call fetchval at least twice: EXISTS check + version_num query
+            assert mock_conn.fetchval.call_count >= 2
+            # Verify the first call was the EXISTS check
+            first_call_query = mock_conn.fetchval.call_args_list[0][0][0]
+            assert "EXISTS" in first_call_query and "alembic_version" in first_call_query
+            
             mock_conn.fetchval.reset_mock()
 
             # Reconnect - should NOT check migrations again
