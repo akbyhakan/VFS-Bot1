@@ -7,6 +7,12 @@ from typing import Optional
 from loguru import logger
 from playwright.async_api import Page
 
+# Import FingerprintProfile if needed
+try:
+    from .fingerprint_rotator import FingerprintProfile
+except ImportError:
+    FingerprintProfile = None  # type: ignore
+
 
 @dataclass
 class CanvasNoiseConfig:
@@ -28,37 +34,48 @@ class FingerprintBypass:
     DEFAULT_CONFIG = CanvasNoiseConfig()
 
     @staticmethod
-    async def apply_all(page: Page) -> None:
+    async def apply_all(page: Page, profile: Optional["FingerprintProfile"] = None) -> None:
         """
         Apply all fingerprint bypass scripts to a page.
 
         Args:
             page: Playwright page object
+            profile: Optional FingerprintProfile for consistent parameters
         """
         try:
-            await FingerprintBypass._inject_canvas_noise(page)
-            await FingerprintBypass._spoof_webgl(page)
+            await FingerprintBypass._inject_canvas_noise(page, profile=profile)
+            await FingerprintBypass._spoof_webgl(page, profile=profile)
             await FingerprintBypass._randomize_audio_context(page)
             logger.info("Fingerprint bypass scripts applied successfully")
         except Exception as e:
             logger.error(f"Error applying fingerprint bypass: {e}")
 
     @staticmethod
-    async def _inject_canvas_noise(page: Page, config: Optional[CanvasNoiseConfig] = None) -> None:
+    async def _inject_canvas_noise(
+        page: Page, config: Optional[CanvasNoiseConfig] = None, profile: Optional["FingerprintProfile"] = None
+    ) -> None:
         """
         Inject noise into Canvas to randomize fingerprint.
 
         Args:
             page: Playwright page object
             config: Optional noise configuration (uses DEFAULT_CONFIG if None)
+            profile: Optional FingerprintProfile with predefined noise values
         """
         config = config or FingerprintBypass.DEFAULT_CONFIG
 
-        # Generate random noise shift values using configuration
-        r_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
-        g_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
-        b_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
-        a_shift = random.randint(config.ALPHA_SHIFT_MIN, config.ALPHA_SHIFT_MAX)
+        # Use profile values if provided, otherwise generate random
+        if profile is not None:
+            r_shift = profile.canvas_noise_r
+            g_shift = profile.canvas_noise_g
+            b_shift = profile.canvas_noise_b
+            a_shift = profile.canvas_noise_a
+        else:
+            # Generate random noise shift values using configuration
+            r_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+            g_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+            b_shift = random.randint(config.RGB_SHIFT_MIN, config.RGB_SHIFT_MAX)
+            a_shift = random.randint(config.ALPHA_SHIFT_MIN, config.ALPHA_SHIFT_MAX)
 
         # Validate values are within safe range
         assert config.RGB_SHIFT_MIN <= r_shift <= config.RGB_SHIFT_MAX
@@ -114,21 +131,32 @@ class FingerprintBypass:
         """)
 
     @staticmethod
-    async def _spoof_webgl(page: Page) -> None:
-        """Spoof WebGL vendor and renderer."""
-        # Random vendor/renderer combinations
-        vendors = [
-            (
-                "Google Inc. (Intel)",
-                "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0)",
-            ),
-            (
-                "Google Inc. (NVIDIA)",
-                "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)",
-            ),
-            ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)"),
-        ]
-        vendor, renderer = random.choice(vendors)
+    async def _spoof_webgl(page: Page, profile: Optional["FingerprintProfile"] = None) -> None:
+        """
+        Spoof WebGL vendor and renderer.
+
+        Args:
+            page: Playwright page object
+            profile: Optional FingerprintProfile with predefined vendor/renderer
+        """
+        # Use profile values if provided, otherwise use random defaults
+        if profile is not None:
+            vendor = profile.webgl_vendor
+            renderer = profile.webgl_renderer
+        else:
+            # Random vendor/renderer combinations
+            vendors = [
+                (
+                    "Google Inc. (Intel)",
+                    "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0)",
+                ),
+                (
+                    "Google Inc. (NVIDIA)",
+                    "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)",
+                ),
+                ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)"),
+            ]
+            vendor, renderer = random.choice(vendors)
 
         await page.add_init_script(f"""
             const getParameter = WebGLRenderingContext.prototype.getParameter;

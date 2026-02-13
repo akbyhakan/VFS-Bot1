@@ -6,6 +6,7 @@ from loguru import logger
 from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
 
 from ...utils.anti_detection.fingerprint_bypass import FingerprintBypass
+from ...utils.anti_detection.fingerprint_rotator import FingerprintRotator
 from ...utils.anti_detection.stealth_config import StealthConfig
 from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
@@ -39,6 +40,23 @@ class BrowserManager:
         self._max_pages_before_restart: int = config.get("bot", {}).get(
             "browser_restart_after_pages", 100
         )
+        
+        # Initialize fingerprint rotator
+        self._fingerprint_rotator: Optional[FingerprintRotator] = None
+        if self._anti_detection_enabled:
+            rotation_pages = config.get("anti_detection", {}).get("fingerprint_rotation_pages", 50)
+            rotation_minutes = config.get("anti_detection", {}).get("fingerprint_rotation_minutes", 30)
+            self._fingerprint_rotator = FingerprintRotator(
+                rotation_interval_pages=rotation_pages,
+                rotation_interval_minutes=rotation_minutes,
+            )
+            logger.info(
+                f"FingerprintRotator enabled (rotation: {rotation_pages} pages or {rotation_minutes} minutes)"
+            )
+        
+        # Optional session ID for browser pool support
+        self.session_id: Optional[str] = None
+        self._last_activity = None
 
     async def start(self) -> None:
         """Launch browser and create context with anti-detection features."""
@@ -56,13 +74,18 @@ class BrowserManager:
             if proxy_config:
                 logger.info(f"Using proxy: {proxy_config['server']}")
 
-        # Get User-Agent from header manager or use default
+        # Get User-Agent from fingerprint rotator or header manager or use default
         user_agent = (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/120.0.0.0 Safari/537.36"
         )
-        if self._anti_detection_enabled and self.header_manager:
+        
+        if self._anti_detection_enabled and self._fingerprint_rotator:
+            # Use user agent from current fingerprint profile
+            profile = self._fingerprint_rotator.get_current_profile()
+            user_agent = profile.user_agent
+        elif self._anti_detection_enabled and self.header_manager:
             user_agent = self.header_manager.get_user_agent()
 
         # Launch browser with anti-automation flags
@@ -78,6 +101,14 @@ class BrowserManager:
             "viewport": {"width": 1920, "height": 1080},
             "user_agent": user_agent,
         }
+        
+        # Use viewport from fingerprint profile if available
+        if self._anti_detection_enabled and self._fingerprint_rotator:
+            profile = self._fingerprint_rotator.get_current_profile()
+            context_options["viewport"] = {
+                "width": profile.viewport_width,
+                "height": profile.viewport_height,
+            }
 
         if proxy_config:
             context_options["proxy"] = proxy_config
@@ -137,7 +168,22 @@ class BrowserManager:
         if self.context is None:
             raise RuntimeError("Browser context is not initialized. Call start() first.")
 
+        # Check if fingerprint should be rotated
+        if self._anti_detection_enabled and self._fingerprint_rotator:
+            if self._fingerprint_rotator.should_rotate(increment_page_count=True):
+                logger.info("Rotating fingerprint profile...")
+                profile = self._fingerprint_rotator.rotate()
+                
+                # Restart browser with new profile
+                logger.info("Restarting browser with new fingerprint profile...")
+                await self.close()
+                await self.start()
+
         page = await self.context.new_page()
+        
+        # Track activity
+        from datetime import datetime, timezone
+        self._last_activity = datetime.now(timezone.utc)
 
         # Apply anti-detection features if enabled
         if self._anti_detection_enabled:
@@ -148,7 +194,9 @@ class BrowserManager:
                 await StealthConfig.apply_stealth(page, languages=stealth_languages)
 
             if apply_fingerprint_bypass and anti_config.get("fingerprint_bypass", True):
-                await FingerprintBypass.apply_all(page)
+                # Pass current profile to fingerprint bypass if rotator is enabled
+                profile = self._fingerprint_rotator.get_current_profile() if self._fingerprint_rotator else None
+                await FingerprintBypass.apply_all(page, profile=profile)
 
         return page
 
@@ -218,9 +266,40 @@ class BrowserManager:
         """Restart browser with clean state for memory management."""
         logger.info("Restarting browser for memory management...")
         await self.close()
+        
+        # Rotate fingerprint on restart if rotator is enabled
+        if self._anti_detection_enabled and self._fingerprint_rotator:
+            logger.info("Rotating to new fingerprint profile on restart...")
+            self._fingerprint_rotator.rotate()
+        
         await self.start()
         self._page_count = 0
         logger.info("Browser restarted successfully for memory management")
+    
+    @property
+    def is_idle(self) -> bool:
+        """
+        Check if browser has been idle (for browser pool management).
+
+        Returns:
+            True if browser hasn't been used recently, False otherwise
+        """
+        if self._last_activity is None:
+            return False
+        
+        from datetime import datetime, timedelta, timezone
+        idle_threshold = timedelta(minutes=10)
+        return datetime.now(timezone.utc) - self._last_activity > idle_threshold
+    
+    @property
+    def last_activity(self) -> Optional[Any]:
+        """
+        Get the timestamp of last activity.
+
+        Returns:
+            Datetime of last activity or None if never active
+        """
+        return self._last_activity
 
     async def __aenter__(self) -> "BrowserManager":
         """Async context manager entry."""

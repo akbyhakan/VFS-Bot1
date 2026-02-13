@@ -8,6 +8,7 @@ import {
   Activity,
   Calendar,
   HeartPulse,
+  Shield,
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
 
@@ -15,6 +16,7 @@ const navigation = [
   { name: 'Dashboard', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { name: 'Kullanıcılar', href: ROUTES.USERS, icon: Users },
   { name: 'Randevu Talebi', href: ROUTES.APPOINTMENTS, icon: Calendar },
+  { name: 'Denetim Logları', href: ROUTES.AUDIT_LOGS, icon: Shield },
   { name: 'Loglar', href: ROUTES.LOGS, icon: FileText },
   { name: 'Ayarlar', href: ROUTES.SETTINGS, icon: Settings },
   { name: 'Sistem Sağlığı', href: ROUTES.SYSTEM_HEALTH, icon: HeartPulse },

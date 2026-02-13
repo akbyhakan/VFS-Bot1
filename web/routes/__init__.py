@@ -1,6 +1,7 @@
 """Routes package for VFS-Bot web application."""
 
 from .appointments import router as appointments_router
+from .audit import router as audit_router
 from .auth import router as auth_router
 from .bot import router as bot_router
 from .dashboard import router as dashboard_router
@@ -15,6 +16,7 @@ __all__ = [
     "auth_router",
     "users_router",
     "appointments_router",
+    "audit_router",
     "payment_router",
     "bot_router",
     "health_router",

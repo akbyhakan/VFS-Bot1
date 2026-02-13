@@ -23,6 +23,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
     # Import routers here to avoid circular imports
     from web.routes import (
         appointments_router,
+        audit_router,
         auth_router,
         bot_router,
         payment_router,
@@ -34,6 +35,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
     api_v1_router.include_router(auth_router)
     api_v1_router.include_router(users_router)
     api_v1_router.include_router(appointments_router)
+    api_v1_router.include_router(audit_router)
     api_v1_router.include_router(payment_router)
     api_v1_router.include_router(proxy_router)
     api_v1_router.include_router(bot_router)

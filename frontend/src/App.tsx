@@ -19,6 +19,7 @@ const Users = lazy(() => import('@/pages/Users'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Logs = lazy(() => import('@/pages/Logs'));
 const AppointmentRequest = lazy(() => import('@/pages/AppointmentRequest'));
+const AuditLogs = lazy(() => import('@/pages/AuditLogs'));
 const SystemHealth = lazy(() => import('@/pages/SystemHealth'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
@@ -74,6 +75,7 @@ function App() {
                 <Route path={ROUTES.SETTINGS} element={<Settings />} />
                 <Route path={ROUTES.LOGS} element={<Logs />} />
                 <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />
+                <Route path={ROUTES.AUDIT_LOGS} element={<AuditLogs />} />
                 <Route path={ROUTES.SYSTEM_HEALTH} element={<SystemHealth />} />
               </Route>
 

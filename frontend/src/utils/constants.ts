@@ -11,6 +11,7 @@ export const ROUTES = {
   LOGS: '/logs',
   APPOINTMENTS: '/appointments',
   SYSTEM_HEALTH: '/system',
+  AUDIT_LOGS: '/audit-logs',
 } as const;
 
 export const LOG_LEVELS = {
