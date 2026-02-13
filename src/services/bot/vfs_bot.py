@@ -11,7 +11,7 @@ from playwright.async_api import Page
 
 from ...constants import CircuitBreaker as CircuitBreakerConfig
 from ...constants import Intervals, RateLimits, Timeouts
-from ...core.circuit_breaker import CircuitBreaker, CircuitState
+from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import UserRepository
 from ..alert_service import AlertSeverity

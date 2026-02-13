@@ -46,6 +46,14 @@ class TestBookingWorkflowErrorCapture:
             "session_recovery": session_recovery,
         }
 
+    @pytest.fixture(autouse=True)
+    def mock_repositories(self):
+        """Automatically patch repository classes for all tests."""
+        with patch("src.services.bot.booking_workflow.AppointmentRepository"), \
+             patch("src.services.bot.booking_workflow.UserRepository"), \
+             patch("src.services.bot.booking_workflow.AppointmentRequestRepository"):
+            yield
+
     def test_init_with_error_capture(self, mock_dependencies):
         """Test BookingWorkflow initialization with ErrorCapture."""
         error_capture = ErrorCapture()
@@ -172,7 +180,7 @@ class TestBookingWorkflowErrorCapture:
         }
 
         # Setup mocks for the new form filling calls
-        workflow.db.get_personal_details = AsyncMock(
+        workflow.user_repo.get_personal_details = AsyncMock(
             return_value={
                 "first_name": "John",
                 "last_name": "Doe",
@@ -234,7 +242,7 @@ class TestBookingWorkflowErrorCapture:
 
         # Setup all mocks for successful flow
         workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
-        workflow.db.get_personal_details = AsyncMock(return_value=mock_personal_details)
+        workflow.user_repo.get_personal_details = AsyncMock(return_value=mock_personal_details)
         workflow.booking_service.fill_all_applicants = AsyncMock()
         workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
         workflow.waitlist_handler.click_confirm_button = AsyncMock(return_value=True)
@@ -251,7 +259,7 @@ class TestBookingWorkflowErrorCapture:
         await workflow.process_waitlist_flow(mock_page, mock_user)
 
         # Verify that form filling methods were called
-        workflow.db.get_personal_details.assert_called_once_with(123)
+        workflow.user_repo.get_personal_details.assert_called_once_with(123)
         workflow.booking_service.fill_all_applicants.assert_called_once()
 
         # Verify the reservation structure passed to fill_all_applicants
@@ -282,7 +290,7 @@ class TestBookingWorkflowErrorCapture:
 
         # Setup mocks
         workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
-        workflow.db.get_personal_details = AsyncMock(return_value=None)  # No personal details
+        workflow.user_repo.get_personal_details = AsyncMock(return_value=None)  # No personal details
         workflow.booking_service.fill_all_applicants = AsyncMock()
         workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
 
