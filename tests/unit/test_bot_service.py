@@ -545,3 +545,36 @@ async def test_wait_or_shutdown_shutdown_event(bot_config, mock_db, mock_notifie
 
     # Should return True (shutdown requested)
     assert result is True
+
+
+@pytest.mark.asyncio
+async def test_trigger_immediate_check_sets_event(bot_config, mock_db, mock_notifier):
+    """Test that trigger_immediate_check() sets the _trigger_event."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Verify event is not set initially
+    assert not bot._trigger_event.is_set()
+
+    # Call trigger_immediate_check
+    bot.trigger_immediate_check()
+
+    # Verify event is now set
+    assert bot._trigger_event.is_set()
+
+
+@pytest.mark.asyncio
+async def test_trigger_immediate_check_can_be_cleared(bot_config, mock_db, mock_notifier):
+    """Test that after calling trigger_immediate_check(), the event is set and can be cleared by _wait_or_shutdown()."""
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    # Trigger immediate check
+    bot.trigger_immediate_check()
+    assert bot._trigger_event.is_set()
+
+    # _wait_or_shutdown should clear the event and return False
+    result = await bot._wait_or_shutdown(1.0)
+
+    # Should return False (not shutdown, just triggered)
+    assert result is False
+    # Event should be cleared
+    assert not bot._trigger_event.is_set()

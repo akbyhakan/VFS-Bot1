@@ -889,3 +889,28 @@ class TestDatabasePoolExhaustion:
         # Should be recent (within last few seconds)
         time_diff = (datetime.now(timezone.utc) - test_db._last_successful_query).total_seconds()
         assert time_diff < 5
+
+
+@pytest.mark.asyncio
+async def test_close_sets_pool_to_none(tmp_path, unique_encryption_key):
+    """Test that close() sets pool to None and state to disconnected."""
+    from src.constants import Database as DatabaseConfig
+
+    test_db_url = DatabaseConfig.TEST_URL
+    db = Database(database_url=test_db_url)
+
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+
+    # Verify connected state
+    assert db.state == "connected"
+    assert db.pool is not None
+
+    # Close the database
+    await db.close()
+
+    # Verify pool is None and state is disconnected
+    assert db.pool is None
+    assert db.state == "disconnected"
