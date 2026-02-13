@@ -362,5 +362,6 @@ class TestHTTPSRedirectMiddleware:
             follow_redirects=False,
         )
         # Should NOT redirect (already HTTPS via proxy)
-        assert response.status_code != 301
+        # Will fail auth but should reach the endpoint
+        assert response.status_code in [401, 404, 422]
 

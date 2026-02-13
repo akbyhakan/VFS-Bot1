@@ -17,7 +17,7 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Skip if already HTTPS (direct or via proxy)
-        proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        proto = request.headers.get("x-forwarded-proto", "").lower() or request.url.scheme
         
         if proto == "https" or request.url.path in self.EXCLUDED_PATHS:
             return await call_next(request)
