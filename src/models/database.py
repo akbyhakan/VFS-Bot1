@@ -56,32 +56,6 @@ class Database:
         """Get the database URL from the connection manager."""
         return self._connection_manager.database_url
 
-    @staticmethod
-    def _parse_command_tag(command_tag: str) -> int:
-        """
-        Parse PostgreSQL command tag to extract affected row count.
-
-        PostgreSQL command tags follow the format 'COMMAND N' where N is the count.
-        Examples: 'UPDATE 5', 'DELETE 3', 'INSERT 0 1'
-
-        Args:
-            command_tag: PostgreSQL command tag string
-
-        Returns:
-            Number of affected rows, or 0 if parsing fails
-        """
-        try:
-            # Command tags format: 'COMMAND N' or 'INSERT oid N'
-            parts = command_tag.split()
-            if len(parts) >= 2:
-                # For INSERT: 'INSERT 0 N' - return last part
-                # For UPDATE/DELETE: 'UPDATE N' - return last part
-                return int(parts[-1])
-            return 0
-        except (ValueError, IndexError):
-            logger.warning(f"Failed to parse command tag: {command_tag}")
-            return 0
-
     @property
     def state(self) -> str:
         """
