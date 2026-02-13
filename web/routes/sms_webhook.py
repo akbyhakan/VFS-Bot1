@@ -4,17 +4,15 @@ This module provides webhook endpoints for receiving SMS OTP messages
 via SMS Forwarder app. Each VFS account has a unique webhook URL.
 """
 
-import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.core.environment import Environment
 from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
-from src.utils.webhook_utils import verify_webhook_signature
+from web.dependencies import verify_webhook_request
 
 # Initialize router
 router = APIRouter(prefix="/webhook/sms", tags=["SMS Webhook"])
@@ -55,7 +53,9 @@ def get_webhook_manager() -> WebhookTokenManager:
 
 @router.post("/{token}")
 @limiter.limit("60/minute")
-async def receive_sms(token: str, request: Request):
+@router.post("/{token}")
+@limiter.limit("60/minute")
+async def receive_sms(token: str, request: Request, _: None = Depends(verify_webhook_request)):
     """
     Receive SMS from SMS Forwarder app.
 
@@ -82,48 +82,6 @@ async def receive_sms(token: str, request: Request):
         HTTPException: On validation or processing errors
     """
     try:
-        # Get environment and secret
-        sms_webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-        # HMAC signature verification (production only, optional in development)
-        signature_header = request.headers.get("X-Webhook-Signature")
-
-        # Production mode: secret is REQUIRED
-        if Environment.is_production():
-            if not sms_webhook_secret:
-                logger.error("SMS_WEBHOOK_SECRET not configured in production")
-                raise HTTPException(
-                    status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
-                )
-            
-            # In production with secret, HMAC is mandatory
-            if not signature_header:
-                logger.warning("Missing X-Webhook-Signature header in production mode")
-                raise HTTPException(status_code=401, detail="Missing webhook signature")
-
-            # Get raw body for signature verification
-            body_bytes = await request.body()
-
-            # Verify signature
-            if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
-                logger.warning("Invalid webhook signature")
-                raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-            logger.debug("HMAC signature verified successfully")
-
-        elif signature_header and sms_webhook_secret:
-            # Development mode with signature provided - verify it
-            body_bytes = await request.body()
-
-            if not verify_webhook_signature(body_bytes, signature_header, sms_webhook_secret):
-                logger.warning("Invalid webhook signature (development mode)")
-                # Log warning but don't reject in development
-            else:
-                logger.debug("HMAC signature verified (development mode)")
-
-        elif Environment.is_development():
-            logger.debug("Running in development mode without HMAC verification")
-
         # Get webhook manager
         manager = get_webhook_manager()
 

@@ -1,16 +1,18 @@
 """Webhook management routes for per-user OTP webhooks."""
 
-import os
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
-from src.core.environment import Environment
 from src.repositories import UserRepository, WebhookRepository
 from src.services.otp_webhook import get_otp_service
-from src.utils.webhook_utils import verify_webhook_signature
-from web.dependencies import get_user_repository, get_webhook_repository, verify_jwt_token
+from web.dependencies import (
+    get_user_repository,
+    get_webhook_repository,
+    verify_jwt_token,
+    verify_webhook_request,
+)
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook"])
 
@@ -152,6 +154,7 @@ async def receive_otp(
     request: Request,
     body: dict,
     webhook_repo: WebhookRepository = Depends(get_webhook_repository),
+    _: None = Depends(verify_webhook_request),
 ):
     """
     Receive OTP via user-specific webhook.
@@ -168,36 +171,6 @@ async def receive_otp(
     Raises:
         HTTPException: If token is invalid or signature verification fails
     """
-    # Get webhook secret from environment (unified with other webhook endpoints)
-    webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-    # Production mode enforcement: secret is REQUIRED
-    if Environment.is_production() and not webhook_secret:
-        logger.error("SMS_WEBHOOK_SECRET not configured in production")
-        raise HTTPException(
-            status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
-        )
-
-    # Verify webhook signature if secret is configured
-    if webhook_secret:
-        signature = request.headers.get("X-Webhook-Signature")
-        if not signature:
-            logger.warning(f"Webhook request without signature for token {token[:8]}...")
-            raise HTTPException(status_code=401, detail="Missing webhook signature")
-
-        # Get raw body for signature verification
-        raw_body = await request.body()
-        if not verify_webhook_signature(raw_body, signature, webhook_secret):
-            logger.error(f"Invalid webhook signature for token {token[:8]}...")
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-        logger.debug(f"Webhook signature verified for token {token[:8]}...")
-    elif Environment.is_development():
-        # Development mode: log warning but allow without signature
-        logger.warning(
-            "DEVELOPMENT MODE: No SMS_WEBHOOK_SECRET configured - "
-            "signature validation disabled. DO NOT use in production!"
-        )
-
     try:
         # Find user by webhook token
         user = await webhook_repo.get_user_by_token(token)
