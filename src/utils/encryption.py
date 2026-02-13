@@ -250,9 +250,10 @@ def reset_encryption() -> None:
     Reset the global encryption instance.
     Thread-safe implementation.
     """
-    global _encryption_instance
+    global _encryption_instance, _last_key_check_time
     with _encryption_lock:
         _encryption_instance = None
+        _last_key_check_time = 0.0  # Reset TTL to force key check on next access
         logger.info("Encryption instance reset")
 
 
