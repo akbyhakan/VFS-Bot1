@@ -10,6 +10,8 @@ from typing import Any, Dict, Optional
 from cryptography.fernet import Fernet, InvalidToken
 from loguru import logger
 
+from src.core.exceptions import ConfigurationError
+
 
 class SessionRecovery:
     """Enable bot to resume from last checkpoint after a crash."""
@@ -30,26 +32,48 @@ class SessionRecovery:
         "completed",
     ]
 
-    def __init__(self, checkpoint_file: str = "data/session_checkpoint.json"):
+    def __init__(
+        self,
+        checkpoint_file: str = "data/session_checkpoint.json",
+        require_encryption: bool = True,
+    ):
+        """Initialize session recovery.
+
+        Args:
+            checkpoint_file: Path to checkpoint file
+            require_encryption: If True (default), raises ConfigurationError when ENCRYPTION_KEY
+                is not set. If False, allows plaintext fallback (ONLY for testing purposes).
+        """
         self.checkpoint_file = Path(checkpoint_file)
         self.checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
         self._current_checkpoint: Optional[Dict[str, Any]] = None
+        self._require_encryption = require_encryption
         self._fernet = self._init_fernet()
 
     def _init_fernet(self) -> Optional[Fernet]:
-        """Initialize Fernet encryption using ENCRYPTION_KEY from environment."""
+        """Initialize Fernet encryption using ENCRYPTION_KEY from environment.
+
+        Raises:
+            ConfigurationError: If ENCRYPTION_KEY is not set and require_encryption is True
+        """
         encryption_key = os.getenv("ENCRYPTION_KEY")
         if not encryption_key:
-            logger.warning(
-                "ENCRYPTION_KEY not set - checkpoint data will NOT be encrypted. "
-                "Set ENCRYPTION_KEY for secure checkpoint storage."
-            )
-            return None
+            if self._require_encryption:
+                raise ConfigurationError(
+                    "ENCRYPTION_KEY environment variable is required for secure checkpoint storage. "
+                    "Please set ENCRYPTION_KEY in your environment configuration."
+                )
+            else:
+                logger.warning(
+                    "ENCRYPTION_KEY not set - checkpoint data will NOT be encrypted. "
+                    "This is only acceptable for testing purposes."
+                )
+                return None
         try:
             return Fernet(encryption_key.encode())
         except Exception as e:
             logger.error(f"Failed to initialize Fernet encryption: {e}")
-            return None
+            raise ConfigurationError(f"Invalid ENCRYPTION_KEY: {e}")
 
     def save_checkpoint(self, step: str, user_id: int, context: Dict[str, Any]) -> None:
         """Save a checkpoint for crash recovery."""
@@ -77,10 +101,10 @@ class SessionRecovery:
                     f.write(encrypted_data)
                 logger.debug(f"Checkpoint saved (encrypted): {step}")
             else:
-                # Fallback to unencrypted if no encryption key
+                # Only allowed when require_encryption=False (testing only)
                 with open(self.checkpoint_file, "w", encoding="utf-8") as f:
                     f.write(json_data)
-                logger.debug(f"Checkpoint saved (unencrypted): {step}")
+                logger.warning(f"Checkpoint saved (unencrypted) - TESTING ONLY: {step}")
         except Exception as e:
             logger.error(f"Failed to save checkpoint: {e}")
 
@@ -99,15 +123,22 @@ class SessionRecovery:
                     checkpoint = json.loads(decrypted.decode("utf-8"))
                     logger.debug("Checkpoint loaded (encrypted)")
                 except InvalidToken:
-                    # Backward compatibility: try reading as plain JSON
-                    logger.warning(
-                        "Checkpoint file is not encrypted, reading as plaintext (legacy)"
+                    # Backward compatibility: migrate legacy plaintext to encrypted format
+                    logger.critical(
+                        "SECURITY WARNING: Checkpoint file is in legacy plaintext format. "
+                        "Migrating to encrypted format immediately."
                     )
                     checkpoint = json.loads(raw_data.decode("utf-8"))
+                    # Re-encrypt and overwrite immediately
+                    self._current_checkpoint = checkpoint
+                    self.save_checkpoint(
+                        checkpoint["step"], checkpoint["user_id"], checkpoint["context"]
+                    )
+                    logger.info("Legacy checkpoint successfully migrated to encrypted format")
             else:
-                # No encryption available, read as plaintext
+                # Only allowed when require_encryption=False (testing only)
                 checkpoint = json.loads(raw_data.decode("utf-8"))
-                logger.debug("Checkpoint loaded (unencrypted)")
+                logger.warning("Checkpoint loaded (unencrypted) - TESTING ONLY")
 
             # Ignore checkpoints older than 1 hour
             # Support both timezone-aware and naive datetime strings for backward compatibility

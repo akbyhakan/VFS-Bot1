@@ -104,6 +104,13 @@ async def receive_sms(token: str, request: Request):
 
             logger.debug("HMAC signature verified successfully")
 
+        elif Environment.is_production():
+            # Production mode without secret = security violation
+            logger.error("SMS_WEBHOOK_SECRET not configured in production")
+            raise HTTPException(
+                status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
+            )
+
         elif signature_header and sms_webhook_secret:
             # Development mode with signature provided - verify it
             body_bytes = await request.body()
