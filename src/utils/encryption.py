@@ -7,7 +7,7 @@ import threading
 import time
 from typing import Optional
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from loguru import logger
 
 from src.core.environment import Environment
@@ -59,18 +59,19 @@ class PasswordEncryption:
             self._key_hash = hashlib.sha256(self._key.encode()).hexdigest()[:16]
             # Create cipher with normalized key
             cipher_key = key.encode() if isinstance(key, str) else key
-            self.cipher = Fernet(cipher_key)
-
-            # Initialize old cipher for key rotation support
-            self._old_cipher: Optional[Fernet] = None
+            
+            # Build key list: new key first, then old key (if available)
+            fernet_keys = [Fernet(cipher_key)]
             old_key = os.getenv("ENCRYPTION_KEY_OLD")
             if old_key:
                 try:
                     old_cipher_key = old_key.encode() if isinstance(old_key, str) else old_key
-                    self._old_cipher = Fernet(old_cipher_key)
+                    fernet_keys.append(Fernet(old_cipher_key))
                     logger.info("Old encryption key loaded for key rotation support")
                 except Exception as e:
                     logger.warning(f"Failed to load old encryption key: {e}")
+            
+            self.cipher = MultiFernet(fernet_keys)
 
             # Only log key hash in non-production environments
             if not Environment.is_production():
@@ -113,25 +114,32 @@ class PasswordEncryption:
         Returns:
             True if data is encrypted with old key and needs migration
         """
-        # First check if current key can decrypt it
-        if self.can_decrypt(encrypted_data):
+        # MultiFernet can decrypt with any key in the list
+        # To check if migration is needed, try decrypting with just the first (new) key
+        try:
+            # Create a Fernet with only the first key (new key)
+            first_key = self._key.encode() if isinstance(self._key, str) else self._key
+            first_cipher = Fernet(first_key)
+            first_cipher.decrypt(encrypted_data.encode())
+            # If first key can decrypt it, no migration needed
             return False
-
-        # Check if old cipher exists and can decrypt it
-        if self._old_cipher:
+        except InvalidToken:
+            # First key can't decrypt it, check if MultiFernet can (old key)
             try:
-                self._old_cipher.decrypt(encrypted_data.encode())
+                self.cipher.decrypt(encrypted_data.encode())
+                # MultiFernet can decrypt it (using old key), so migration is needed
                 return True
             except InvalidToken:
+                # Cannot be decrypted at all
                 return False
             except Exception:
                 return False
-
-        return False
+        except Exception:
+            return False
 
     def migrate_to_new_key(self, encrypted_data: str) -> str:
         """
-        Migrate encrypted data from old key to new key.
+        Migrate encrypted data from old key to new key using MultiFernet.rotate().
 
         Args:
             encrypted_data: Data encrypted with old key
@@ -140,16 +148,12 @@ class PasswordEncryption:
             Data re-encrypted with new key
 
         Raises:
-            ValueError: If old cipher not available or migration fails
+            ValueError: If migration fails
         """
-        if not self._old_cipher:
-            raise ValueError("Old encryption key not available for migration")
-
         try:
-            # Decrypt with old key
-            decrypted = self._old_cipher.decrypt(encrypted_data.encode())
-            # Re-encrypt with new key
-            return self.cipher.encrypt(decrypted).decode()
+            # MultiFernet.rotate() automatically decrypts with any key and re-encrypts with the first (new) key
+            rotated = self.cipher.rotate(encrypted_data.encode())
+            return rotated.decode()
         except Exception as e:
             logger.error(f"Failed to migrate encryption data: {e}")
             raise ValueError(f"Encryption migration failed: {e}") from e
@@ -204,6 +208,8 @@ class PasswordEncryption:
     def decrypt_password(self, encrypted_password: str) -> str:
         """
         Decrypt an encrypted password with key rotation support.
+        
+        MultiFernet automatically tries all keys in the list, so no manual fallback needed.
 
         Args:
             encrypted_password: Encrypted password (base64 encoded)
@@ -218,18 +224,8 @@ class PasswordEncryption:
             decrypted = self.cipher.decrypt(encrypted_password.encode())
             return decrypted.decode()
         except InvalidToken:
-            # Try old key if available (key rotation support)
-            if self._old_cipher:
-                logger.info("Trying old encryption key for backward compatibility")
-                try:
-                    decrypted = self._old_cipher.decrypt(encrypted_password.encode())
-                    return decrypted.decode()
-                except InvalidToken:
-                    logger.error("Failed to decrypt with both current and old encryption keys")
-                    raise ValueError("Invalid encryption key or corrupted password")
-            else:
-                logger.error("Failed to decrypt password: invalid token or key")
-                raise ValueError("Invalid encryption key or corrupted password")
+            logger.error("Failed to decrypt password: invalid token or key")
+            raise ValueError("Invalid encryption key or corrupted password")
         except Exception as e:
             logger.error(f"Failed to decrypt password: {e}")
             raise
@@ -251,9 +247,10 @@ def reset_encryption() -> None:
     Reset the global encryption instance.
     Thread-safe implementation.
     """
-    global _encryption_instance
+    global _encryption_instance, _last_key_check_time
     with _encryption_lock:
         _encryption_instance = None
+        _last_key_check_time = 0.0  # Reset TTL to force key check on next access
         logger.info("Encryption instance reset")
 
 

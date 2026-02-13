@@ -15,6 +15,14 @@ from src.utils.encryption import (
 )
 
 
+@pytest.fixture(autouse=True)
+def reset_encryption_before_test():
+    """Reset encryption instance before each test to ensure isolation."""
+    reset_encryption()
+    yield
+    reset_encryption()
+
+
 @pytest.fixture
 def encryption_key():
     """Generate a test encryption key."""

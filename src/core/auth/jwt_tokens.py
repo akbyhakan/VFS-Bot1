@@ -74,7 +74,7 @@ def _get_jwt_settings() -> JWTSettings:
             "python -c 'import secrets; print(secrets.token_urlsafe(48))'"
         )
 
-    algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+    algorithm = os.getenv("JWT_ALGORITHM", "HS384")
 
     # Validate algorithm against whitelist
     if algorithm not in SUPPORTED_JWT_ALGORITHMS:
