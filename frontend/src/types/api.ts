@@ -74,6 +74,14 @@ export interface WebSocketMessage {
 }
 
 export interface ApiError {
+  type: string;
+  title: string;
+  status: number;
   detail: string;
-  status?: number;
+  instance?: string;
+  // Extension members
+  recoverable?: boolean;
+  retry_after?: number;
+  field?: string;
+  errors?: Record<string, string>;
 }

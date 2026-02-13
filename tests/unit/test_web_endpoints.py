@@ -278,3 +278,121 @@ class TestWebSocketAuthentication:
             data = websocket.receive_json()
             assert data["type"] == "status"
             assert "data" in data
+
+
+class TestRFC7807ErrorResponses:
+    """Tests for RFC 7807 Problem Details error responses."""
+
+    def test_error_response_content_type(self, client):
+        """Test that error responses have Content-Type: application/problem+json."""
+        # Trigger a validation error by sending invalid data
+        from src.core.exceptions import ValidationError
+        from web.app import create_app
+        from fastapi import FastAPI, Request
+        from src.middleware.error_handler import ErrorHandlerMiddleware
+        
+        # Create a simple endpoint that raises ValidationError
+        app = create_app(run_security_validation=False, env_override="testing")
+        
+        @app.get("/test/validation-error")
+        async def trigger_validation_error():
+            raise ValidationError("Invalid field", field="test_field")
+        
+        client_test = TestClient(app)
+        response = client_test.get("/test/validation-error")
+        
+        assert response.status_code == 400
+        assert response.headers["content-type"] == "application/problem+json"
+
+    def test_error_response_has_rfc7807_fields(self, client):
+        """Test that error responses include all required RFC 7807 fields."""
+        from src.core.exceptions import ValidationError
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        
+        @app.get("/test/validation-error")
+        async def trigger_validation_error():
+            raise ValidationError("Invalid field", field="test_field")
+        
+        client_test = TestClient(app)
+        response = client_test.get("/test/validation-error")
+        data = response.json()
+        
+        # Check required RFC 7807 fields
+        assert "type" in data
+        assert "title" in data
+        assert "status" in data
+        assert "detail" in data
+        assert "instance" in data
+        
+        # Verify values
+        assert data["type"].startswith("urn:vfsbot:error:")
+        assert data["status"] == 400
+        assert data["instance"] == "/test/validation-error"
+
+    def test_rate_limit_error_format(self, client):
+        """Test that rate limit errors include retry_after extension."""
+        from src.core.exceptions import RateLimitError
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        
+        @app.get("/test/rate-limit")
+        async def trigger_rate_limit():
+            raise RateLimitError("Rate limit exceeded", retry_after=60)
+        
+        client_test = TestClient(app)
+        response = client_test.get("/test/rate-limit")
+        data = response.json()
+        
+        assert response.status_code == 429
+        assert data["type"] == "urn:vfsbot:error:rate-limit"
+        assert data["title"] == "Rate Limit Error"
+        assert data["status"] == 429
+        assert "retry_after" in data
+        assert data["retry_after"] == 60
+        assert "Retry-After" in response.headers
+        assert response.headers["Retry-After"] == "60"
+
+    def test_validation_error_format(self, client):
+        """Test that validation errors include field extension."""
+        from src.core.exceptions import ValidationError
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        
+        @app.get("/test/validation-error-field")
+        async def trigger_validation_error():
+            raise ValidationError("Field is required", field="username")
+        
+        client_test = TestClient(app)
+        response = client_test.get("/test/validation-error-field")
+        data = response.json()
+        
+        assert response.status_code == 400
+        assert data["type"] == "urn:vfsbot:error:validation"
+        assert "field" in data
+        assert data["field"] == "username"
+
+    def test_unexpected_error_no_leak(self, client):
+        """Test that unexpected errors do not leak internal details."""
+        from web.app import create_app
+        
+        app = create_app(run_security_validation=False, env_override="testing")
+        
+        @app.get("/test/unexpected-error")
+        async def trigger_unexpected_error():
+            raise RuntimeError("Internal implementation detail that should not leak")
+        
+        client_test = TestClient(app)
+        response = client_test.get("/test/unexpected-error")
+        data = response.json()
+        
+        assert response.status_code == 500
+        assert data["type"] == "urn:vfsbot:error:internal-server"
+        assert data["title"] == "Internal Server Error"
+        assert data["status"] == 500
+        # Verify generic message, not the internal error
+        assert "Internal implementation detail" not in data["detail"]
+        assert data["detail"] == "An unexpected error occurred. Please try again later."

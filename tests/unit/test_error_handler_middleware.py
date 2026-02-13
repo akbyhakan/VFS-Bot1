@@ -127,3 +127,117 @@ class TestErrorHandlerMiddleware:
         response = middleware._handle_validation_error(error, mock_request)
         # Check response body contains field
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestRFC7807Compliance:
+    """Tests for RFC 7807 compliance in error handler middleware."""
+
+    @pytest.fixture
+    def middleware(self):
+        """Create middleware instance."""
+        return ErrorHandlerMiddleware(app=MagicMock())
+
+    @pytest.fixture
+    def mock_request(self):
+        """Create a mock request."""
+        request = MagicMock(spec=Request)
+        request.url.path = "/test/endpoint"
+        request.client.host = "127.0.0.1"
+        return request
+
+    def test_validation_error_rfc7807_format(self, middleware, mock_request):
+        """Test validation error returns RFC 7807 format."""
+        error = ValidationError("Invalid input", field="username")
+        response = middleware._handle_validation_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        # Parse response body
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"] == "urn:vfsbot:error:validation"
+        assert body["title"] == "Validation Error"
+        assert body["status"] == 400
+        assert body["detail"] == "Validation error for field 'username': Invalid input"
+        assert body["instance"] == "/test/endpoint"
+        assert body["field"] == "username"
+
+    def test_rate_limit_error_rfc7807_format(self, middleware, mock_request):
+        """Test rate limit error returns RFC 7807 format."""
+        error = RateLimitError("Too many requests", retry_after=60)
+        response = middleware._handle_rate_limit_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"] == "urn:vfsbot:error:rate-limit"
+        assert body["title"] == "Rate Limit Error"
+        assert body["status"] == 429
+        assert body["instance"] == "/test/endpoint"
+        assert body["retry_after"] == 60
+        assert body["recoverable"] is True
+
+    def test_auth_error_rfc7807_format(self, middleware, mock_request):
+        """Test authentication error returns RFC 7807 format."""
+        error = AuthenticationError("Invalid credentials")
+        response = middleware._handle_auth_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"] == "urn:vfsbot:error:authentication"
+        assert body["title"] == "Authentication Error"
+        assert body["status"] == 401
+        assert body["detail"] == "Invalid credentials"
+        assert body["instance"] == "/test/endpoint"
+
+    def test_database_error_rfc7807_format(self, middleware, mock_request):
+        """Test database error returns RFC 7807 format."""
+        error = DatabaseError("Connection failed", recoverable=True)
+        response = middleware._handle_database_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"] == "urn:vfsbot:error:database"
+        assert body["title"] == "Database Error"
+        assert body["status"] == 500
+        assert body["detail"] == "Connection failed"
+        assert body["instance"] == "/test/endpoint"
+        assert body["recoverable"] is True
+
+    def test_unexpected_error_rfc7807_format(self, middleware, mock_request):
+        """Test unexpected error returns RFC 7807 format without leaking details."""
+        error = RuntimeError("Internal implementation detail")
+        response = middleware._handle_unexpected_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"] == "urn:vfsbot:error:internal-server"
+        assert body["title"] == "Internal Server Error"
+        assert body["status"] == 500
+        # Should not leak internal details
+        assert "Internal implementation detail" not in body["detail"]
+        assert body["detail"] == "An unexpected error occurred. Please try again later."
+        assert body["instance"] == "/test/endpoint"
+
+    def test_vfsbot_error_rfc7807_format(self, middleware, mock_request):
+        """Test generic VFSBot error returns RFC 7807 format."""
+        error = VFSBotError("Generic error", recoverable=True)
+        response = middleware._handle_vfsbot_error(error, mock_request)
+        
+        assert response.media_type == "application/problem+json"
+        import json
+        body = json.loads(response.body)
+        
+        assert body["type"].startswith("urn:vfsbot:error:")
+        assert "title" in body
+        assert "status" in body
+        assert body["detail"] == "Generic error"
+        assert body["instance"] == "/test/endpoint"
+        assert body["recoverable"] is True
