@@ -275,14 +275,17 @@ class DatabaseConnectionManager:
         Raises:
             DatabasePoolTimeoutError: If connection cannot be acquired after all retries
         """
+        if self.pool is None:
+            raise DatabaseNotConnectedError()
+
         last_error = None
+        conn = None
 
         for attempt in range(max_retries):
             try:
-                async with self.get_connection(timeout=timeout) as conn:
-                    yield conn
-                    return
-            except DatabasePoolTimeoutError as e:
+                conn = await asyncio.wait_for(self.pool.acquire(), timeout=timeout)
+                break  # Connection acquired, exit loop
+            except (asyncio.TimeoutError, DatabasePoolTimeoutError) as e:
                 last_error = e
                 if attempt < max_retries - 1:
                     wait_time = (2**attempt) * 0.5  # Exponential backoff
@@ -292,7 +295,13 @@ class DatabaseConnectionManager:
                     )
                     await asyncio.sleep(wait_time)
 
-        raise last_error or DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
+        if conn is None:
+            raise last_error or DatabasePoolTimeoutError(timeout=timeout, pool_size=self.pool_size)
+
+        try:
+            yield conn
+        finally:
+            await self.pool.release(conn)
 
     async def __aenter__(self) -> "DatabaseConnectionManager":
         """Async context manager entry."""

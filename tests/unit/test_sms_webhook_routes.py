@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.services.webhook_token_manager import WebhookToken, WebhookTokenManager
-from web.app import app
+from web.app import create_app
 from web.routes.sms_webhook import set_webhook_manager
 
 
@@ -33,6 +33,7 @@ def mock_webhook_manager():
 def client(mock_webhook_manager):
     """Create test client with mocked webhook manager."""
     set_webhook_manager(mock_webhook_manager)
+    app = create_app(run_security_validation=False, env_override="testing")
     return TestClient(app)
 
 

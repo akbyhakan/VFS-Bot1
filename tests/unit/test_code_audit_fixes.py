@@ -23,7 +23,7 @@ class TestCORSProductionHardFail:
         # Import the app module which should fail in production
         with pytest.raises(RuntimeError) as exc_info:
             # We can't directly import the app as it would fail, so we'll test the logic
-            from web.app import validate_cors_origins
+            from web.cors import validate_cors_origins
 
             allowed_origins = validate_cors_origins("")
             env = os.getenv("ENV", "production").lower()
@@ -49,7 +49,7 @@ class TestCORSProductionHardFail:
         os.environ["ENV"] = "development"
         os.environ.pop("CORS_ALLOWED_ORIGINS", None)
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         allowed_origins = validate_cors_origins("")
         # Should not raise in development, just returns empty list
@@ -59,7 +59,7 @@ class TestCORSProductionHardFail:
         """Test that IPv6 localhost (::1) is blocked in production."""
         os.environ["ENV"] = "production"
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://[::1]:3000")
         assert origins == []
@@ -68,7 +68,7 @@ class TestCORSProductionHardFail:
         """Test that 0.0.0.0 is blocked in production."""
         os.environ["ENV"] = "production"
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://0.0.0.0:8000")
         assert origins == []
@@ -77,7 +77,7 @@ class TestCORSProductionHardFail:
         """Test that localhost subdomain bypass is blocked in production."""
         os.environ["ENV"] = "production"
 
-        from web.app import validate_cors_origins
+        from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://localhost.evil.com")
         assert origins == []

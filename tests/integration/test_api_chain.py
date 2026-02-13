@@ -25,8 +25,9 @@ async def test_app():
     # Ensure database factory is initialized
     await DatabaseFactory.ensure_connected()
 
-    from web.app import app
+    from web.app import create_app
 
+    app = create_app(run_security_validation=False, env_override="testing")
     client = TestClient(app)
     yield client
 

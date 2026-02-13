@@ -19,6 +19,10 @@ NotificationConfig = Dict[str, Any]  # Could be TypedDict for more specificity
 class NotificationService:
     """Multi-channel notification service for VFS-Bot."""
 
+    # Telegram API message limits
+    TELEGRAM_MESSAGE_LIMIT = 4096
+    TELEGRAM_CAPTION_LIMIT = 1024
+
     def __init__(self, config: NotificationConfig):
         """
         Initialize notification service.
@@ -73,6 +77,50 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Failed to create Telegram bot: {e}")
             return None
+
+    @staticmethod
+    def _split_message(text: str, max_length: int) -> list:
+        """
+        Split a message into chunks that fit within the max_length limit.
+
+        Tries to split at newlines first, then at spaces to avoid breaking words.
+
+        Args:
+            text: Text to split
+            max_length: Maximum length per chunk
+
+        Returns:
+            List of text chunks, each <= max_length
+        """
+        if len(text) <= max_length:
+            return [text]
+
+        chunks = []
+        remaining = text
+
+        while remaining:
+            if len(remaining) <= max_length:
+                chunks.append(remaining)
+                break
+
+            # Try to find a newline to split at
+            split_pos = remaining.rfind("\n", 0, max_length)
+
+            # If no newline found, try to split at a space
+            if split_pos == -1:
+                split_pos = remaining.rfind(" ", 0, max_length)
+
+            # If no space found either, force split at max_length
+            if split_pos == -1:
+                split_pos = max_length
+                chunks.append(remaining[:split_pos])
+                remaining = remaining[split_pos:]
+            else:
+                # Split at newline or space, skip the delimiter
+                chunks.append(remaining[:split_pos])
+                remaining = remaining[split_pos + 1 :]
+
+        return chunks
 
     @staticmethod
     def _escape_markdown(text: str) -> str:
@@ -153,7 +201,12 @@ class NotificationService:
             escaped_message = self._escape_markdown(message)
             full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
-            await bot.send_message(chat_id=chat_id, text=full_message, parse_mode="Markdown")
+            # Split message if it exceeds Telegram's limit
+            message_chunks = self._split_message(full_message, self.TELEGRAM_MESSAGE_LIMIT)
+
+            # Send all chunks
+            for chunk in message_chunks:
+                await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
 
             logger.info("Telegram notification sent successfully")
             return True
@@ -390,10 +443,26 @@ The bot will retry automatically.
             escaped_message = self._escape_markdown(message)
             full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
+            # Truncate caption to fit Telegram's limit for photo captions
+            caption = full_message
+            remaining_text = ""
+
+            if len(full_message) > self.TELEGRAM_CAPTION_LIMIT:
+                caption = full_message[: self.TELEGRAM_CAPTION_LIMIT]
+                remaining_text = full_message[self.TELEGRAM_CAPTION_LIMIT :]
+
             with open(photo_file, "rb") as photo:
                 await bot.send_photo(
-                    chat_id=chat_id, photo=photo, caption=full_message, parse_mode="Markdown"
+                    chat_id=chat_id, photo=photo, caption=caption, parse_mode="Markdown"
                 )
+
+            # Send remaining text as a separate message if needed
+            if remaining_text:
+                message_chunks = self._split_message(
+                    remaining_text, self.TELEGRAM_MESSAGE_LIMIT
+                )
+                for chunk in message_chunks:
+                    await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
 
             logger.info("Telegram notification with photo sent successfully")
             return True

@@ -44,6 +44,9 @@ class AlertConfig:
 class AlertService:
     """Service for sending alerts through multiple channels."""
 
+    # Telegram API message limit (same as in NotificationService)
+    TELEGRAM_MESSAGE_LIMIT = 4096
+
     def __init__(self, config: AlertConfig):
         """
         Initialize alert service.
@@ -138,6 +141,10 @@ class AlertService:
 
             emoji = emoji_map.get(severity, "📢")
             text = f"{emoji} *ALERT [{severity.upper()}]*\n\n{message}\n\n_Time: {timestamp}_"
+
+            # Truncate message to fit Telegram's message limit
+            if len(text) > self.TELEGRAM_MESSAGE_LIMIT:
+                text = text[: self.TELEGRAM_MESSAGE_LIMIT]
 
             url = f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage"
             payload = {

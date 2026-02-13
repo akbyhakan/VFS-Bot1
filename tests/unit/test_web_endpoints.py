@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from web.app import app
+from web.app import create_app
 from web.dependencies import bot_state, metrics
 from web.routes.health import check_database_health, increment_metric
 
@@ -13,6 +13,7 @@ from web.routes.health import check_database_health, increment_metric
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
+    app = create_app(run_security_validation=False, env_override="testing")
     return TestClient(app)
 
 

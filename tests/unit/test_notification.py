@@ -315,3 +315,72 @@ async def test_send_notification_priority():
     await notifier.send_notification("Test", "Message", priority="low")
     await notifier.send_notification("Test", "Message", priority="normal")
     await notifier.send_notification("Test", "Message", priority="high")
+
+
+def test_split_message_short_text():
+    """Test _split_message with short text that doesn't need splitting."""
+    text = "This is a short message"
+    result = NotificationService._split_message(text, 4096)
+    assert len(result) == 1
+    assert result[0] == text
+
+
+def test_split_message_long_text():
+    """Test _split_message with long text that needs splitting."""
+    # Create a message longer than 4096 characters
+    text = "A" * 5000
+    result = NotificationService._split_message(text, 4096)
+    assert len(result) == 2
+    assert len(result[0]) <= 4096
+    assert len(result[1]) <= 4096
+    # Verify all text is preserved
+    assert "".join(result) == text
+
+
+def test_split_message_splits_at_newline():
+    """Test _split_message prefers splitting at newline."""
+    # Create a message with newlines that exceeds the limit
+    text = "A" * 100 + "\n" + "B" * 100 + "\n" + "C" * 4000
+    result = NotificationService._split_message(text, 4096)
+    # Should split into at least 2 chunks
+    assert len(result) >= 2
+    # First chunk should be exactly what fits before the second newline
+    expected_first_chunk = "A" * 100 + "\n" + "B" * 100
+    assert result[0] == expected_first_chunk
+    # Second chunk should start with the C's
+    assert result[1].startswith("C")
+
+
+def test_split_message_splits_at_space():
+    """Test _split_message falls back to splitting at space."""
+    # Create a message with spaces but no newlines
+    text = "Word " * 1000  # Creates a long message with spaces
+    result = NotificationService._split_message(text, 100)
+    # Should split into multiple chunks
+    assert len(result) > 1
+    # Each chunk should be <= 100 characters
+    for chunk in result:
+        assert len(chunk) <= 100
+
+
+@pytest.mark.asyncio
+async def test_send_telegram_long_message_splits():
+    """Test send_telegram splits long messages into multiple sends."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
+    }
+
+    # Create a very long message (more than 4096 characters)
+    long_message = "A" * 5000
+
+    with patch("src.services.notification.Bot") as MockBot:
+        mock_bot = MagicMock()
+        mock_bot.send_message = AsyncMock()
+        MockBot.return_value = mock_bot
+
+        notifier = NotificationService(config)
+        result = await notifier.send_telegram("Title", long_message)
+
+        assert result is True
+        # Should have been called multiple times for the split message
+        assert mock_bot.send_message.call_count > 1
