@@ -19,12 +19,16 @@ TEST_API_SECRET_KEY = os.getenv(
 )
 
 # CRITICAL: Set environment variables BEFORE any src imports
-# These must be set before importing any modules that check for them at import time
+# These bootstrap variables are required for initial module imports (e.g., pydantic_settings)
+# They run at module load time, BEFORE pytest fixtures can execute.
+# Actual test isolation is provided by the setup_test_environment fixture using monkeypatch.
 os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
 os.environ.setdefault("ENV", "testing")
 
 from cryptography.fernet import Fernet
 
+# Bootstrap ENCRYPTION_KEY for initial imports (before fixtures can run)
+# Actual test isolation is provided by the setup_test_environment fixture
 if not os.getenv("ENCRYPTION_KEY"):
     # Generate a new encryption key for tests
     os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
@@ -45,33 +49,6 @@ from src.services.notification import NotificationService
 
 def pytest_configure(config):
     """Configure pytest environment before tests run."""
-    # Environment variables already set above, but ensure they're still set
-    os.environ.setdefault("API_SECRET_KEY", TEST_API_SECRET_KEY)
-    os.environ.setdefault("ENV", "testing")
-
-    if not os.getenv("ENCRYPTION_KEY"):
-        os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-
-    # Set VFS_ENCRYPTION_KEY for VFS API tests
-    if not os.getenv("VFS_ENCRYPTION_KEY"):
-        os.environ["VFS_ENCRYPTION_KEY"] = secrets.token_urlsafe(32)
-
-    # Set API_KEY_SALT for security tests
-    if not os.getenv("API_KEY_SALT"):
-        os.environ["API_KEY_SALT"] = secrets.token_urlsafe(32)
-
-    # Set VFS API Base URLs for tests (required after security fix)
-    if not os.getenv("VFS_API_BASE"):
-        os.environ["VFS_API_BASE"] = "https://test-api.vfsglobal.com"
-    if not os.getenv("VFS_ASSETS_BASE"):
-        os.environ["VFS_ASSETS_BASE"] = "https://test-assets.vfsglobal.com"
-    if not os.getenv("CONTENTFUL_BASE"):
-        os.environ["CONTENTFUL_BASE"] = "https://test-contentful.cloudfront.net"
-
-    # Set DATABASE_URL for tests (required after security fix)
-    if not os.getenv("DATABASE_URL"):
-        os.environ["DATABASE_URL"] = "postgresql://localhost:5432/vfs_bot_test"
-
     # Register custom markers
     config.addinivalue_line("markers", "integration: Integration tests (require PostgreSQL)")
     config.addinivalue_line("markers", "e2e: End-to-end tests (require browser)")
@@ -92,17 +69,33 @@ def session_encryption_key():
 @pytest.fixture(autouse=True)
 def setup_test_environment(monkeypatch):
     """Automatically set up test environment for all tests."""
-    # Ensure ENCRYPTION_KEY is set
-    if not os.getenv("ENCRYPTION_KEY"):
-        test_key = Fernet.generate_key().decode()
-        monkeypatch.setenv("ENCRYPTION_KEY", test_key)
-
+    # Generate fresh keys per test for true isolation
+    test_encryption_key = Fernet.generate_key().decode()
+    test_api_secret_key = secrets.token_urlsafe(48)
+    
+    # Set all environment variables using monkeypatch for proper isolation
+    monkeypatch.setenv("ENCRYPTION_KEY", test_encryption_key)
+    monkeypatch.setenv("API_SECRET_KEY", test_api_secret_key)
+    monkeypatch.setenv("ENV", "testing")
+    monkeypatch.setenv("VFS_ENCRYPTION_KEY", secrets.token_urlsafe(32))
+    monkeypatch.setenv("API_KEY_SALT", secrets.token_urlsafe(32))
+    monkeypatch.setenv("VFS_API_BASE", "https://test-api.vfsglobal.com")
+    monkeypatch.setenv("VFS_ASSETS_BASE", "https://test-assets.vfsglobal.com")
+    monkeypatch.setenv("CONTENTFUL_BASE", "https://test-contentful.cloudfront.net")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
+    
+    # Reset settings singleton so each test gets fresh settings
+    from src.core.config.settings import reset_settings
+    reset_settings()
+    
     # Suppress async-related warnings during tests
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         warnings.filterwarnings("ignore", message=".*was never awaited.*")
         yield
-    # Cleanup after test if needed
+    
+    # Cleanup: reset settings singleton after test
+    reset_settings()
 
 
 @pytest_asyncio.fixture
