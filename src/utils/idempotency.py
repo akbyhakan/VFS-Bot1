@@ -3,11 +3,58 @@
 import asyncio
 import hashlib
 import json
+import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from loguru import logger
+
+
+class IdempotencyBackend(ABC):
+    """Abstract base class for idempotency backends."""
+
+    @abstractmethod
+    async def get(self, key: str) -> Optional[Any]:
+        """
+        Get cached result for idempotency key.
+
+        Args:
+            key: Idempotency key
+
+        Returns:
+            Cached result if found and not expired, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def set(self, key: str, result: Any, ttl_seconds: int) -> None:
+        """
+        Store result for idempotency key.
+
+        Args:
+            key: Idempotency key
+            result: Result to store
+            ttl_seconds: Time-to-live in seconds
+        """
+        pass
+
+    @abstractmethod
+    async def cleanup_expired(self) -> int:
+        """
+        Remove expired entries.
+
+        Returns:
+            Number of entries removed
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        pass
 
 
 @dataclass
@@ -20,30 +67,13 @@ class IdempotencyRecord:
     expires_at: datetime
 
 
-class IdempotencyStore:
-    """
-    In-memory idempotency store for preventing duplicate operations.
+class InMemoryIdempotencyBackend(IdempotencyBackend):
+    """In-memory idempotency backend (single-worker only)."""
 
-    For production, consider using Redis or database storage.
-    """
-
-    def __init__(self, ttl_seconds: int = 86400):  # 24 hours default
-        """
-        Initialize idempotency store.
-
-        Args:
-            ttl_seconds: Time-to-live for stored records in seconds
-        """
+    def __init__(self):
+        """Initialize in-memory backend."""
         self._store: Dict[str, IdempotencyRecord] = {}
         self._lock = asyncio.Lock()
-        self._ttl = ttl_seconds
-
-    def _generate_key(self, operation: str, params: Dict[str, Any]) -> str:
-        """Generate idempotency key from operation and parameters."""
-        # Sort params for consistent hashing
-        param_str = json.dumps(params, sort_keys=True, default=str)
-        content = f"{operation}:{param_str}"
-        return hashlib.sha256(content.encode()).hexdigest()
 
     async def get(self, key: str) -> Optional[Any]:
         """Get cached result for idempotency key."""
@@ -58,7 +88,7 @@ class IdempotencyStore:
                     del self._store[key]
             return None
 
-    async def set(self, key: str, result: Any) -> None:
+    async def set(self, key: str, result: Any, ttl_seconds: int) -> None:
         """Store result for idempotency key."""
         async with self._lock:
             now = datetime.now(timezone.utc)
@@ -66,9 +96,154 @@ class IdempotencyStore:
                 key=key,
                 result=result,
                 created_at=now,
-                expires_at=now + timedelta(seconds=self._ttl),
+                expires_at=now + timedelta(seconds=ttl_seconds),
             )
             logger.debug(f"Idempotency stored for key: {key[:16]}...")
+
+    async def cleanup_expired(self) -> int:
+        """Remove expired entries."""
+        async with self._lock:
+            now = datetime.now(timezone.utc)
+            expired_keys = [k for k, v in self._store.items() if v.expires_at < now]
+            for key in expired_keys:
+                del self._store[key]
+
+            if expired_keys:
+                logger.debug(f"Cleaned up {len(expired_keys)} expired idempotency records")
+
+            return len(expired_keys)
+
+    @property
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        return False
+
+
+class RedisIdempotencyBackend(IdempotencyBackend):
+    """Redis-based distributed idempotency backend."""
+
+    def __init__(self, redis_client: Any):
+        """
+        Initialize Redis backend.
+
+        Args:
+            redis_client: Redis client instance
+        """
+        self._redis = redis_client
+
+    async def get(self, key: str) -> Optional[Any]:
+        """Get cached result for idempotency key."""
+        redis_key = f"idempotency:{key}"
+        data = await asyncio.to_thread(self._redis.get, redis_key)
+        if data:
+            try:
+                logger.debug(f"Idempotency hit for key: {key[:16]}...")
+                return json.loads(data)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to decode idempotency data for key: {key[:16]}...")
+                return None
+        return None
+
+    async def set(self, key: str, result: Any, ttl_seconds: int) -> None:
+        """Store result for idempotency key."""
+        redis_key = f"idempotency:{key}"
+        # Serialize result to JSON
+        data = json.dumps(result, default=str)
+        # Use SETEX for atomic set with expiration
+        await asyncio.to_thread(self._redis.setex, redis_key, ttl_seconds, data)
+        logger.debug(f"Idempotency stored for key: {key[:16]}...")
+
+    async def cleanup_expired(self) -> int:
+        """
+        Remove expired entries.
+
+        Note: Redis auto-expires keys with TTL, so this is mostly a no-op.
+        Returns 0 as cleanup is handled by Redis TTL.
+        """
+        return 0
+
+    @property
+    def is_distributed(self) -> bool:
+        """Check if backend uses distributed storage."""
+        return True
+
+
+class IdempotencyStore:
+    """
+    Idempotency store for preventing duplicate operations.
+
+    Supports both in-memory (single-worker) and Redis (multi-worker) backends.
+    """
+
+    def __init__(
+        self, ttl_seconds: int = 86400, backend: Optional[IdempotencyBackend] = None
+    ):  # 24 hours default
+        """
+        Initialize idempotency store.
+
+        Args:
+            ttl_seconds: Time-to-live for stored records in seconds
+            backend: Optional backend instance (auto-detects if None)
+        """
+        self._ttl = ttl_seconds
+
+        if backend is not None:
+            self._backend = backend
+        else:
+            # Auto-detect backend
+            self._backend = self._auto_detect_backend()
+
+        logger.info(
+            f"IdempotencyStore initialized (TTL: {ttl_seconds}s, "
+            f"backend: {'Redis' if self._backend.is_distributed else 'in-memory'})"
+        )
+
+    def _auto_detect_backend(self) -> IdempotencyBackend:
+        """
+        Auto-detect and initialize appropriate backend.
+
+        Tries to connect to Redis if REDIS_URL is set, falls back to in-memory.
+
+        Returns:
+            IdempotencyBackend instance
+        """
+        redis_url = os.getenv("REDIS_URL")
+
+        if redis_url:
+            try:
+                import redis
+
+                client = redis.from_url(
+                    redis_url, decode_responses=True, socket_connect_timeout=5
+                )
+                # Test connection
+                client.ping()
+                logger.info(f"IdempotencyStore using Redis backend")
+                return RedisIdempotencyBackend(client)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to connect to Redis, falling back to in-memory backend. "
+                    f"Idempotency will NOT be shared across workers! Error: {e}"
+                )
+
+        # Fallback to in-memory
+        logger.info("IdempotencyStore using in-memory backend")
+        return InMemoryIdempotencyBackend()
+
+    def _generate_key(self, operation: str, params: Dict[str, Any]) -> str:
+        """Generate idempotency key from operation and parameters."""
+        # Sort params for consistent hashing
+        param_str = json.dumps(params, sort_keys=True, default=str)
+        content = f"{operation}:{param_str}"
+        return hashlib.sha256(content.encode()).hexdigest()
+
+    async def get(self, key: str) -> Optional[Any]:
+        """Get cached result for idempotency key."""
+        return await self._backend.get(key)
+
+    async def set(self, key: str, result: Any) -> None:
+        """Store result for idempotency key."""
+        await self._backend.set(key, result, self._ttl)
 
     async def check_and_set(
         self, operation: str, params: Dict[str, Any], execute_fn: Callable[[], Awaitable[Any]]
@@ -101,16 +276,7 @@ class IdempotencyStore:
 
     async def cleanup_expired(self) -> int:
         """Remove expired entries."""
-        async with self._lock:
-            now = datetime.now(timezone.utc)
-            expired_keys = [k for k, v in self._store.items() if v.expires_at < now]
-            for key in expired_keys:
-                del self._store[key]
-
-            if expired_keys:
-                logger.debug(f"Cleaned up {len(expired_keys)} expired idempotency records")
-
-            return len(expired_keys)
+        return await self._backend.cleanup_expired()
 
 
 # Global idempotency store

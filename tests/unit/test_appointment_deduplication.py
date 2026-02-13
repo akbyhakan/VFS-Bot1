@@ -7,23 +7,31 @@ import pytest
 
 from src.services.appointment_deduplication import (
     AppointmentDeduplication,
+    InMemoryDeduplicationBackend,
     get_deduplication_service,
 )
+
+
+@pytest.fixture
+def in_memory_backend():
+    """Fixture for in-memory backend."""
+    return InMemoryDeduplicationBackend()
 
 
 @pytest.mark.asyncio
 class TestAppointmentDeduplication:
     """Test cases for AppointmentDeduplication class."""
 
-    async def test_initialization(self):
+    async def test_initialization(self, in_memory_backend):
         """Test service initialization."""
-        service = AppointmentDeduplication(ttl_seconds=1800)
+        service = AppointmentDeduplication(ttl_seconds=1800, backend=in_memory_backend)
         assert service._ttl_seconds == 1800
-        assert len(service._cache) == 0
+        assert isinstance(in_memory_backend._cache, dict)
+        assert len(in_memory_backend._cache) == 0
 
-    async def test_no_duplicate_on_first_check(self):
+    async def test_no_duplicate_on_first_check(self, in_memory_backend):
         """Test that first booking attempt is not marked as duplicate."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         is_dup = await service.is_duplicate(
             user_id=123, centre="Istanbul", category="Tourist", date="2024-03-15"
@@ -31,9 +39,9 @@ class TestAppointmentDeduplication:
 
         assert is_dup is False
 
-    async def test_duplicate_detected_after_marking(self):
+    async def test_duplicate_detected_after_marking(self, in_memory_backend):
         """Test that duplicate is detected after marking booking."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark first booking
         await service.mark_booked(
@@ -47,9 +55,9 @@ class TestAppointmentDeduplication:
 
         assert is_dup is True
 
-    async def test_different_user_not_duplicate(self):
+    async def test_different_user_not_duplicate(self, in_memory_backend):
         """Test that different users don't interfere."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark booking for user 123
         await service.mark_booked(
@@ -63,9 +71,9 @@ class TestAppointmentDeduplication:
 
         assert is_dup is False
 
-    async def test_different_centre_not_duplicate(self):
+    async def test_different_centre_not_duplicate(self, in_memory_backend):
         """Test that different centres don't interfere."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark booking for Istanbul
         await service.mark_booked(
@@ -79,9 +87,9 @@ class TestAppointmentDeduplication:
 
         assert is_dup is False
 
-    async def test_different_date_not_duplicate(self):
+    async def test_different_date_not_duplicate(self, in_memory_backend):
         """Test that different dates don't interfere."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark booking for 2024-03-15
         await service.mark_booked(
@@ -95,9 +103,9 @@ class TestAppointmentDeduplication:
 
         assert is_dup is False
 
-    async def test_ttl_expiration(self):
+    async def test_ttl_expiration(self, in_memory_backend):
         """Test that entries expire after TTL."""
-        service = AppointmentDeduplication(ttl_seconds=1)  # 1 second TTL
+        service = AppointmentDeduplication(ttl_seconds=1, backend=in_memory_backend)  # 1 second TTL
 
         # Mark booking
         await service.mark_booked(
@@ -119,9 +127,9 @@ class TestAppointmentDeduplication:
         )
         assert is_dup is False
 
-    async def test_cleanup_expired(self):
+    async def test_cleanup_expired(self, in_memory_backend):
         """Test cleanup of expired entries."""
-        service = AppointmentDeduplication(ttl_seconds=1)  # 1 second TTL
+        service = AppointmentDeduplication(ttl_seconds=1, backend=in_memory_backend)  # 1 second TTL
 
         # Mark multiple bookings
         await service.mark_booked(
@@ -139,9 +147,9 @@ class TestAppointmentDeduplication:
 
         assert removed == 2
 
-    async def test_get_stats(self):
+    async def test_get_stats(self, in_memory_backend):
         """Test getting cache statistics."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark some bookings
         await service.mark_booked(
@@ -157,9 +165,9 @@ class TestAppointmentDeduplication:
         assert stats["active_entries"] == 2
         assert stats["ttl_seconds"] == 3600
 
-    async def test_clear(self):
+    async def test_clear(self, in_memory_backend):
         """Test clearing all cache entries."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         # Mark some bookings
         await service.mark_booked(
@@ -176,9 +184,9 @@ class TestAppointmentDeduplication:
         stats = await service.get_stats()
         assert stats["total_entries"] == 0
 
-    async def test_concurrent_access(self):
+    async def test_concurrent_access(self, in_memory_backend):
         """Test thread-safe concurrent access."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         async def mark_and_check(user_id: int):
             await service.mark_booked(
@@ -195,9 +203,9 @@ class TestAppointmentDeduplication:
         stats = await service.get_stats()
         assert stats["total_entries"] == 10
 
-    async def test_make_key_uniqueness(self):
+    async def test_make_key_uniqueness(self, in_memory_backend):
         """Test that cache keys are unique for different combinations."""
-        service = AppointmentDeduplication(ttl_seconds=3600)
+        service = AppointmentDeduplication(ttl_seconds=3600, backend=in_memory_backend)
 
         key1 = service._make_key(123, "Istanbul", "Tourist", "2024-03-15")
         key2 = service._make_key(456, "Istanbul", "Tourist", "2024-03-15")
