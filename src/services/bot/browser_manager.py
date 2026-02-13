@@ -275,6 +275,11 @@ class BrowserManager:
         await self.start()
         self._page_count = 0
         logger.info("Browser restarted successfully for memory management")
+
+    def force_restart_on_next_cycle(self) -> None:
+        """Force browser restart on next should_restart() check."""
+        self._page_count = self._max_pages_before_restart
+        logger.info("Browser restart forced - will restart on next cycle")
     
     @property
     def is_idle(self) -> bool:
