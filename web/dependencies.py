@@ -188,7 +188,7 @@ async def verify_webhook_request(request: Request) -> None:
                 detail="Invalid webhook signature"
             )
         
-        logger.debug(f"Webhook signature verified (ENV: {Environment.current()})")
+        logger.debug("Webhook signature verified")
     
     elif Environment.is_development():
         # Development mode without secret: log warning but allow

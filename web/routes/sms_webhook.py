@@ -53,8 +53,6 @@ def get_webhook_manager() -> WebhookTokenManager:
 
 @router.post("/{token}")
 @limiter.limit("60/minute")
-@router.post("/{token}")
-@limiter.limit("60/minute")
 async def receive_sms(token: str, request: Request, _: None = Depends(verify_webhook_request)):
     """
     Receive SMS from SMS Forwarder app.
