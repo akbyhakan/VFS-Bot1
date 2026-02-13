@@ -1248,11 +1248,20 @@ class TestPasswordLeakPrevention:
         from src.core.exceptions import LoginError
 
         # Create mocks
-        config = {"bot": {"headless": True}}
+        config = {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "language": "tr",
+            },
+            "bot": {"headless": True},
+        }
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
         mock_captcha_solver = AsyncMock()
         mock_cloudflare_handler = AsyncMock()
+        mock_cloudflare_handler.handle_challenge = AsyncMock(return_value=True)
 
         auth_service = AuthService(
             config=config,
@@ -1270,11 +1279,12 @@ class TestPasswordLeakPrevention:
         
         # Mock smart_fill to raise exception with password in message
         password = "secretpassword123"
-        with patch('src.services.bot.auth_service.smart_fill', side_effect=Exception(f"Error with {password}")):
-            try:
-                await auth_service.login(mock_page, "test@example.com", password)
-            except LoginError:
-                pass
+        with patch('src.services.bot.auth_service.safe_navigate', return_value=True):
+            with patch('src.services.bot.auth_service.smart_fill', side_effect=Exception(f"Error with {password}")):
+                try:
+                    await auth_service.login(mock_page, "test@example.com", password)
+                except LoginError:
+                    pass
 
         # Verify error_capture was called
         assert mock_error_capture.capture.called
@@ -1294,7 +1304,15 @@ class TestPasswordLeakPrevention:
         from unittest.mock import AsyncMock, MagicMock, patch
         from src.services.bot.auth_service import AuthService
 
-        config = {"bot": {"headless": True}}
+        config = {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "language": "tr",
+            },
+            "bot": {"headless": True},
+        }
         mock_human_sim = MagicMock()
         mock_error_capture = AsyncMock()
         mock_captcha_solver = AsyncMock()
@@ -1311,23 +1329,22 @@ class TestPasswordLeakPrevention:
         mock_page = AsyncMock()
         password = "secretpassword456"
         
-        # Mock goto to raise exception with password
-        mock_page.goto = AsyncMock(side_effect=Exception(f"Network error with {password}"))
-        
-        # Capture logger calls
-        with patch('src.services.bot.auth_service.logger') as mock_logger:
-            result = await auth_service.login(mock_page, "test@example.com", password)
-            
-            # Should return False
-            assert result is False
-            
-            # Verify logger.error was called with sanitized message
-            assert mock_logger.error.called
-            error_message = mock_logger.error.call_args[0][0]
-            
-            # Password should be redacted in log
-            assert password not in error_message
-            assert "[REDACTED]" in error_message
+        # Mock safe_navigate to raise exception with password
+        with patch('src.services.bot.auth_service.safe_navigate', side_effect=Exception(f"Network error with {password}")):
+            # Capture logger calls
+            with patch('src.services.bot.auth_service.logger') as mock_logger:
+                result = await auth_service.login(mock_page, "test@example.com", password)
+                
+                # Should return False
+                assert result is False
+                
+                # Verify logger.error was called with sanitized message
+                assert mock_logger.error.called
+                error_message = mock_logger.error.call_args[0][0]
+                
+                # Password should be redacted in log
+                assert password not in error_message
+                assert "[REDACTED]" in error_message
 
 
 if __name__ == "__main__":
