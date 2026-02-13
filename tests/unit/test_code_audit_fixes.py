@@ -129,6 +129,54 @@ class TestBrowserMemoryLeakPrevention:
         # Default should be 100
         assert browser_manager._max_pages_before_restart == 100
 
+    @pytest.mark.asyncio
+    async def test_page_close_failure_forces_restart_threshold(self):
+        """Test that page.close() failure forces browser restart threshold."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        # Create mock VFSBot instance
+        with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
+            bot = VFSBot.__new__(VFSBot)
+
+            # Mock browser manager
+            browser_manager = MagicMock()
+            browser_manager._page_count = 5
+            browser_manager._max_pages_before_restart = 10
+            browser_manager.should_restart = AsyncMock(return_value=False)
+            
+            # Mock page that raises exception on close
+            mock_page = MagicMock()
+            mock_page.close = AsyncMock(side_effect=Exception("Failed to close page"))
+            browser_manager.new_page = AsyncMock(return_value=mock_page)
+
+            # Mock booking workflow
+            booking_workflow = MagicMock()
+            booking_workflow.process_user = AsyncMock()
+
+            # Mock services with semaphore
+            services = MagicMock()
+            services.core = MagicMock()
+            services.core.user_semaphore = asyncio.Semaphore(5)
+
+            # Assign mocks to bot
+            bot.browser_manager = browser_manager
+            bot.booking_workflow = booking_workflow
+            bot.services = services
+
+            # Call _process_user_with_semaphore with a test user
+            user = {"id": 1, "email": "test@example.com"}
+            
+            # The method should not raise, but should log the error
+            await bot._process_user_with_semaphore(user)
+
+            # Verify that browser_manager._page_count was set to _max_pages_before_restart
+            assert browser_manager._page_count == browser_manager._max_pages_before_restart
+            assert browser_manager._page_count == 10
+
+            # Verify should_restart() would now return True
+            browser_manager.should_restart = AsyncMock(return_value=True)
+            assert await browser_manager.should_restart() == True
+
 
 class TestGracefulShutdownNotifications:
     """Test graceful shutdown notification features."""
