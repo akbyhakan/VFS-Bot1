@@ -10,6 +10,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   LOGS: '/logs',
   APPOINTMENTS: '/appointments',
+  SYSTEM_HEALTH: '/system',
 } as const;
 
 export const LOG_LEVELS = {
