@@ -91,6 +91,11 @@ def main() -> None:
         logger.error(f"Configuration file not found: {e}")
         logger.info("Please copy config/config.example.yaml to config/config.yaml and configure it")
         sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user (Ctrl+C)")
+        sys.exit(130)
+    except SystemExit:
+        raise  # Let SystemExit propagate naturally
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)

@@ -278,9 +278,8 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
     mock_bot_instance.start = AsyncMock()
     mock_bot_instance.stop = AsyncMock()
     mock_bot_instance.cleanup = AsyncMock()
-    # Mock the trigger event
-    mock_bot_instance._trigger_event = AsyncMock()
-    mock_bot_instance._trigger_event.set = MagicMock()
+    # Mock the trigger_immediate_check method
+    mock_bot_instance.trigger_immediate_check = MagicMock()
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
@@ -291,11 +290,102 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
     result = await controller.trigger_check_now()
 
     assert result["status"] == "success"
-    # Verify that the trigger event was set
-    mock_bot_instance._trigger_event.set.assert_called_once()
+    # Verify that the trigger_immediate_check method was called
+    mock_bot_instance.trigger_immediate_check.assert_called_once()
 
     # Clean up
     await controller.stop_bot()
+
+
+@pytest.mark.asyncio
+@patch("src.core.bot_controller.VFSBot")
+async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, notifier):
+    """Test that trigger_check_now handles race condition when bot reference is lost."""
+    # Mock VFSBot
+    mock_bot_instance = AsyncMock()
+    mock_bot_instance.running = True
+    mock_bot_instance.start = AsyncMock()
+    mock_bot_instance.stop = AsyncMock()
+    mock_bot_instance.cleanup = AsyncMock()
+    # Mock trigger_immediate_check to raise AttributeError (simulating race condition)
+    mock_bot_instance.trigger_immediate_check = MagicMock(side_effect=AttributeError("Bot reference lost"))
+    mock_vfsbot.return_value = mock_bot_instance
+
+    controller = await BotController.get_instance()
+    await controller.configure(config, database, notifier)
+
+    # Start bot
+    await controller.start_bot()
+    
+    # Trigger check - should handle AttributeError gracefully
+    result = await controller.trigger_check_now()
+
+    assert result["status"] == "error"
+    assert "no longer available" in result["message"].lower()
+
+    # Clean up
+    await controller.stop_bot()
+
+
+@pytest.mark.asyncio
+@patch("src.core.bot_controller.VFSBot")
+async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, notifier):
+    """Test that _run_bot properly handles asyncio.CancelledError."""
+    # Mock VFSBot
+    mock_bot_instance = AsyncMock()
+    mock_bot_instance.running = True
+    mock_bot_instance.start = AsyncMock(side_effect=asyncio.CancelledError())
+    mock_bot_instance.stop = AsyncMock()
+    mock_bot_instance.cleanup = AsyncMock()
+    mock_vfsbot.return_value = mock_bot_instance
+
+    controller = await BotController.get_instance()
+    await controller.configure(config, database, notifier)
+
+    # Start bot - this should handle CancelledError gracefully
+    await controller.start_bot()
+    
+    # Give the task a moment to run
+    await asyncio.sleep(0.1)
+    
+    # Verify cleanup was called
+    mock_bot_instance.cleanup.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("src.core.bot_controller.VFSBot")
+async def test_run_bot_cleanup_under_lock(mock_vfsbot, config, database, notifier):
+    """Test that _run_bot cleanup runs under _async_lock."""
+    # Mock VFSBot
+    mock_bot_instance = AsyncMock()
+    mock_bot_instance.running = True
+    mock_bot_instance.start = AsyncMock()
+    mock_bot_instance.stop = AsyncMock()
+    mock_bot_instance.cleanup = AsyncMock()
+    
+    # Track whether cleanup was called while lock was held
+    lock_held_during_cleanup = False
+    original_cleanup = mock_bot_instance.cleanup
+    
+    async def cleanup_with_lock_check():
+        nonlocal lock_held_during_cleanup
+        # Check if lock is held by trying to acquire it with no wait
+        controller = await BotController.get_instance()
+        lock_held_during_cleanup = controller._async_lock.locked()
+        await original_cleanup()
+    
+    mock_bot_instance.cleanup = cleanup_with_lock_check
+    mock_vfsbot.return_value = mock_bot_instance
+
+    controller = await BotController.get_instance()
+    await controller.configure(config, database, notifier)
+
+    # Start and immediately stop to trigger cleanup
+    await controller.start_bot()
+    await controller.stop_bot()
+    
+    # Verify lock was held during cleanup
+    assert lock_held_during_cleanup
 
 
 @pytest.mark.asyncio

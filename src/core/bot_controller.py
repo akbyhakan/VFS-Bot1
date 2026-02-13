@@ -183,17 +183,19 @@ class BotController:
         """Internal method to run the bot."""
         try:
             await self._bot.start()
+        except asyncio.CancelledError:
+            logger.info("Bot task was cancelled")
         except Exception as e:
             logger.error(f"Bot error: {e}", exc_info=True)
         finally:
-            # Clean up
-            if self._bot:
-                try:
-                    await self._bot.cleanup()
-                except Exception as e:
-                    logger.error(f"Error during bot cleanup: {e}")
-            self._bot = None
-            self._bot_task = None
+            async with self._async_lock:
+                if self._bot:
+                    try:
+                        await self._bot.cleanup()
+                    except Exception as e:
+                        logger.error(f"Error during bot cleanup: {e}")
+                self._bot = None
+                self._bot_task = None
 
     async def stop_bot(self) -> Dict[str, str]:
         """
@@ -269,14 +271,18 @@ class BotController:
         Returns:
             Status dictionary with result
         """
-        if not self.is_running:
-            logger.warning("Cannot trigger check: bot is not running")
-            return {"status": "error", "message": "Bot is not running"}
+        async with self._async_lock:
+            if not self.is_running:
+                logger.warning("Cannot trigger check: bot is not running")
+                return {"status": "error", "message": "Bot is not running"}
 
-        # Set the trigger event to wake up the bot immediately
-        self._bot._trigger_event.set()
-        logger.info("Manual check triggered via BotController - bot will check immediately")
-        return {"status": "success", "message": "Manual check triggered"}
+            try:
+                self._bot.trigger_immediate_check()
+                logger.info("Manual check triggered via BotController - bot will check immediately")
+                return {"status": "success", "message": "Manual check triggered"}
+            except AttributeError:
+                logger.error("Bot reference lost during trigger attempt")
+                return {"status": "error", "message": "Bot is no longer available"}
 
     def get_status(self) -> Dict[str, Any]:
         """

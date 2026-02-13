@@ -205,10 +205,9 @@ class DatabaseConnectionManager:
     async def close(self) -> None:
         """Close database connection pool."""
         async with self._pool_lock:
-            # Close connection pool
             if self.pool:
                 await self.pool.close()
-            # Pool is None, so state property will return DISCONNECTED automatically
+                self.pool = None
             logger.info("Database connection pool closed")
 
     async def reconnect(self) -> bool:
