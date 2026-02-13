@@ -113,9 +113,12 @@ class NotificationService:
             # If no space found either, force split at max_length
             if split_pos == -1:
                 split_pos = max_length
-
-            chunks.append(remaining[:split_pos])
-            remaining = remaining[split_pos:].lstrip()
+                chunks.append(remaining[:split_pos])
+                remaining = remaining[split_pos:]
+            else:
+                # Split at newline or space, skip the delimiter
+                chunks.append(remaining[:split_pos])
+                remaining = remaining[split_pos + 1 :]
 
         return chunks
 

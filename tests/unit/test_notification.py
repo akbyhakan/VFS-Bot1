@@ -342,10 +342,13 @@ def test_split_message_splits_at_newline():
     # Create a message with newlines that exceeds the limit
     text = "A" * 100 + "\n" + "B" * 100 + "\n" + "C" * 4000
     result = NotificationService._split_message(text, 4096)
-    # Should split at the newline
-    assert len(result) >= 1
-    # First chunk should end near a newline
-    assert result[0].endswith("B" * 100) or "\n" in result[0]
+    # Should split into at least 2 chunks
+    assert len(result) >= 2
+    # First chunk should be exactly what fits before the second newline
+    expected_first_chunk = "A" * 100 + "\n" + "B" * 100
+    assert result[0] == expected_first_chunk
+    # Second chunk should start with the C's
+    assert result[1].startswith("C")
 
 
 def test_split_message_splits_at_space():
