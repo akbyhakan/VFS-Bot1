@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -172,10 +173,6 @@ class TestBrowserMemoryLeakPrevention:
             # Verify that browser_manager._page_count was set to _max_pages_before_restart
             assert browser_manager._page_count == browser_manager._max_pages_before_restart
             assert browser_manager._page_count == 10
-
-            # Verify should_restart() would now return True
-            browser_manager.should_restart = AsyncMock(return_value=True)
-            assert await browser_manager.should_restart() == True
 
 
 class TestGracefulShutdownNotifications:
@@ -901,8 +898,6 @@ class TestWaitOrShutdownEventBased:
         bot._trigger_event.set()
 
         # Measure time - should complete almost instantly (< 0.2s) not after 5s
-        import time
-
         start_time = time.time()
         result = await bot._wait_or_shutdown(5.0)
         elapsed = time.time() - start_time
