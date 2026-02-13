@@ -1197,9 +1197,10 @@ class TestSecurityConfigValidation:
                 warnings.simplefilter("always")
                 config = SecurityConfig()
                 
-                # Should have warning
-                assert len(w) >= 1
-                assert "Empty security keys detected" in str(w[0].message)
+                # Should have warning about security keys
+                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                assert len(security_warnings) > 0
+                assert "Empty security keys detected" in str(security_warnings[0].message)
 
     def test_security_config_no_warn_in_testing(self):
         """Test that SecurityConfig doesn't warn in testing environment."""

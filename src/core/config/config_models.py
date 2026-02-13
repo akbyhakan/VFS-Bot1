@@ -238,7 +238,9 @@ class SecurityConfig(BaseModel):
             missing = []
             for field_name in ('api_secret_key', 'api_key_salt', 'encryption_key'):
                 value = getattr(self, field_name)
-                if value is None or value.get_secret_value() == "":
+                if value is None:
+                    missing.append(field_name)
+                elif value.get_secret_value() == "":
                     missing.append(field_name)
             if missing:
                 import warnings

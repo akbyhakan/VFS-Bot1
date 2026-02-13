@@ -142,15 +142,14 @@ class BookingWorkflow:
             # Capture error
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
             
-            # Only re-raise recoverable errors for retry
-            if getattr(e, 'recoverable', False):
-                raise
-            else:
-                # Non-recoverable errors should not be retried, log and propagate
+            # Log and handle based on recoverability
+            if not getattr(e, 'recoverable', False):
                 logger.error(
                     f"Non-recoverable error for {masked_email}: {e.__class__.__name__}: {e}"
                 )
-                raise
+            
+            # Only retry if recoverable
+            raise
         except Exception as e:
             # Wrap unexpected exceptions in VFSBotError and re-raise for retry
             logger.error(f"Error processing user {masked_email}: {e}")
