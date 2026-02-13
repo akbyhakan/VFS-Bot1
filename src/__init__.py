@@ -8,9 +8,9 @@ __author__ = "Md. Ariful Islam"
 __license__ = "MIT"
 
 if TYPE_CHECKING:
-    from .core.config_loader import load_config as load_config
-    from .core.config_validator import ConfigValidator as ConfigValidator
-    from .core.env_validator import EnvValidator as EnvValidator
+    from .core.config.config_loader import load_config as load_config
+    from .core.config.config_validator import ConfigValidator as ConfigValidator
+    from .core.config.env_validator import EnvValidator as EnvValidator
     from .core.logger import JSONFormatter as JSONFormatter
     from .core.logger import setup_structured_logging as setup_structured_logging
     from .models.database import Database as Database
@@ -35,9 +35,9 @@ if TYPE_CHECKING:
 # Explicit lazy-loading map: name -> (module_path, attribute_name)
 _LAZY_MODULE_MAP = {
     # Core
-    "load_config": ("src.core.config_loader", "load_config"),
-    "ConfigValidator": ("src.core.config_validator", "ConfigValidator"),
-    "EnvValidator": ("src.core.env_validator", "EnvValidator"),
+    "load_config": ("src.core.config.config_loader", "load_config"),
+    "ConfigValidator": ("src.core.config.config_validator", "ConfigValidator"),
+    "EnvValidator": ("src.core.config.env_validator", "EnvValidator"),
     "setup_structured_logging": ("src.core.logger", "setup_structured_logging"),
     "JSONFormatter": ("src.core.logger", "JSONFormatter"),
     # Models
