@@ -15,6 +15,7 @@ from ...constants import Intervals, RateLimits, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import UserRepository
+from ...types.user import UserDict
 from ..alert_service import AlertSeverity
 from ..notification import NotificationService
 from .booking_workflow import BookingWorkflow
@@ -265,7 +266,7 @@ class VFSBot:
                         task_names.append(task_name)
                     except Exception:
                         task_names.append("unknown")
-                
+
                 # Save checkpoint state before cancelling tasks
                 try:
                     checkpoint_state = {
@@ -275,11 +276,13 @@ class VFSBot:
                         "reason": "grace_period_timeout",
                     }
                     await self.services.workflow.error_handler.save_checkpoint(checkpoint_state)
-                    logger.info(f"Checkpoint saved for {len(self._active_booking_tasks)} cancelled tasks")
+                    logger.info(
+                        f"Checkpoint saved for {len(self._active_booking_tasks)} cancelled tasks"
+                    )
                 except Exception as checkpoint_error:
                     # Don't let checkpoint failure block shutdown
                     logger.error(f"Failed to save checkpoint during shutdown: {checkpoint_error}")
-                
+
                 # Notify about forced cancellation with checkpoint info
                 await self._send_alert_safe(
                     message=(
@@ -695,7 +698,7 @@ class VFSBot:
                         logger.info("Shutdown requested during error recovery wait")
                         break
 
-    async def _process_user_with_semaphore(self, user: Dict[str, Any]) -> None:
+    async def _process_user_with_semaphore(self, user: UserDict) -> None:
         """
         Process user with semaphore for concurrency control.
 
@@ -713,7 +716,9 @@ class VFSBot:
                 except Exception as close_error:
                     logger.error(f"Failed to close page: {close_error}")
                     # Force browser restart on next cycle to prevent orphan page accumulation
-                    self.browser_manager._page_count = self.browser_manager._max_pages_before_restart
+                    self.browser_manager._page_count = (
+                        self.browser_manager._max_pages_before_restart
+                    )
                     logger.warning(
                         "Browser restart forced due to page close failure - "
                         "orphan pages may cause memory leaks"

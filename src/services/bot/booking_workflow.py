@@ -14,10 +14,13 @@ from ...core.exceptions import LoginError, VFSBotError
 
 def _is_recoverable_vfs_error(exception: BaseException) -> bool:
     """Only retry VFSBotError subclasses that are recoverable."""
-    return isinstance(exception, VFSBotError) and getattr(exception, 'recoverable', False)
+    return isinstance(exception, VFSBotError) and getattr(exception, "recoverable", False)
+
+
 from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
+from ...types.user import UserDict
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
@@ -104,7 +107,7 @@ class BookingWorkflow:
         retry=retry_if_exception(_is_recoverable_vfs_error),
         reraise=True,
     )
-    async def process_user(self, page: Page, user: Dict[str, Any]) -> None:
+    async def process_user(self, page: Page, user: UserDict) -> None:
         """
         Process a single user's appointment booking.
 
@@ -141,13 +144,13 @@ class BookingWorkflow:
         except VFSBotError as e:
             # Capture error
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
-            
+
             # Log and handle based on recoverability
-            if not getattr(e, 'recoverable', False):
+            if not getattr(e, "recoverable", False):
                 logger.error(
                     f"Non-recoverable error for {masked_email}: {e.__class__.__name__}: {e}"
                 )
-            
+
             # Only retry if recoverable
             raise
         except Exception as e:
@@ -156,7 +159,7 @@ class BookingWorkflow:
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
             raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
 
-    async def process_waitlist_flow(self, page: Page, user: Dict[str, Any]) -> None:
+    async def process_waitlist_flow(self, page: Page, user: UserDict) -> None:
         """
         Process waitlist flow for a user.
 
@@ -284,7 +287,7 @@ class BookingWorkflow:
                 logger.error(f"Failed to capture error: {capture_error}")
 
     async def _build_reservation_for_user(
-        self, user: Dict[str, Any], slot: "SlotInfo"
+        self, user: UserDict, slot: "SlotInfo"
     ) -> Optional[Dict[str, Any]]:
         """
         Build reservation for user using appropriate strategy.
@@ -316,7 +319,7 @@ class BookingWorkflow:
         self,
         page: Page,
         reservation: Dict[str, Any],
-        user: Dict[str, Any],
+        user: UserDict,
         centre: str,
         slot: "SlotInfo",
         dedup_service: Any,
@@ -402,9 +405,7 @@ class BookingWorkflow:
                 },
             )
 
-    async def _process_normal_flow(
-        self, page: Page, user: Dict[str, Any], dedup_service: Any
-    ) -> None:
+    async def _process_normal_flow(self, page: Page, user: UserDict, dedup_service: Any) -> None:
         """
         Process normal appointment flow (slot checking and booking).
 
@@ -496,7 +497,7 @@ class BookingWorkflow:
         return reservation
 
     def _build_reservation(
-        self, user: Dict[str, Any], slot: "SlotInfo", details: Dict[str, Any]
+        self, user: UserDict, slot: "SlotInfo", details: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Build reservation data structure from user, slot, and personal details.
