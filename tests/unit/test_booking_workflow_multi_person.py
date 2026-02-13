@@ -37,6 +37,7 @@ class TestBookingWorkflowMultiPerson:
         error_handler = MagicMock()
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
+        page_state_detector = MagicMock()
 
         return {
             "config": config,
@@ -49,6 +50,7 @@ class TestBookingWorkflowMultiPerson:
             "error_handler": error_handler,
             "slot_analyzer": slot_analyzer,
             "session_recovery": session_recovery,
+            "page_state_detector": page_state_detector,
         }
 
     def test_build_reservation_from_request_single_person(self, mock_dependencies):

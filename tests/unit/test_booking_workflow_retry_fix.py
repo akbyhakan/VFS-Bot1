@@ -32,6 +32,18 @@ class TestBookingWorkflowRetryFix:
         error_handler = MagicMock()
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
+        page_state_detector = MagicMock()
+        page_state_detector.wait_for_stable_state = AsyncMock(return_value=MagicMock(
+            needs_recovery=False,
+            is_on_appointment_page=True,
+            state=MagicMock(name="DASHBOARD"),
+        ))
+        page_state_detector.detect = AsyncMock(return_value=MagicMock(
+            needs_recovery=False,
+            is_on_appointment_page=True,
+            confidence=0.85,
+            state=MagicMock(name="APPOINTMENT_PAGE"),
+        ))
 
         return {
             "config": config,
@@ -44,6 +56,7 @@ class TestBookingWorkflowRetryFix:
             "error_handler": error_handler,
             "slot_analyzer": slot_analyzer,
             "session_recovery": session_recovery,
+            "page_state_detector": page_state_detector,
         }
 
     @pytest.fixture(autouse=True)
@@ -247,6 +260,7 @@ class TestBookingWorkflowHelperMethods:
         error_handler = MagicMock()
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
+        page_state_detector = MagicMock()
 
         return {
             "config": config,
@@ -259,6 +273,7 @@ class TestBookingWorkflowHelperMethods:
             "error_handler": error_handler,
             "slot_analyzer": slot_analyzer,
             "session_recovery": session_recovery,
+            "page_state_detector": page_state_detector,
         }
 
     @pytest.fixture(autouse=True)

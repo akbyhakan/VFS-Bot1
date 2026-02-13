@@ -155,6 +155,7 @@ class TestBookingWorkflowE2E:
                 error_handler=mock_error_handler,
                 slot_analyzer=mock_analyzer,
                 session_recovery=mock_recovery,
+                page_state_detector=MagicMock(),
             )
 
             # Step 4: Process user (this is the real workflow call!)
@@ -244,6 +245,7 @@ class TestBookingWorkflowE2E:
                 error_handler=mock_error_handler,
                 slot_analyzer=mock_analyzer,
                 session_recovery=mock_recovery,
+                page_state_detector=MagicMock(),
             )
 
             # Process user should raise LoginError
