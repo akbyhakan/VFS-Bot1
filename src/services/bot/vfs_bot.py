@@ -360,43 +360,36 @@ class VFSBot:
         """
         Wait for the specified duration or until shutdown/trigger is requested.
 
+        Uses polling with short sleep intervals to avoid creating/canceling tasks
+        on each call, reducing GC pressure in high-frequency loops.
+
         Args:
             seconds: Number of seconds to wait
 
         Returns:
             True if shutdown was requested during wait, False on normal timeout or trigger
         """
-        try:
-            # Wait for either shutdown or trigger event
-            shutdown_task = asyncio.create_task(self.shutdown_event.wait())
-            trigger_task = asyncio.create_task(self._trigger_event.wait())
+        end_time = asyncio.get_event_loop().time() + seconds
+        poll_interval = 0.1  # Poll every 100ms
 
-            done, pending = await asyncio.wait(
-                [shutdown_task, trigger_task], timeout=seconds, return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # Cancel pending tasks
-            for task in pending:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-            # Check which event was triggered
-            if shutdown_task in done:
-                # Shutdown was requested
+        while True:
+            # Check shutdown event first (highest priority)
+            if self.shutdown_event.is_set():
                 return True
-            elif trigger_task in done:
-                # Trigger event - clear it and continue loop
+
+            # Check trigger event
+            if self._trigger_event.is_set():
                 self._trigger_event.clear()
                 return False
-            else:
+
+            # Calculate remaining time
+            remaining = end_time - asyncio.get_event_loop().time()
+            if remaining <= 0:
                 # Timeout - normal sleep completion
                 return False
-        except asyncio.TimeoutError:
-            # Normal timeout - no shutdown requested
-            return False
+
+            # Sleep for short interval or remaining time, whichever is smaller
+            await asyncio.sleep(min(remaining, poll_interval))
 
     async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
         """
