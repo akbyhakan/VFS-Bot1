@@ -835,5 +835,121 @@ class TestDatabaseURLProductionValidation:
         assert settings.database_url == "postgresql://localhost:5432/vfs_bot"
 
 
+class TestWaitOrShutdownEventBased:
+    """Test _wait_or_shutdown event-based implementation."""
+
+    @pytest.fixture
+    def bot_config(self):
+        """Bot configuration fixture."""
+        return {
+            "vfs": {
+                "base_url": "https://visa.vfsglobal.com",
+                "country": "tur",
+                "mission": "deu",
+                "centres": ["Istanbul"],
+                "category": "Schengen Visa",
+                "subcategory": "Tourism",
+            },
+            "credentials": {"email": "test@example.com", "password": "testpass"},
+            "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
+            "captcha": {"provider": "manual", "api_key": "", "manual_timeout": 10},
+            "bot": {
+                "check_interval": 5,
+                "headless": True,
+                "screenshot_on_error": False,
+                "max_retries": 1,
+            },
+            "appointments": {
+                "preferred_dates": [],
+                "preferred_times": [],
+                "random_selection": True,
+            },
+            "anti_detection": {"enabled": False},
+        }
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock database fixture."""
+        from src.models.database import Database
+
+        db = AsyncMock(spec=Database)
+        db.get_active_users = AsyncMock(return_value=[])
+        db.get_personal_details = AsyncMock(return_value=None)
+        db.add_appointment = AsyncMock(return_value=1)
+        return db
+
+    @pytest.fixture
+    def mock_notifier(self):
+        """Mock notification service fixture."""
+        from src.services.notification import NotificationService
+
+        notifier = AsyncMock(spec=NotificationService)
+        notifier.notify_slot_found = AsyncMock()
+        notifier.notify_appointment_booked = AsyncMock()
+        notifier.notify_bot_started = AsyncMock()
+        notifier.notify_bot_stopped = AsyncMock()
+        return notifier
+
+    @pytest.mark.asyncio
+    async def test_wait_uses_event_based_approach(self, bot_config, mock_db, mock_notifier):
+        """Test that the method uses event-based approach (instant response to events)."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Set trigger event before calling wait
+        bot._trigger_event.set()
+
+        # Measure time - should complete almost instantly (< 0.2s) not after 5s
+        import time
+
+        start_time = time.time()
+        result = await bot._wait_or_shutdown(5.0)
+        elapsed = time.time() - start_time
+
+        # Should return False (trigger, not shutdown)
+        assert result is False
+        # Should complete in under 0.2 seconds (proves no polling)
+        assert elapsed < 0.2
+
+    @pytest.mark.asyncio
+    async def test_wait_shutdown_priority_over_trigger(self, bot_config, mock_db, mock_notifier):
+        """Test that shutdown event takes priority over trigger event."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Set both events before calling
+        bot.shutdown_event.set()
+        bot._trigger_event.set()
+
+        # Should return True (shutdown takes priority)
+        result = await bot._wait_or_shutdown(10.0)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_wait_cancellation_cleanup(self, bot_config, mock_db, mock_notifier):
+        """Test that cancellation properly cleans up tasks."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Create a task running _wait_or_shutdown
+        wait_task = asyncio.create_task(bot._wait_or_shutdown(10.0))
+
+        # Wait a bit then cancel
+        await asyncio.sleep(0.05)
+        wait_task.cancel()
+
+        # Should raise CancelledError
+        with pytest.raises(asyncio.CancelledError):
+            await wait_task
+
+        # Verify no leaked tasks (all pending tasks should be cancelled)
+        # We can't directly check for leaked tasks, but if the implementation is correct,
+        # there should be no warnings about unclosed tasks
+        await asyncio.sleep(0.01)  # Give time for cleanup
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
