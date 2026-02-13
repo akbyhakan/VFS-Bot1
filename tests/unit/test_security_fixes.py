@@ -18,7 +18,7 @@ from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 from src.core.security import APIKeyManager
 from src.models.database import Database
 from src.utils.encryption import reset_encryption
-from web.dependencies import ThreadSafeBotState
+from web.state.bot_state import ThreadSafeBotState
 
 
 @pytest.fixture(scope="function")
@@ -400,6 +400,80 @@ def test_thread_safe_bot_state_logs_deque():
     assert len(logs) == 500
     assert logs[0] == "Log entry 100"  # First 100 were dropped
     assert logs[-1] == "Log entry 599"
+
+
+@pytest.mark.security
+@pytest.mark.asyncio
+async def test_thread_safe_bot_state_async_uses_same_lock():
+    """Test that async methods use the same threading.Lock as sync methods."""
+    state = ThreadSafeBotState()
+    
+    # Set value using sync method
+    state["test_key"] = "sync_value"
+    
+    # Get value using async method
+    async_value = await state.async_get("test_key")
+    assert async_value == "sync_value"
+    
+    # Set value using async method
+    await state.async_set("test_key", "async_value")
+    
+    # Get value using sync method
+    sync_value = state["test_key"]
+    assert sync_value == "async_value"
+
+
+@pytest.mark.security
+def test_thread_safe_bot_state_no_async_lock_attribute():
+    """Test that ThreadSafeBotState no longer has _async_lock attribute."""
+    state = ThreadSafeBotState()
+    
+    # Verify _async_lock attribute does not exist
+    assert not hasattr(state, "_async_lock")
+    
+    # Verify _lock attribute exists (threading.Lock)
+    assert hasattr(state, "_lock")
+    # Verify it's a lock object (type varies by implementation)
+    assert state._lock is not None
+
+
+@pytest.mark.security
+def test_thread_safe_metrics_no_async_lock_attribute():
+    """Test that ThreadSafeMetrics no longer has _async_lock attribute."""
+    from web.state.metrics import ThreadSafeMetrics
+    
+    metrics = ThreadSafeMetrics()
+    
+    # Verify _async_lock attribute does not exist
+    assert not hasattr(metrics, "_async_lock")
+    
+    # Verify _lock attribute exists (threading.Lock)
+    assert hasattr(metrics, "_lock")
+    # Verify it's a lock object (type varies by implementation)
+    assert metrics._lock is not None
+
+
+@pytest.mark.security
+@pytest.mark.asyncio
+async def test_thread_safe_metrics_async_uses_same_lock():
+    """Test that async methods in ThreadSafeMetrics use unified threading.Lock."""
+    from web.state.metrics import ThreadSafeMetrics
+    
+    metrics = ThreadSafeMetrics()
+    
+    # Set value using sync method
+    metrics.set("test_metric", 100)
+    
+    # Get value using async method
+    async_value = await metrics.async_get("test_metric")
+    assert async_value == 100
+    
+    # Increment using async method
+    await metrics.async_increment("test_metric", 50)
+    
+    # Get value using sync method
+    sync_value = metrics.get("test_metric")
+    assert sync_value == 150
 
 
 # ==============================================================================
