@@ -374,7 +374,8 @@ class DatabaseConnectionManager:
         pool_total = self.pool.get_size()
         pool_idle = self.pool.get_idle_size()
         pool_used = pool_total - pool_idle
-        utilization = pool_used / self.pool_size if self.pool_size > 0 else 0.0
+        # Use pool_total (current pool size) as denominator for accurate utilization
+        utilization = pool_used / pool_total if pool_total > 0 else 0.0
         
         # Update metrics
         from src.utils.prometheus_metrics import MetricsHelper

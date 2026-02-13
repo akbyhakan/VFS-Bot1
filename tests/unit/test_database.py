@@ -963,13 +963,13 @@ async def test_pool_stats_without_connection():
     """Test get_pool_stats when pool is not connected."""
     from src.models.db_connection import DatabaseConnectionManager
     
-    db = DatabaseConnectionManager(database_url="postgresql://test:test@localhost/test")
+    db = DatabaseConnectionManager(database_url="postgresql://test:test@localhost/test", pool_size=10)
     
     # Get stats before connecting
     stats = db.get_pool_stats()
     
-    # Should return zero values
-    assert stats["pool_size"] > 0  # Should still have configured size
+    # Should return the configured pool size but zero usage
+    assert stats["pool_size"] == 10  # Should match configured size
     assert stats["pool_free"] == 0
     assert stats["pool_used"] == 0
     assert stats["utilization"] == 0.0
