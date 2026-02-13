@@ -12,7 +12,7 @@ from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
 from ...core.sensitive import SensitiveDict
 from ...models.database import Database
-from ...repositories import AppointmentRepository
+from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
@@ -85,13 +85,15 @@ class BookingWorkflow:
 
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
+        self.user_repo = UserRepository(db)
+        self.appointment_request_repo = AppointmentRequestRepository(db)
 
     @retry(
-        stop=stop_after_attempt(Retries.MAX_PROCESS_USER_ATTEMPTS),
+        stop=stop_after_attempt(Retries.MAX_PROCESS_USER),
         wait=wait_random_exponential(
-            multiplier=Retries.EXPONENTIAL_MULTIPLIER,
-            min=Retries.EXPONENTIAL_MIN,
-            max=Retries.EXPONENTIAL_MAX,
+            multiplier=Retries.BACKOFF_MULTIPLIER,
+            min=Retries.BACKOFF_MIN_SECONDS,
+            max=Retries.BACKOFF_MAX_SECONDS,
         ),
         retry=retry_if_exception_type(VFSBotError),
         reraise=True,
@@ -162,7 +164,7 @@ class BookingWorkflow:
             await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
 
             # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
-            details = await self.db.get_personal_details(user["id"])
+            details = await self.user_repo.get_personal_details(user["id"])
             if not details:
                 logger.error(f"No personal details found for user {user['id']}")
                 return
@@ -284,12 +286,12 @@ class BookingWorkflow:
             Reservation dict or None if no data available
         """
         # Try multi-person flow first
-        appointment_request = await self.db.get_pending_appointment_request_for_user(user["id"])
+        appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if appointment_request:
-            return self._build_reservation_from_request(appointment_request, slot)
+            return self._build_reservation_from_request(appointment_request.to_dict(), slot)
 
         # Fallback: legacy single-person flow
-        details = await self.db.get_personal_details(user["id"])
+        details = await self.user_repo.get_personal_details(user["id"])
         if details:
             return self._build_reservation(user, slot, details)
 

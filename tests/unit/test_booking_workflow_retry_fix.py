@@ -46,6 +46,14 @@ class TestBookingWorkflowRetryFix:
             "session_recovery": session_recovery,
         }
 
+    @pytest.fixture(autouse=True)
+    def mock_repositories(self):
+        """Automatically patch repository classes for all tests."""
+        with patch("src.services.bot.booking_workflow.AppointmentRepository"), \
+             patch("src.services.bot.booking_workflow.UserRepository"), \
+             patch("src.services.bot.booking_workflow.AppointmentRequestRepository"):
+            yield
+
     @pytest.mark.asyncio
     async def test_login_failure_raises_exception(self, mock_dependencies):
         """Test that login failure raises LoginError instead of returning."""
@@ -253,6 +261,14 @@ class TestBookingWorkflowHelperMethods:
             "session_recovery": session_recovery,
         }
 
+    @pytest.fixture(autouse=True)
+    def mock_repositories(self):
+        """Automatically patch repository classes for all tests."""
+        with patch("src.services.bot.booking_workflow.AppointmentRepository"), \
+             patch("src.services.bot.booking_workflow.UserRepository"), \
+             patch("src.services.bot.booking_workflow.AppointmentRequestRepository"):
+            yield
+
     @pytest.mark.asyncio
     async def test_capture_error_safe(self, mock_dependencies):
         """Test _capture_error_safe helper method."""
@@ -280,7 +296,9 @@ class TestBookingWorkflowHelperMethods:
         assert call_args[1]["context"]["email"] == "t***@example.com"
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_multi_person(self, mock_dependencies):
+    async def test_build_reservation_for_user_multi_person(
+        self, mock_dependencies
+    ):
         """Test _build_reservation_for_user with multi-person data."""
         workflow = BookingWorkflow(**mock_dependencies)
 
@@ -294,7 +312,12 @@ class TestBookingWorkflowHelperMethods:
             ],
         }
 
-        workflow.db.get_pending_appointment_request_for_user = AsyncMock(return_value=mock_request)
+        # Create a mock AppointmentRequest with to_dict() method
+        mock_appointment_request = MagicMock()
+        mock_appointment_request.to_dict.return_value = mock_request
+        workflow.appointment_request_repo.get_pending_for_user = AsyncMock(
+            return_value=mock_appointment_request
+        )
 
         reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
 
@@ -303,7 +326,9 @@ class TestBookingWorkflowHelperMethods:
         assert len(reservation["persons"]) == 2
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_single_person_fallback(self, mock_dependencies):
+    async def test_build_reservation_for_user_single_person_fallback(
+        self, mock_dependencies
+    ):
         """Test _build_reservation_for_user falls back to single-person flow."""
         workflow = BookingWorkflow(**mock_dependencies)
 
@@ -315,8 +340,8 @@ class TestBookingWorkflowHelperMethods:
             "email": "john@example.com",
         }
 
-        workflow.db.get_pending_appointment_request_for_user = AsyncMock(return_value=None)
-        workflow.db.get_personal_details = AsyncMock(return_value=mock_details)
+        workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
+        workflow.user_repo.get_personal_details = AsyncMock(return_value=mock_details)
 
         reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
 
@@ -325,15 +350,17 @@ class TestBookingWorkflowHelperMethods:
         assert len(reservation["persons"]) == 1
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_no_data(self, mock_dependencies):
+    async def test_build_reservation_for_user_no_data(
+        self, mock_dependencies
+    ):
         """Test _build_reservation_for_user returns None when no data available."""
         workflow = BookingWorkflow(**mock_dependencies)
 
         mock_user = {"id": 123}
         mock_slot = {"date": "2024-01-15", "time": "10:00"}
 
-        workflow.db.get_pending_appointment_request_for_user = AsyncMock(return_value=None)
-        workflow.db.get_personal_details = AsyncMock(return_value=None)
+        workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
+        workflow.user_repo.get_personal_details = AsyncMock(return_value=None)
 
         reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
 
