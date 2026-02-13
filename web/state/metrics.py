@@ -8,15 +8,19 @@ from typing import Any, Dict
 
 
 class ThreadSafeMetrics:
-    """
-    Thread-safe metrics storage with asyncio support.
-
-    This class uses threading.Lock for synchronization. When used in async contexts,
-    use the async_* methods which run operations in an executor to avoid blocking.
+    """Thread-safe metrics storage with asyncio support.
+    
+    WARNING: To avoid race conditions, code should consistently use EITHER:
+    - Sync methods (increment, get, set, etc.) from synchronous/threaded contexts
+    - Async methods (async_increment, async_get, async_set, etc.) from async contexts
+    
+    Mixing sync and async method calls on the same instance creates race conditions
+    as they use separate locks (threading.Lock vs asyncio.Lock).
     """
 
     def __init__(self):
         self._lock = threading.Lock()
+        self._async_lock = asyncio.Lock()
         self._data = {
             "requests_total": 0,
             "requests_success": 0,
@@ -60,24 +64,25 @@ class ThreadSafeMetrics:
             return copy.deepcopy(self._data)
 
     async def async_increment(self, key: str, value: int = 1) -> None:
-        """Async wrapper for increment - runs in executor to avoid blocking."""
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.increment, key, value)
+        """Async increment - uses asyncio.Lock for native async support."""
+        async with self._async_lock:
+            if key in self._data and isinstance(self._data[key], (int, float)):
+                self._data[key] += value
 
     async def async_get(self, key: str, default: Any = None) -> Any:
-        """Async wrapper for get - runs in executor to avoid blocking."""
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.get, key, default)
+        """Async get - uses asyncio.Lock for native async support."""
+        async with self._async_lock:
+            return self._data.get(key, default)
 
     async def async_set(self, key: str, value: Any) -> None:
-        """Async wrapper for set - runs in executor to avoid blocking."""
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.set, key, value)
+        """Async set - uses asyncio.Lock for native async support."""
+        async with self._async_lock:
+            self._data[key] = value
 
     async def async_to_dict(self) -> Dict[str, Any]:
-        """Async wrapper for to_dict - runs in executor to avoid blocking."""
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.to_dict)
+        """Async to_dict - uses asyncio.Lock for native async support."""
+        async with self._async_lock:
+            return copy.deepcopy(self._data)
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Allow dictionary-style item assignment."""

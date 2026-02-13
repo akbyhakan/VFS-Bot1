@@ -101,3 +101,121 @@ class TestLazyLoadingSync:
             f"Duplicate entries found in src.models.__all__: "
             f"{[item for item in src.models.__all__ if src.models.__all__.count(item) > 1]}"
         )
+
+    # New tests for Issue 4.3 - Lazy Import Pattern Consistency
+
+    def test_services_all_derived_from_lazy_map(self):
+        """Verify __all__ is auto-derived from _LAZY_MODULE_MAP for src.services module."""
+        import src.services
+
+        assert set(src.services.__all__) == set(
+            src.services._LAZY_MODULE_MAP.keys()
+        ), "src.services.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
+
+    def test_security_utils_all_derived_from_lazy_map(self):
+        """Verify __all__ is auto-derived from _LAZY_MODULE_MAP for src.utils.security module."""
+        import src.utils.security
+
+        assert set(src.utils.security.__all__) == set(
+            src.utils.security._LAZY_MODULE_MAP.keys()
+        ), "src.utils.security.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
+
+    def test_anti_detection_all_derived_from_lazy_map(self):
+        """Verify __all__ auto-derived from _LAZY_MODULE_MAP for anti_detection."""
+        import src.utils.anti_detection
+
+        assert set(src.utils.anti_detection.__all__) == set(
+            src.utils.anti_detection._LAZY_MODULE_MAP.keys()
+        ), "src.utils.anti_detection.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
+
+    def test_services_lazy_map_modules_are_valid_paths(self):
+        """Every module path in src.services._LAZY_MODULE_MAP should be valid."""
+        import src.services
+
+        for name, (module_path, attr_name) in src.services._LAZY_MODULE_MAP.items():
+            assert "." in module_path, f"Module path '{module_path}' for '{name}' not dotted"
+            assert attr_name, f"Empty attribute name for '{name}'"
+
+    def test_security_lazy_map_modules_are_valid_paths(self):
+        """Every module path in src.utils.security._LAZY_MODULE_MAP should be valid."""
+        import src.utils.security
+
+        for name, (module_path, attr_name) in src.utils.security._LAZY_MODULE_MAP.items():
+            assert "." in module_path, f"Module path '{module_path}' for '{name}' not dotted"
+            assert attr_name, f"Empty attribute name for '{name}'"
+
+    def test_anti_detection_lazy_map_modules_are_valid_paths(self):
+        """Every module path in src.utils.anti_detection._LAZY_MODULE_MAP should be valid."""
+        import src.utils.anti_detection
+
+        for name, (module_path, attr_name) in src.utils.anti_detection._LAZY_MODULE_MAP.items():
+            assert "." in module_path, f"Module path '{module_path}' for '{name}' not dotted"
+            assert attr_name, f"Empty attribute name for '{name}'"
+
+    def test_services_type_checking_imports_match_lazy_map(self):
+        """TYPE_CHECKING imports should match _LAZY_MODULE_MAP entries for src.services."""
+        init_path = Path("src/services/__init__.py")
+        if not init_path.exists():
+            pytest.skip("src/services/__init__.py not found")
+        source = init_path.read_text()
+        tree = ast.parse(source)
+        type_checking_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If):
+                if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+                    for stmt in node.body:
+                        if isinstance(stmt, ast.ImportFrom):
+                            for alias in stmt.names:
+                                type_checking_names.add(alias.asname or alias.name)
+
+        import src.services
+
+        lazy_set = set(src.services._LAZY_MODULE_MAP.keys())
+        missing = lazy_set - type_checking_names
+        assert not missing, f"Items without TYPE_CHECKING import in src.services: {missing}"
+
+    def test_security_type_checking_imports_match_lazy_map(self):
+        """TYPE_CHECKING imports should match _LAZY_MODULE_MAP entries for src.utils.security."""
+        init_path = Path("src/utils/security/__init__.py")
+        if not init_path.exists():
+            pytest.skip("src/utils/security/__init__.py not found")
+        source = init_path.read_text()
+        tree = ast.parse(source)
+        type_checking_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If):
+                if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+                    for stmt in node.body:
+                        if isinstance(stmt, ast.ImportFrom):
+                            for alias in stmt.names:
+                                type_checking_names.add(alias.asname or alias.name)
+
+        import src.utils.security
+
+        lazy_set = set(src.utils.security._LAZY_MODULE_MAP.keys())
+        missing = lazy_set - type_checking_names
+        assert not missing, f"Items without TYPE_CHECKING import in src.utils.security: {missing}"
+
+    def test_anti_detection_type_checking_imports_match_lazy_map(self):
+        """TYPE_CHECKING imports match _LAZY_MODULE_MAP for anti_detection."""
+        init_path = Path("src/utils/anti_detection/__init__.py")
+        if not init_path.exists():
+            pytest.skip("src/utils/anti_detection/__init__.py not found")
+        source = init_path.read_text()
+        tree = ast.parse(source)
+        type_checking_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If):
+                if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+                    for stmt in node.body:
+                        if isinstance(stmt, ast.ImportFrom):
+                            for alias in stmt.names:
+                                type_checking_names.add(alias.asname or alias.name)
+
+        import src.utils.anti_detection
+
+        lazy_set = set(src.utils.anti_detection._LAZY_MODULE_MAP.keys())
+        missing = lazy_set - type_checking_names
+        assert (
+            not missing
+        ), f"Items without TYPE_CHECKING import in src.utils.anti_detection: {missing}"

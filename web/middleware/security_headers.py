@@ -1,10 +1,11 @@
 """Security headers middleware for VFS-Bot web application."""
 
-import os
 import secrets
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from src.core.environment import Environment
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -13,8 +14,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, strict_csp: bool = None):
         super().__init__(app)
         if strict_csp is None:
-            env = os.getenv("ENV", "production").lower()
-            self.strict_csp = env not in {"development", "dev", "testing", "test", "local"}
+            self.strict_csp = Environment.is_production()
         else:
             self.strict_csp = strict_csp
 

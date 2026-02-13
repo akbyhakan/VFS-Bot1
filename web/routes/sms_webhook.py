@@ -12,6 +12,7 @@ from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.core.environment import Environment
 from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
 from src.utils.webhook_utils import verify_webhook_signature
 
@@ -81,14 +82,13 @@ async def receive_sms(token: str, request: Request):
         HTTPException: On validation or processing errors
     """
     try:
-        # Get environment
-        env = os.getenv("ENV", "production").lower()
+        # Get environment and secret
         sms_webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
 
         # HMAC signature verification (production only, optional in development)
         signature_header = request.headers.get("X-Webhook-Signature")
 
-        if env == "production" and sms_webhook_secret:
+        if Environment.is_production() and sms_webhook_secret:
             # In production, HMAC is mandatory if secret is configured
             if not signature_header:
                 logger.warning("Missing X-Webhook-Signature header in production mode")
@@ -114,7 +114,7 @@ async def receive_sms(token: str, request: Request):
             else:
                 logger.debug("HMAC signature verified (development mode)")
 
-        elif env == "development":
+        elif Environment.is_development():
             logger.debug("Running in development mode without HMAC verification")
 
         # Get webhook manager

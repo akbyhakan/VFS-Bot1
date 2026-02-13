@@ -10,6 +10,8 @@ from typing import Optional
 from cryptography.fernet import Fernet, InvalidToken
 from loguru import logger
 
+from src.core.environment import Environment
+
 
 def _normalize_key(key: Optional[str | bytes]) -> str:
     """
@@ -71,8 +73,7 @@ class PasswordEncryption:
                     logger.warning(f"Failed to load old encryption key: {e}")
 
             # Only log key hash in non-production environments
-            env = os.getenv("ENV", "production").lower()
-            if env != "production":
+            if not Environment.is_production():
                 logger.debug(f"Password encryption initialized (key hash: {self._key_hash})")
             else:
                 logger.info("Password encryption initialized successfully")
