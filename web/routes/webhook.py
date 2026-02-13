@@ -6,6 +6,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
+from src.core.environment import Environment
 from src.repositories import UserRepository, WebhookRepository
 from src.services.otp_webhook import get_otp_service
 from src.utils.webhook_utils import verify_webhook_signature
@@ -167,8 +168,15 @@ async def receive_otp(
     Raises:
         HTTPException: If token is invalid or signature verification fails
     """
-    # Get webhook secret from environment
-    webhook_secret = os.getenv("WEBHOOK_SECRET", "")
+    # Get webhook secret from environment (unified with other webhook endpoints)
+    webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
+
+    # Production mode enforcement: secret is REQUIRED
+    if Environment.is_production() and not webhook_secret:
+        logger.error("SMS_WEBHOOK_SECRET not configured in production")
+        raise HTTPException(
+            status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
+        )
 
     # Verify webhook signature if secret is configured
     if webhook_secret:
@@ -183,6 +191,12 @@ async def receive_otp(
             logger.error(f"Invalid webhook signature for token {token[:8]}...")
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
         logger.debug(f"Webhook signature verified for token {token[:8]}...")
+    elif Environment.is_development():
+        # Development mode: log warning but allow without signature
+        logger.warning(
+            "DEVELOPMENT MODE: No SMS_WEBHOOK_SECRET configured - "
+            "signature validation disabled. DO NOT use in production!"
+        )
 
     try:
         # Find user by webhook token

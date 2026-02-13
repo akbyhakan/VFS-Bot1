@@ -88,8 +88,15 @@ async def receive_sms(token: str, request: Request):
         # HMAC signature verification (production only, optional in development)
         signature_header = request.headers.get("X-Webhook-Signature")
 
-        if Environment.is_production() and sms_webhook_secret:
-            # In production, HMAC is mandatory if secret is configured
+        # Production mode: secret is REQUIRED
+        if Environment.is_production():
+            if not sms_webhook_secret:
+                logger.error("SMS_WEBHOOK_SECRET not configured in production")
+                raise HTTPException(
+                    status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
+                )
+            
+            # In production with secret, HMAC is mandatory
             if not signature_header:
                 logger.warning("Missing X-Webhook-Signature header in production mode")
                 raise HTTPException(status_code=401, detail="Missing webhook signature")

@@ -278,12 +278,27 @@ class TestSessionRecovery:
         assert checkpoint["context"]["email"] == "test@example.com"
         assert checkpoint["context"]["password"] == "secret"
 
-    def test_encrypted_checkpoint_without_key(self, temp_checkpoint_file, monkeypatch):
-        """Test that checkpoint falls back to unencrypted when no key is set."""
+    def test_init_raises_without_encryption_key(self, temp_checkpoint_file, monkeypatch):
+        """Test that SessionRecovery raises ConfigurationError when ENCRYPTION_KEY is not set."""
+        from src.core.exceptions import ConfigurationError
+
         # Remove encryption key
         monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
 
-        recovery = SessionRecovery(str(temp_checkpoint_file))
+        # Should raise ConfigurationError when require_encryption=True (default)
+        with pytest.raises(ConfigurationError) as exc_info:
+            SessionRecovery(str(temp_checkpoint_file))
+
+        assert "ENCRYPTION_KEY" in str(exc_info.value)
+        assert "required" in str(exc_info.value).lower()
+
+    def test_require_encryption_false_allows_plaintext(self, temp_checkpoint_file, monkeypatch):
+        """Test that require_encryption=False allows plaintext fallback for testing."""
+        # Remove encryption key
+        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+
+        # Should NOT raise when require_encryption=False
+        recovery = SessionRecovery(str(temp_checkpoint_file), require_encryption=False)
 
         # Save a checkpoint
         recovery.save_checkpoint(
@@ -303,16 +318,24 @@ class TestSessionRecovery:
         assert checkpoint["step"] == "logged_in"
 
     def test_backward_compat_unencrypted_to_encrypted(self, temp_checkpoint_file, monkeypatch):
-        """Test backward compatibility: reading old unencrypted checkpoint with encryption enabled."""
-        # First save without encryption
-        monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
-        recovery = SessionRecovery(str(temp_checkpoint_file))
+        """Test backward compatibility: reading old unencrypted checkpoint migrates to encrypted format."""
+        # First create a plaintext checkpoint file manually (simulating legacy data)
+        legacy_checkpoint = {
+            "step": "logged_in",
+            "step_index": 1,
+            "user_id": 123,
+            "timestamp": datetime.now().isoformat(),
+            "context": {"email": "test@example.com", "password": "legacy_secret"},
+        }
 
-        recovery.save_checkpoint(
-            step="logged_in", user_id=123, context={"email": "test@example.com"}
-        )
+        with open(temp_checkpoint_file, "w") as f:
+            json.dump(legacy_checkpoint, f)
 
-        # Now enable encryption and try to load
+        # Verify it's plaintext
+        raw_data_before = temp_checkpoint_file.read_bytes()
+        assert b"legacy_secret" in raw_data_before
+
+        # Now enable encryption and create recovery instance
         from cryptography.fernet import Fernet
 
         encryption_key = Fernet.generate_key().decode()
@@ -321,10 +344,26 @@ class TestSessionRecovery:
         recovery_encrypted = SessionRecovery(str(temp_checkpoint_file))
         checkpoint = recovery_encrypted.load_checkpoint()
 
-        # Should still load the unencrypted checkpoint (backward compatibility)
+        # Should successfully load the unencrypted checkpoint
         assert checkpoint is not None
         assert checkpoint["step"] == "logged_in"
         assert checkpoint["user_id"] == 123
+        assert checkpoint["context"]["password"] == "legacy_secret"
+
+        # Verify the file is now encrypted (re-encrypted on load)
+        raw_data_after = temp_checkpoint_file.read_bytes()
+        
+        # Verify it's encrypted by checking that plaintext is NOT visible
+        assert b"legacy_secret" not in raw_data_after, "Plaintext should not be visible in encrypted file"
+        
+        # Also verify it's not the same as the original plaintext JSON
+        assert raw_data_after != raw_data_before, "File should be different after re-encryption"
+
+        # Verify it can still be loaded
+        recovery2 = SessionRecovery(str(temp_checkpoint_file))
+        checkpoint2 = recovery2.load_checkpoint()
+        assert checkpoint2 is not None
+        assert checkpoint2["context"]["password"] == "legacy_secret"
 
     def test_encrypted_checkpoint_wrong_key(self, temp_checkpoint_file, monkeypatch):
         """Test that loading with wrong encryption key fails gracefully."""

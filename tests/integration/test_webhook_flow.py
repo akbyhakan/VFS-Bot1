@@ -253,3 +253,63 @@ class TestWebhookSecurity:
         # Should either process all or rate limit some
         # At least first request should not crash
         assert any(r.status_code in [200, 401, 422, 500] for r in responses)
+
+    def test_per_user_otp_webhook_enforces_signature(self, client):
+        """Test that per-user OTP webhook enforces signature verification in production."""
+        import json
+
+        # Mock webhook repository to return a user for the token
+        mock_webhook_repo = AsyncMock()
+        mock_webhook_repo.get_user_by_token = AsyncMock(
+            return_value={"id": 123, "email": "test@example.com"}
+        )
+
+        # Generate valid signature
+        secret = "test-webhook-secret"
+        payload = {"message": "Your OTP is 123456"}
+        payload_bytes = json.dumps(payload).encode()
+        signature = hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
+
+        with patch.dict("os.environ", {"SMS_WEBHOOK_SECRET": secret, "ENV": "production"}):
+            with patch(
+                "web.routes.webhook.get_webhook_repository", return_value=mock_webhook_repo
+            ):
+                # Request without signature should be rejected
+                response = client.post("/api/webhook/otp/test-token-123", json=payload)
+                assert response.status_code == 401
+
+                # Request with valid signature should proceed (may fail on other validations)
+                response = client.post(
+                    "/api/webhook/otp/test-token-123",
+                    json=payload,
+                    headers={"X-Webhook-Signature": signature},
+                )
+                # Should not be rejected for signature issues (401)
+                # May return 200 (success), 404 (token not found), or 500 (other errors)
+                assert response.status_code in [200, 404, 500]
+
+    def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
+        """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET is not configured in production."""
+        import os
+        
+        # Remove secret and set production environment
+        # Note: empty string is treated the same as missing by the code (checks `not webhook_secret`)
+        env_vars = {"ENV": "production"}
+        # Remove SMS_WEBHOOK_SECRET from the patched environment
+        original_secret = os.environ.get("SMS_WEBHOOK_SECRET")
+        
+        with patch.dict("os.environ", env_vars, clear=False):
+            # Ensure SMS_WEBHOOK_SECRET is not set
+            if "SMS_WEBHOOK_SECRET" in os.environ:
+                del os.environ["SMS_WEBHOOK_SECRET"]
+            
+            try:
+                response = client.post(
+                    "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}
+                )
+                # Should return 500 in production without secret
+                assert response.status_code == 500
+            finally:
+                # Restore original secret if it existed
+                if original_secret is not None:
+                    os.environ["SMS_WEBHOOK_SECRET"] = original_secret
