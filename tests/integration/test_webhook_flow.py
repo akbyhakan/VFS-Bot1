@@ -284,17 +284,32 @@ class TestWebhookSecurity:
                     json=payload,
                     headers={"X-Webhook-Signature": signature},
                 )
-                # Should not be rejected for missing signature
-                assert response.status_code in [200, 404, 500]  # Not 401 for missing signature
+                # Should not be rejected for signature issues (401)
+                # May return 200 (success), 404 (token not found), or 500 (other errors)
+                assert response.status_code in [200, 404, 500]
 
     def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
         """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET is not configured in production."""
+        import os
+        
         # Remove secret and set production environment
-        with patch.dict(
-            "os.environ", {"ENV": "production", "SMS_WEBHOOK_SECRET": ""}, clear=False
-        ):
-            response = client.post(
-                "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}
-            )
-            # Should return 500 in production without secret
-            assert response.status_code == 500
+        # Note: empty string is treated the same as missing by the code (checks `not webhook_secret`)
+        env_vars = {"ENV": "production"}
+        # Remove SMS_WEBHOOK_SECRET from the patched environment
+        original_secret = os.environ.get("SMS_WEBHOOK_SECRET")
+        
+        with patch.dict("os.environ", env_vars, clear=False):
+            # Ensure SMS_WEBHOOK_SECRET is not set
+            if "SMS_WEBHOOK_SECRET" in os.environ:
+                del os.environ["SMS_WEBHOOK_SECRET"]
+            
+            try:
+                response = client.post(
+                    "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}
+                )
+                # Should return 500 in production without secret
+                assert response.status_code == 500
+            finally:
+                # Restore original secret if it existed
+                if original_secret is not None:
+                    os.environ["SMS_WEBHOOK_SECRET"] = original_secret
