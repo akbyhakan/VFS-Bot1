@@ -66,6 +66,7 @@ RUN apt-get update && \
     libpango-1.0-0 \
     libcairo2 \
     libpq5 \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user BEFORE copying dependencies
