@@ -69,7 +69,6 @@ class TestAPIKeySaltSecurity:
         assert salt == valid_salt.encode()
 
 
-
 class TestSessionEncryption:
     """Test session file encryption."""
 
