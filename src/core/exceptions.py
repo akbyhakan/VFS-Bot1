@@ -24,15 +24,62 @@ class VFSBotError(Exception):
         self.timestamp = datetime.now(timezone.utc).isoformat()
         super().__init__(self.message)
 
+    @property
+    def error_type_uri(self) -> str:
+        """
+        Return RFC 7807 error type URI.
+
+        Converts class name to kebab-case URN format.
+        E.g., RateLimitError -> "urn:vfsbot:error:rate-limit"
+        """
+        # Convert CamelCase to kebab-case
+        class_name = self.__class__.__name__
+        # Remove 'Error' suffix if present
+        if class_name.endswith("Error"):
+            class_name = class_name[:-5]
+        # Insert hyphens before uppercase letters and convert to lowercase
+        import re
+        kebab_case = re.sub(r'(?<!^)(?=[A-Z])', '-', class_name).lower()
+        return f"urn:vfsbot:error:{kebab_case}"
+
+    @property
+    def title(self) -> str:
+        """
+        Return human-readable error title.
+
+        Converts class name to title case with spaces.
+        E.g., RateLimitError -> "Rate Limit Error"
+        """
+        class_name = self.__class__.__name__
+        # Insert spaces before uppercase letters
+        import re
+        spaced = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
+        return spaced
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convert exception to dictionary."""
-        return {
-            "error": self.__class__.__name__,
-            "message": self.message,
+        """Convert exception to dictionary with RFC 7807 fields."""
+        result = {
+            "type": self.error_type_uri,
+            "title": self.title,
+            "status": self._get_http_status(),
+            "detail": self.message,
             "recoverable": self.recoverable,
-            "details": self.details,
             "timestamp": self.timestamp,
         }
+        # Add any additional details as extension members
+        if self.details:
+            result.update(self.details)
+        # Keep backward-compatible fields
+        result["error"] = self.__class__.__name__
+        result["message"] = self.message
+        return result
+
+    def _get_http_status(self) -> int:
+        """Get appropriate HTTP status code for this error type."""
+        # Default to 500 for server errors, 400 for non-recoverable client errors
+        if not self.recoverable:
+            return 400
+        return 500
 
 
 class LoginError(VFSBotError):
@@ -147,6 +194,10 @@ class RateLimitError(VFSBotError):
             message += f". Please wait {self.retry_after} seconds."
         super().__init__(message, recoverable=True, details={"retry_after": self.retry_after})
 
+    def _get_http_status(self) -> int:
+        """Return 429 for rate limit errors."""
+        return 429
+
 
 class CircuitBreakerOpenError(VFSBotError):
     """Circuit breaker is open."""
@@ -201,6 +252,10 @@ class AuthenticationError(VFSBotError):
         details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, recoverable, details)
+
+    def _get_http_status(self) -> int:
+        """Return 401 for authentication errors."""
+        return 401
 
 
 class InvalidCredentialsError(AuthenticationError):
@@ -300,6 +355,10 @@ class ValidationError(VFSBotError):
             message = f"Validation error for field '{field}': {message}"
         super().__init__(message, recoverable=False, details={"field": field} if field else {})
 
+    def _get_http_status(self) -> int:
+        """Return 400 for validation errors."""
+        return 400
+
 
 # Database Errors
 class DatabaseError(VFSBotError):
@@ -312,6 +371,10 @@ class DatabaseError(VFSBotError):
         details: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message, recoverable, details)
+
+    def _get_http_status(self) -> int:
+        """Return 500 for database errors."""
+        return 500
 
 
 class DatabaseConnectionError(DatabaseError):

@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { logger } from './logger';
+import i18n from '@/i18n';
 
 interface ErrorOptions {
   fallbackMessage?: string;
@@ -15,7 +16,7 @@ export function handleError(
   options: ErrorOptions = {}
 ): string {
   const {
-    fallbackMessage = 'Bir hata oluştu',
+    fallbackMessage = i18n.t('errors.generic'),
     showToast = true,
     logError = true,
   } = options;
@@ -44,7 +45,7 @@ export function handleError(
 /**
  * Handle API errors specifically
  */
-export function handleApiError(error: unknown, fallbackMessage: string = 'İşlem başarısız'): string {
+export function handleApiError(error: unknown, fallbackMessage: string = i18n.t('errors.apiFailed')): string {
   return handleError(error, { fallbackMessage, showToast: true });
 }
 

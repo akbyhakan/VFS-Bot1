@@ -54,7 +54,16 @@ export interface HealthCheck {
   version: string;
   uptime_seconds: number;
   components: {
-    database: { status: string };
+    database: {
+      status: string;
+      latency_ms?: number;
+      pool?: {
+        size: number;
+        idle: number;
+        used: number;
+        utilization: number;
+      };
+    };
     redis: { status: string; backend?: string };
     bot: { status: string; running: boolean; success_rate: number };
     circuit_breaker: { status: string; trips: number };
@@ -74,6 +83,14 @@ export interface WebSocketMessage {
 }
 
 export interface ApiError {
+  type: string;
+  title: string;
+  status: number;
   detail: string;
-  status?: number;
+  instance?: string;
+  // Extension members
+  recoverable?: boolean;
+  retry_after?: number;
+  field?: string;
+  errors?: Record<string, string>;
 }
