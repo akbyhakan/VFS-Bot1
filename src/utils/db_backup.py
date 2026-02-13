@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, MultiFernet
 from loguru import logger
 
 from src.utils.masking import _mask_database_url
@@ -69,6 +69,7 @@ class DatabaseBackup:
         Get encryption key for backups.
 
         Reads from BACKUP_ENCRYPTION_KEY env var first, falls back to ENCRYPTION_KEY.
+        Also checks for old keys to support key rotation.
 
         Returns:
             Fernet encryption key as bytes
@@ -123,7 +124,7 @@ class DatabaseBackup:
 
     def _decrypt_file(self, encrypted_path: Path, plain_path: Path) -> None:
         """
-        Decrypt a file using Fernet encryption.
+        Decrypt a file using Fernet encryption with key rotation support.
 
         Args:
             encrypted_path: Path to encrypted file
@@ -133,14 +134,27 @@ class DatabaseBackup:
             Exception: If decryption fails
         """
         try:
+            # Build key list for MultiFernet (new key first, then old key if available)
             key = self._get_encryption_key()
-            cipher = Fernet(key)
+            fernet_keys = [Fernet(key)]
+            
+            # Check for old backup encryption key
+            old_key = os.getenv("BACKUP_ENCRYPTION_KEY_OLD") or os.getenv("ENCRYPTION_KEY_OLD")
+            if old_key:
+                try:
+                    old_key_bytes = old_key.encode() if isinstance(old_key, str) else old_key
+                    fernet_keys.append(Fernet(old_key_bytes))
+                    logger.debug("Old backup encryption key loaded for decryption")
+                except Exception as e:
+                    logger.warning(f"Failed to load old backup encryption key: {e}")
+            
+            cipher = MultiFernet(fernet_keys)
 
             # Read encrypted file
             with open(encrypted_path, "rb") as f:
                 encrypted_data = f.read()
 
-            # Decrypt
+            # Decrypt (MultiFernet tries all keys automatically)
             plain_data = cipher.decrypt(encrypted_data)
 
             # Write plain file
