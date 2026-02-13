@@ -121,7 +121,7 @@ class TestLazyLoadingSync:
         ), "src.utils.security.__all__ must be auto-derived from _LAZY_MODULE_MAP.keys()"
 
     def test_anti_detection_all_derived_from_lazy_map(self):
-        """Verify __all__ is auto-derived from _LAZY_MODULE_MAP for src.utils.anti_detection module."""
+        """Verify __all__ auto-derived from _LAZY_MODULE_MAP for anti_detection."""
         import src.utils.anti_detection
 
         assert set(src.utils.anti_detection.__all__) == set(
@@ -197,7 +197,7 @@ class TestLazyLoadingSync:
         assert not missing, f"Items without TYPE_CHECKING import in src.utils.security: {missing}"
 
     def test_anti_detection_type_checking_imports_match_lazy_map(self):
-        """TYPE_CHECKING imports should match _LAZY_MODULE_MAP entries for src.utils.anti_detection."""
+        """TYPE_CHECKING imports match _LAZY_MODULE_MAP for anti_detection."""
         init_path = Path("src/utils/anti_detection/__init__.py")
         if not init_path.exists():
             pytest.skip("src/utils/anti_detection/__init__.py not found")

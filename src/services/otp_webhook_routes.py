@@ -72,10 +72,13 @@ async def get_verified_otp_service(
         body = await request.body()
         if not verify_webhook_signature(body, x_webhook_signature, webhook_secret):
             client_ip = request.client.host if request.client else "unknown"
-            logger.error(f"❌ Invalid webhook signature from IP: {client_ip} (ENV: {env})")
+            logger.error(
+                f"❌ Invalid webhook signature from IP: {client_ip} "
+                f"(ENV: {Environment.current()})"
+            )
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
-        logger.debug(f"✅ Webhook signature verified (ENV: {env})")
+        logger.debug(f"✅ Webhook signature verified (ENV: {Environment.current()})")
 
     elif is_development_mode:
         # Only bypass in explicit development mode without secret
