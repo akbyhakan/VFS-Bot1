@@ -139,6 +139,10 @@ class AlertService:
             emoji = emoji_map.get(severity, "📢")
             text = f"{emoji} *ALERT [{severity.upper()}]*\n\n{message}\n\n_Time: {timestamp}_"
 
+            # Truncate message to fit Telegram's 4096 character limit
+            if len(text) > 4096:
+                text = text[:4096]
+
             url = f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage"
             payload = {
                 "chat_id": self.config.telegram_chat_id,
