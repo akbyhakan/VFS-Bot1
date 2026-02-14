@@ -128,11 +128,18 @@ class AuthService:
             await page.wait_for_load_state("networkidle", timeout=Timeouts.NETWORK_IDLE)
 
             # Check if login successful
-            if "dashboard" in page.url or "appointment" in page.url:
-                logger.info("Login successful")
+            # SPA NOTE: URL is not reliable in SPA — check DOM elements instead
+            login_still_visible = await page.locator('input[name="email"], input[name="password"]').count()
+            dashboard_indicators = await page.locator(
+                'mat-sidenav, .dashboard-container, a[href*="appointment"], '
+                'text=/dashboard|hoş geldiniz|welcome/i'
+            ).count()
+
+            if dashboard_indicators > 0 and login_still_visible == 0:
+                logger.info("Login successful (verified via DOM)")
                 return True
             else:
-                logger.error("Login failed - not redirected to dashboard")
+                logger.error("Login failed - dashboard elements not found")
                 return False
 
         except LoginError:

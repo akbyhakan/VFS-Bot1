@@ -249,6 +249,14 @@ async def safe_navigate(
     """
     Safely navigate to URL with error handling.
 
+    ⚠️ SPA WARNING: This function should ONLY be used for initial page loads
+    (e.g., login page). VFS Global is an Angular-based Single Page Application (SPA),
+    and using page.goto() after login breaks the Angular router state and causes
+    session loss.
+    
+    For navigation after login, use DOM element clicks + PageStateDetector instead.
+    See src/utils/spa_navigation.py for SPA-safe navigation utilities.
+
     Args:
         page: Playwright page object
         url: URL to navigate to
