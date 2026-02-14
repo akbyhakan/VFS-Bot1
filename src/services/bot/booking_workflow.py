@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from loguru import logger
 from playwright.async_api import Page
@@ -434,19 +434,29 @@ class BookingWorkflow:
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
-        # Determine person count before checking slots
+        # Determine person count AND preferred dates before checking slots
         person_count = 1  # Default to 1 person
+        preferred_dates: List[str] = []  # Default: no date filter
         appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if appointment_request:
             person_count = appointment_request.person_count or len(appointment_request.persons or [])
-            logger.debug(f"Using person_count={person_count} from pending appointment request")
+            preferred_dates = appointment_request.preferred_dates or []
+            logger.debug(
+                f"Using person_count={person_count}, preferred_dates={preferred_dates} "
+                "from pending appointment request"
+            )
         
         # Check slots
         centres = user["centre"].split(",")
         for centre in centres:
             centre = centre.strip()
             slot = await self.slot_checker.check_slots(
-                page, centre, user["category"], user["subcategory"], required_capacity=person_count
+                page,
+                centre,
+                user["category"],
+                user["subcategory"],
+                required_capacity=person_count,
+                preferred_dates=preferred_dates,
             )
 
             if slot:
