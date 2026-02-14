@@ -653,10 +653,6 @@ class VFSBot:
 
                 # Get active users with fallback support
                 users = await self._get_users_with_fallback()
-                logger.info(
-                    f"Processing {len(users)} active users "
-                    f"(max {RateLimits.CONCURRENT_USERS} concurrent)"
-                )
 
                 if not users:
                     logger.info("No active users to process")
@@ -664,8 +660,28 @@ class VFSBot:
                         break
                     continue
 
+                # Filter users to only those with pending appointment requests
+                users_with_requests = []
+                for user in users:
+                    has_pending = await self.booking_workflow.appointment_request_repo.get_pending_for_user(user["id"])
+                    if has_pending:
+                        users_with_requests.append(user)
+                    else:
+                        logger.debug(f"Skipping user {user.get('id')}: no pending appointment request")
+
+                if not users_with_requests:
+                    logger.info("No users with pending appointment requests to process")
+                    if await self._wait_adaptive_interval():
+                        break
+                    continue
+
+                logger.info(
+                    f"Processing {len(users_with_requests)}/{len(users)} users with pending requests "
+                    f"(max {RateLimits.CONCURRENT_USERS} concurrent)"
+                )
+
                 # Process users in batch
-                await self._process_batch(users)
+                await self._process_batch(users_with_requests)
 
                 # Wait before next check
                 if await self._wait_adaptive_interval():

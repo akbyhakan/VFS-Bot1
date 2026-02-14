@@ -119,6 +119,15 @@ class BookingWorkflow:
             user: User dictionary from database
         """
         masked_email = mask_email(user["email"])
+        
+        # Check if user has a pending appointment request BEFORE login
+        has_pending = await self.appointment_request_repo.get_pending_for_user(user["id"])
+        if not has_pending:
+            logger.info(
+                f"Skipping user {masked_email}: no pending appointment request"
+            )
+            return
+        
         logger.info(f"Processing user: {masked_email}")
 
         try:
