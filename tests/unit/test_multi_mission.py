@@ -454,6 +454,8 @@ async def test_process_normal_flow_multiple_requests():
         "vfs": {"base_url": "https://visa.vfsglobal.com", "country": "tr", "mission": "fra"}
     }
     auth_service = MagicMock()
+    auth_service.login_for_mission = AsyncMock(return_value=True)
+    
     slot_checker = MagicMock()
     booking_service = MagicMock()
     notifier = MagicMock()
@@ -463,6 +465,8 @@ async def test_process_normal_flow_multiple_requests():
     slot_analyzer = MagicMock()
     session_recovery = MagicMock()
     page_state_detector = MagicMock()
+    header_manager = MagicMock()
+    proxy_manager = MagicMock()
 
     workflow = BookingWorkflow(
         config=config,
@@ -477,6 +481,8 @@ async def test_process_normal_flow_multiple_requests():
         session_recovery=session_recovery,
         page_state_detector=page_state_detector,
         human_sim=human_sim,
+        header_manager=header_manager,
+        proxy_manager=proxy_manager,
     )
 
     # Mock get_all_pending_for_user to return 3 requests
@@ -528,6 +534,7 @@ async def test_process_normal_flow_multiple_requests():
     user = {
         "id": 1,
         "email": "test@example.com",
+        "password": "password",
         "category": "Tourism",
         "subcategory": "Short Stay",
     }
@@ -536,17 +543,28 @@ async def test_process_normal_flow_multiple_requests():
     page = AsyncMock()
     dedup_service = MagicMock()
 
-    # Run the method
-    await workflow._process_normal_flow(page, user, dedup_service)
+    # Mock BrowserManager for multi-mission flow
+    with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
+        def create_browser_instance(*args, **kwargs):
+            mock_browser = MagicMock()
+            mock_browser.start = AsyncMock()
+            mock_browser.close = AsyncMock()
+            mock_browser.new_page = AsyncMock(return_value=AsyncMock())
+            return mock_browser
+        
+        MockBrowserManager.side_effect = create_browser_instance
 
-    # Verify _process_single_request was called 3 times (once per request)
-    assert workflow._process_single_request.call_count == 3
+        # Run the method
+        await workflow._process_normal_flow(page, user, dedup_service)
 
-    # Verify all requests were processed
-    processed_request_ids = {
-        call.args[2].id for call in workflow._process_single_request.call_args_list
-    }
-    assert processed_request_ids == {1, 2, 3}
+        # Verify _process_single_request was called 3 times (once per request)
+        assert workflow._process_single_request.call_count == 3
+
+        # Verify all requests were processed
+        processed_request_ids = {
+            call.args[2].id for call in workflow._process_single_request.call_args_list
+        }
+        assert processed_request_ids == {1, 2, 3}
 
 
 @pytest.mark.asyncio
@@ -560,6 +578,8 @@ async def test_process_normal_flow_error_isolation():
         "vfs": {"base_url": "https://visa.vfsglobal.com", "country": "tr", "mission": "fra"}
     }
     auth_service = MagicMock()
+    auth_service.login_for_mission = AsyncMock(return_value=True)
+    
     slot_checker = MagicMock()
     booking_service = MagicMock()
     notifier = MagicMock()
@@ -569,6 +589,8 @@ async def test_process_normal_flow_error_isolation():
     slot_analyzer = MagicMock()
     session_recovery = MagicMock()
     page_state_detector = MagicMock()
+    header_manager = MagicMock()
+    proxy_manager = MagicMock()
 
     workflow = BookingWorkflow(
         config=config,
@@ -583,6 +605,8 @@ async def test_process_normal_flow_error_isolation():
         session_recovery=session_recovery,
         page_state_detector=page_state_detector,
         human_sim=human_sim,
+        header_manager=header_manager,
+        proxy_manager=proxy_manager,
     )
 
     # Mock get_all_pending_for_user to return 3 requests
@@ -640,6 +664,7 @@ async def test_process_normal_flow_error_isolation():
     user = {
         "id": 1,
         "email": "test@example.com",
+        "password": "password",
         "category": "Tourism",
         "subcategory": "Short Stay",
     }
@@ -648,11 +673,22 @@ async def test_process_normal_flow_error_isolation():
     page = AsyncMock()
     dedup_service = MagicMock()
 
-    # Run the method - should not raise even though request 2 fails
-    await workflow._process_normal_flow(page, user, dedup_service)
+    # Mock BrowserManager for multi-mission flow
+    with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
+        def create_browser_instance(*args, **kwargs):
+            mock_browser = MagicMock()
+            mock_browser.start = AsyncMock()
+            mock_browser.close = AsyncMock()
+            mock_browser.new_page = AsyncMock(return_value=AsyncMock())
+            return mock_browser
+        
+        MockBrowserManager.side_effect = create_browser_instance
 
-    # Verify all 3 requests were attempted
-    assert workflow._process_single_request.call_count == 3
+        # Run the method - should not raise even though request 2 fails
+        await workflow._process_normal_flow(page, user, dedup_service)
+
+        # Verify all 3 requests were attempted
+        assert workflow._process_single_request.call_count == 3
 
 
 @pytest.mark.asyncio
@@ -746,25 +782,19 @@ async def test_multi_mission_creates_separate_browsers():
     # Mock BrowserManager to track browser instances
     browser_instances_created = []
     
-    async def mock_browser_start(self):
-        """Mock start method that tracks this instance."""
-        browser_instances_created.append(self)
-    
-    async def mock_browser_close(self):
-        """Mock close method."""
-        pass
-    
-    async def mock_new_page(self):
-        """Mock new_page method."""
-        return AsyncMock()
-
     with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
         # Configure mock to create instances and track calls
         def create_browser_instance(*args, **kwargs):
             mock_browser = MagicMock()
-            mock_browser.start = AsyncMock(side_effect=lambda: mock_browser_start(mock_browser))
-            mock_browser.close = AsyncMock(side_effect=lambda: mock_browser_close(mock_browser))
-            mock_browser.new_page = AsyncMock(side_effect=lambda: mock_new_page(mock_browser))
+            
+            # Track this browser instance
+            browser_instances_created.append(mock_browser)
+            
+            # Mock async methods
+            mock_browser.start = AsyncMock()
+            mock_browser.close = AsyncMock()
+            mock_browser.new_page = AsyncMock(return_value=AsyncMock())
+            
             return mock_browser
         
         MockBrowserManager.side_effect = create_browser_instance
