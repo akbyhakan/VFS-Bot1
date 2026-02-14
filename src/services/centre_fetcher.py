@@ -155,12 +155,19 @@ class CentreFetcher:
             return list(cached)
 
         try:
-            # Navigate to appointment page
-            url = f"{self.base_url}/{self.country}/{self.language}/{self.mission}/appointment"
-            await page.goto(url, wait_until="networkidle", timeout=30000)
+            # SPA CONSTRAINT: This method requires the page to already be on the appointment page.
+            # We cannot use page.goto() as it breaks Angular router state in the SPA.
+            # The caller must ensure navigation to appointment page before calling this method.
 
-            # Wait for centre dropdown to load
-            await page.wait_for_selector("select#centres", timeout=10000)
+            # Wait for centre dropdown to load and verify we're on appointment page
+            try:
+                await page.wait_for_selector("select#centres", timeout=10000)
+            except Exception as e:
+                raise ValueError(
+                    "CentreFetcher requires the page to already be on the appointment page "
+                    "(SPA constraint). The 'select#centres' element was not found. "
+                    f"Error: {e}"
+                )
 
             # Extract centre options
             centres_result = await page.evaluate("""

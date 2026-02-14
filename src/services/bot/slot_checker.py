@@ -12,8 +12,9 @@ from ...core.exceptions import VFSBotError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
-from ...utils.helpers import safe_navigate, smart_click
+from ...utils.helpers import smart_click
 from ...utils.security.rate_limiter import RateLimiter
+from ...utils.spa_navigation import navigate_to_appointment_page
 
 
 class SlotInfo(TypedDict, total=False):
@@ -113,40 +114,21 @@ class SlotChecker:
             # Apply rate limiting before making requests
             await self.rate_limiter.acquire()
 
-            # Navigate to appointment page
-            base = self.config["vfs"]["base_url"]
-            country = self.config["vfs"]["country"]
-            language = self.config["vfs"].get("language", "tr")
-            mission = self.config["vfs"]["mission"]
-            appointment_url = f"{base}/{country}/{language}/{mission}/appointment"
-
-            # Smart navigation: check page state before deciding to navigate
-            needs_navigation = True
+            # Navigate to appointment page using SPA-safe navigation
+            # NEVER use page.goto() - it breaks Angular router state
             if self.page_state_detector is not None:
-                try:
-                    state = await self.page_state_detector.detect(page)
-
-                    if state.needs_recovery:
-                        # Session expired, Cloudflare, maintenance, etc.
-                        # Raise a recoverable error so the bot loop can re-login
-                        raise VFSBotError(
-                            f"Page recovery needed: {state.state.name}",
-                            recoverable=True,
-                        )
-
-                    if state.is_on_appointment_page and state.confidence >= 0.70:
-                        # Already on appointment page with valid session
-                        needs_navigation = False
-                        logger.debug("Smart navigation: already on appointment page, skipping reload")
-                except VFSBotError:
-                    raise  # Re-raise VFSBotError
-                except Exception as e:
-                    logger.debug(f"Page state detection failed, falling back to navigation: {e}")
-
-            if needs_navigation:
-                if not await safe_navigate(page, appointment_url, timeout=Timeouts.NAVIGATION):
-                    logger.error("Failed to navigate to appointment page")
-                    return None
+                # Use SPA navigation (DOM clicks, not URL navigation)
+                await navigate_to_appointment_page(
+                    page,
+                    self.page_state_detector,
+                    self.human_sim,
+                )
+            else:
+                # Fallback: assume we're already on the appointment page
+                # This should not happen in production (page_state_detector should always be set)
+                logger.warning(
+                    "PageStateDetector not available - assuming already on appointment page"
+                )
 
             # Check for Cloudflare challenge
             if self.cloudflare_handler:
@@ -231,7 +213,7 @@ class SlotChecker:
                             if capacity_content:
                                 # Parse capacity (assuming it's a number)
                                 capacity = int(capacity_content.strip())
-                                
+
                                 # Check if capacity is sufficient
                                 if capacity < required_capacity:
                                     logger.warning(
@@ -239,7 +221,7 @@ class SlotChecker:
                                         f"(Date: {date}, Time: {time})"
                                     )
                                     return None
-                                
+
                                 logger.info(
                                     f"Slot found with sufficient capacity! Date: {date}, Time: {time}, "
                                     f"Capacity: {capacity}/{required_capacity}"
@@ -252,12 +234,12 @@ class SlotChecker:
                             )
                     else:
                         logger.info(f"Slot found! Date: {date}, Time: {time}")
-                    
+
                     # Build SlotInfo with capacity if available
                     slot_info: SlotInfo = {"date": date, "time": time}
                     if capacity is not None:
                         slot_info["capacity"] = capacity
-                    
+
                     return slot_info
                 else:
                     logger.warning(

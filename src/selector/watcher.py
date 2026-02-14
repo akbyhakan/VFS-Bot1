@@ -140,6 +140,10 @@ class SelectorHealthCheck:
         page = await browser.new_page()
 
         try:
+            # SPA NOTE: This page.goto() usage is acceptable because:
+            # 1. It runs in an isolated new page (browser.new_page())
+            # 2. It does not affect the main bot session
+            # 3. Health check requires initial page load
             await page.goto(vfs_url, wait_until="networkidle")
 
             for selector_path in critical_selectors:
