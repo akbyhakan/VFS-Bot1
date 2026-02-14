@@ -30,6 +30,8 @@ from .page_state_detector import PageState
 
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
+    from ...utils.security.header_manager import HeaderManager
+    from ...utils.security.proxy_manager import ProxyManager
     from ..booking import BookingOrchestrator
     from .auth_service import AuthService
     from .error_handler import ErrorHandler
@@ -63,8 +65,8 @@ class BookingWorkflow:
         error_capture: Optional[ErrorCapture] = None,
         alert_service: Optional[Any] = None,
         browser_manager: Optional["BrowserManager"] = None,
-        header_manager: Optional[Any] = None,
-        proxy_manager: Optional[Any] = None,
+        header_manager: Optional["HeaderManager"] = None,
+        proxy_manager: Optional["ProxyManager"] = None,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -533,7 +535,20 @@ class BookingWorkflow:
             user: User dictionary from database
             country_groups: Dictionary mapping country_code to list of AppointmentRequest entities
             dedup_service: Deduplication service instance
+            
+        Raises:
+            VFSBotError: If required managers are not available for multi-mission processing
         """
+        # Validate that we have the necessary managers for creating browser instances
+        if self.header_manager is None or self.proxy_manager is None:
+            error_msg = (
+                "Multi-mission processing requires header_manager and proxy_manager "
+                "to create separate browser instances. These managers were not provided "
+                "to BookingWorkflow constructor."
+            )
+            logger.error(error_msg)
+            raise VFSBotError(error_msg, recoverable=False)
+        
         # Step 1: Shuffle country order for anti-detection
         country_codes = list(country_groups.keys())
         random.shuffle(country_codes)
