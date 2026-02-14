@@ -313,3 +313,164 @@ class TestSlotCheckerSmartNavigation:
             mock_safe_navigate.assert_called_once()
             # Verify page state detector was called
             mock_page_state_detector.detect.assert_called_once_with(mock_page)
+
+    @pytest.mark.asyncio
+    async def test_check_slots_insufficient_capacity(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that check_slots returns None when slot capacity is insufficient."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["2024-02-15", "10:00", "1"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with required_capacity=2, but slot has capacity=1
+            result = await slot_checker.check_slots(
+                mock_page, "Centre Name", "Visa Category", "Subcategory", required_capacity=2
+            )
+
+            # Should return None due to insufficient capacity
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_check_slots_sufficient_capacity(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that check_slots returns slot info when capacity is sufficient."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["2024-02-15", "10:00", "3"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with required_capacity=2, slot has capacity=3
+            result = await slot_checker.check_slots(
+                mock_page, "Centre Name", "Visa Category", "Subcategory", required_capacity=2
+            )
+
+            # Should return slot info with capacity
+            assert result is not None
+            assert result["date"] == "2024-02-15"
+            assert result["time"] == "10:00"
+            assert result["capacity"] == 3
+
+    @pytest.mark.asyncio
+    async def test_check_slots_capacity_selector_not_found_fallback(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test graceful fallback when capacity selector is not found."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - capacity selector throws exception
+            mock_first = MagicMock()
+            call_count = [0]
+
+            def side_effect_with_exception():
+                call_count[0] += 1
+                if call_count[0] == 1:
+                    return "2024-02-15"
+                elif call_count[0] == 2:
+                    return "10:00"
+                else:
+                    raise Exception("Capacity selector not found")
+
+            mock_first.text_content = AsyncMock(side_effect=side_effect_with_exception)
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with required_capacity=2, but capacity selector fails
+            result = await slot_checker.check_slots(
+                mock_page, "Centre Name", "Visa Category", "Subcategory", required_capacity=2
+            )
+
+            # Should still return slot info (graceful fallback)
+            assert result is not None
+            assert result["date"] == "2024-02-15"
+            assert result["time"] == "10:00"
+            assert "capacity" not in result  # No capacity field when selector fails
