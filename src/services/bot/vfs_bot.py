@@ -131,6 +131,9 @@ class VFSBot:
             human_sim=self.services.anti_detection.human_sim,
             error_capture=self.services.core.error_capture,
             alert_service=self.services.workflow.alert_service,
+            browser_manager=self.browser_manager,
+            header_manager=self.services.anti_detection.header_manager,
+            proxy_manager=self.services.anti_detection.proxy_manager,
         )
 
         logger.info("VFSBot initialized with modular components")

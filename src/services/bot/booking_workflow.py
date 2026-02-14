@@ -25,6 +25,7 @@ from ..booking import get_selector
 from ..notification import NotificationService
 from ..session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
+from .browser_manager import BrowserManager
 from .page_state_detector import PageState
 
 if TYPE_CHECKING:
@@ -61,6 +62,9 @@ class BookingWorkflow:
         human_sim: Optional[HumanSimulator] = None,
         error_capture: Optional[ErrorCapture] = None,
         alert_service: Optional[Any] = None,
+        browser_manager: Optional["BrowserManager"] = None,
+        header_manager: Optional[Any] = None,
+        proxy_manager: Optional[Any] = None,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -80,6 +84,9 @@ class BookingWorkflow:
             human_sim: Optional human simulator for anti-detection
             error_capture: Optional error capture instance for detailed error diagnostics
             alert_service: Optional AlertService for critical notifications
+            browser_manager: Optional BrowserManager for creating separate browser instances
+            header_manager: Optional HeaderManager for custom headers
+            proxy_manager: Optional ProxyManager for proxy configuration
         """
         self.config = config
         self.db = db
@@ -95,6 +102,9 @@ class BookingWorkflow:
         self.human_sim = human_sim
         self.error_capture = error_capture or ErrorCapture()
         self.alert_service = alert_service
+        self.browser_manager = browser_manager
+        self.header_manager = header_manager
+        self.proxy_manager = proxy_manager
 
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
@@ -451,10 +461,10 @@ class BookingWorkflow:
         Process normal appointment flow (slot checking and booking) for ALL pending requests.
         
         This method handles multiple appointment requests across different countries and visa categories.
-        Requests are grouped by country_code and processed with randomized order for anti-detection.
-
+        For multi-mission scenarios, each country gets a separate browser instance (Chromium process).
+        
         Args:
-            page: Playwright page object
+            page: Playwright page object (used only for backward compatibility with single-mission)
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
@@ -475,7 +485,56 @@ class BookingWorkflow:
                 country_groups[country_code] = []
             country_groups[country_code].append(request)
         
-        # Step 3: Shuffle country order for anti-detection
+        # Check if this is a simple single-mission case (backward compatibility)
+        config_mission = self.config.get("vfs", {}).get("mission", "")
+        is_single_mission = (
+            len(country_groups) == 1 
+            and len(appointment_requests) == 1
+            and list(country_groups.keys())[0] == config_mission
+        )
+        
+        if is_single_mission:
+            # Backward compatibility: use the provided page for single-mission scenarios
+            logger.info(
+                f"Single-mission scenario detected (country={config_mission}), "
+                f"using provided page (no extra browser)"
+            )
+            country_code = list(country_groups.keys())[0]
+            requests = country_groups[country_code]
+            
+            # Shuffle requests within the country group for anti-detection
+            random.shuffle(requests)
+            
+            for request in requests:
+                try:
+                    await self._process_single_request(page, user, request, dedup_service)
+                except Exception as e:
+                    logger.error(
+                        f"Error processing request #{request.id} for user {user['id']}: {e}"
+                    )
+                    continue
+        else:
+            # Multi-mission scenario: create separate browser instances per country
+            logger.info(
+                f"Multi-mission scenario detected with {len(country_groups)} country group(s)"
+            )
+            await self._process_multi_mission_flow(user, country_groups, dedup_service)
+    
+    async def _process_multi_mission_flow(
+        self, user: UserDict, country_groups: Dict[str, List[Any]], dedup_service: Any
+    ) -> None:
+        """
+        Process multiple appointment requests across different countries.
+        
+        Each country gets its own separate browser instance (Chromium process) for isolation
+        and proper session management.
+        
+        Args:
+            user: User dictionary from database
+            country_groups: Dictionary mapping country_code to list of AppointmentRequest entities
+            dedup_service: Deduplication service instance
+        """
+        # Step 1: Shuffle country order for anti-detection
         country_codes = list(country_groups.keys())
         random.shuffle(country_codes)
         
@@ -483,27 +542,88 @@ class BookingWorkflow:
             f"Processing {len(country_codes)} country group(s) in shuffled order: {country_codes}"
         )
         
-        # Step 4: Process each country group
+        # Step 2: Process each country group with its own browser instance
         for country_code in country_codes:
             requests = country_groups[country_code]
             
-            # Shuffle requests within each country group for anti-detection
-            random.shuffle(requests)
-            
             logger.info(
-                f"Processing country {country_code}: {len(requests)} request(s) in shuffled order"
+                f"Processing country {country_code}: {len(requests)} request(s)"
             )
             
-            # Process each request in the shuffled country group
-            for request in requests:
-                try:
-                    await self._process_single_request(page, user, request, dedup_service)
-                except Exception as e:
-                    # Log error but continue with next request (error isolation)
+            # Create a NEW browser instance for this country
+            country_browser = None
+            country_page = None
+            
+            try:
+                # Instantiate a new BrowserManager for this country
+                country_browser = BrowserManager(
+                    config=self.config,
+                    header_manager=self.header_manager,
+                    proxy_manager=self.proxy_manager,
+                )
+                
+                logger.info(f"Starting new browser instance for country {country_code}")
+                await country_browser.start()
+                
+                # Create a new page in the country-specific browser
+                country_page = await country_browser.new_page()
+                
+                # Login to the mission-specific portal
+                logger.info(f"Logging in to {country_code} portal for user {user['id']}")
+                login_success = await self.auth_service.login_for_mission(
+                    country_page, user["email"], user["password"], country_code
+                )
+                
+                if not login_success:
                     logger.error(
-                        f"Error processing request #{request.id} for user {user['id']}: {e}"
+                        f"Login failed for {country_code} portal, skipping country group"
                     )
                     continue
+                
+                # Shuffle requests within this country group for anti-detection
+                random.shuffle(requests)
+                
+                logger.info(
+                    f"Processing {len(requests)} request(s) for {country_code} in shuffled order"
+                )
+                
+                # Process each request in the shuffled country group
+                for request in requests:
+                    try:
+                        await self._process_single_request(
+                            country_page, user, request, dedup_service
+                        )
+                    except Exception as e:
+                        # Log error but continue with next request (error isolation)
+                        logger.error(
+                            f"Error processing request #{request.id} for country {country_code}: {e}"
+                        )
+                        continue
+                        
+                logger.info(f"Completed processing country {country_code}")
+                
+            except Exception as e:
+                # Log error but continue with next country (error isolation)
+                logger.error(
+                    f"Error processing country {country_code} for user {user['id']}: {e}"
+                )
+                continue
+                
+            finally:
+                # Always clean up browser resources for this country
+                if country_page:
+                    try:
+                        await country_page.close()
+                        logger.debug(f"Closed page for country {country_code}")
+                    except Exception as e:
+                        logger.warning(f"Error closing page for {country_code}: {e}")
+                
+                if country_browser:
+                    try:
+                        await country_browser.close()
+                        logger.info(f"Closed browser instance for country {country_code}")
+                    except Exception as e:
+                        logger.warning(f"Error closing browser for {country_code}: {e}")
 
     async def _process_single_request(
         self, page: Page, user: UserDict, appointment_request: Any, dedup_service: Any
