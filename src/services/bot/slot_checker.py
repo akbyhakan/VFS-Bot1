@@ -119,7 +119,7 @@ class SlotChecker:
             if self.page_state_detector is not None:
                 # Use SPA navigation (DOM clicks, not URL navigation)
                 await navigate_to_appointment_page(
-                    page, 
+                    page,
                     self.page_state_detector,
                     self.human_sim,
                 )
@@ -213,7 +213,7 @@ class SlotChecker:
                             if capacity_content:
                                 # Parse capacity (assuming it's a number)
                                 capacity = int(capacity_content.strip())
-                                
+
                                 # Check if capacity is sufficient
                                 if capacity < required_capacity:
                                     logger.warning(
@@ -221,7 +221,7 @@ class SlotChecker:
                                         f"(Date: {date}, Time: {time})"
                                     )
                                     return None
-                                
+
                                 logger.info(
                                     f"Slot found with sufficient capacity! Date: {date}, Time: {time}, "
                                     f"Capacity: {capacity}/{required_capacity}"
@@ -234,12 +234,12 @@ class SlotChecker:
                             )
                     else:
                         logger.info(f"Slot found! Date: {date}, Time: {time}")
-                    
+
                     # Build SlotInfo with capacity if available
                     slot_info: SlotInfo = {"date": date, "time": time}
                     if capacity is not None:
                         slot_info["capacity"] = capacity
-                    
+
                     return slot_info
                 else:
                     logger.warning(

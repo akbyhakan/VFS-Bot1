@@ -158,7 +158,7 @@ class CentreFetcher:
             # SPA CONSTRAINT: This method requires the page to already be on the appointment page.
             # We cannot use page.goto() as it breaks Angular router state in the SPA.
             # The caller must ensure navigation to appointment page before calling this method.
-            
+
             # Wait for centre dropdown to load and verify we're on appointment page
             try:
                 await page.wait_for_selector("select#centres", timeout=10000)
