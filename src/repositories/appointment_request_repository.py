@@ -223,6 +223,45 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             # Get full request with persons
             return await self.get_by_id(row["id"])
 
+    async def get_all_pending_for_user(self, user_id: int) -> List[AppointmentRequest]:
+        """
+        Get ALL pending appointment requests for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of AppointmentRequest entities (empty list if none found)
+        """
+        async with self.db.get_connection() as conn:
+            # Get user email
+            user_row = await conn.fetchrow("SELECT email FROM users WHERE id = $1", user_id)
+            if not user_row:
+                return []
+
+            user_email = user_row["email"]
+
+            # Find all pending requests where any person matches user email
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ar.id FROM appointment_requests ar
+                JOIN appointment_persons ap ON ar.id = ap.request_id
+                WHERE ap.email = $1 AND ar.status = 'pending'
+                ORDER BY ar.created_at DESC
+                """,
+                user_email,
+            )
+            if not rows:
+                return []
+
+            # Get full requests with persons
+            requests = []
+            for row in rows:
+                request = await self.get_by_id(row["id"])
+                if request:
+                    requests.append(request)
+            return requests
+
     async def get_user_ids_with_pending_requests(self) -> set[int]:
         """
         Get set of user IDs that have at least one pending appointment request.

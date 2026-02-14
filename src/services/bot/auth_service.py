@@ -63,12 +63,32 @@ class AuthService:
             True if login successful (including OTP verification if required),
             False otherwise
         """
+        mission = self.config["vfs"]["mission"]
+        return await self.login_for_mission(page, email, password, mission)
+
+    async def login_for_mission(self, page: Page, email: str, password: str, mission_code: str) -> bool:
+        """
+        Login to VFS website for a specific mission/country portal.
+
+        This method performs the login flow including filling credentials, solving
+        captcha if present, submitting the form, and handling OTP verification if
+        required by the VFS system.
+
+        Args:
+            page: Playwright page object
+            email: User email
+            password: User password (plaintext - decrypted from database)
+            mission_code: Mission code (e.g., 'fra', 'bgr') for country-specific login
+
+        Returns:
+            True if login successful (including OTP verification if required),
+            False otherwise
+        """
         try:
             base = self.config["vfs"]["base_url"]
             country = self.config["vfs"]["country"]
             language = self.config["vfs"].get("language", "tr")
-            mission = self.config["vfs"]["mission"]
-            url = f"{base}/{country}/{language}/{mission}/login"
+            url = f"{base}/{country}/{language}/{mission_code}/login"
             logger.info(f"Navigating to login page: {url}")
 
             if not await safe_navigate(page, url, timeout=Timeouts.NAVIGATION):
