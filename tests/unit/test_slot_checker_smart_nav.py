@@ -474,3 +474,276 @@ class TestSlotCheckerSmartNavigation:
             assert result["date"] == "2024-02-15"
             assert result["time"] == "10:00"
             assert "capacity" not in result  # No capacity field when selector fails
+
+    @pytest.mark.asyncio
+    async def test_check_slots_date_not_in_preferred_list(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that check_slots returns None when slot date is not in preferred list."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - date is 15/03/2026 (not in preferred list)
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["15/03/2026", "10:00"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with preferred_dates that don't include the slot date
+            result = await slot_checker.check_slots(
+                mock_page,
+                "Centre Name",
+                "Visa Category",
+                "Subcategory",
+                required_capacity=1,
+                preferred_dates=["20/03/2026", "25/03/2026"],
+            )
+
+            # Should return None because date doesn't match
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_check_slots_date_in_preferred_list(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that check_slots returns slot info when date is in preferred list."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - date is 20/03/2026 (in preferred list)
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["20/03/2026", "10:00"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with preferred_dates that include the slot date
+            result = await slot_checker.check_slots(
+                mock_page,
+                "Centre Name",
+                "Visa Category",
+                "Subcategory",
+                required_capacity=1,
+                preferred_dates=["20/03/2026", "25/03/2026"],
+            )
+
+            # Should return slot info
+            assert result is not None
+            assert result["date"] == "20/03/2026"
+            assert result["time"] == "10:00"
+
+    @pytest.mark.asyncio
+    async def test_check_slots_empty_preferred_dates_accepts_any(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that empty preferred_dates list accepts any date."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - any date
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["15/03/2026", "10:00"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with empty preferred_dates list
+            result = await slot_checker.check_slots(
+                mock_page,
+                "Centre Name",
+                "Visa Category",
+                "Subcategory",
+                required_capacity=1,
+                preferred_dates=[],
+            )
+
+            # Should return slot info (empty list = no filter)
+            assert result is not None
+            assert result["date"] == "15/03/2026"
+            assert result["time"] == "10:00"
+
+    @pytest.mark.asyncio
+    async def test_check_slots_none_preferred_dates_accepts_any(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that None preferred_dates accepts any date."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - any date
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["15/03/2026", "10:00"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with None preferred_dates (default)
+            result = await slot_checker.check_slots(
+                mock_page,
+                "Centre Name",
+                "Visa Category",
+                "Subcategory",
+                required_capacity=1,
+                preferred_dates=None,
+            )
+
+            # Should return slot info (None = no filter)
+            assert result is not None
+            assert result["date"] == "15/03/2026"
+            assert result["time"] == "10:00"
+
+    @pytest.mark.asyncio
+    async def test_check_slots_date_format_normalization(
+        self, config, mock_rate_limiter, mock_page_state_detector
+    ):
+        """Test that date formats are normalized for comparison (DD-MM-YYYY vs DD/MM/YYYY)."""
+        # Setup page state detector to skip navigation
+        mock_page_state_detector.detect = AsyncMock(
+            return_value=PageStateResult(
+                state=PageState.APPOINTMENT_PAGE,
+                confidence=0.85,
+                url="https://visa.vfsglobal.com/tur/tr/turkey-istanbul/appointment",
+                details={},
+            )
+        )
+
+        slot_checker = SlotChecker(
+            config=config,
+            rate_limiter=mock_rate_limiter,
+            page_state_detector=mock_page_state_detector,
+        )
+
+        mock_page = AsyncMock()
+
+        with patch("src.services.bot.slot_checker.safe_navigate") as mock_safe_navigate:
+            mock_safe_navigate.return_value = True
+
+            # Mock page.select_option
+            mock_page.select_option = AsyncMock()
+
+            # Mock slot available (count > 0)
+            mock_locator_count = MagicMock()
+            mock_locator_count.count = AsyncMock(return_value=1)
+
+            # Mock slot details - date with slash format
+            mock_first = MagicMock()
+            mock_first.text_content = AsyncMock(side_effect=["20/03/2026", "10:00"])
+
+            mock_page.locator = MagicMock(return_value=mock_locator_count)
+            mock_page.locator.return_value.first = mock_first
+
+            # Call with preferred_dates in dash format (should match after normalization)
+            result = await slot_checker.check_slots(
+                mock_page,
+                "Centre Name",
+                "Visa Category",
+                "Subcategory",
+                required_capacity=1,
+                preferred_dates=["20-03-2026", "25-03-2026"],
+            )
+
+            # Should return slot info (formats normalized and matched)
+            assert result is not None
+            assert result["date"] == "20/03/2026"
+            assert result["time"] == "10:00"

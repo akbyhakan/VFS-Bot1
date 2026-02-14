@@ -2,7 +2,7 @@
 
 import asyncio
 import random
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, List, Optional, TypedDict
 
 from loguru import logger
 from playwright.async_api import Page
@@ -73,8 +73,26 @@ class SlotChecker:
         """
         return self._selector_manager.get(selector_path, fallback)
 
+    def _normalize_date(self, date_str: str) -> str:
+        """
+        Normalize date format (DD-MM-YYYY -> DD/MM/YYYY).
+
+        Args:
+            date_str: Date string
+
+        Returns:
+            Normalized date string
+        """
+        return date_str.replace("-", "/")
+
     async def check_slots(
-        self, page: Page, centre: str, category: str, subcategory: str, required_capacity: int = 1
+        self,
+        page: Page,
+        centre: str,
+        category: str,
+        subcategory: str,
+        required_capacity: int = 1,
+        preferred_dates: Optional[List[str]] = None,
     ) -> Optional[SlotInfo]:
         """
         Check for available appointment slots.
@@ -85,6 +103,8 @@ class SlotChecker:
             category: Visa category
             subcategory: Visa subcategory
             required_capacity: Minimum required capacity (default: 1)
+            preferred_dates: Optional list of preferred dates (DD/MM/YYYY or DD-MM-YYYY).
+                            If None or empty, all dates are accepted.
 
         Returns:
             Slot information if available, None otherwise
@@ -181,6 +201,27 @@ class SlotChecker:
 
                 # Validate that date and time are not empty strings
                 if date and time:
+                    # Check if date matches preferred_dates (if specified)
+                    if preferred_dates:
+                        # Normalize both the slot date and preferred dates for comparison
+                        try:
+                            normalized_slot_date = self._normalize_date(date)
+                            normalized_preferred_dates = [
+                                self._normalize_date(d) for d in preferred_dates
+                            ]
+
+                            if normalized_slot_date not in normalized_preferred_dates:
+                                logger.warning(
+                                    f"Slot found but date not in preferred list: {date} not in {preferred_dates}"
+                                )
+                                return None
+                        except Exception as date_error:
+                            # Graceful fallback: if date comparison fails, return the slot anyway
+                            # and let check_double_match handle date validation
+                            logger.debug(
+                                f"Could not compare dates (fallback to check_double_match): {date_error}"
+                            )
+
                     # Check capacity if required_capacity > 1
                     capacity: Optional[int] = None
                     if required_capacity > 1:
@@ -241,6 +282,7 @@ class SlotChecker:
                     "category": category,
                     "subcategory": subcategory,
                     "required_capacity": required_capacity,
+                    "preferred_dates": preferred_dates,
                     "action": "checking availability",
                 },
             )
