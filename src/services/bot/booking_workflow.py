@@ -434,16 +434,24 @@ class BookingWorkflow:
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
+        # Determine person count before checking slots
+        person_count = 1  # Default to 1 person
+        appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
+        if appointment_request:
+            person_count = appointment_request.person_count or len(appointment_request.persons or [])
+            logger.debug(f"Using person_count={person_count} from pending appointment request")
+        
         # Check slots
         centres = user["centre"].split(",")
         for centre in centres:
             centre = centre.strip()
             slot = await self.slot_checker.check_slots(
-                page, centre, user["category"], user["subcategory"]
+                page, centre, user["category"], user["subcategory"], required_capacity=person_count
             )
 
             if slot:
                 await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
+                logger.info(f"Slot found for {person_count} person(s): {centre} - {slot['date']} {slot['time']}")
 
                 # Record slot pattern for analysis (async)
                 await self.slot_analyzer.record_slot_found_async(

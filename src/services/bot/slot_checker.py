@@ -16,11 +16,12 @@ from ...utils.helpers import safe_navigate, smart_click
 from ...utils.security.rate_limiter import RateLimiter
 
 
-class SlotInfo(TypedDict):
+class SlotInfo(TypedDict, total=False):
     """Available appointment slot information."""
 
     date: str
     time: str
+    capacity: int
 
 
 class SlotChecker:
@@ -73,7 +74,7 @@ class SlotChecker:
         return self._selector_manager.get(selector_path, fallback)
 
     async def check_slots(
-        self, page: Page, centre: str, category: str, subcategory: str
+        self, page: Page, centre: str, category: str, subcategory: str, required_capacity: int = 1
     ) -> Optional[SlotInfo]:
         """
         Check for available appointment slots.
@@ -83,6 +84,7 @@ class SlotChecker:
             centre: VFS centre name
             category: Visa category
             subcategory: Visa subcategory
+            required_capacity: Minimum required capacity (default: 1)
 
         Returns:
             Slot information if available, None otherwise
@@ -168,6 +170,7 @@ class SlotChecker:
                 # Get slot selectors from SelectorManager
                 date_selector = self._get_selector("appointment.slot_date", ".slot-date")
                 time_selector = self._get_selector("appointment.slot_time", ".slot-time")
+                capacity_selector = self._get_selector("appointment.slot_capacity", ".slot-capacity")
 
                 # Get first available slot
                 date_content = await page.locator(date_selector).first.text_content()
@@ -178,8 +181,43 @@ class SlotChecker:
 
                 # Validate that date and time are not empty strings
                 if date and time:
-                    logger.info(f"Slot found! Date: {date}, Time: {time}")
-                    return {"date": date, "time": time}
+                    # Check capacity if required_capacity > 1
+                    capacity: Optional[int] = None
+                    if required_capacity > 1:
+                        try:
+                            # Try to read capacity from page
+                            capacity_content = await page.locator(capacity_selector).first.text_content()
+                            if capacity_content:
+                                # Parse capacity (assuming it's a number)
+                                capacity = int(capacity_content.strip())
+                                
+                                # Check if capacity is sufficient
+                                if capacity < required_capacity:
+                                    logger.warning(
+                                        f"Slot found but insufficient capacity: {capacity} < {required_capacity} "
+                                        f"(Date: {date}, Time: {time})"
+                                    )
+                                    return None
+                                
+                                logger.info(
+                                    f"Slot found with sufficient capacity! Date: {date}, Time: {time}, "
+                                    f"Capacity: {capacity}/{required_capacity}"
+                                )
+                        except Exception as capacity_error:
+                            # Graceful fallback: if capacity selector not found or parsing fails,
+                            # return the slot anyway (let check_double_match handle capacity)
+                            logger.debug(
+                                f"Could not read capacity from page (fallback to check_double_match): {capacity_error}"
+                            )
+                    else:
+                        logger.info(f"Slot found! Date: {date}, Time: {time}")
+                    
+                    # Build SlotInfo with capacity if available
+                    slot_info: SlotInfo = {"date": date, "time": time}
+                    if capacity is not None:
+                        slot_info["capacity"] = capacity
+                    
+                    return slot_info
                 else:
                     logger.warning(
                         f"Slot element found but date/time empty: date='{date}', time='{time}'"
@@ -202,6 +240,7 @@ class SlotChecker:
                     "centre": centre,
                     "category": category,
                     "subcategory": subcategory,
+                    "required_capacity": required_capacity,
                     "action": "checking availability",
                 },
             )

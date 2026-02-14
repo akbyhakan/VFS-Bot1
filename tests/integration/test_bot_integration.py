@@ -232,3 +232,54 @@ async def test_take_screenshot(mock_page, config, mock_db, mock_notifier, tmp_pa
         await bot.services.workflow.error_handler.take_screenshot(mock_page, "test_error")
 
         mock_page.screenshot.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_check_slots_capacity_aware(mock_page, config, mock_db, mock_notifier):
+    """Test slot checking with capacity awareness for multi-person booking."""
+    bot = VFSBot(config, mock_db, mock_notifier)
+
+    # Mock available slots with sufficient capacity
+    mock_locator = MagicMock()
+    mock_locator.count = AsyncMock(return_value=1)
+
+    mock_first = MagicMock()
+    # Return date, time, and capacity (3)
+    mock_first.text_content = AsyncMock(side_effect=["2024-02-15", "10:00", "3"])
+
+    mock_page.locator.return_value = mock_locator
+    mock_page.locator.return_value.first = mock_first
+
+    # Check slots with required_capacity=2
+    slot = await bot.services.workflow.slot_checker.check_slots(
+        mock_page, "Istanbul", "Schengen Visa", "Tourism", required_capacity=2
+    )
+
+    assert slot is not None
+    assert slot["date"] == "2024-02-15"
+    assert slot["time"] == "10:00"
+    assert slot["capacity"] == 3
+
+
+@pytest.mark.asyncio
+async def test_check_slots_capacity_insufficient(mock_page, config, mock_db, mock_notifier):
+    """Test slot checking when capacity is insufficient for multi-person booking."""
+    bot = VFSBot(config, mock_db, mock_notifier)
+
+    # Mock available slots with insufficient capacity
+    mock_locator = MagicMock()
+    mock_locator.count = AsyncMock(return_value=1)
+
+    mock_first = MagicMock()
+    # Return date, time, and capacity (1)
+    mock_first.text_content = AsyncMock(side_effect=["2024-02-15", "10:00", "1"])
+
+    mock_page.locator.return_value = mock_locator
+    mock_page.locator.return_value.first = mock_first
+
+    # Check slots with required_capacity=2, should return None
+    slot = await bot.services.workflow.slot_checker.check_slots(
+        mock_page, "Istanbul", "Schengen Visa", "Tourism", required_capacity=2
+    )
+
+    assert slot is None

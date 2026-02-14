@@ -62,9 +62,14 @@ class TestBookingWorkflowRetryFix:
     @pytest.fixture(autouse=True)
     def mock_repositories(self):
         """Automatically patch repository classes for all tests."""
-        with patch("src.services.bot.booking_workflow.AppointmentRepository"), \
-             patch("src.services.bot.booking_workflow.UserRepository"), \
-             patch("src.services.bot.booking_workflow.AppointmentRequestRepository"):
+        with patch("src.services.bot.booking_workflow.AppointmentRepository") as mock_appt_repo, \
+             patch("src.services.bot.booking_workflow.UserRepository") as mock_user_repo, \
+             patch("src.services.bot.booking_workflow.AppointmentRequestRepository") as mock_req_repo:
+            # Setup default async return values for repository methods
+            mock_req_instance = MagicMock()
+            mock_req_instance.get_pending_for_user = AsyncMock(return_value=None)
+            mock_req_repo.return_value = mock_req_instance
+            
             yield
 
     @pytest.mark.asyncio
