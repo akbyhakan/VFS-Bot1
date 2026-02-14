@@ -653,3 +653,341 @@ async def test_process_normal_flow_error_isolation():
 
     # Verify all 3 requests were attempted
     assert workflow._process_single_request.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_multi_mission_creates_separate_browsers():
+    """Test that multi-mission flow creates separate browser instances for each country."""
+    from src.services.bot.booking_workflow import BookingWorkflow
+
+    # Mock dependencies
+    db = MagicMock()
+    config = {
+        "vfs": {"base_url": "https://visa.vfsglobal.com", "country": "tr", "mission": "fra"}
+    }
+    auth_service = MagicMock()
+    auth_service.login_for_mission = AsyncMock(return_value=True)
+    
+    slot_checker = MagicMock()
+    booking_service = MagicMock()
+    notifier = MagicMock()
+    human_sim = MagicMock()
+    waitlist_handler = MagicMock()
+    error_handler = MagicMock()
+    slot_analyzer = MagicMock()
+    session_recovery = MagicMock()
+    page_state_detector = MagicMock()
+    header_manager = MagicMock()
+    proxy_manager = MagicMock()
+
+    workflow = BookingWorkflow(
+        config=config,
+        db=db,
+        notifier=notifier,
+        auth_service=auth_service,
+        slot_checker=slot_checker,
+        booking_service=booking_service,
+        waitlist_handler=waitlist_handler,
+        error_handler=error_handler,
+        slot_analyzer=slot_analyzer,
+        session_recovery=session_recovery,
+        page_state_detector=page_state_detector,
+        human_sim=human_sim,
+        header_manager=header_manager,
+        proxy_manager=proxy_manager,
+    )
+
+    # Mock get_all_pending_for_user to return 2 requests for different countries
+    mock_requests = [
+        AppointmentRequest(
+            id=1,
+            country_code="fra",
+            visa_category="Tourism",
+            visa_subcategory="Short Stay",
+            centres=["Istanbul"],
+            preferred_dates=["15/02/2026"],
+            person_count=1,
+            status="pending",
+            created_at="2026-02-10T10:00:00Z",
+            persons=[],
+        ),
+        AppointmentRequest(
+            id=2,
+            country_code="bgr",
+            visa_category="Tourism",
+            visa_subcategory="Short Stay",
+            centres=["Ankara"],
+            preferred_dates=["17/02/2026"],
+            person_count=1,
+            status="pending",
+            created_at="2026-02-10T12:00:00Z",
+            persons=[],
+        ),
+    ]
+
+    workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
+        return_value=mock_requests
+    )
+    workflow._process_single_request = AsyncMock()
+
+    # Mock user
+    user = {
+        "id": 1,
+        "email": "test@example.com",
+        "password": "password",
+        "category": "Tourism",
+        "subcategory": "Short Stay",
+    }
+
+    # Mock page and dedup service
+    page = AsyncMock()
+    dedup_service = MagicMock()
+
+    # Mock BrowserManager to track browser instances
+    browser_instances_created = []
+    
+    async def mock_browser_start(self):
+        """Mock start method that tracks this instance."""
+        browser_instances_created.append(self)
+    
+    async def mock_browser_close(self):
+        """Mock close method."""
+        pass
+    
+    async def mock_new_page(self):
+        """Mock new_page method."""
+        return AsyncMock()
+
+    with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
+        # Configure mock to create instances and track calls
+        def create_browser_instance(*args, **kwargs):
+            mock_browser = MagicMock()
+            mock_browser.start = AsyncMock(side_effect=lambda: mock_browser_start(mock_browser))
+            mock_browser.close = AsyncMock(side_effect=lambda: mock_browser_close(mock_browser))
+            mock_browser.new_page = AsyncMock(side_effect=lambda: mock_new_page(mock_browser))
+            return mock_browser
+        
+        MockBrowserManager.side_effect = create_browser_instance
+
+        # Run the method
+        await workflow._process_normal_flow(page, user, dedup_service)
+
+        # Verify 2 separate BrowserManager instances were created (one per country)
+        assert MockBrowserManager.call_count == 2
+        
+        # Verify both browsers were started and closed
+        assert len(browser_instances_created) == 2
+        for browser in browser_instances_created:
+            browser.start.assert_called_once()
+            browser.close.assert_called_once()
+            browser.new_page.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_single_mission_uses_original_page():
+    """Test that single-mission scenario uses the provided page (backward compatibility)."""
+    from src.services.bot.booking_workflow import BookingWorkflow
+
+    # Mock dependencies
+    db = MagicMock()
+    config = {
+        "vfs": {"base_url": "https://visa.vfsglobal.com", "country": "tr", "mission": "fra"}
+    }
+    auth_service = MagicMock()
+    slot_checker = MagicMock()
+    booking_service = MagicMock()
+    notifier = MagicMock()
+    human_sim = MagicMock()
+    waitlist_handler = MagicMock()
+    error_handler = MagicMock()
+    slot_analyzer = MagicMock()
+    session_recovery = MagicMock()
+    page_state_detector = MagicMock()
+
+    workflow = BookingWorkflow(
+        config=config,
+        db=db,
+        notifier=notifier,
+        auth_service=auth_service,
+        slot_checker=slot_checker,
+        booking_service=booking_service,
+        waitlist_handler=waitlist_handler,
+        error_handler=error_handler,
+        slot_analyzer=slot_analyzer,
+        session_recovery=session_recovery,
+        page_state_detector=page_state_detector,
+        human_sim=human_sim,
+    )
+
+    # Mock get_all_pending_for_user to return 1 request matching config mission
+    mock_requests = [
+        AppointmentRequest(
+            id=1,
+            country_code="fra",  # Matches config mission
+            visa_category="Tourism",
+            visa_subcategory="Short Stay",
+            centres=["Istanbul"],
+            preferred_dates=["15/02/2026"],
+            person_count=1,
+            status="pending",
+            created_at="2026-02-10T10:00:00Z",
+            persons=[],
+        ),
+    ]
+
+    workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
+        return_value=mock_requests
+    )
+    workflow._process_single_request = AsyncMock()
+
+    # Mock user
+    user = {
+        "id": 1,
+        "email": "test@example.com",
+        "category": "Tourism",
+        "subcategory": "Short Stay",
+    }
+
+    # Mock page and dedup service
+    page = AsyncMock()
+    dedup_service = MagicMock()
+
+    # Mock BrowserManager to verify it's NOT instantiated
+    with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
+        # Run the method
+        await workflow._process_normal_flow(page, user, dedup_service)
+
+        # Verify NO new BrowserManager instances were created (backward compatible)
+        MockBrowserManager.assert_not_called()
+        
+        # Verify _process_single_request was called with the original page
+        workflow._process_single_request.assert_called_once()
+        call_args = workflow._process_single_request.call_args
+        assert call_args[0][0] == page  # First arg should be the original page
+
+
+@pytest.mark.asyncio
+async def test_browser_cleanup_on_error():
+    """Test that browser instances are properly cleaned up even when errors occur."""
+    from src.services.bot.booking_workflow import BookingWorkflow
+
+    # Mock dependencies
+    db = MagicMock()
+    config = {
+        "vfs": {"base_url": "https://visa.vfsglobal.com", "country": "tr", "mission": "fra"}
+    }
+    auth_service = MagicMock()
+    # Simulate login failure for one country
+    auth_service.login_for_mission = AsyncMock(side_effect=[False, True])
+    
+    slot_checker = MagicMock()
+    booking_service = MagicMock()
+    notifier = MagicMock()
+    human_sim = MagicMock()
+    waitlist_handler = MagicMock()
+    error_handler = MagicMock()
+    slot_analyzer = MagicMock()
+    session_recovery = MagicMock()
+    page_state_detector = MagicMock()
+    header_manager = MagicMock()
+    proxy_manager = MagicMock()
+
+    workflow = BookingWorkflow(
+        config=config,
+        db=db,
+        notifier=notifier,
+        auth_service=auth_service,
+        slot_checker=slot_checker,
+        booking_service=booking_service,
+        waitlist_handler=waitlist_handler,
+        error_handler=error_handler,
+        slot_analyzer=slot_analyzer,
+        session_recovery=session_recovery,
+        page_state_detector=page_state_detector,
+        human_sim=human_sim,
+        header_manager=header_manager,
+        proxy_manager=proxy_manager,
+    )
+
+    # Mock get_all_pending_for_user to return 2 requests for different countries
+    mock_requests = [
+        AppointmentRequest(
+            id=1,
+            country_code="fra",
+            visa_category="Tourism",
+            visa_subcategory="Short Stay",
+            centres=["Istanbul"],
+            preferred_dates=["15/02/2026"],
+            person_count=1,
+            status="pending",
+            created_at="2026-02-10T10:00:00Z",
+            persons=[],
+        ),
+        AppointmentRequest(
+            id=2,
+            country_code="bgr",
+            visa_category="Tourism",
+            visa_subcategory="Short Stay",
+            centres=["Ankara"],
+            preferred_dates=["17/02/2026"],
+            person_count=1,
+            status="pending",
+            created_at="2026-02-10T12:00:00Z",
+            persons=[],
+        ),
+    ]
+
+    workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
+        return_value=mock_requests
+    )
+    workflow._process_single_request = AsyncMock()
+
+    # Mock user
+    user = {
+        "id": 1,
+        "email": "test@example.com",
+        "password": "password",
+        "category": "Tourism",
+        "subcategory": "Short Stay",
+    }
+
+    # Mock page and dedup service
+    page = AsyncMock()
+    dedup_service = MagicMock()
+
+    # Track browser cleanup
+    browser_close_calls = []
+    page_close_calls = []
+    
+    with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
+        def create_browser_instance(*args, **kwargs):
+            mock_browser = MagicMock()
+            mock_browser.start = AsyncMock()
+            
+            async def track_close():
+                browser_close_calls.append(mock_browser)
+            
+            mock_browser.close = AsyncMock(side_effect=track_close)
+            
+            mock_page = AsyncMock()
+            
+            async def track_page_close():
+                page_close_calls.append(mock_page)
+                
+            mock_page.close = AsyncMock(side_effect=track_page_close)
+            mock_browser.new_page = AsyncMock(return_value=mock_page)
+            return mock_browser
+        
+        MockBrowserManager.side_effect = create_browser_instance
+
+        # Run the method
+        await workflow._process_normal_flow(page, user, dedup_service)
+
+        # Verify 2 browsers were created
+        assert MockBrowserManager.call_count == 2
+        
+        # Verify both browsers were closed (even though first login failed)
+        assert len(browser_close_calls) == 2
+        
+        # Verify both pages were closed
+        assert len(page_close_calls) == 2
