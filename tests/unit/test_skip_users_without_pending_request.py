@@ -99,6 +99,10 @@ class TestSkipUsersWithoutPendingRequest:
         mock_pending_request = MagicMock()
         mock_pending_request.person_count = 1
         mock_pending_request.preferred_dates = []
+        mock_pending_request.centres = ["Paris"]
+        mock_pending_request.visa_category = "visa"
+        mock_pending_request.visa_subcategory = "tourism"
+        mock_pending_request.country_code = "fra"
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(
             return_value=mock_pending_request
         )
