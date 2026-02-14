@@ -59,7 +59,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option and page.locator to avoid errors
@@ -100,7 +100,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             # Simulate VFSBotError being raised (dashboard -> appointment navigation failed)
             mock_spa_nav.side_effect = VFSBotError(
                 "Could not find appointment navigation link on dashboard",
@@ -132,7 +132,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             # Simulate session expired error
             mock_spa_nav.side_effect = VFSBotError(
                 "Page recovery needed: SESSION_EXPIRED",
@@ -160,7 +160,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             # Simulate Cloudflare challenge error
             mock_spa_nav.side_effect = VFSBotError(
                 "Page recovery needed: CLOUDFLARE_CHALLENGE",
@@ -222,7 +222,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -270,7 +270,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -321,7 +321,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -383,7 +383,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -436,7 +436,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -491,7 +491,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -546,7 +546,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
@@ -601,7 +601,7 @@ class TestSlotCheckerSPANavigation:
 
         mock_page = AsyncMock()
 
-        with patch("src.utils.spa_navigation.navigate_to_appointment_page") as mock_spa_nav:
+        with patch("src.services.bot.slot_checker.navigate_to_appointment_page") as mock_spa_nav:
             mock_spa_nav.return_value = True
 
             # Mock page.select_option
