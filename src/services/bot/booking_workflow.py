@@ -355,6 +355,8 @@ class BookingWorkflow:
         centre: str,
         slot: "SlotInfo",
         dedup_service: Any,
+        category: Optional[str] = None,
+        subcategory: Optional[str] = None,
     ) -> None:
         """
         Execute booking flow and confirm booking (common confirmation pipeline).
@@ -369,7 +371,13 @@ class BookingWorkflow:
             centre: Centre name
             slot: SlotInfo with date and time
             dedup_service: Deduplication service instance
+            category: Visa category (from AppointmentRequest, fallback to user table)
+            subcategory: Visa subcategory (from AppointmentRequest, fallback to user table)
         """
+        # Use provided category/subcategory or fallback to user table
+        final_category = category or user["category"]
+        final_subcategory = subcategory or user["subcategory"]
+        
         success = await self.booking_service.run_booking_flow(page, reservation)
 
         if success:
@@ -381,8 +389,8 @@ class BookingWorkflow:
                     {
                         "user_id": user["id"],
                         "centre": centre,
-                        "category": user["category"],
-                        "subcategory": user["subcategory"],
+                        "category": final_category,
+                        "subcategory": final_subcategory,
                         "appointment_date": slot["date"],
                         "appointment_time": slot["time"],
                         "reference_number": reference,
@@ -406,7 +414,7 @@ class BookingWorkflow:
                 )
 
                 # Mark booking in deduplication service
-                await dedup_service.mark_booked(user["id"], centre, user["category"], slot["date"])
+                await dedup_service.mark_booked(user["id"], centre, final_category, slot["date"])
 
                 # Clear checkpoint after successful booking
                 self.session_recovery.clear_checkpoint()
@@ -446,61 +454,80 @@ class BookingWorkflow:
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
-        # Determine person count AND preferred dates before checking slots
-        person_count = 1  # Default to 1 person
-        preferred_dates: List[str] = []  # Default: no date filter
+        # Step 1: Get the appointment request (single source of truth)
         appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
-        if appointment_request:
-            person_count = appointment_request.person_count or len(appointment_request.persons or [])
-            preferred_dates = appointment_request.preferred_dates or []
-            logger.debug(
-                f"Using person_count={person_count}, preferred_dates={preferred_dates} "
-                "from pending appointment request"
-            )
         
-        # Check slots
-        centres = user["centre"].split(",")
+        if not appointment_request:
+            logger.info(f"No pending appointment request for user {user['id']}")
+            return
+        
+        # Step 2: Extract ALL criteria from AppointmentRequest
+        person_count = appointment_request.person_count or len(appointment_request.persons or [])
+        preferred_dates = appointment_request.preferred_dates or []
+        
+        # FIX: Centres from AppointmentRequest
+        centres = appointment_request.centres
+        
+        # FIX: Category/Subcategory from AppointmentRequest, user table fallback
+        category = appointment_request.visa_category or user["category"]
+        subcategory = appointment_request.visa_subcategory or user["subcategory"]
+        
+        logger.info(
+            f"Searching slots from AppointmentRequest #{appointment_request.id}: "
+            f"centres={centres}, preferred_dates={preferred_dates}, "
+            f"person_count={person_count}, category={category}/{subcategory}"
+        )
+        
+        # Step 3: Check centres sequentially (same page, SPA-safe)
         for centre in centres:
             centre = centre.strip()
+            
             slot = await self.slot_checker.check_slots(
                 page,
                 centre,
-                user["category"],
-                user["subcategory"],
+                category,      # ← AppointmentRequest'ten
+                subcategory,   # ← AppointmentRequest'ten
                 required_capacity=person_count,
                 preferred_dates=preferred_dates,
             )
 
             if slot:
                 await self.notifier.notify_slot_found(centre, slot["date"], slot["time"])
-                logger.info(f"Slot found for {person_count} person(s): {centre} - {slot['date']} {slot['time']}")
+                logger.info(
+                    f"Slot found for {person_count} person(s): "
+                    f"{centre} - {slot['date']} {slot['time']}"
+                )
 
-                # Record slot pattern for analysis (async)
+                # Record slot pattern with country from AppointmentRequest
                 await self.slot_analyzer.record_slot_found_async(
-                    country=user.get("country", "unknown"),
+                    country=appointment_request.country_code,  # ← AppointmentRequest'ten
                     centre=centre,
-                    category=user["category"],
+                    category=category,
                     date=slot["date"],
                     time=slot["time"],
                 )
 
                 # Check for duplicate booking attempt
                 is_duplicate = await dedup_service.is_duplicate(
-                    user["id"], centre, user["category"], slot["date"]
+                    user["id"], centre, category, slot["date"]
                 )
 
                 if is_duplicate:
                     logger.warning(
                         f"Skipping duplicate booking for user {user['id']}: "
-                        f"{centre}/{user['category']}/{slot['date']}"
+                        f"{centre}/{category}/{slot['date']}"
                     )
-                    continue  # Skip this slot and try next centre
+                    continue
 
-                # Build reservation using appropriate strategy
-                reservation = await self._build_reservation_for_user(user, slot)
+                # Build reservation directly from AppointmentRequest
+                reservation = self._build_reservation_from_request(
+                    appointment_request.to_dict(), slot
+                )
+                
                 if reservation:
                     await self._execute_and_confirm_booking(
-                        page, reservation, user, centre, slot, dedup_service
+                        page, reservation, user, centre, slot, dedup_service,
+                        category=category, subcategory=subcategory
                     )
 
                 break
