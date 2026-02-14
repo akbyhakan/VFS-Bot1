@@ -223,6 +223,29 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             # Get full request with persons
             return await self.get_by_id(row["id"])
 
+    async def get_user_ids_with_pending_requests(self) -> set[int]:
+        """
+        Get set of user IDs that have at least one pending appointment request.
+        
+        This is a bulk query alternative to calling get_pending_for_user() 
+        for each user individually, avoiding N+1 query problem.
+
+        Returns:
+            Set of user IDs with pending appointment requests
+        """
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT u.id 
+                FROM users u
+                JOIN appointment_persons ap ON ap.email = u.email
+                JOIN appointment_requests ar ON ar.id = ap.request_id
+                WHERE ar.status = 'pending' AND u.active = true
+                """
+            )
+            return {row["id"] for row in rows}
+
+
     async def create(self, data: Dict[str, Any]) -> int:
         """
         Create new appointment request.

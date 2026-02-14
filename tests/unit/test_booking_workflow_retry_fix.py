@@ -66,8 +66,13 @@ class TestBookingWorkflowRetryFix:
              patch("src.services.bot.booking_workflow.UserRepository") as mock_user_repo, \
              patch("src.services.bot.booking_workflow.AppointmentRequestRepository") as mock_req_repo:
             # Setup default async return values for repository methods
+            # Create a mock pending request to allow tests to proceed past the pending check
+            mock_pending_request = MagicMock()
+            mock_pending_request.person_count = 1
+            mock_pending_request.preferred_dates = []
+            
             mock_req_instance = MagicMock()
-            mock_req_instance.get_pending_for_user = AsyncMock(return_value=None)
+            mock_req_instance.get_pending_for_user = AsyncMock(return_value=mock_pending_request)
             mock_req_repo.return_value = mock_req_instance
             
             yield
