@@ -1,6 +1,7 @@
 """Booking workflow orchestration - handles user booking flows."""
 
 import asyncio
+import random
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
@@ -447,46 +448,98 @@ class BookingWorkflow:
 
     async def _process_normal_flow(self, page: Page, user: UserDict, dedup_service: Any) -> None:
         """
-        Process normal appointment flow (slot checking and booking).
+        Process normal appointment flow (slot checking and booking) for ALL pending requests.
+        
+        This method handles multiple appointment requests across different countries and visa categories.
+        Requests are grouped by country_code and processed with randomized order for anti-detection.
 
         Args:
             page: Playwright page object
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
-        # Step 1: Get the appointment request (single source of truth)
-        appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
+        # Step 1: Get ALL pending appointment requests
+        appointment_requests = await self.appointment_request_repo.get_all_pending_for_user(user["id"])
         
-        if not appointment_request:
-            logger.info(f"No pending appointment request for user {user['id']}")
+        if not appointment_requests:
+            logger.info(f"No pending appointment requests for user {user['id']}")
             return
         
-        # Step 2: Extract ALL criteria from AppointmentRequest
+        logger.info(f"Found {len(appointment_requests)} pending request(s) for user {user['id']}")
+        
+        # Step 2: Group requests by country_code
+        country_groups: Dict[str, List[Any]] = {}
+        for request in appointment_requests:
+            country_code = request.country_code
+            if country_code not in country_groups:
+                country_groups[country_code] = []
+            country_groups[country_code].append(request)
+        
+        # Step 3: Shuffle country order for anti-detection
+        country_codes = list(country_groups.keys())
+        random.shuffle(country_codes)
+        
+        logger.info(
+            f"Processing {len(country_codes)} country group(s) in shuffled order: {country_codes}"
+        )
+        
+        # Step 4: Process each country group
+        for country_code in country_codes:
+            requests = country_groups[country_code]
+            
+            # Shuffle requests within each country group for anti-detection
+            random.shuffle(requests)
+            
+            logger.info(
+                f"Processing country {country_code}: {len(requests)} request(s) in shuffled order"
+            )
+            
+            # Process each request in the shuffled country group
+            for request in requests:
+                try:
+                    await self._process_single_request(page, user, request, dedup_service)
+                except Exception as e:
+                    # Log error but continue with next request (error isolation)
+                    logger.error(
+                        f"Error processing request #{request.id} for user {user['id']}: {e}"
+                    )
+                    continue
+
+    async def _process_single_request(
+        self, page: Page, user: UserDict, appointment_request: Any, dedup_service: Any
+    ) -> None:
+        """
+        Process a single appointment request (slot checking and booking).
+
+        Args:
+            page: Playwright page object
+            user: User dictionary from database
+            appointment_request: AppointmentRequest entity
+            dedup_service: Deduplication service instance
+        """
+        # Extract criteria from AppointmentRequest
         person_count = appointment_request.person_count or len(appointment_request.persons or [])
         preferred_dates = appointment_request.preferred_dates or []
-        
-        # FIX: Centres from AppointmentRequest
         centres = appointment_request.centres
-        
-        # FIX: Category/Subcategory from AppointmentRequest, user table fallback
         category = appointment_request.visa_category or user["category"]
         subcategory = appointment_request.visa_subcategory or user["subcategory"]
         
         logger.info(
-            f"Searching slots from AppointmentRequest #{appointment_request.id}: "
-            f"centres={centres}, preferred_dates={preferred_dates}, "
-            f"person_count={person_count}, category={category}/{subcategory}"
+            f"Processing AppointmentRequest #{appointment_request.id}: "
+            f"country={appointment_request.country_code}, centres={centres}, "
+            f"preferred_dates={preferred_dates}, person_count={person_count}, "
+            f"category={category}/{subcategory}"
         )
         
-        # Step 3: Check centres sequentially (same page, SPA-safe)
+        # Check centres sequentially (same page, SPA-safe)
         for centre in centres:
             centre = centre.strip()
             
             slot = await self.slot_checker.check_slots(
                 page,
                 centre,
-                category,      # ← AppointmentRequest'ten
-                subcategory,   # ← AppointmentRequest'ten
+                category,
+                subcategory,
                 required_capacity=person_count,
                 preferred_dates=preferred_dates,
             )
@@ -500,7 +553,7 @@ class BookingWorkflow:
 
                 # Record slot pattern with country from AppointmentRequest
                 await self.slot_analyzer.record_slot_found_async(
-                    country=appointment_request.country_code,  # ← AppointmentRequest'ten
+                    country=appointment_request.country_code,
                     centre=centre,
                     category=category,
                     date=slot["date"],
