@@ -121,6 +121,9 @@ class BookingWorkflow:
         masked_email = mask_email(user["email"])
         
         # Check if user has a pending appointment request BEFORE login
+        # This is a defensive check - users should already be filtered in run_bot_loop(),
+        # but we verify here to prevent login attempts if status changed or if process_user 
+        # is called directly from other code paths
         has_pending = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if not has_pending:
             logger.info(

@@ -661,13 +661,9 @@ class VFSBot:
                     continue
 
                 # Filter users to only those with pending appointment requests
-                users_with_requests = []
-                for user in users:
-                    has_pending = await self.booking_workflow.appointment_request_repo.get_pending_for_user(user["id"])
-                    if has_pending:
-                        users_with_requests.append(user)
-                    else:
-                        logger.debug(f"Skipping user {user.get('id')}: no pending appointment request")
+                # Use bulk query to avoid N+1 query problem
+                user_ids_with_pending = await self.booking_workflow.appointment_request_repo.get_user_ids_with_pending_requests()
+                users_with_requests = [user for user in users if user["id"] in user_ids_with_pending]
 
                 if not users_with_requests:
                     logger.info("No users with pending appointment requests to process")
