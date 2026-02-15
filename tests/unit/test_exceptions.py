@@ -208,3 +208,27 @@ def test_exceptions_inherit_from_vfsbot_error():
     assert issubclass(RateLimitError, VFSBotError)
     assert issubclass(ConfigurationError, VFSBotError)
     assert issubclass(AuthenticationError, VFSBotError)
+
+
+def test_error_type_uri_property():
+    """Test that error_type_uri property works correctly with re module at top."""
+    error = RateLimitError()
+    assert error.error_type_uri == "urn:vfsbot:error:rate-limit"
+    
+    login_error = LoginError()
+    assert login_error.error_type_uri == "urn:vfsbot:error:login"
+    
+    booking_error = BookingError()
+    assert booking_error.error_type_uri == "urn:vfsbot:error:booking"
+
+
+def test_title_property():
+    """Test that title property works correctly with re module at top."""
+    error = RateLimitError()
+    assert error.title == "Rate Limit Error"
+    
+    login_error = LoginError()
+    assert login_error.title == "Login Error"
+    
+    booking_error = BookingError()
+    assert booking_error.title == "Booking Error"
