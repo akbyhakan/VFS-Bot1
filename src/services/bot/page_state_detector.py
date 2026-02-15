@@ -18,6 +18,7 @@ from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 from loguru import logger
 from playwright.async_api import Page
 
+from ...constants import BookingOTPSelectors
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 
 
@@ -168,21 +169,20 @@ _DETECTION_RULES: List[Tuple[str, PageState, float, bool]] = [
     ('input[name="otp"]', PageState.OTP_LOGIN, 0.85, True),
     # Booking OTP states (post-form, country-specific)
     (
-        'span.mdc-button__label:has-text("Tek Seferlik Şifre (OTP) Oluştur"), '
-        'span.mdc-button__label:has-text("Generate One Time Password")',
+        BookingOTPSelectors.GENERATE_BUTTON,
         PageState.OTP_BOOKING_GENERATE,
         0.90,
         True,
     ),
-    ('input[placeholder="OTP"][maxlength="6"]', PageState.OTP_BOOKING_INPUT, 0.85, True),
+    (BookingOTPSelectors.INPUT_FIELD, PageState.OTP_BOOKING_INPUT, 0.85, True),
     (
-        'span.mdc-button__label:has-text("Doğrula"), span.mdc-button__label:has-text("Verify")',
+        BookingOTPSelectors.VERIFY_BUTTON,
         PageState.OTP_BOOKING_INPUT,
         0.10,
         True,
     ),
     (
-        "text=/OTP doğrulaması başarılı|OTP verification successful/i",
+        BookingOTPSelectors.SUCCESS_MESSAGE,
         PageState.OTP_BOOKING_SUCCESS,
         0.90,
         True,

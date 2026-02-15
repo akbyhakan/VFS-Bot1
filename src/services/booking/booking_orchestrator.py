@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
+from ...constants import BookingOTPSelectors
 from ...core.sensitive import SensitiveDict
 from ..otp_webhook import get_otp_service
 from .booking_validator import BookingValidator
@@ -139,10 +140,7 @@ class BookingOrchestrator:
         """
         try:
             # Check if OTP generate button is visible
-            otp_generate_button = page.locator(
-                'span.mdc-button__label:has-text("Tek Seferlik Şifre (OTP) Oluştur"), '
-                'span.mdc-button__label:has-text("Generate One Time Password")'
-            ).first
+            otp_generate_button = page.locator(BookingOTPSelectors.GENERATE_BUTTON).first
 
             is_visible = await otp_generate_button.is_visible()
             if not is_visible:
@@ -158,7 +156,7 @@ class BookingOrchestrator:
 
             # Step 2: Wait for OTP input field to appear
             logger.info("Waiting for OTP input field...")
-            otp_input = page.locator('input[placeholder="OTP"][maxlength="6"]')
+            otp_input = page.locator(BookingOTPSelectors.INPUT_FIELD)
             await otp_input.wait_for(state="visible", timeout=10000)
             logger.info("OTP input field visible")
 
@@ -180,27 +178,19 @@ class BookingOrchestrator:
 
             # Step 5: Click verify button
             logger.info("Clicking 'Verify' button...")
-            verify_button = page.locator(
-                'span.mdc-button__label:has-text("Doğrula"), '
-                'span.mdc-button__label:has-text("Verify")'
-            ).first
+            verify_button = page.locator(BookingOTPSelectors.VERIFY_BUTTON).first
             await verify_button.click()
             await asyncio.sleep(2)
 
             # Step 6: Wait for success message
             logger.info("Waiting for OTP verification success message...")
-            success_message = page.locator(
-                "text=/OTP doğrulaması başarılı|OTP verification successful/i"
-            )
+            success_message = page.locator(BookingOTPSelectors.SUCCESS_MESSAGE)
             await success_message.wait_for(state="visible", timeout=10000)
             logger.info("OTP verification successful")
 
             # Step 7: Click continue button
             logger.info("Clicking 'Continue' button...")
-            continue_button = page.locator(
-                'span.mdc-button__label:has-text("Devam Et"), '
-                'span.mdc-button__label:has-text("Continue")'
-            ).first
+            continue_button = page.locator(BookingOTPSelectors.CONTINUE_BUTTON).first
             await continue_button.click()
             await asyncio.sleep(1)
 
