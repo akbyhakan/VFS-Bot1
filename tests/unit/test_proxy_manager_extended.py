@@ -473,3 +473,189 @@ def test_rotate_on_error_config():
     manager = ProxyManager(config)
 
     assert manager.rotate_on_error is False
+
+
+def test_allocate_next_sequential():
+    """Test sequential proxy allocation."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy3.com:8080",
+            "host": "proxy3.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+
+    # Test sequential allocation
+    proxy1 = manager.allocate_next()
+    assert proxy1["server"] == "http://proxy1.com:8080"
+    assert manager._allocation_index == 1
+
+    proxy2 = manager.allocate_next()
+    assert proxy2["server"] == "http://proxy2.com:8080"
+    assert manager._allocation_index == 2
+
+    proxy3 = manager.allocate_next()
+    assert proxy3["server"] == "http://proxy3.com:8080"
+    assert manager._allocation_index == 0  # Wrapped around
+
+
+def test_allocate_next_wraps_around():
+    """Test that allocation wraps around to beginning."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+
+    # Allocate all proxies
+    manager.allocate_next()  # proxy1
+    manager.allocate_next()  # proxy2
+
+    # Should wrap around to proxy1
+    proxy = manager.allocate_next()
+    assert proxy["server"] == "http://proxy1.com:8080"
+
+
+def test_allocate_next_skips_failed():
+    """Test that allocate_next skips failed proxies."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy3.com:8080",
+            "host": "proxy3.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+    # Mark proxy2 as failed
+    manager.failed_proxies = ["http://proxy2.com:8080"]
+
+    # First allocation should get proxy1
+    proxy1 = manager.allocate_next()
+    assert proxy1["server"] == "http://proxy1.com:8080"
+
+    # Second allocation should skip proxy2 and get proxy3
+    proxy2 = manager.allocate_next()
+    assert proxy2["server"] == "http://proxy3.com:8080"
+
+
+def test_allocate_next_all_failed_resets():
+    """Test that when all proxies are failed, the failed list resets."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+    # Mark all as failed
+    manager.failed_proxies = [
+        "http://proxy1.com:8080",
+        "http://proxy2.com:8080",
+    ]
+
+    proxy = manager.allocate_next()
+    
+    # Should reset failed list and return a proxy
+    assert proxy is not None
+    assert len(manager.failed_proxies) == 0
+
+
+def test_allocate_next_disabled():
+    """Test allocate_next when proxy manager is disabled."""
+    manager = ProxyManager({"enabled": False})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+
+    proxy = manager.allocate_next()
+    assert proxy is None
+
+
+def test_allocate_next_no_proxies():
+    """Test allocate_next with no proxies loaded."""
+    manager = ProxyManager({"enabled": True})
+
+    proxy = manager.allocate_next()
+    assert proxy is None
+
+
+def test_reset_allocation_index():
+    """Test resetting allocation index."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+
+    # Allocate a few proxies
+    manager.allocate_next()
+    manager.allocate_next()
+    assert manager._allocation_index == 0  # Wrapped around
+
+    # Reset index
+    manager.reset_allocation_index()
+    assert manager._allocation_index == 0
+
+    # Next allocation should start from beginning
+    proxy = manager.allocate_next()
+    assert proxy["server"] == "http://proxy1.com:8080"
