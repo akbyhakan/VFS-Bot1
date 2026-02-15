@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe, Timer } from 'lucide-react';
+import { CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe, Timer } from 'lucide-react';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import { proxyApi, type ProxyStats } from '@/services/proxy';
