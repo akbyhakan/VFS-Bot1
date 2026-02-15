@@ -149,6 +149,49 @@ def test_page_state_result_is_loading():
     assert result_other.is_loading is False
 
 
+def test_page_state_result_is_booking_otp_screen():
+    """Test is_booking_otp_screen property."""
+    # Test all three booking OTP states return True
+    result_generate = PageStateResult(
+        state=PageState.OTP_BOOKING_GENERATE,
+        confidence=0.90,
+        url="https://test.com",
+    )
+    assert result_generate.is_booking_otp_screen is True
+
+    result_input = PageStateResult(
+        state=PageState.OTP_BOOKING_INPUT,
+        confidence=0.85,
+        url="https://test.com",
+    )
+    assert result_input.is_booking_otp_screen is True
+
+    result_success = PageStateResult(
+        state=PageState.OTP_BOOKING_SUCCESS,
+        confidence=0.90,
+        url="https://test.com",
+    )
+    assert result_success.is_booking_otp_screen is True
+
+    # Test non-OTP state returns False
+    result_other = PageStateResult(
+        state=PageState.BOOKING_FORM,
+        confidence=0.80,
+        url="https://test.com",
+    )
+    assert result_other.is_booking_otp_screen is False
+
+
+def test_page_state_result_is_waiting_for_otp_booking_input():
+    """Test is_waiting_for_otp includes OTP_BOOKING_INPUT."""
+    result = PageStateResult(
+        state=PageState.OTP_BOOKING_INPUT,
+        confidence=0.85,
+        url="https://test.com",
+    )
+    assert result.is_waiting_for_otp is True
+
+
 # ──────────────────────────────────────────────────────────────
 # Test state groups
 # ──────────────────────────────────────────────────────────────
@@ -160,6 +203,9 @@ def test_actionable_states_group():
     assert PageState.DASHBOARD in _ACTIONABLE_STATES
     assert PageState.APPOINTMENT_PAGE in _ACTIONABLE_STATES
     assert PageState.OTP_LOGIN in _ACTIONABLE_STATES
+    assert PageState.OTP_BOOKING_GENERATE in _ACTIONABLE_STATES
+    assert PageState.OTP_BOOKING_INPUT in _ACTIONABLE_STATES
+    assert PageState.OTP_BOOKING_SUCCESS in _ACTIONABLE_STATES
     assert PageState.SESSION_EXPIRED not in _ACTIONABLE_STATES
     assert PageState.UNKNOWN not in _ACTIONABLE_STATES
 
@@ -177,6 +223,8 @@ def test_priority_states_group():
     assert PageState.SESSION_EXPIRED in _PRIORITY_STATES
     assert PageState.CLOUDFLARE_CHALLENGE in _PRIORITY_STATES
     assert PageState.OTP_LOGIN in _PRIORITY_STATES
+    assert PageState.OTP_BOOKING_GENERATE in _PRIORITY_STATES
+    assert PageState.OTP_BOOKING_INPUT in _PRIORITY_STATES
     assert PageState.LOGIN_PAGE not in _PRIORITY_STATES
 
 
@@ -466,6 +514,23 @@ async def test_resolve_priority_state_boost(detector, mock_page):
     # SESSION_EXPIRED should get +0.10 boost (0.85 + 0.10 = 0.95)
     assert resolved[PageState.SESSION_EXPIRED] >= 0.90
     assert resolved[PageState.SESSION_EXPIRED] > resolved[PageState.LOGIN_PAGE]
+
+
+@pytest.mark.asyncio
+async def test_resolve_booking_otp_vs_booking_form(detector, mock_page):
+    """Test booking OTP states take priority over BOOKING_FORM."""
+    scores = {
+        PageState.OTP_BOOKING_GENERATE: 0.90,
+        PageState.BOOKING_FORM: 0.70,
+    }
+    details = {}
+
+    resolved = await detector._resolve_ambiguities(mock_page, scores, details)
+
+    # BOOKING_FORM should be removed when booking OTP is present
+    assert PageState.BOOKING_FORM not in resolved
+    assert PageState.OTP_BOOKING_GENERATE in resolved
+    assert details.get("booking_otp_resolution") == "OTP screen overlays booking form"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -855,6 +920,40 @@ async def test_get_otp_type_none(detector, mock_page):
         result = await detector.get_otp_type(mock_page)
 
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_otp_type_booking_generate(detector, mock_page):
+    """Test get_otp_type returns OTP_BOOKING_GENERATE."""
+
+    async def mock_detect(page, timeout=3000):
+        return PageStateResult(
+            state=PageState.OTP_BOOKING_GENERATE,
+            confidence=0.90,
+            url=mock_page.url,
+        )
+
+    with patch.object(detector, "detect", side_effect=mock_detect):
+        result = await detector.get_otp_type(mock_page)
+
+    assert result == PageState.OTP_BOOKING_GENERATE
+
+
+@pytest.mark.asyncio
+async def test_get_otp_type_booking_input(detector, mock_page):
+    """Test get_otp_type returns OTP_BOOKING_INPUT."""
+
+    async def mock_detect(page, timeout=3000):
+        return PageStateResult(
+            state=PageState.OTP_BOOKING_INPUT,
+            confidence=0.85,
+            url=mock_page.url,
+        )
+
+    with patch.object(detector, "detect", side_effect=mock_detect):
+        result = await detector.get_otp_type(mock_page)
+
+    assert result == PageState.OTP_BOOKING_INPUT
 
 
 # ──────────────────────────────────────────────────────────────
