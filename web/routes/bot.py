@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from src.core.bot_controller import BotController
 from web.dependencies import bot_state, broadcast_message, verify_hybrid_auth
-from web.models.bot import BotCommand
+from web.models.bot import BotCommand, BotSettings, BotSettingsResponse
 
 router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
@@ -380,3 +380,73 @@ async def get_error_html_snapshot(request: Request, error_id: str):
                     raise HTTPException(status_code=500, detail="Error accessing HTML snapshot")
 
     raise HTTPException(status_code=404, detail="HTML snapshot not found")
+
+
+@router.get("/settings")
+async def get_bot_settings(auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)) -> BotSettingsResponse:
+    """
+    Get bot settings - requires authentication.
+
+    Args:
+        auth_data: Verified authentication metadata
+
+    Returns:
+        Bot settings response
+    """
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        # If bot controller not configured, return defaults
+        from src.constants import AccountPoolConfig
+        
+        return BotSettingsResponse(
+            cooldown_seconds=AccountPoolConfig.COOLDOWN_SECONDS,
+            cooldown_minutes=AccountPoolConfig.COOLDOWN_SECONDS // 60,
+            quarantine_minutes=AccountPoolConfig.QUARANTINE_SECONDS // 60,
+            max_failures=AccountPoolConfig.MAX_FAILURES,
+        )
+
+    settings = controller.get_cooldown_settings()
+    return BotSettingsResponse(**settings)
+
+
+@router.put("/settings")
+@limiter.limit("5/minute")
+async def update_bot_settings(
+    request: Request,
+    settings: BotSettings,
+    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth),
+) -> Dict[str, str]:
+    """
+    Update bot settings - requires authentication.
+
+    Args:
+        request: FastAPI request object (required for rate limiter)
+        settings: Bot settings to update
+        auth_data: Verified authentication metadata
+
+    Returns:
+        Response dictionary
+    """
+    try:
+        controller = await _get_controller()
+    except HTTPException:
+        return BOT_NOT_CONFIGURED_ERROR
+
+    # Convert minutes to seconds
+    cooldown_seconds = settings.cooldown_minutes * 60
+
+    # Update cooldown
+    result = await controller.update_cooldown(cooldown_seconds)
+
+    if result["status"] == "success":
+        logger.info(
+            f"Cooldown updated to {settings.cooldown_minutes} minutes ({cooldown_seconds}s) "
+            f"via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+        )
+        return {
+            "status": "success",
+            "message": f"Cooldown {settings.cooldown_minutes} dakikaya güncellendi",
+        }
+    else:
+        return result

@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BotCommand(BaseModel):
@@ -18,3 +18,18 @@ class StatusUpdate(BaseModel):
     status: str
     message: str
     timestamp: str
+
+
+class BotSettings(BaseModel):
+    """Bot settings update model."""
+
+    cooldown_minutes: int = Field(ge=5, le=60, default=10, description="Cooldown süresi (dakika)")
+
+
+class BotSettingsResponse(BaseModel):
+    """Bot settings response model."""
+
+    cooldown_minutes: int
+    cooldown_seconds: int
+    quarantine_minutes: int
+    max_failures: int
