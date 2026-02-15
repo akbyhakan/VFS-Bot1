@@ -1,6 +1,5 @@
 """Rotate proxies with failure tracking."""
 
-import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -129,27 +128,7 @@ class ProxyManager:
             logger.error(f"Error parsing proxy '{proxy_string}': {e}")
             return None
 
-    def get_random_proxy(self) -> Optional[Dict[str, Any]]:
-        """
-        Select random proxy from available proxies.
 
-        Returns:
-            Proxy dictionary or None if no proxies available
-        """
-        if not self.enabled or not self.proxies:
-            return None
-
-        # Get available proxies (not failed)
-        available = [p for p in self.proxies if p["server"] not in self.failed_proxies]
-
-        if not available:
-            logger.warning("No available proxies (all failed), resetting failed list")
-            self.failed_proxies.clear()
-            available = self.proxies
-
-        proxy = random.choice(available)
-        logger.debug(f"Selected random proxy: {proxy['server']}")
-        return proxy
 
     def mark_proxy_failed(self, proxy: Dict[str, Any]) -> None:
         """
@@ -165,25 +144,29 @@ class ProxyManager:
             )
 
     def rotate_proxy(self) -> Optional[Dict[str, Any]]:
-        """
-        Switch to next proxy.
-
-        Returns:
-            Next proxy dictionary or None
-        """
+        """Switch to next available proxy (sequential, skip failed)."""
         if not self.enabled or not self.proxies:
             return None
 
-        # Move to next proxy
-        self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxies)
+        total = len(self.proxies)
+        attempts = 0
+
+        while attempts < total:
+            self.current_proxy_index = (self.current_proxy_index + 1) % total
+            proxy = self.proxies[self.current_proxy_index]
+
+            if proxy["server"] not in self.failed_proxies:
+                logger.info(f"Rotated to proxy: {proxy['server']}")
+                return proxy
+
+            attempts += 1
+
+        # All failed → reset and return next
+        logger.warning("All proxies failed, resetting failed list")
+        self.failed_proxies.clear()
+        self.current_proxy_index = (self.current_proxy_index + 1) % total
         proxy = self.proxies[self.current_proxy_index]
-
-        # Skip if this one failed
-        if proxy["server"] in self.failed_proxies:
-            # Try to get a non-failed one
-            return self.get_random_proxy()
-
-        logger.info(f"Rotated to proxy: {proxy['server']}")
+        logger.info(f"Rotated to proxy after reset: {proxy['server']}")
         return proxy
 
     def get_playwright_proxy(
@@ -193,7 +176,7 @@ class ProxyManager:
         Return Playwright-compatible proxy format.
 
         Args:
-            proxy: Proxy dictionary (if None, uses random proxy)
+            proxy: Proxy dictionary (if None, uses rotate_proxy)
 
         Returns:
             Playwright proxy configuration or None
@@ -202,7 +185,7 @@ class ProxyManager:
             return None
 
         if proxy is None:
-            proxy = self.get_random_proxy()
+            proxy = self.rotate_proxy()
 
         if not proxy:
             return None

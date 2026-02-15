@@ -151,90 +151,12 @@ def test_parse_proxy_error_handling():
     assert proxy is None or isinstance(proxy, dict)
 
 
-def test_get_random_proxy_disabled():
-    """Test get_random_proxy when disabled."""
+def test_rotate_proxy_disabled():
+    """Test rotate proxy when disabled."""
     manager = ProxyManager({"enabled": False})
-    proxy = manager.get_random_proxy()
+    proxy = manager.rotate_proxy()
 
     assert proxy is None
-
-
-def test_get_random_proxy_no_proxies():
-    """Test get_random_proxy with no proxies."""
-    manager = ProxyManager({"enabled": True})
-    proxy = manager.get_random_proxy()
-
-    assert proxy is None
-
-
-def test_get_random_proxy_success():
-    """Test successful random proxy selection."""
-    manager = ProxyManager({"enabled": True})
-    manager.proxies = [
-        {
-            "server": "http://proxy1.com:8080",
-            "host": "proxy1.com",
-            "port": 8080,
-            "protocol": "http",
-        },
-        {
-            "server": "http://proxy2.com:8080",
-            "host": "proxy2.com",
-            "port": 8080,
-            "protocol": "http",
-        },
-    ]
-
-    proxy = manager.get_random_proxy()
-    assert proxy is not None
-    assert proxy in manager.proxies
-
-
-def test_get_random_proxy_skip_failed():
-    """Test that random proxy skips failed ones."""
-    manager = ProxyManager({"enabled": True})
-    manager.proxies = [
-        {
-            "server": "http://proxy1.com:8080",
-            "host": "proxy1.com",
-            "port": 8080,
-            "protocol": "http",
-        },
-        {
-            "server": "http://proxy2.com:8080",
-            "host": "proxy2.com",
-            "port": 8080,
-            "protocol": "http",
-        },
-    ]
-    manager.failed_proxies = ["http://proxy1.com:8080"]
-
-    # Should only select proxy2
-    for _ in range(5):
-        proxy = manager.get_random_proxy()
-        assert proxy["server"] != "http://proxy1.com:8080"
-
-
-def test_get_random_proxy_all_failed():
-    """Test get_random_proxy when all proxies failed."""
-    manager = ProxyManager({"enabled": True})
-    manager.proxies = [
-        {
-            "server": "http://proxy1.com:8080",
-            "host": "proxy1.com",
-            "port": 8080,
-            "protocol": "http",
-        },
-    ]
-    manager.failed_proxies = ["http://proxy1.com:8080"]
-
-    proxy = manager.get_random_proxy()
-    # Should reset failed list and return a proxy
-    assert proxy is not None
-    assert len(manager.failed_proxies) == 0
-
-
-def test_mark_proxy_failed():
     """Test marking proxy as failed."""
     manager = ProxyManager()
     proxy = {
@@ -336,7 +258,38 @@ def test_rotate_proxy_wraps_around():
 
 
 def test_rotate_proxy_skip_failed():
-    """Test that rotation skips failed proxies."""
+    """Test that rotation skips failed proxies sequentially."""
+    manager = ProxyManager({"enabled": True})
+    manager.proxies = [
+        {
+            "server": "http://proxy1.com:8080",
+            "host": "proxy1.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy2.com:8080",
+            "host": "proxy2.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+        {
+            "server": "http://proxy3.com:8080",
+            "host": "proxy3.com",
+            "port": 8080,
+            "protocol": "http",
+        },
+    ]
+    manager.current_proxy_index = 0
+    manager.failed_proxies = ["http://proxy2.com:8080"]
+
+    # Should skip failed proxy2 and get proxy3
+    proxy = manager.rotate_proxy()
+    assert proxy["server"] == "http://proxy3.com:8080"
+
+
+def test_rotate_proxy_all_failed_resets():
+    """Test rotate_proxy when all proxies are failed."""
     manager = ProxyManager({"enabled": True})
     manager.proxies = [
         {
@@ -353,11 +306,15 @@ def test_rotate_proxy_skip_failed():
         },
     ]
     manager.current_proxy_index = 0
-    manager.failed_proxies = ["http://proxy2.com:8080"]
+    manager.failed_proxies = [
+        "http://proxy1.com:8080",
+        "http://proxy2.com:8080",
+    ]
 
     proxy = manager.rotate_proxy()
-    # Should skip failed proxy2 and return proxy1
-    assert proxy["server"] == "http://proxy1.com:8080"
+    # Should reset failed list and return next proxy
+    assert proxy is not None
+    assert len(manager.failed_proxies) == 0
 
 
 def test_get_playwright_proxy_disabled():
