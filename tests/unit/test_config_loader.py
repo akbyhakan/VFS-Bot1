@@ -177,12 +177,11 @@ class TestLoadConfig:
         """Test that config loading falls back to example in development."""
         with patch.dict(os.environ, {"ENV": "development"}):
             with patch("pathlib.Path.exists") as mock_exists:
-                # Multiple calls to exists() - return False for all except example config
-                # First: .env path at project root
-                # Second: .env path at old location (src/)
-                # Third: main config file
-                # Fourth: example config file (should return True)
-                mock_exists.side_effect = [False, False, False, True]
+                # Multiple calls to exists() during load_config:
+                # First: .env path check in load_env_variables()
+                # Second: main config file check
+                # Third: example config file check (should return True)
+                mock_exists.side_effect = [False, False, True]
 
                 # Should not raise an error in development mode
                 result = load_config("config/config.yaml")
