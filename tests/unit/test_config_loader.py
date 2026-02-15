@@ -35,18 +35,24 @@ class TestLoadEnvVariables:
     def test_load_env_variables_path_resolves_to_project_root(self):
         """Test that .env path resolves to project root, not src/ directory."""
         from pathlib import Path
+        import src.core.config.config_loader as config_loader_module
         
-        # Simulate the path resolution in load_env_variables()
-        config_loader_file = Path("src/core/config/config_loader.py")
-        env_path = config_loader_file.parent.parent.parent.parent / ".env"
+        # Get the actual location of config_loader.py
+        config_loader_file = Path(config_loader_module.__file__)
         
-        # Verify it points to project root (4 parents), not src/ (3 parents)
-        # The resolved path should be ".env" at project root
-        assert str(env_path) == ".env"
+        # Verify that 4 parents points to project root
+        env_path_4_parents = config_loader_file.parent.parent.parent.parent / ".env"
         
-        # Verify that 3 parents would incorrectly point to src/.env
-        wrong_env_path = config_loader_file.parent.parent.parent / ".env"
-        assert str(wrong_env_path) == "src/.env"
+        # Verify that 3 parents would incorrectly point to src/
+        env_path_3_parents = config_loader_file.parent.parent.parent / ".env"
+        
+        # The correct path (4 parents) should have 'VFS-Bot1' or similar as parent directory name
+        # The incorrect path (3 parents) should have 'src' as parent directory name
+        assert env_path_3_parents.parent.name == "src", "3 parents should point to src/.env"
+        assert env_path_4_parents.parent.name != "src", "4 parents should NOT point to src directory"
+        
+        # Verify the path ends with .env
+        assert env_path_4_parents.name == ".env"
 
 
 class TestSubstituteEnvVars:
