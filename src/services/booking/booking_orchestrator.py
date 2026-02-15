@@ -169,7 +169,9 @@ class BookingOrchestrator:
                 logger.error("Failed to receive booking OTP within timeout")
                 return False
 
-            logger.info(f"Received booking OTP: {otp_code[:2]}****")
+            # Log masked OTP (show first 2 characters if available)
+            masked_otp = f"{otp_code[:2]}****" if len(otp_code) >= 2 else "****"
+            logger.info(f"Received booking OTP: {masked_otp}")
 
             # Step 4: Fill OTP into input field
             logger.info("Filling OTP into input field...")
