@@ -3,7 +3,6 @@
 import contextvars
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +10,8 @@ from types import FrameType
 from typing import Any, Dict, Optional
 
 from loguru import logger
+
+from src.core.environment import Environment
 
 # Context variable for request correlation ID
 correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(

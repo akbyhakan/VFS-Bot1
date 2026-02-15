@@ -170,7 +170,7 @@ class NotificationService:
         max_retries=2,
         delay=1.0,
         backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError, Exception),
+        exceptions=(ConnectionError, TimeoutError, OSError),
     )
     async def send_telegram(self, title: str, message: str) -> bool:
         """
@@ -218,7 +218,7 @@ class NotificationService:
         max_retries=2,
         delay=1.0,
         backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError, Exception),
+        exceptions=(ConnectionError, TimeoutError, OSError, aiosmtplib.SMTPException),
     )
     async def send_email(self, subject: str, body: str) -> bool:
         """

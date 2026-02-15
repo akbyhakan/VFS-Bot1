@@ -7,10 +7,29 @@ from typing import Dict, List
 
 from loguru import logger
 
-from src.core.environment import Environment
-
 # Bcrypt hash prefixes for validation
 BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")
+
+# Known placeholder/example values that should never be used in production
+DANGEROUS_PLACEHOLDERS = frozenset({
+    "change_me_to_secure_password",
+    "your-secret-key-here",
+    "your_bot_token",
+    "your-bot-token-here",
+    "your-telegram-token",
+    "your-api-key",
+    "your-api-key-here",
+    "replace-me",
+    "changeme",
+    "change-me",
+    "example-key",
+    "test-key",
+    "your-encryption-key",
+    "your-password-here",
+    "your_email@example.com",
+    "your-email@example.com",
+    "example@example.com",
+})
 
 
 class EnvValidator:
@@ -49,7 +68,6 @@ class EnvValidator:
         missing_required: List[str] = []
         missing_optional: List[str] = []
         validation_errors: List[str] = []
-        env = os.getenv("ENV", "production").lower()
 
         # Check required
         for var, description in cls.REQUIRED_VARS.items():
@@ -57,6 +75,12 @@ class EnvValidator:
             if not value:
                 missing_required.append(f"{var} ({description})")
             else:
+                # Check for dangerous placeholder values
+                if cls._is_placeholder_value(value):
+                    validation_errors.append(
+                        f"{var}: Contains placeholder/example value. "
+                        "Please replace with a real value."
+                    )
                 # Validate specific formats
                 if var == "VFS_EMAIL":
                     if not cls._validate_email(value):
@@ -90,6 +114,12 @@ class EnvValidator:
             if not value:
                 missing_optional.append(f"{var} ({description})")
             else:
+                # Check for dangerous placeholder values
+                if cls._is_placeholder_value(value):
+                    validation_errors.append(
+                        f"{var}: Contains placeholder/example value. "
+                        "Please replace with a real value."
+                    )
                 # Validate optional var formats
                 if var == "CAPTCHA_API_KEY" and len(value) < 16:
                     validation_errors.append(f"{var}: API key too short (minimum 16 characters)")
@@ -150,6 +180,38 @@ class EnvValidator:
 
         logger.info("✅ Environment validation passed")
         return True
+
+    @staticmethod
+    def _is_placeholder_value(value: str) -> bool:
+        """
+        Check if a value is a known placeholder/example value.
+
+        Args:
+            value: Value to check
+
+        Returns:
+            True if the value is a known placeholder
+        """
+        # Convert to lowercase once for all checks
+        value_lower = value.lower()
+        
+        # Check exact matches (case-insensitive)
+        if value_lower in DANGEROUS_PLACEHOLDERS:
+            return True
+        
+        # Check common patterns
+        placeholder_patterns = [
+            "change",
+            "replace",
+            "example",
+            "your-",
+            "your_",
+            "placeholder",
+            "test-key",
+            "dummy",
+        ]
+        
+        return any(pattern in value_lower for pattern in placeholder_patterns)
 
     @staticmethod
     def _validate_email(email: str) -> bool:
