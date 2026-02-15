@@ -253,3 +253,102 @@ gw.netnut.net:5959:user2:pass2
         count = proxy_manager.load_from_csv(Path("nonexistent.csv"))
         assert count == 0
         assert len(proxy_manager.proxies) == 0
+
+
+class TestNetNutProxyManagerAllocateNext:
+    """Test NetNut proxy manager allocate_next functionality."""
+
+    def test_allocate_next_sequential(self, sample_csv_content):
+        """Test sequential proxy allocation."""
+        manager = NetNutProxyManager()
+        manager.load_from_csv_content(sample_csv_content)
+
+        # Test sequential allocation
+        proxy1 = manager.allocate_next()
+        assert proxy1 is not None
+        assert proxy1["host"] == "gw.netnut.net"
+        assert manager._allocation_index == 1
+
+        proxy2 = manager.allocate_next()
+        assert proxy2 is not None
+        assert manager._allocation_index == 2
+
+        proxy3 = manager.allocate_next()
+        assert proxy3 is not None
+        assert proxy3["host"] == "gw2.netnut.net"
+        assert manager._allocation_index == 0  # Wrapped around
+
+    def test_allocate_next_wraps_around(self, sample_csv_content):
+        """Test that allocation wraps around to beginning."""
+        manager = NetNutProxyManager()
+        manager.load_from_csv_content(sample_csv_content)
+
+        # Allocate all 3 proxies
+        manager.allocate_next()
+        manager.allocate_next()
+        manager.allocate_next()
+
+        # Should wrap around to first proxy
+        proxy = manager.allocate_next()
+        assert proxy is not None
+        assert proxy["host"] == "gw.netnut.net"
+
+    def test_allocate_next_skips_failed(self, sample_csv_content):
+        """Test that allocate_next skips failed proxies."""
+        manager = NetNutProxyManager()
+        manager.load_from_csv_content(sample_csv_content)
+
+        # Mark second proxy as failed
+        second_endpoint = manager.proxies[1]["endpoint"]
+        manager.failed_proxies.append(second_endpoint)
+
+        # First allocation
+        proxy1 = manager.allocate_next()
+        assert proxy1["endpoint"] == manager.proxies[0]["endpoint"]
+
+        # Second allocation should skip the failed one and get third
+        proxy2 = manager.allocate_next()
+        assert proxy2["endpoint"] == manager.proxies[2]["endpoint"]
+        assert proxy2["endpoint"] != second_endpoint
+
+    def test_allocate_next_all_failed_resets(self, sample_csv_content):
+        """Test that when all proxies are failed, the failed list resets."""
+        manager = NetNutProxyManager()
+        manager.load_from_csv_content(sample_csv_content)
+
+        # Mark all as failed
+        for proxy in manager.proxies:
+            manager.mark_proxy_failed(proxy)
+
+        assert len(manager.failed_proxies) == 3
+
+        # Next allocation should reset failed list
+        proxy = manager.allocate_next()
+
+        assert proxy is not None
+        assert len(manager.failed_proxies) == 0
+
+    def test_allocate_next_no_proxies(self):
+        """Test allocate_next with no proxies loaded."""
+        manager = NetNutProxyManager()
+
+        proxy = manager.allocate_next()
+        assert proxy is None
+
+    def test_reset_allocation_index(self, sample_csv_content):
+        """Test resetting allocation index."""
+        manager = NetNutProxyManager()
+        manager.load_from_csv_content(sample_csv_content)
+
+        # Allocate a few proxies
+        manager.allocate_next()
+        manager.allocate_next()
+        assert manager._allocation_index == 2
+
+        # Reset index
+        manager.reset_allocation_index()
+        assert manager._allocation_index == 0
+
+        # Next allocation should start from beginning
+        proxy = manager.allocate_next()
+        assert proxy["endpoint"] == manager.proxies[0]["endpoint"]

@@ -73,9 +73,13 @@ class BrowserManager:
         # Get proxy configuration if enabled
         proxy_config = None
         if self._anti_detection_enabled and self.proxy_manager and self.proxy_manager.enabled:
-            proxy_config = self.proxy_manager.get_playwright_proxy()
-            if proxy_config:
+            # Use sequential allocation for deterministic proxy assignment
+            allocated_proxy = self.proxy_manager.allocate_next()
+            if allocated_proxy:
+                proxy_config = self.proxy_manager.get_playwright_proxy(proxy=allocated_proxy)
                 logger.info(f"Using proxy: {proxy_config['server']}")
+            else:
+                logger.warning("No proxy allocated, continuing without proxy")
 
         # Get User-Agent from fingerprint rotator or header manager or use default
         user_agent = (

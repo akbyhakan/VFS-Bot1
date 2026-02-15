@@ -25,6 +25,7 @@ class ProxyManager:
         self.proxies: List[Dict[str, str]] = []
         self.failed_proxies: List[str] = []
         self.current_proxy_index: int = 0
+        self._allocation_index: int = 0
 
         if self.enabled:
             self.load_proxies()
@@ -231,3 +232,55 @@ class ProxyManager:
         """Clear the failed proxies list."""
         self.failed_proxies.clear()
         logger.info("Cleared failed proxies list")
+
+    def allocate_next(self) -> Optional[Dict[str, Any]]:
+        """
+        Allocate the next proxy sequentially (deterministic allocation).
+        
+        This method provides deterministic proxy allocation for multi-mission scenarios,
+        ensuring each browser gets a unique proxy in sequential order. The allocation
+        index advances with each call and wraps around when reaching the end.
+        
+        Returns:
+            Next proxy dictionary in sequence or None if disabled/no proxies
+        """
+        if not self.enabled or not self.proxies:
+            return None
+
+        total_proxies = len(self.proxies)
+        attempts = 0
+        
+        # Try to find a non-failed proxy, wrapping around if needed
+        while attempts < total_proxies:
+            # Get proxy at current allocation index
+            current_index = self._allocation_index
+            proxy = self.proxies[current_index]
+            
+            # Advance allocation index for next call (with wrap-around)
+            self._allocation_index = (self._allocation_index + 1) % total_proxies
+            
+            # Check if this proxy has failed
+            if proxy["server"] not in self.failed_proxies:
+                logger.info(
+                    f"Allocated proxy {proxy['server']} (allocation index: {current_index})"
+                )
+                return proxy
+            
+            # Skip failed proxy and continue
+            logger.debug(f"Skipping failed proxy {proxy['server']}")
+            attempts += 1
+        
+        # All proxies have failed, reset failed list and return first proxy
+        logger.warning("All proxies marked as failed, resetting failed list")
+        self.failed_proxies.clear()
+        
+        # Reset to first proxy
+        self._allocation_index = 1 % total_proxies
+        proxy = self.proxies[0]
+        logger.info(f"Allocated proxy {proxy['server']} after reset (allocation index: 0)")
+        return proxy
+
+    def reset_allocation_index(self) -> None:
+        """Reset the allocation index to 0."""
+        self._allocation_index = 0
+        logger.info("Reset allocation index to 0")
