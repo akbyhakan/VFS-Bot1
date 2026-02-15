@@ -12,7 +12,7 @@ BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")
 
 # Known placeholder/example values that should never be used in production
 DANGEROUS_PLACEHOLDERS = frozenset({
-    "CHANGE_ME_TO_SECURE_PASSWORD",
+    "change_me_to_secure_password",
     "your-secret-key-here",
     "your_bot_token",
     "your-bot-token-here",
@@ -192,12 +192,14 @@ class EnvValidator:
         Returns:
             True if the value is a known placeholder
         """
+        # Convert to lowercase once for all checks
+        value_lower = value.lower()
+        
         # Check exact matches (case-insensitive)
-        if value.lower() in DANGEROUS_PLACEHOLDERS:
+        if value_lower in DANGEROUS_PLACEHOLDERS:
             return True
         
         # Check common patterns
-        value_lower = value.lower()
         placeholder_patterns = [
             "change",
             "replace",
