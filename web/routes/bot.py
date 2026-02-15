@@ -401,7 +401,7 @@ async def get_bot_settings(auth_data: Dict[str, Any] = Depends(verify_hybrid_aut
         
         return BotSettingsResponse(
             cooldown_seconds=AccountPoolConfig.COOLDOWN_SECONDS,
-            cooldown_minutes=AccountPoolConfig.COOLDOWN_SECONDS // 60,
+            cooldown_minutes=round(AccountPoolConfig.COOLDOWN_SECONDS / 60),  # Round to nearest minute
             quarantine_minutes=AccountPoolConfig.QUARANTINE_SECONDS // 60,
             max_failures=AccountPoolConfig.MAX_FAILURES,
         )

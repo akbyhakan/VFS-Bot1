@@ -318,7 +318,7 @@ class BotController:
 
         return {
             "cooldown_seconds": cooldown_seconds,
-            "cooldown_minutes": cooldown_seconds // 60,
+            "cooldown_minutes": round(cooldown_seconds / 60),  # Round to nearest minute
             "quarantine_minutes": AccountPoolConfig.QUARANTINE_SECONDS // 60,
             "max_failures": AccountPoolConfig.MAX_FAILURES,
         }

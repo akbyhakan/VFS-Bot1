@@ -162,6 +162,12 @@ export function Settings() {
     }
   };
 
+  // Helper function for slider gradient
+  const getSliderGradient = (value: number, min: number, max: number) => {
+    const percentage = ((value - min) / (max - min)) * 100;
+    return `linear-gradient(to right, #7c3aed 0%, #7c3aed ${percentage}%, #374151 ${percentage}%, #374151 100%)`;
+  };
+
   const handleEdit = () => {
     if (card) {
       setFormData({
@@ -548,7 +554,7 @@ export function Settings() {
                     onChange={(e) => setCooldownMinutes(Number(e.target.value))}
                     className="w-full h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-thumb"
                     style={{
-                      background: `linear-gradient(to right, #7c3aed 0%, #7c3aed ${((cooldownMinutes - 5) / 55) * 100}%, #374151 ${((cooldownMinutes - 5) / 55) * 100}%, #374151 100%)`
+                      background: getSliderGradient(cooldownMinutes, 5, 60)
                     }}
                   />
                   <div className="flex justify-between text-xs text-dark-400 mt-1">
