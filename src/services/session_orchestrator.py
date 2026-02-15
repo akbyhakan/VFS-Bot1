@@ -275,14 +275,19 @@ class SessionOrchestrator:
                 
                 # Log usage
                 try:
+                    # Log primary usage record with first request (for foreign key constraint)
+                    # Include all request IDs in metadata for complete audit trail
+                    request_ids = [req.id for req in requests] if requests else []
+                    primary_request_id = request_ids[0] if request_ids else None
+                    
                     await self.account_pool_repo.log_usage(
                         account_id=account.id,
                         mission_code=mission_code,
                         session_number=self.session_number,
                         result=result,
                         started_at=started_at,
-                        request_id=requests[0].id if requests else None,
-                        error_message=error_message,
+                        request_id=primary_request_id,
+                        error_message=f"Requests: {request_ids}; Error: {error_message}" if error_message else f"Requests: {request_ids}",
                         completed_at=completed_at,
                     )
                 except Exception as log_error:

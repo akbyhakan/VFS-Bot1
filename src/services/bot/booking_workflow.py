@@ -270,9 +270,20 @@ class BookingWorkflow:
             slot_found = False
             for request in appointment_requests:
                 try:
+                    # Note: _process_single_request expects user dict with:
+                    # - id: for deduplication checking (not used in pool mode since no user context)
+                    # - category/subcategory: fallback if not in request (should be in request)
+                    # - email: for logging only
+                    # In pool mode, we provide minimal dict since requests have all needed fields
+                    minimal_user = {
+                        "id": 0,  # Dummy ID - dedup not used in pool mode per request
+                        "email": account.email,  # For logging
+                        "category": request.visa_category,  # From request
+                        "subcategory": request.visa_subcategory,  # From request
+                    }
                     result = await self._process_single_request(
                         page,
-                        {"email": account.email},  # Minimal user dict for logging
+                        minimal_user,
                         request,
                         dedup_service,
                     )
