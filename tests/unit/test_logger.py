@@ -94,6 +94,7 @@ class TestSetupStructuredLogging:
     def test_setup_creates_logs_directory(self, tmp_path, monkeypatch):
         """Test that setup creates logs directory."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         setup_structured_logging(level="INFO", json_format=True)
 
@@ -104,6 +105,7 @@ class TestSetupStructuredLogging:
     def test_setup_creates_log_file(self, tmp_path, monkeypatch):
         """Test that setup creates log file."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         setup_structured_logging(level="INFO", json_format=True)
 
@@ -113,6 +115,7 @@ class TestSetupStructuredLogging:
     def test_setup_with_json_format(self, tmp_path, monkeypatch):
         """Test setup with JSON format enabled."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         # Clear handlers from previous tests
         logging.root.handlers = []
@@ -135,6 +138,7 @@ class TestSetupStructuredLogging:
     def test_setup_without_json_format(self, tmp_path, monkeypatch):
         """Test setup with JSON format disabled."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         # Clear handlers from previous tests
         logging.root.handlers = []
@@ -156,6 +160,7 @@ class TestSetupStructuredLogging:
     def test_setup_log_level(self, tmp_path, monkeypatch):
         """Test that log level is set correctly."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         # Clear handlers and reset log level from previous tests
         logging.root.handlers = []
@@ -168,6 +173,7 @@ class TestSetupStructuredLogging:
     def test_correlation_id_patcher_integration(self, tmp_path, monkeypatch):
         """Test that correlation_id is automatically added to Loguru logs via patcher."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         from loguru import logger as loguru_logger
 
@@ -198,6 +204,7 @@ class TestSetupStructuredLogging:
     def test_correlation_id_patcher_no_id_set(self, tmp_path, monkeypatch):
         """Test that patcher handles case when correlation_id is not set."""
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ENV", "testing")
 
         from loguru import logger as loguru_logger
 

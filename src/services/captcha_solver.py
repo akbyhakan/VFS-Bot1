@@ -114,9 +114,14 @@ class CaptchaSolver:
                 ),
             )
 
-            token = result.get("code")
-            logger.info("Turnstile solved successfully")
-            return token  # type: ignore[no-any-return]
+            # Safe key access - consistent with _solve_with_2captcha
+            if result and isinstance(result, dict) and "code" in result:
+                token = str(result["code"])
+                logger.info("Turnstile solved successfully")
+                return token
+            
+            logger.warning(f"Turnstile returned unexpected result: {result}")
+            return None
 
         except Exception as e:
             logger.error(f"Turnstile solving error: {e}")

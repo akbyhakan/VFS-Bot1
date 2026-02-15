@@ -269,7 +269,7 @@ class DatabaseConnectionManager:
         
         start_time = time.time()
         try:
-            async with self.pool.acquire() as conn:
+            async with self.pool.acquire(timeout=timeout) as conn:
                 # Record successful acquisition time
                 acquire_duration = time.time() - start_time
                 MetricsHelper.record_db_pool_acquire(acquire_duration)
