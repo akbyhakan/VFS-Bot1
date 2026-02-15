@@ -196,6 +196,15 @@ class BookingDelays:
     BETWEEN_FIELDS_MAX: Final[float] = 0.8
 
 
+class AccountPoolConfig:
+    """Account pool configuration for shared VFS account management."""
+
+    COOLDOWN_SECONDS: Final[int] = 600  # 10 minutes
+    QUARANTINE_SECONDS: Final[int] = 1800  # 30 minutes
+    MAX_FAILURES: Final[int] = 3
+    MAX_CONCURRENT_MISSIONS: Final[int] = 5
+
+
 class LogEmoji:
     """Emoji constants for consistent logging."""
 

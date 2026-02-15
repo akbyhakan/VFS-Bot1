@@ -17,6 +17,9 @@ class TestSkipUsersWithoutPendingRequest:
             "bot": {
                 "screenshot_on_error": True,
                 "max_retries": 3,
+            },
+            "vfs": {
+                "mission": "fra",
             }
         }
         db = MagicMock()
@@ -29,6 +32,9 @@ class TestSkipUsersWithoutPendingRequest:
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
         page_state_detector = MagicMock()
+        browser_manager = MagicMock()
+        header_manager = MagicMock()
+        proxy_manager = MagicMock()
 
         return {
             "config": config,
@@ -42,6 +48,9 @@ class TestSkipUsersWithoutPendingRequest:
             "slot_analyzer": slot_analyzer,
             "session_recovery": session_recovery,
             "page_state_detector": page_state_detector,
+            "browser_manager": browser_manager,
+            "header_manager": header_manager,
+            "proxy_manager": proxy_manager,
         }
 
     @pytest.fixture(autouse=True)
@@ -105,6 +114,10 @@ class TestSkipUsersWithoutPendingRequest:
         mock_pending_request.country_code = "fra"
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(
             return_value=mock_pending_request
+        )
+        # Mock get_all_pending_for_user as AsyncMock
+        workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
+            return_value=[mock_pending_request]
         )
 
         # Mock successful login and no waitlist

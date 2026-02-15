@@ -204,6 +204,118 @@ class BookingWorkflow:
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
             raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
 
+    async def process_mission(
+        self,
+        page: Page,
+        account: Any,  # PooledAccount from account_pool module
+        appointment_requests: List[Any],  # List of AppointmentRequest entities
+    ) -> str:
+        """
+        Process a mission (country) using a pooled account.
+        
+        This method is called by SessionOrchestrator with an account from the pool
+        and a list of appointment requests for a specific country/mission.
+        
+        Args:
+            page: Playwright page object
+            account: PooledAccount from the pool
+            appointment_requests: List of AppointmentRequest entities for this mission
+            
+        Returns:
+            Result string: 'success', 'no_slot', 'login_fail', 'error', 'banned'
+        """
+        from src.utils.masking import mask_email
+        
+        masked_email = mask_email(account.email)
+        logger.info(
+            f"Processing mission with account {account.id} ({masked_email}), "
+            f"{len(appointment_requests)} request(s)"
+        )
+        
+        try:
+            # Login with pooled account
+            login_success = await self.auth_service.login(page, account.email, account.password)
+            if not login_success:
+                logger.error(f"Login failed for account {masked_email}")
+                return "login_fail"
+
+            # Wait for page to stabilize after login
+            state = await self.page_state_detector.wait_for_stable_state(
+                page,
+                expected_states=frozenset(
+                    {
+                        PageState.DASHBOARD,
+                        PageState.APPOINTMENT_PAGE,
+                        PageState.OTP_LOGIN,
+                        PageState.SESSION_EXPIRED,
+                        PageState.CLOUDFLARE_CHALLENGE,
+                    }
+                ),
+            )
+
+            if state.needs_recovery:
+                logger.error(f"Post-login error: {state.state.name}")
+                return "error"
+
+            # Check for waitlist mode
+            is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
+            if is_waitlist:
+                logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
+                return "no_slot"
+
+            # Process appointment requests
+            dedup_service = await get_deduplication_service()
+            
+            # Process each request
+            slot_found = False
+            for request in appointment_requests:
+                try:
+                    # Note: _process_single_request expects user dict with:
+                    # - id: for deduplication checking (not used in pool mode since no user context)
+                    # - category/subcategory: fallback if not in request (should be in request)
+                    # - email: for logging only
+                    # In pool mode, we provide minimal dict since requests have all needed fields
+                    minimal_user = {
+                        "id": 0,  # Dummy ID - dedup not used in pool mode per request
+                        "email": account.email,  # For logging
+                        "category": request.visa_category,  # From request
+                        "subcategory": request.visa_subcategory,  # From request
+                    }
+                    result = await self._process_single_request(
+                        page,
+                        minimal_user,
+                        request,
+                        dedup_service,
+                    )
+                    if result:
+                        slot_found = True
+                        # Mark request as completed
+                        await self.appointment_request_repo.update_status(
+                            request.id,
+                            "completed",
+                        )
+                except Exception as e:
+                    logger.error(f"Error processing request {request.id}: {e}")
+                    continue
+
+            if slot_found:
+                return "success"
+            else:
+                return "no_slot"
+
+        except LoginError as e:
+            logger.error(f"Login error for account {masked_email}: {e}")
+            return "login_fail"
+        except VFSBotError as e:
+            logger.error(f"VFS error for account {masked_email}: {e}")
+            # Check if it's a ban
+            if "banned" in str(e).lower() or "captcha" in str(e).lower():
+                return "banned"
+            return "error"
+        except Exception as e:
+            logger.error(f"Unexpected error for account {masked_email}: {e}", exc_info=True)
+            return "error"
+
     async def process_waitlist_flow(self, page: Page, user: UserDict) -> None:
         """
         Process waitlist flow for a user.

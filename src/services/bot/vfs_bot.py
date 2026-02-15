@@ -4,20 +4,19 @@ import asyncio
 import os
 import random
 import time
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from loguru import logger
 from playwright.async_api import Page
 
 from ...constants import CircuitBreaker as CircuitBreakerConfig
-from ...constants import Intervals, RateLimits, Timeouts
+from ...constants import Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
-from ...repositories import UserRepository
-from ...types.user import UserDict
+from ..account_pool import AccountPool
 from ..alert_service import AlertSeverity
 from ..notification import NotificationService
+from ..session_orchestrator import SessionOrchestrator
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .service_context import BotServiceContext, BotServiceFactory
@@ -33,15 +32,6 @@ try:
 except ImportError:
     _get_metrics = None  # type: ignore
     _HAS_METRICS = False
-
-
-@dataclass
-class UserCache:
-    """Cache for active users to support graceful degradation."""
-
-    users: List[Dict[str, Any]] = field(default_factory=list)
-    timestamp: float = 0.0
-    ttl: float = 300.0
 
 
 class VFSBot:
@@ -73,9 +63,6 @@ class VFSBot:
         self.health_checker = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
 
-        # Initialize repositories
-        self.user_repo = UserRepository(db)
-
         # Trigger event for immediate slot checks
         self._trigger_event = asyncio.Event()
 
@@ -87,9 +74,6 @@ class VFSBot:
 
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
-
-        # User cache for graceful degradation (Issue 3.3)
-        self._user_cache = UserCache(ttl=float(os.getenv("USERS_CACHE_TTL", "300.0")))
 
         # Initialize services context
         if services is None:
@@ -136,7 +120,16 @@ class VFSBot:
             proxy_manager=self.services.anti_detection.proxy_manager,
         )
 
-        logger.info("VFSBot initialized with modular components")
+        # Initialize account pool and session orchestrator
+        self.account_pool = AccountPool(db=self.db)
+        self.session_orchestrator = SessionOrchestrator(
+            db=self.db,
+            account_pool=self.account_pool,
+            booking_workflow=self.booking_workflow,
+            browser_manager=self.browser_manager,
+        )
+
+        logger.info("VFSBot initialized with account pool and session orchestrator")
 
     async def __aenter__(self) -> "VFSBot":
         """
@@ -408,47 +401,6 @@ class VFSBot:
             trigger_task.cancel()
             raise
 
-    async def _get_users_with_fallback(self) -> List[Dict[str, Any]]:
-        """
-        Get active users with fallback support for graceful degradation.
-
-        Uses cache as primary strategy with TTL. Only queries DB when cache
-        is empty or TTL expired. On DB failure, returns cached users if available.
-
-        Returns:
-            List of active users with decrypted passwords
-        """
-        # Check cache first - if valid and not expired, return immediately
-        cache_age = time.time() - self._user_cache.timestamp
-        if cache_age < self._user_cache.ttl and self._user_cache.users:
-            # Cache is fresh - return without DB query
-            return self._user_cache.users
-
-        # Cache expired or empty - query database
-        users = await self.db.execute_with_fallback(
-            query_func=self.user_repo.get_all_active_with_passwords,
-            fallback_value=None,
-            critical=False,
-        )
-
-        if users is not None:
-            # Success - update cache
-            self._user_cache.users = users
-            self._user_cache.timestamp = time.time()
-            return users
-
-        # DB failure - check if we have expired cache to fall back to
-        if self._user_cache.users:
-            logger.warning(
-                f"Database unavailable, using expired cached users (age: {cache_age:.1f}s, "
-                f"count: {len(self._user_cache.users)})"
-            )
-            return self._user_cache.users
-
-        # No cache available at all
-        logger.error("Database unavailable and no cached users available - returning empty list")
-        return []
-
     async def _ensure_db_connection(self) -> None:
         """
         Ensure database connection is healthy and attempt reconnection if needed.
@@ -528,89 +480,6 @@ class VFSBot:
         )
         return False
 
-    async def _process_batch(self, users: List[Dict[str, Any]]) -> None:
-        """
-        Process batch of users with parallel processing and error handling.
-
-        Creates tasks for each user, executes them in parallel with semaphore control,
-        analyzes results, and updates circuit breaker state based on error rate.
-        Sends alerts on batch errors.
-
-        Args:
-            users: List of user dictionaries to process
-        """
-        # Process users in parallel with semaphore limit
-        # Create named tasks for tracking
-        tasks = []
-        for user in users:
-            task = asyncio.create_task(
-                self._process_user_with_semaphore(user),
-                name=f"vfs_booking_user_{user.get('id', 'unknown')}",
-            )
-            self._active_booking_tasks.add(task)
-            task.add_done_callback(self._active_booking_tasks.discard)
-            tasks.append(task)
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Calculate error rate
-        errors_in_batch = sum(1 for r in results if isinstance(r, Exception))
-        total_users = len(users)
-        error_rate = errors_in_batch / total_users if total_users > 0 else 0.0
-
-        # Use error rate threshold from constants
-        threshold = CircuitBreakerConfig.BATCH_ERROR_RATE_THRESHOLD
-
-        if error_rate >= threshold:
-            # Systemic issue - high error rate (>= 50%)
-            logger.error(
-                f"High error rate in batch: {errors_in_batch}/{total_users} "
-                f"({error_rate:.1%}) >= threshold ({threshold:.1%})"
-            )
-            await self.circuit_breaker.record_failure()
-
-            # Record circuit breaker trip in metrics if it just opened
-            await self._record_circuit_breaker_trip()
-
-            # Send alert for batch errors (ERROR severity)
-            await self._send_alert_safe(
-                message=(
-                    f"High batch error rate: {errors_in_batch}/{total_users} "
-                    f"({error_rate:.1%}) - systemic issue"
-                ),
-                severity=AlertSeverity.ERROR,
-                metadata={
-                    "errors": errors_in_batch,
-                    "total_users": total_users,
-                    "error_rate": error_rate,
-                },
-            )
-        elif error_rate > 0:
-            # Isolated errors - low error rate (< 50%)
-            logger.warning(
-                f"Isolated errors in batch: {errors_in_batch}/{total_users} "
-                f"({error_rate:.1%}) < threshold ({threshold:.1%})"
-            )
-            # Record success to reset consecutive failure count
-            await self.circuit_breaker.record_success()
-
-            # Send alert for tracking (WARNING severity)
-            await self._send_alert_safe(
-                message=(
-                    f"Batch errors (isolated): {errors_in_batch}/{total_users} "
-                    f"({error_rate:.1%})"
-                ),
-                severity=AlertSeverity.WARNING,
-                metadata={
-                    "errors": errors_in_batch,
-                    "total_users": total_users,
-                    "error_rate": error_rate,
-                },
-            )
-        else:
-            # Perfect success - no errors
-            await self.circuit_breaker.record_success()
-
     async def _wait_adaptive_interval(self) -> bool:
         """
         Wait for adaptive interval before next check.
@@ -634,13 +503,9 @@ class VFSBot:
         return False
 
     async def run_bot_loop(self) -> None:
-        """Main bot loop to check for slots with circuit breaker and parallel processing."""
+        """Main bot loop using session orchestrator with account pool."""
         while self.running and not self.shutdown_event.is_set():
             try:
-                # Note: Token synchronization between VFSApiClient and SessionManager
-                # is handled by TokenSyncService when VFSApiClient is integrated.
-                # The TokenSyncService ensures proactive token refresh before expiry.
-
                 # Check circuit breaker
                 if not await self.circuit_breaker.can_execute():
                     if await self._handle_circuit_breaker_open():
@@ -654,35 +519,41 @@ class VFSBot:
                 # Ensure database connection is healthy
                 await self._ensure_db_connection()
 
-                # Get active users with fallback support
-                users = await self._get_users_with_fallback()
+                # Load accounts from pool (initialization check)
+                account_count = await self.account_pool.load_accounts()
+                
+                if account_count == 0:
+                    logger.warning("No available accounts in pool - waiting before retry")
+                    # Wait for accounts to become available or cooldown to expire
+                    wait_success = await self.account_pool.wait_for_available_account(timeout=60.0)
+                    if not wait_success:
+                        # Still no accounts - wait adaptive interval
+                        if await self._wait_adaptive_interval():
+                            break
+                        continue
 
-                if not users:
-                    logger.info("No active users to process")
-                    if await self._wait_adaptive_interval():
-                        break
-                    continue
+                # Run one session cycle
+                logger.info("Starting session cycle...")
+                session_summary = await self.session_orchestrator.run_session()
 
-                # Filter users to only those with pending appointment requests
-                # Use bulk query to avoid N+1 query problem
-                user_ids_with_pending = await self.booking_workflow.appointment_request_repo.get_user_ids_with_pending_requests()
-                users_with_requests = [user for user in users if user["id"] in user_ids_with_pending]
-
-                if not users_with_requests:
-                    logger.info("No users with pending appointment requests to process")
-                    if await self._wait_adaptive_interval():
-                        break
-                    continue
-
+                # Log session summary
                 logger.info(
-                    f"Processing {len(users_with_requests)}/{len(users)} users with pending requests "
-                    f"(max {RateLimits.CONCURRENT_USERS} concurrent)"
+                    f"Session {session_summary['session_number']} completed: "
+                    f"{session_summary['missions_processed']} mission(s) processed"
                 )
 
-                # Process users in batch
-                await self._process_batch(users_with_requests)
+                # Record success for circuit breaker
+                await self.circuit_breaker.record_success()
 
-                # Wait before next check
+                # Get pool status for monitoring
+                pool_status = await self.account_pool.get_pool_status()
+                logger.info(
+                    f"Pool status: {pool_status['available']} available, "
+                    f"{pool_status['in_cooldown']} in cooldown, "
+                    f"{pool_status['quarantined']} quarantined"
+                )
+
+                # Wait before next session
                 if await self._wait_adaptive_interval():
                     break
 
@@ -713,30 +584,6 @@ class VFSBot:
                     if await self._wait_or_shutdown(Intervals.ERROR_RECOVERY * jitter):
                         logger.info("Shutdown requested during error recovery wait")
                         break
-
-    async def _process_user_with_semaphore(self, user: UserDict) -> None:
-        """
-        Process user with semaphore for concurrency control.
-
-        Args:
-            user: User dictionary from database
-        """
-        async with self.services.core.user_semaphore:
-            page = await self.browser_manager.new_page()
-            try:
-                await self.booking_workflow.process_user(page, user)
-            finally:
-                # Always close the page to prevent resource leak
-                try:
-                    await page.close()
-                except Exception as close_error:
-                    logger.error(f"Failed to close page: {close_error}")
-                    # Force browser restart on next cycle to prevent orphan page accumulation
-                    self.browser_manager.force_restart_on_next_cycle()
-                    logger.warning(
-                        "Browser restart forced due to page close failure - "
-                        "orphan pages may cause memory leaks"
-                    )
 
     async def book_appointment_for_request(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """

@@ -1,5 +1,6 @@
 """Repository pattern implementation."""
 
+from .account_pool_repository import AccountPoolRepository
 from .appointment_history_repository import AppointmentHistory, AppointmentHistoryRepository
 from .appointment_repository import Appointment, AppointmentRepository
 from .appointment_request_repository import AppointmentRequest, AppointmentRequestRepository
@@ -16,6 +17,7 @@ from .user_write_repository import UserWriteRepository
 from .webhook_repository import Webhook, WebhookRepository
 
 __all__ = [
+    "AccountPoolRepository",
     "BaseRepository",
     "UserRepository",
     "User",
