@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const navigation = [
   { name: 'Kontrol Paneli', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
@@ -31,15 +31,17 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const location = useLocation();
+  const prevPathnameRef = useRef(location.pathname);
   
   // Close sidebar on route change (mobile)
   useEffect(() => {
-    if (isOpen && onClose) {
-      onClose();
+    if (location.pathname !== prevPathnameRef.current) {
+      prevPathnameRef.current = location.pathname;
+      if (isOpen && onClose) {
+        onClose();
+      }
     }
-    // Only trigger on route change, not on isOpen/onClose changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, isOpen, onClose]);
   
   return (
     <aside className={cn(

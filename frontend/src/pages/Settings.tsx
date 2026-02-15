@@ -504,7 +504,7 @@ export function Settings() {
                   <Button
                     variant="outline"
                     leftIcon={<Zap className="w-4 h-4" />}
-                    className="w-full justify-center"
+                    className="w-full" // Note: Button doesn't have fullWidth prop yet
                     onClick={async () => {
                       try {
                         const response = await fetch('/api/webhook/test', {
@@ -591,7 +591,7 @@ export function Settings() {
                     leftIcon={<Save className="w-4 h-4" />}
                     onClick={handleSaveCooldown}
                     isLoading={cooldownSaving}
-                    className="w-full justify-center"
+                    className="w-full" // Note: Button doesn't have fullWidth prop yet
                   >
                     {cooldownSaving ? 'Kaydediliyor...' : 'Kaydet'}
                   </Button>
