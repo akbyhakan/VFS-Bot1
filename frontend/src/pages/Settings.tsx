@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Settings as SettingsIcon, CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe } from 'lucide-react';
+import { CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe, Timer } from 'lucide-react';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import { proxyApi, type ProxyStats } from '@/services/proxy';
+import { getBotSettings, updateBotSettings, type BotSettingsResponse } from '@/services/bot';
 import type { WebhookUrls } from '@/types/payment';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
@@ -25,6 +26,13 @@ export function Settings() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Bot settings state
+  const [botSettings, setBotSettings] = useState<BotSettingsResponse | null>(null);
+  const [cooldownMinutes, setCooldownMinutes] = useState<number>(10);
+  const [cooldownSaving, setCooldownSaving] = useState(false);
+  const [cooldownLoaded, setCooldownLoaded] = useState(false);
+  const [initialCooldown, setInitialCooldown] = useState<number>(10);
+  
   // Form state
   const [formData, setFormData] = useState({
     card_holder_name: '',
@@ -42,7 +50,23 @@ export function Settings() {
     
     // Load proxy stats
     loadProxyStats();
+    
+    // Load bot settings
+    loadBotSettings();
   }, []);
+
+  const loadBotSettings = async () => {
+    try {
+      const settings = await getBotSettings();
+      setBotSettings(settings);
+      setCooldownMinutes(settings.cooldown_minutes);
+      setInitialCooldown(settings.cooldown_minutes);
+      setCooldownLoaded(true);
+    } catch (error: unknown) {
+      logger.error('Failed to load bot settings:', error);
+      setCooldownLoaded(true);
+    }
+  };
 
   const loadProxyStats = async () => {
     try {
@@ -120,6 +144,28 @@ export function Settings() {
       logger.error('Failed to clear proxies:', error);
       toast.error('Proxy listesi temizlenemedi');
     }
+  };
+
+  const handleSaveCooldown = async () => {
+    try {
+      setCooldownSaving(true);
+      await updateBotSettings({ cooldown_minutes: cooldownMinutes });
+      setInitialCooldown(cooldownMinutes);
+      toast.success('Cooldown süresi güncellendi');
+      // Reload settings to confirm
+      await loadBotSettings();
+    } catch (error: unknown) {
+      logger.error('Failed to update cooldown:', error);
+      toast.error('Cooldown süresi güncellenemedi');
+    } finally {
+      setCooldownSaving(false);
+    }
+  };
+
+  // Helper function for slider gradient
+  const getSliderGradient = (value: number, min: number, max: number) => {
+    const percentage = ((value - min) / (max - min)) * 100;
+    return `linear-gradient(to right, #7c3aed 0%, #7c3aed ${percentage}%, #374151 ${percentage}%, #374151 100%)`;
   };
 
   const handleEdit = () => {
@@ -485,15 +531,68 @@ export function Settings() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <SettingsIcon className="w-5 h-5" />
+              <Timer className="w-5 h-5" />
               Bot Ayarları
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-dark-400 text-sm">
-              Bot ayarları şu anda backend tarafından yönetilmektedir. Gelecek sürümlerde
-              bu panelden düzenlenebilecek.
-            </p>
+            {!cooldownLoaded ? (
+              <p className="text-dark-400 text-sm">Yükleniyor...</p>
+            ) : (
+              <div className="space-y-4">
+                {/* Cooldown Setting */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-3">
+                    Cooldown Süresi: {cooldownMinutes} dakika
+                  </label>
+                  <input
+                    type="range"
+                    min="5"
+                    max="60"
+                    step="1"
+                    value={cooldownMinutes}
+                    onChange={(e) => setCooldownMinutes(Number(e.target.value))}
+                    className="w-full h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+                    style={{
+                      background: getSliderGradient(cooldownMinutes, 5, 60)
+                    }}
+                  />
+                  <div className="flex justify-between text-xs text-dark-400 mt-1">
+                    <span>5 dk</span>
+                    <span>60 dk</span>
+                  </div>
+                  <p className="text-dark-400 text-sm mt-3">
+                    Hesap kullanımı sonrası bekleme süresi
+                  </p>
+                </div>
+
+                {/* Display other settings (read-only) */}
+                {botSettings && (
+                  <div className="pt-4 border-t border-dark-700 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-dark-400">Karantina Süresi:</span>
+                      <span className="text-white">{botSettings.quarantine_minutes} dakika</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-dark-400">Maksimum Başarısızlık:</span>
+                      <span className="text-white">{botSettings.max_failures}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Save Button */}
+                {cooldownMinutes !== initialCooldown && (
+                  <button
+                    onClick={handleSaveCooldown}
+                    disabled={cooldownSaving}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {cooldownSaving ? 'Kaydediliyor...' : 'Kaydet'}
+                  </button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

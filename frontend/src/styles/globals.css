@@ -107,6 +107,15 @@
   .status-dot-idle {
     @apply status-dot bg-yellow-500;
   }
+
+  /* Range slider */
+  .slider-thumb::-webkit-slider-thumb {
+    @apply appearance-none w-5 h-5 bg-primary-600 rounded-full cursor-pointer hover:bg-primary-700 transition-colors;
+  }
+
+  .slider-thumb::-moz-range-thumb {
+    @apply appearance-none w-5 h-5 bg-primary-600 rounded-full cursor-pointer hover:bg-primary-700 transition-colors border-0;
+  }
 }
 
 @layer utilities {

@@ -156,6 +156,15 @@ class SessionOrchestrator:
             f"(duration: {duration:.1f}s, missions: {len(missions)}) =========="
         )
 
+        # Restart browser after session for fresh state
+        if missions:  # Only restart if we actually processed missions
+            try:
+                logger.info("Restarting browser after session for fresh state...")
+                await self.browser_manager.restart_fresh()
+                logger.info("Browser restarted successfully after session")
+            except Exception as restart_error:
+                logger.warning(f"Failed to restart browser after session: {restart_error}")
+
         return summary
 
     async def _process_mission_with_semaphore(

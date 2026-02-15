@@ -284,6 +284,45 @@ class BotController:
                 logger.error("Bot reference lost during trigger attempt")
                 return {"status": "error", "message": "Bot is no longer available"}
 
+    async def update_cooldown(self, cooldown_seconds: int) -> Dict[str, Any]:
+        """
+        Update the account pool cooldown duration at runtime.
+
+        Args:
+            cooldown_seconds: New cooldown duration in seconds
+
+        Returns:
+            Status dictionary with result
+        """
+        async with self._async_lock:
+            if self._bot and self._bot.account_pool:
+                self._bot.account_pool.cooldown_seconds = cooldown_seconds
+                logger.info(f"Cooldown updated to {cooldown_seconds}s via dashboard")
+                return {"status": "success", "cooldown_seconds": cooldown_seconds}
+            return {"status": "error", "message": "Bot not running or account pool not initialized"}
+
+    def get_cooldown_settings(self) -> Dict[str, int]:
+        """
+        Get current cooldown settings.
+
+        Returns:
+            Dictionary with cooldown settings
+        """
+        from src.constants import AccountPoolConfig
+
+        # If bot is running, get from account pool, otherwise use default
+        if self._bot and self._bot.account_pool:
+            cooldown_seconds = self._bot.account_pool.cooldown_seconds
+        else:
+            cooldown_seconds = AccountPoolConfig.COOLDOWN_SECONDS
+
+        return {
+            "cooldown_seconds": cooldown_seconds,
+            "cooldown_minutes": round(cooldown_seconds / 60),  # Round to nearest minute
+            "quarantine_minutes": AccountPoolConfig.QUARANTINE_SECONDS // 60,
+            "max_failures": AccountPoolConfig.MAX_FAILURES,
+        }
+
     def get_status(self) -> Dict[str, Any]:
         """
         Get current bot status.
