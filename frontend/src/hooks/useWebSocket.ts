@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { websocketService } from '@/services/websocket';
 import { useBotStore } from '@/store/botStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import type { WebSocketMessage, LogEntry } from '@/types/api';
 import { isBotStatusData, isLogEntry, isStatsData } from '@/utils/typeGuards';
 import { logger } from '@/utils/logger';
@@ -10,6 +11,7 @@ const { LOG_BUFFER_TIME, STATUS_THROTTLE_TIME } = WEBSOCKET_THROTTLE;
 
 export function useWebSocket() {
   const { updateStatus, addLogs, setConnected } = useBotStore();
+  const { addNotification } = useNotificationStore();
   
   // Buffers for batching
   const logBuffer = useRef<LogEntry[]>([]);
@@ -52,12 +54,37 @@ export function useWebSocket() {
             if (!statusTimerRef.current) {
               statusTimerRef.current = setTimeout(flushStatus, STATUS_THROTTLE_TIME);
             }
+            
+            // Create notifications for status changes
+            const status = message.data.status;
+            if (status === 'running') {
+              addNotification({
+                title: 'Bot Başlatıldı',
+                message: 'VFS Bot başarıyla çalışmaya başladı',
+                type: 'success',
+              });
+            } else if (status === 'stopped') {
+              addNotification({
+                title: 'Bot Durduruldu',
+                message: 'VFS Bot durduruldu',
+                type: 'info',
+              });
+            }
           }
           break;
         case 'log':
           if (isLogEntry(message.data)) {
             // Buffer logs for batch addition with bounds checking
             logBuffer.current.push(message.data);
+            
+            // Check for slot found notification
+            if (message.data.level === 'SUCCESS' && message.data.message.toLowerCase().includes('slot')) {
+              addNotification({
+                title: 'Slot Bulundu!',
+                message: message.data.message,
+                type: 'success',
+              });
+            }
             
             // Flush immediately if buffer is too large to prevent memory leak
             if (logBuffer.current.length >= MAX_LOG_BUFFER_SIZE) {
@@ -82,6 +109,21 @@ export function useWebSocket() {
             }
           }
           break;
+        case 'notification':
+          // Handle explicit notification messages
+          if (message.data && typeof message.data === 'object') {
+            const notificationData = message.data as {
+              title?: string;
+              message?: string;
+              type?: 'success' | 'error' | 'warning' | 'info';
+            };
+            addNotification({
+              title: notificationData.title || 'Bildirim',
+              message: notificationData.message || '',
+              type: notificationData.type || 'info',
+            });
+          }
+          break;
         case 'ping':
           // Respond to ping to keep connection alive
           websocketService.send({ type: 'pong' });
@@ -90,7 +132,7 @@ export function useWebSocket() {
           logger.warn('Unknown message type:', message.type);
       }
     },
-    [flushLogs, flushStatus]
+    [flushLogs, flushStatus, addNotification]
   );
 
   const handleOpen = useCallback(() => {

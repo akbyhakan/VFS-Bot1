@@ -260,7 +260,7 @@ export default function AppointmentRequest() {
                   id="person-count"
                   value={personCount}
                   onChange={(e) => handlePersonCountChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg bg-dark-800 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   aria-describedby="person-count-hint"
                 >
                   {[1, 2, 3, 4, 5, 6].map((num) => (
@@ -287,7 +287,7 @@ export default function AppointmentRequest() {
                     setSelectedCountry(e.target.value);
                     setSelectedCentres([]);
                   }}
-                  className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white"
+                  className="w-full px-3 py-2 border border-dark-600 rounded-lg bg-dark-800 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   aria-required="true"
                   aria-invalid={!!errors.country}
                   aria-describedby={errors.country ? 'country-error' : undefined}
@@ -436,17 +436,17 @@ export default function AppointmentRequest() {
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="p-4 border border-gray-600 rounded-md bg-gray-800"
+                    className="p-4 border border-dark-600 rounded-md bg-dark-800"
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-semibold">
                           Talep #{request.id} - {request.status}
                         </p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-dark-400">
                           Ülke: {request.country_code} | {request.person_count} Kişi
                         </p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-dark-400">
                           Tarih: {new Date(request.created_at).toLocaleDateString('tr-TR')}
                         </p>
                       </div>
@@ -482,7 +482,7 @@ export default function AppointmentRequest() {
               </div>
             )
           ) : (
-            <p className="text-gray-400 text-center">Henüz talep yok</p>
+            <p className="text-dark-400 text-center">Henüz talep yok</p>
           )}
         </CardContent>
       </Card>
@@ -593,7 +593,7 @@ function PersonForm({
   errors: Record<string, string>;
 }) {
   return (
-    <div className="space-y-4 p-4 border border-gray-600 rounded-md bg-gray-800">
+    <div className="space-y-4 p-4 border border-dark-600 rounded-md bg-dark-800">
       <h3 className="text-lg font-semibold flex items-center gap-2">
         <User className="h-5 w-5" />
         Kişi {index + 1} Bilgileri

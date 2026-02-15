@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe, Timer } from 'lucide-react';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
@@ -272,13 +273,13 @@ export function Settings() {
               <div className="text-center py-8">
                 <CreditCard className="w-12 h-12 text-dark-500 mx-auto mb-4" />
                 <p className="text-dark-400 mb-4">Henüz kayıtlı kredi kartı yok</p>
-                <button
+                <Button
+                  variant="primary"
+                  leftIcon={<Plus className="w-5 h-5" />}
                   onClick={handleEdit}
-                  className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 mx-auto"
                 >
-                  <Plus className="w-5 h-5" />
                   Yeni Kart Ekle
-                </button>
+                </Button>
               </div>
             ) : !isEditing && card ? (
               <div className="space-y-4">
@@ -297,21 +298,21 @@ export function Settings() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <button
+                  <Button
+                    variant="primary"
+                    leftIcon={<Edit className="w-4 h-4" />}
                     onClick={handleEdit}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                   >
-                    <Edit className="w-4 h-4" />
                     Düzenle
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="danger"
+                    leftIcon={<Trash2 className="w-4 h-4" />}
                     onClick={handleDelete}
-                    disabled={deleting}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    isLoading={deleting}
                   >
-                    <Trash2 className="w-4 h-4" />
                     {deleting ? 'Siliniyor...' : 'Sil'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : isEditing || !card ? (
@@ -414,22 +415,22 @@ export function Settings() {
                   )}
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <button
+                  <Button
+                    variant="primary"
+                    leftIcon={<Save className="w-4 h-4" />}
                     onClick={handleSave}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    isLoading={saving}
                   >
-                    <Save className="w-4 h-4" />
                     {saving ? 'Kaydediliyor...' : 'Kaydet'}
-                  </button>
+                  </Button>
                   {card && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      leftIcon={<X className="w-4 h-4" />}
                       onClick={handleCancel}
-                      className="flex items-center gap-2 px-4 py-2 bg-dark-600 text-white rounded hover:bg-dark-700"
                     >
-                      <X className="w-4 h-4" />
                       İptal
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -460,9 +461,10 @@ export function Settings() {
                       value={webhookUrls.appointment_webhook}
                       className="flex-1 px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white text-sm font-mono"
                     />
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => copyToClipboard(webhookUrls.appointment_webhook, 'appointment')}
-                      className="px-3 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                       title="Kopyala"
                     >
                       {copiedField === 'appointment' ? (
@@ -470,7 +472,7 @@ export function Settings() {
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
@@ -482,9 +484,10 @@ export function Settings() {
                       value={webhookUrls.payment_webhook}
                       className="flex-1 px-3 py-2 border border-dark-600 rounded bg-dark-800 text-white text-sm font-mono"
                     />
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => copyToClipboard(webhookUrls.payment_webhook, 'payment')}
-                      className="px-3 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                       title="Kopyala"
                     >
                       {copiedField === 'payment' ? (
@@ -492,13 +495,16 @@ export function Settings() {
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {/* Webhook Test Butonu */}
                 <div className="pt-4 border-t border-dark-700">
-                  <button
+                  <Button
+                    variant="outline"
+                    leftIcon={<Zap className="w-4 h-4" />}
+                    className="w-full justify-center"
                     onClick={async () => {
                       try {
                         const response = await fetch('/api/webhook/test', {
@@ -514,11 +520,9 @@ export function Settings() {
                         toast.info('Webhook test edilemedi - Lütfen backend\'i kontrol edin');
                       }
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-dark-700 text-white rounded hover:bg-dark-600 w-full justify-center"
                   >
-                    <Zap className="w-4 h-4" />
                     Webhook Bağlantısını Test Et
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -582,14 +586,15 @@ export function Settings() {
 
                 {/* Save Button */}
                 {cooldownMinutes !== initialCooldown && (
-                  <button
+                  <Button
+                    variant="primary"
+                    leftIcon={<Save className="w-4 h-4" />}
                     onClick={handleSaveCooldown}
-                    disabled={cooldownSaving}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    isLoading={cooldownSaving}
+                    className="w-full justify-center"
                   >
-                    <Save className="w-4 h-4" />
                     {cooldownSaving ? 'Kaydediliyor...' : 'Kaydet'}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -677,13 +682,13 @@ export function Settings() {
                 }}
                 className="hidden"
               />
-              <button
+              <Button
+                variant="primary"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={proxyUploading}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                isLoading={proxyUploading}
               >
                 {proxyUploading ? 'Yükleniyor...' : 'Dosya Seç'}
-              </button>
+              </Button>
               <p className="text-dark-400 text-xs mt-4">
                 Format: endpoint (server:port:user:pass)
               </p>
@@ -701,13 +706,14 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={handleClearProxies}
-                  className="p-2 text-red-500 hover:bg-red-900/20 rounded"
                   title="Temizle"
                 >
                   <Trash2 className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
             )}
           </CardContent>

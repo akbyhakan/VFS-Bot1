@@ -63,7 +63,7 @@ export default function AuditLogs() {
 
   const handleExportCSV = () => {
     if (!filteredLogs || filteredLogs.length === 0) {
-      toast.error('No logs to export');
+      toast.error('Dışa aktarılacak kayıt yok');
       return;
     }
 
@@ -111,16 +111,16 @@ export default function AuditLogs() {
       link.click();
       document.body.removeChild(link);
 
-      toast.success('Audit logs exported successfully');
+      toast.success('Denetim logları başarıyla dışa aktarıldı');
     } catch (error) {
-      toast.error('Failed to export audit logs');
+      toast.error('Denetim logları dışa aktarılamadı');
       console.error('Export error:', error);
     }
   };
 
   const handleExportJSON = () => {
     if (!filteredLogs || filteredLogs.length === 0) {
-      toast.error('No logs to export');
+      toast.error('Dışa aktarılacak kayıt yok');
       return;
     }
 
@@ -136,9 +136,9 @@ export default function AuditLogs() {
       link.click();
       document.body.removeChild(link);
 
-      toast.success('Audit logs exported successfully');
+      toast.success('Denetim logları başarıyla dışa aktarıldı');
     } catch (error) {
-      toast.error('Failed to export audit logs');
+      toast.error('Denetim logları dışa aktarılamadı');
       console.error('Export error:', error);
     }
   };
