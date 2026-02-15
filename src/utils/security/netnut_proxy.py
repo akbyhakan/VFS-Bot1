@@ -310,7 +310,8 @@ class NetNutProxyManager:
         # Try to find a non-failed proxy, wrapping around if needed
         while attempts < total_proxies:
             # Get proxy at current allocation index
-            proxy = self.proxies[self._allocation_index]
+            current_index = self._allocation_index
+            proxy = self.proxies[current_index]
             
             # Advance allocation index for next call (with wrap-around)
             self._allocation_index = (self._allocation_index + 1) % total_proxies
@@ -319,8 +320,7 @@ class NetNutProxyManager:
             if proxy["endpoint"] not in self.failed_proxies:
                 logger.info(
                     f"Allocated proxy {mask_proxy_password(proxy['endpoint'])} "
-                    f"(allocation index: "
-                    f"{self._allocation_index - 1 if self._allocation_index > 0 else total_proxies - 1})"
+                    f"(allocation index: {current_index})"
                 )
                 return proxy
             
