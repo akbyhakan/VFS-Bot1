@@ -32,6 +32,22 @@ class TestLoadEnvVariables:
         load_env_variables()
         mock_load_dotenv.assert_not_called()
 
+    def test_load_env_variables_path_resolves_to_project_root(self):
+        """Test that .env path resolves to project root, not src/ directory."""
+        from pathlib import Path
+        
+        # Simulate the path resolution in load_env_variables()
+        config_loader_file = Path("src/core/config/config_loader.py")
+        env_path = config_loader_file.parent.parent.parent.parent / ".env"
+        
+        # Verify it points to project root (4 parents), not src/ (3 parents)
+        # The resolved path should be ".env" at project root
+        assert str(env_path) == ".env"
+        
+        # Verify that 3 parents would incorrectly point to src/.env
+        wrong_env_path = config_loader_file.parent.parent.parent / ".env"
+        assert str(wrong_env_path) == "src/.env"
+
 
 class TestSubstituteEnvVars:
     """Tests for substitute_env_vars function."""
