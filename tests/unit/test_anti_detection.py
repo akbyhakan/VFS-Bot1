@@ -268,7 +268,7 @@ class TestProxyManager:
         config = {"enabled": False}
         manager = ProxyManager(config)
 
-        assert manager.get_random_proxy() is None
+        assert manager.rotate_proxy() is None
         assert manager.get_playwright_proxy() is None
 
 

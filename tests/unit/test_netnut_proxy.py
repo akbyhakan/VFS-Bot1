@@ -91,22 +91,6 @@ gw.netnut.net:5959:username2:password2"""
         assert count == 2
         assert len(proxy_manager.proxies) == 2
 
-    def test_get_random_proxy(self, proxy_manager, sample_csv_content):
-        """Test getting a random proxy."""
-        proxy_manager.load_from_csv_content(sample_csv_content)
-
-        proxy = proxy_manager.get_random_proxy()
-
-        assert proxy is not None
-        assert "server" in proxy
-        assert "username" in proxy
-        assert "password" in proxy
-
-    def test_get_random_proxy_empty_list(self, proxy_manager):
-        """Test getting random proxy from empty list."""
-        proxy = proxy_manager.get_random_proxy()
-        assert proxy is None
-
     def test_rotate_proxy(self, proxy_manager, sample_csv_content):
         """Test proxy rotation."""
         proxy_manager.load_from_csv_content(sample_csv_content)
@@ -128,21 +112,22 @@ gw.netnut.net:5959:username2:password2"""
         assert proxy["endpoint"] in proxy_manager.failed_proxies
         assert len(proxy_manager.failed_proxies) == 1
 
-    def test_get_random_proxy_skip_failed(self, proxy_manager, sample_csv_content):
-        """Test that random proxy skips failed ones."""
+    def test_rotate_proxy_skip_failed(self, proxy_manager, sample_csv_content):
+        """Test that rotation skips failed ones sequentially."""
         proxy_manager.load_from_csv_content(sample_csv_content)
 
         # Mark first two as failed
         proxy_manager.mark_proxy_failed(proxy_manager.proxies[0])
         proxy_manager.mark_proxy_failed(proxy_manager.proxies[1])
 
-        # Get random should return the third one
-        proxy = proxy_manager.get_random_proxy()
+        # Rotate should skip to third one
+        proxy = proxy_manager.rotate_proxy()
 
         assert proxy is not None
         assert proxy["endpoint"] not in proxy_manager.failed_proxies
+        assert proxy["endpoint"] == proxy_manager.proxies[2]["endpoint"]
 
-    def test_get_random_proxy_all_failed_resets(self, proxy_manager, sample_csv_content):
+    def test_rotate_proxy_all_failed_resets(self, proxy_manager, sample_csv_content):
         """Test that when all proxies fail, the failed list resets."""
         proxy_manager.load_from_csv_content(sample_csv_content)
 
@@ -152,8 +137,8 @@ gw.netnut.net:5959:username2:password2"""
 
         assert len(proxy_manager.failed_proxies) == 3
 
-        # Getting random should reset failed list
-        proxy = proxy_manager.get_random_proxy()
+        # Rotating should reset failed list
+        proxy = proxy_manager.rotate_proxy()
 
         assert proxy is not None
         assert len(proxy_manager.failed_proxies) == 0
