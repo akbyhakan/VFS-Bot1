@@ -68,7 +68,7 @@ def _is_production_environment(env: str) -> bool:
 def load_env_variables() -> None:
     """Load environment variables from .env file."""
     # Load from project root
-    env_path = Path(__file__).parent.parent.parent / ".env"
+    env_path = Path(__file__).parent.parent.parent.parent / ".env"
 
     if env_path.exists():
         load_dotenv(env_path)

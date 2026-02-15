@@ -1,5 +1,6 @@
 """Custom exception classes for VFS Bot."""
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -38,7 +39,6 @@ class VFSBotError(Exception):
         if class_name.endswith("Error"):
             class_name = class_name[:-5]
         # Insert hyphens before uppercase letters and convert to lowercase
-        import re
         kebab_case = re.sub(r'(?<!^)(?=[A-Z])', '-', class_name).lower()
         return f"urn:vfsbot:error:{kebab_case}"
 
@@ -52,7 +52,6 @@ class VFSBotError(Exception):
         """
         class_name = self.__class__.__name__
         # Insert spaces before uppercase letters
-        import re
         spaced = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
         return spaced
 

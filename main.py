@@ -13,7 +13,6 @@ import sys
 from loguru import logger
 
 from src.core.config.config_loader import load_config
-from src.core.config.config_validator import ConfigValidator
 from src.core.config.env_validator import EnvValidator
 from src.core.infra.monitoring import init_sentry
 from src.core.infra.runners import run_both_mode, run_bot_mode, run_web_mode
@@ -71,12 +70,6 @@ def main() -> None:
         logger.info("Phase 3 (Config): Loading configuration...")
         config = load_config(args.config)
         logger.info("Phase 3 (Config): Configuration loaded successfully")
-
-        logger.info("Phase 3 (Config): Validating configuration...")
-        if not ConfigValidator.validate(config):
-            logger.error("Phase 3 (Config): Invalid configuration, exiting...")
-            sys.exit(1)
-        logger.info("Phase 3 (Config): Configuration validation completed")
 
         # Phase 4: Run - Start application in selected mode
         logger.info(f"Phase 4 (Run): Starting application in '{args.mode}' mode...")

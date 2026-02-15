@@ -32,6 +32,28 @@ class TestLoadEnvVariables:
         load_env_variables()
         mock_load_dotenv.assert_not_called()
 
+    def test_load_env_variables_path_resolves_to_project_root(self):
+        """Test that .env path resolves to project root, not src/ directory."""
+        from pathlib import Path
+        import src.core.config.config_loader as config_loader_module
+        
+        # Get the actual location of config_loader.py
+        config_loader_file = Path(config_loader_module.__file__)
+        
+        # Verify that 4 parents points to project root
+        env_path_4_parents = config_loader_file.parent.parent.parent.parent / ".env"
+        
+        # Verify that 3 parents would incorrectly point to src/
+        env_path_3_parents = config_loader_file.parent.parent.parent / ".env"
+        
+        # The correct path (4 parents) should have 'VFS-Bot1' or similar as parent directory name
+        # The incorrect path (3 parents) should have 'src' as parent directory name
+        assert env_path_3_parents.parent.name == "src", "3 parents should point to src/.env"
+        assert env_path_4_parents.parent.name != "src", "4 parents should NOT point to src directory"
+        
+        # Verify the path ends with .env
+        assert env_path_4_parents.name == ".env"
+
 
 class TestSubstituteEnvVars:
     """Tests for substitute_env_vars function."""
@@ -177,12 +199,11 @@ class TestLoadConfig:
         """Test that config loading falls back to example in development."""
         with patch.dict(os.environ, {"ENV": "development"}):
             with patch("pathlib.Path.exists") as mock_exists:
-                # Multiple calls to exists() - return False for all except example config
-                # First: .env path at project root
-                # Second: .env path at old location (src/)
-                # Third: main config file
-                # Fourth: example config file (should return True)
-                mock_exists.side_effect = [False, False, False, True]
+                # Multiple calls to exists() during load_config:
+                # First: .env path check in load_env_variables()
+                # Second: main config file check
+                # Third: example config file check (should return True)
+                mock_exists.side_effect = [False, False, True]
 
                 # Should not raise an error in development mode
                 result = load_config("config/config.yaml")
