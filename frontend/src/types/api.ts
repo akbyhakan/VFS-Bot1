@@ -78,7 +78,7 @@ export interface HealthCheck {
 }
 
 export interface WebSocketMessage {
-  type: 'status' | 'log' | 'stats' | 'ping' | 'ack';
+  type: 'status' | 'log' | 'stats' | 'ping' | 'ack' | 'notification';
   data: Record<string, unknown>;
 }
 

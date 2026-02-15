@@ -37,14 +37,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     if (isOpen && onClose) {
       onClose();
     }
-  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Only trigger on route change, not on isOpen/onClose changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   
   return (
     <aside className={cn(
       'fixed inset-y-0 left-0 z-40 w-64 glass border-r border-dark-700 transform transition-transform duration-300 ease-in-out',
       'md:relative md:translate-x-0',
       isOpen ? 'translate-x-0' : '-translate-x-full'
-    )}>
     )}>
       <div className="flex-1 flex flex-col min-h-0">
         {/* Logo & Close Button */}
