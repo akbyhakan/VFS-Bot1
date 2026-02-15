@@ -2,12 +2,13 @@
 
 import asyncio
 import random
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from playwright.async_api import Page
 
 from ...core.sensitive import SensitiveDict
+from ..otp_webhook import get_otp_service
 from .booking_validator import BookingValidator
 from .form_filler import FormFiller
 from .payment_handler import PaymentHandler
@@ -119,6 +120,100 @@ class BookingOrchestrator:
 
         logger.info("Review and Pay completed")
 
+    def _get_otp_service(self):
+        """Get OTP service singleton instance."""
+        return get_otp_service()
+
+    async def _handle_booking_otp_if_present(self, page: Page) -> bool:
+        """
+        Handle booking OTP verification if present (country-specific).
+
+        This method checks if the booking OTP screen is visible and handles
+        the full OTP flow: generate → input → verify → continue.
+
+        Args:
+            page: Playwright page
+
+        Returns:
+            True if OTP handled successfully or not present, False on failure
+        """
+        try:
+            # Check if OTP generate button is visible
+            otp_generate_button = page.locator(
+                'span.mdc-button__label:has-text("Tek Seferlik Şifre (OTP) Oluştur"), '
+                'span.mdc-button__label:has-text("Generate One Time Password")'
+            ).first
+
+            is_visible = await otp_generate_button.is_visible()
+            if not is_visible:
+                logger.debug("Booking OTP screen not present - skipping (country doesn't require it)")
+                return True
+
+            logger.info("Booking OTP screen detected - starting OTP flow")
+
+            # Step 1: Click generate OTP button
+            logger.info("Clicking 'Generate OTP' button...")
+            await otp_generate_button.click()
+            await asyncio.sleep(2)
+
+            # Step 2: Wait for OTP input field to appear
+            logger.info("Waiting for OTP input field...")
+            otp_input = page.locator('input[placeholder="OTP"][maxlength="6"]')
+            await otp_input.wait_for(state="visible", timeout=10000)
+            logger.info("OTP input field visible")
+
+            # Step 3: Get OTP from service (email/SMS)
+            logger.info("Waiting for OTP from email/SMS (timeout: 120s)...")
+            otp_service = self._get_otp_service()
+            otp_code = await otp_service.wait_for_appointment_otp(timeout=120)
+
+            if not otp_code:
+                logger.error("Failed to receive booking OTP within timeout")
+                return False
+
+            logger.info(f"Received booking OTP: {otp_code[:2]}****")
+
+            # Step 4: Fill OTP into input field
+            logger.info("Filling OTP into input field...")
+            await otp_input.fill(otp_code)
+            await asyncio.sleep(1)
+
+            # Step 5: Click verify button
+            logger.info("Clicking 'Verify' button...")
+            verify_button = page.locator(
+                'span.mdc-button__label:has-text("Doğrula"), '
+                'span.mdc-button__label:has-text("Verify")'
+            ).first
+            await verify_button.click()
+            await asyncio.sleep(2)
+
+            # Step 6: Wait for success message
+            logger.info("Waiting for OTP verification success message...")
+            success_message = page.locator(
+                "text=/OTP doğrulaması başarılı|OTP verification successful/i"
+            )
+            await success_message.wait_for(state="visible", timeout=10000)
+            logger.info("OTP verification successful")
+
+            # Step 7: Click continue button
+            logger.info("Clicking 'Continue' button...")
+            continue_button = page.locator(
+                'span.mdc-button__label:has-text("Devam Et"), '
+                'span.mdc-button__label:has-text("Continue")'
+            ).first
+            await continue_button.click()
+            await asyncio.sleep(1)
+
+            # Step 8: Wait for overlay to disappear
+            await self.wait_for_overlay(page)
+
+            logger.info("Booking OTP flow completed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Booking OTP handling failed: {e}", exc_info=True)
+            return False
+
     async def run_booking_flow(self, page: Page, reservation: Dict[str, Any]) -> bool:
         """
         Run complete booking flow.
@@ -147,6 +242,11 @@ class BookingOrchestrator:
 
             # Step 2: Fill all applicant forms
             await self.form_filler.fill_all_applicants(page, reservation)
+
+            # Step 2.5: Handle booking OTP if present (country-specific)
+            if not await self._handle_booking_otp_if_present(page):
+                logger.error("Booking OTP handling failed")
+                return False
 
             # Step 3: Select appointment slot
             if not await self.slot_selector.select_appointment_slot(page, reservation):

@@ -39,6 +39,11 @@ class PageState(Enum):
     OTP_LOGIN = auto()
     OTP_3D_SECURE = auto()
 
+    # Booking OTP states (post-form, country-specific)
+    OTP_BOOKING_GENERATE = auto()    # "OTP Oluştur" button visible
+    OTP_BOOKING_INPUT = auto()       # OTP input field visible, awaiting code
+    OTP_BOOKING_SUCCESS = auto()     # "OTP doğrulaması başarılı" message visible
+
     # Error/interruption states
     SESSION_EXPIRED = auto()
     CLOUDFLARE_CHALLENGE = auto()
@@ -76,7 +81,11 @@ class PageStateResult:
 
     @property
     def is_waiting_for_otp(self) -> bool:
-        return self.state in (PageState.OTP_LOGIN, PageState.OTP_3D_SECURE)
+        return self.state in (PageState.OTP_LOGIN, PageState.OTP_3D_SECURE, PageState.OTP_BOOKING_INPUT)
+
+    @property
+    def is_booking_otp_screen(self) -> bool:
+        return self.state in (PageState.OTP_BOOKING_GENERATE, PageState.OTP_BOOKING_INPUT, PageState.OTP_BOOKING_SUCCESS)
 
     @property
     def is_loading(self) -> bool:
@@ -96,6 +105,9 @@ _ACTIONABLE_STATES: FrozenSet[PageState] = frozenset(
         PageState.WAITLIST_PAGE,
         PageState.OTP_LOGIN,
         PageState.OTP_3D_SECURE,
+        PageState.OTP_BOOKING_GENERATE,
+        PageState.OTP_BOOKING_INPUT,
+        PageState.OTP_BOOKING_SUCCESS,
     }
 )
 
@@ -119,6 +131,8 @@ _PRIORITY_STATES: FrozenSet[PageState] = frozenset(
         PageState.CAPTCHA_REQUIRED,
         PageState.OTP_LOGIN,
         PageState.OTP_3D_SECURE,
+        PageState.OTP_BOOKING_GENERATE,
+        PageState.OTP_BOOKING_INPUT,
     }
 )
 
@@ -152,6 +166,27 @@ _DETECTION_RULES: List[Tuple[str, PageState, float, bool]] = [
     # ━━━ OTP STATES ━━━
     # OTP input must be visible — VFS might have hidden OTP forms in DOM
     ('input[name="otp"]', PageState.OTP_LOGIN, 0.85, True),
+    # Booking OTP states (post-form, country-specific)
+    (
+        'span.mdc-button__label:has-text("Tek Seferlik Şifre (OTP) Oluştur"), '
+        'span.mdc-button__label:has-text("Generate One Time Password")',
+        PageState.OTP_BOOKING_GENERATE,
+        0.90,
+        True,
+    ),
+    ('input[placeholder="OTP"][maxlength="6"]', PageState.OTP_BOOKING_INPUT, 0.85, True),
+    (
+        'span.mdc-button__label:has-text("Doğrula"), span.mdc-button__label:has-text("Verify")',
+        PageState.OTP_BOOKING_INPUT,
+        0.10,
+        True,
+    ),
+    (
+        "text=/OTP doğrulaması başarılı|OTP verification successful/i",
+        PageState.OTP_BOOKING_SUCCESS,
+        0.90,
+        True,
+    ),
     # ━━━ LOADING / OVERLAY STATES ━━━
     # Spinners/overlays — must be visible to count
     (
@@ -497,6 +532,17 @@ class PageStateDetector:
         if PageState.LOGIN_PAGE in resolved and resolved[PageState.LOGIN_PAGE] < 0.70:
             details["login_note"] = "partial match — only one of email/password"
 
+        # ── Booking OTP vs BOOKING_FORM ──
+        booking_otp_states = {
+            PageState.OTP_BOOKING_GENERATE,
+            PageState.OTP_BOOKING_INPUT,
+            PageState.OTP_BOOKING_SUCCESS,
+        }
+        if any(s in resolved for s in booking_otp_states) and PageState.BOOKING_FORM in resolved:
+            # OTP screen takes priority since it appears on top of/after the form
+            resolved.pop(PageState.BOOKING_FORM, None)
+            details["booking_otp_resolution"] = "OTP screen overlays booking form"
+
         # ── Error states always win ──
         priority_found = [s for s in resolved if s in _PRIORITY_STATES and resolved[s] >= 0.80]
         if priority_found:
@@ -555,6 +601,11 @@ class PageStateDetector:
 
     async def get_otp_type(self, page: Page) -> Optional[PageState]:
         result = await self.detect(page)
-        if result.state in (PageState.OTP_LOGIN, PageState.OTP_3D_SECURE):
+        if result.state in (
+            PageState.OTP_LOGIN,
+            PageState.OTP_3D_SECURE,
+            PageState.OTP_BOOKING_GENERATE,
+            PageState.OTP_BOOKING_INPUT,
+        ):
             return result.state
         return None
