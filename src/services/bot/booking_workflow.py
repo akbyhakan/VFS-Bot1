@@ -147,32 +147,8 @@ class BookingWorkflow:
         logger.info(f"Processing user: {masked_email}")
 
         try:
-            # Login
-            if not await self.auth_service.login(page, user["email"], user["password"]):
-                logger.error(f"Login failed for {masked_email}")
-                raise LoginError(f"Login failed for {masked_email}")
-
-            # Wait for page to stabilize after login
-            state = await self.page_state_detector.wait_for_stable_state(
-                page,
-                expected_states=frozenset(
-                    {
-                        PageState.DASHBOARD,
-                        PageState.APPOINTMENT_PAGE,
-                        PageState.OTP_LOGIN,
-                        PageState.SESSION_EXPIRED,
-                        PageState.CLOUDFLARE_CHALLENGE,
-                    }
-                ),
-            )
-
-            if state.needs_recovery:
-                raise VFSBotError(f"Post-login error: {state.state.name}", recoverable=True)
-
-            # Save checkpoint after successful login
-            self.session_recovery.save_checkpoint(
-                "logged_in", user["id"], {"masked_email": masked_email}
-            )
+            # Login and detect post-login state
+            state = await self._login_and_detect_state(page, user, masked_email)
 
             # Check for waitlist mode first
             is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
@@ -203,6 +179,51 @@ class BookingWorkflow:
             logger.error(f"Error processing user {masked_email}: {e}")
             await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
             raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
+
+    async def _login_and_detect_state(self, page: Page, user: UserDict, masked_email: str) -> Any:
+        """
+        Login and detect post-login page state.
+
+        Args:
+            page: Playwright page object
+            user: User dictionary from database
+            masked_email: Masked email for logging
+
+        Returns:
+            PageState after successful login
+
+        Raises:
+            LoginError: If login fails
+            VFSBotError: If post-login state needs recovery
+        """
+        # Login
+        if not await self.auth_service.login(page, user["email"], user["password"]):
+            logger.error(f"Login failed for {masked_email}")
+            raise LoginError(f"Login failed for {masked_email}")
+
+        # Wait for page to stabilize after login
+        state = await self.page_state_detector.wait_for_stable_state(
+            page,
+            expected_states=frozenset(
+                {
+                    PageState.DASHBOARD,
+                    PageState.APPOINTMENT_PAGE,
+                    PageState.OTP_LOGIN,
+                    PageState.SESSION_EXPIRED,
+                    PageState.CLOUDFLARE_CHALLENGE,
+                }
+            ),
+        )
+
+        if state.needs_recovery:
+            raise VFSBotError(f"Post-login error: {state.state.name}", recoverable=True)
+
+        # Save checkpoint after successful login
+        self.session_recovery.save_checkpoint(
+            "logged_in", user["id"], {"masked_email": masked_email}
+        )
+
+        return state
 
     async def process_mission(
         self,
