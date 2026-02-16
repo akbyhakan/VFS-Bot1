@@ -2,10 +2,11 @@
 
 import asyncio
 import html
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import aiosmtplib
 from loguru import logger
@@ -108,6 +109,280 @@ class NotificationConfig:
         )
 
 
+class NotificationChannel(ABC):
+    """Abstract base class for notification channels."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Get channel name."""
+        pass
+
+    @property
+    @abstractmethod
+    def enabled(self) -> bool:
+        """Check if channel is enabled."""
+        pass
+
+    @abstractmethod
+    async def send(self, title: str, message: str) -> bool:
+        """
+        Send notification through this channel.
+
+        Args:
+            title: Notification title
+            message: Notification message
+
+        Returns:
+            True if successful
+        """
+        pass
+
+
+class TelegramChannel(NotificationChannel):
+    """Telegram notification channel."""
+
+    def __init__(self, config: TelegramConfig):
+        """
+        Initialize Telegram channel.
+
+        Args:
+            config: Telegram configuration
+        """
+        self._config = config
+        self._client: Optional[TelegramClient] = None
+
+        if self._config.enabled and self._config.bot_token:
+            try:
+                self._client = TelegramClient(bot_token=self._config.bot_token)
+            except ImportError:
+                logger.warning("python-telegram-bot not installed")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Telegram client: {e}")
+
+    @property
+    def name(self) -> str:
+        """Get channel name."""
+        return "telegram"
+
+    @property
+    def enabled(self) -> bool:
+        """Check if channel is enabled."""
+        return self._config.enabled
+
+    def _get_or_create_client(self) -> Optional[TelegramClient]:
+        """Get cached client or create new one."""
+        if self._client is not None:
+            return self._client
+
+        if not self._config.bot_token:
+            logger.error("Telegram bot_token missing")
+            return None
+
+        try:
+            self._client = TelegramClient(bot_token=self._config.bot_token)
+            return self._client
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to create Telegram client: {e}")
+            return None
+
+    @retry_async(
+        max_retries=2,
+        delay=1.0,
+        backoff=2.0,
+        exceptions=(ConnectionError, TimeoutError, OSError),
+    )
+    async def send(self, title: str, message: str) -> bool:
+        """
+        Send Telegram notification.
+
+        Args:
+            title: Message title
+            message: Message content
+
+        Returns:
+            True if successful
+        """
+        try:
+            if not self._config.chat_id:
+                logger.error("Telegram chat_id missing")
+                return False
+
+            client = self._get_or_create_client()
+            if client is None:
+                return False
+
+            escaped_title = TelegramClient.escape_markdown(title)
+            escaped_message = TelegramClient.escape_markdown(message)
+            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
+
+            success = await client.send_message(chat_id=self._config.chat_id, text=full_message)
+
+            if success:
+                logger.info("Telegram notification sent successfully")
+            return success
+
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
+            return False
+        except Exception as e:
+            logger.error(f"Telegram notification failed: {e}")
+            return False
+
+
+class EmailChannel(NotificationChannel):
+    """Email notification channel."""
+
+    def __init__(self, config: EmailConfig):
+        """
+        Initialize Email channel.
+
+        Args:
+            config: Email configuration
+        """
+        self._config = config
+
+    @property
+    def name(self) -> str:
+        """Get channel name."""
+        return "email"
+
+    @property
+    def enabled(self) -> bool:
+        """Check if channel is enabled."""
+        return self._config.enabled
+
+    @retry_async(
+        max_retries=2,
+        delay=1.0,
+        backoff=2.0,
+        exceptions=(ConnectionError, TimeoutError, OSError, aiosmtplib.SMTPException),
+    )
+    async def send(self, subject: str, body: str) -> bool:
+        """
+        Send email notification.
+
+        Args:
+            subject: Email subject
+            body: Email body
+
+        Returns:
+            True if successful
+        """
+        try:
+            if not all([self._config.sender, self._config.password, self._config.receiver]):
+                logger.error("Email credentials missing")
+                return False
+
+            # Create message
+            message = MIMEMultipart()
+            message["From"] = self._config.sender
+            message["To"] = self._config.receiver
+            message["Subject"] = f"VFS-Bot: {subject}"
+
+            # Add body with XSS protection
+            escaped_subject = html.escape(subject)
+            escaped_body = html.escape(body).replace("\n", "<br>")
+            html_body = f"""
+            <html>
+                <body>
+                    <h2>{escaped_subject}</h2>
+                    <p>{escaped_body}</p>
+                    <hr>
+                    <p><small>This is an automated message from VFS-Bot</small></p>
+                </body>
+            </html>
+            """
+            message.attach(MIMEText(html_body, "html"))
+
+            # Send email
+            async with aiosmtplib.SMTP(
+                hostname=self._config.smtp_server, port=self._config.smtp_port
+            ) as smtp:
+                await smtp.starttls()
+                await smtp.login(self._config.sender, self._config.password)
+                await smtp.send_message(message)
+
+            logger.info("Email notification sent successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Email notification failed: {e}")
+            return False
+
+
+class WebSocketChannel(NotificationChannel):
+    """WebSocket notification channel for real-time notifications."""
+
+    def __init__(self, websocket_manager=None):
+        """
+        Initialize WebSocket channel.
+
+        Args:
+            websocket_manager: WebSocket ConnectionManager instance
+        """
+        self._manager = websocket_manager
+
+    @property
+    def name(self) -> str:
+        """Get channel name."""
+        return "websocket"
+
+    @property
+    def enabled(self) -> bool:
+        """Check if channel is enabled."""
+        return self._manager is not None
+
+    def set_manager(self, manager) -> None:
+        """
+        Set WebSocket manager.
+
+        Args:
+            manager: WebSocket ConnectionManager instance
+        """
+        self._manager = manager
+
+    async def send(self, title: str, message: str) -> bool:
+        """
+        Broadcast notification via WebSocket.
+
+        Args:
+            title: Notification title
+            message: Notification message
+
+        Returns:
+            True if broadcast succeeded
+        """
+        if not self._manager:
+            logger.debug("WebSocket manager not available")
+            return False
+
+        try:
+            notification_data = {
+                "type": "critical_notification",
+                "data": {
+                    "title": title,
+                    "message": message,
+                    "timestamp": asyncio.get_event_loop().time(),
+                    "priority": "high",
+                },
+            }
+
+            if hasattr(self._manager, "broadcast"):
+                await self._manager.broadcast(notification_data)
+                logger.info(f"Notification broadcasted via WebSocket: {title}")
+                return True
+            else:
+                logger.warning("WebSocket manager has no broadcast method")
+                return False
+
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
+            return False
+
+
 class NotificationService:
     """Multi-channel notification service for VFS-Bot."""
 
@@ -126,18 +401,28 @@ class NotificationService:
         self.telegram_enabled = config.telegram.enabled
         self.email_enabled = config.email.enabled
         self._failed_high_priority_count = 0
-        self._websocket_manager = None  # Will be set externally if available
 
-        # Cache Telegram client instance if enabled
-        self._telegram_client = None
-        if self.telegram_enabled:
-            try:
-                if config.telegram.bot_token:
-                    self._telegram_client = TelegramClient(bot_token=config.telegram.bot_token)
-            except ImportError:
-                logger.warning("python-telegram-bot not installed")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Telegram client: {e}")
+        # Initialize channels using Strategy Pattern
+        self._channels: List[NotificationChannel] = []
+        self._telegram_channel: Optional[TelegramChannel] = None
+        self._email_channel: Optional[EmailChannel] = None
+        self._websocket_channel = WebSocketChannel()
+
+        # Create Telegram channel if enabled
+        if config.telegram.enabled:
+            self._telegram_channel = TelegramChannel(config.telegram)
+            self._channels.append(self._telegram_channel)
+
+        # Create Email channel if enabled
+        if config.email.enabled:
+            self._email_channel = EmailChannel(config.email)
+            self._channels.append(self._email_channel)
+
+        # Legacy compatibility - keep these for backward compatibility
+        self._websocket_manager = None
+        self._telegram_client = (
+            self._telegram_channel._client if self._telegram_channel else None
+        )
 
         logger.info(
             f"NotificationService initialized "
@@ -151,24 +436,9 @@ class NotificationService:
         Returns:
             TelegramClient instance or None if bot_token is missing
         """
-        if self._telegram_client is not None:
-            return self._telegram_client
-
-        bot_token = self.config.telegram.bot_token
-
-        if not bot_token:
-            logger.error("Telegram bot_token missing")
-            return None
-
-        try:
-            self._telegram_client = TelegramClient(bot_token=bot_token)
-            return self._telegram_client
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
-            return None
-        except Exception as e:
-            logger.error(f"Failed to create Telegram client: {e}")
-            return None
+        if self._telegram_channel:
+            return self._telegram_channel._get_or_create_client()
+        return None
 
     def set_websocket_manager(self, manager) -> None:
         """
@@ -178,6 +448,7 @@ class NotificationService:
             manager: WebSocket ConnectionManager instance
         """
         self._websocket_manager = manager
+        self._websocket_channel.set_manager(manager)
         logger.debug("WebSocket manager set for notification fallback")
 
     async def _broadcast_via_websocket(self, title: str, message: str) -> bool:
@@ -191,33 +462,7 @@ class NotificationService:
         Returns:
             True if broadcast succeeded
         """
-        if not self._websocket_manager:
-            logger.debug("WebSocket manager not available for fallback")
-            return False
-
-        try:
-            notification_data = {
-                "type": "critical_notification",
-                "data": {
-                    "title": title,
-                    "message": message,
-                    "timestamp": asyncio.get_event_loop().time(),
-                    "priority": "high",
-                },
-            }
-
-            # Use broadcast method if available
-            if hasattr(self._websocket_manager, "broadcast"):
-                await self._websocket_manager.broadcast(notification_data)
-                logger.info(f"Critical notification broadcasted via WebSocket: {title}")
-                return True
-            else:
-                logger.warning("WebSocket manager has no broadcast method")
-                return False
-
-        except Exception as e:
-            logger.error(f"WebSocket broadcast failed: {e}")
-            return False
+        return await self._websocket_channel.send(title, message)
 
     def get_notification_stats(self) -> dict:
         """
@@ -232,6 +477,20 @@ class NotificationService:
             "websocket_available": self._websocket_manager is not None,
             "failed_high_priority_notifications": self._failed_high_priority_count,
         }
+
+    @staticmethod
+    def _split_message(text: str, max_length: int) -> list:
+        """
+        Split a message into chunks (for backward compatibility with tests).
+
+        Args:
+            text: Text to split
+            max_length: Maximum length per chunk
+
+        Returns:
+            List of text chunks
+        """
+        return TelegramClient.split_message(text, max_length)
 
     async def send_notification(
         self, title: str, message: str, priority: NotificationPriority = "normal"
@@ -250,6 +509,9 @@ class NotificationService:
         tasks = []
         channel_names = []
 
+        # Use Strategy Pattern - iterate over channels
+        # For backward compatibility with tests/mocks, we call through the deprecated methods
+        # if they exist and are the original (not overridden)
         if self.telegram_enabled:
             tasks.append(self.send_telegram(title, message))
             channel_names.append("telegram")
@@ -284,7 +546,7 @@ class NotificationService:
             self._failed_high_priority_count += 1
 
             # Try WebSocket fallback
-            ws_success = await self._broadcast_via_websocket(title, message)
+            ws_success = await self._websocket_channel.send(title, message)
             if ws_success:
                 logger.info("WebSocket fallback succeeded for high-priority notification")
                 return True
@@ -296,12 +558,6 @@ class NotificationService:
 
         return any_success
 
-    @retry_async(
-        max_retries=2,
-        delay=1.0,
-        backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError),
-    )
     async def send_telegram(self, title: str, message: str) -> bool:
         """
         Send Telegram notification.
@@ -313,43 +569,10 @@ class NotificationService:
         Returns:
             True if successful
         """
-        try:
-            chat_id = self.config.telegram.chat_id
+        if self._telegram_channel:
+            return await self._telegram_channel.send(title, message)
+        return False
 
-            if not chat_id:
-                logger.error("Telegram chat_id missing")
-                return False
-
-            # Use helper to get or create client instance
-            client = self._get_or_create_telegram_client()
-            if client is None:
-                return False
-
-            # Escape markdown special characters to prevent injection
-            escaped_title = TelegramClient.escape_markdown(title)
-            escaped_message = TelegramClient.escape_markdown(message)
-            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
-
-            # Send message (client handles splitting automatically)
-            success = await client.send_message(chat_id=chat_id, text=full_message)
-
-            if success:
-                logger.info("Telegram notification sent successfully")
-            return success
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
-            return False
-        except Exception as e:
-            logger.error(f"Telegram notification failed: {e}")
-            return False
-
-    @retry_async(
-        max_retries=2,
-        delay=1.0,
-        backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError, aiosmtplib.SMTPException),
-    )
     async def send_email(self, subject: str, body: str) -> bool:
         """
         Send email notification.
@@ -361,50 +584,9 @@ class NotificationService:
         Returns:
             True if successful
         """
-        try:
-            sender = self.config.email.sender
-            password = self.config.email.password
-            receiver = self.config.email.receiver
-            smtp_server = self.config.email.smtp_server
-            smtp_port = self.config.email.smtp_port
-
-            if not all([sender, password, receiver]):
-                logger.error("Email credentials missing")
-                return False
-
-            # Create message
-            message = MIMEMultipart()
-            message["From"] = sender
-            message["To"] = receiver
-            message["Subject"] = f"VFS-Bot: {subject}"
-
-            # Add body with XSS protection
-            # Escape HTML to prevent XSS attacks
-            escaped_subject = html.escape(subject)
-            escaped_body = html.escape(body).replace("\n", "<br>")
-            html_body = f"""
-            <html>
-                <body>
-                    <h2>{escaped_subject}</h2>
-                    <p>{escaped_body}</p>
-                    <hr>
-                    <p><small>This is an automated message from VFS-Bot</small></p>
-                </body>
-            </html>
-            """
-            message.attach(MIMEText(html_body, "html"))
-
-            # Send email
-            async with aiosmtplib.SMTP(hostname=smtp_server, port=smtp_port) as smtp:
-                await smtp.starttls()
-                await smtp.login(sender, password)
-                await smtp.send_message(message)
-
-            logger.info("Email notification sent successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Email notification failed: {e}")
-            return False
+        if self._email_channel:
+            return await self._email_channel.send(subject, body)
+        return False
 
     async def notify_slot_found(self, centre: str, date: str, time: str) -> None:
         """
@@ -549,6 +731,10 @@ The bot will retry automatically.
         try:
             from pathlib import Path
 
+            if not self._telegram_channel:
+                logger.error("Telegram channel not initialized")
+                return False
+
             chat_id = self.config.telegram.chat_id
 
             if not chat_id:
@@ -559,10 +745,10 @@ The bot will retry automatically.
             if not photo_file.exists():
                 logger.warning(f"Screenshot file not found: {photo_path}")
                 # Fall back to text-only message
-                return await self.send_telegram(title, message)
+                return await self._telegram_channel.send(title, message)
 
-            # Use helper to get or create client instance
-            client = self._get_or_create_telegram_client()
+            # Get client from channel
+            client = self._telegram_channel._get_or_create_client()
             if client is None:
                 return False
 
@@ -577,7 +763,6 @@ The bot will retry automatically.
             )
 
             # If caption was truncated, send remaining text as separate message
-            # Client truncates to (LIMIT - 3) and adds "...", so start from there
             if success and len(full_message) > TelegramClient.TELEGRAM_CAPTION_LIMIT:
                 remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT - 3 :]
                 await client.send_message(chat_id=chat_id, text=remaining_text)
