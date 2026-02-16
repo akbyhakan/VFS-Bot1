@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import {
   useCountries,
   useCentres,
+  useCategories,
+  useSubcategories,
   useCreateAppointmentRequest,
   useAppointmentRequests,
   useDeleteAppointmentRequest,
@@ -35,6 +37,8 @@ export default function AppointmentRequest() {
   const [personCount, setPersonCount] = useState<number>(1);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCentres, setSelectedCentres] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [dateInput, setDateInput] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,6 +48,10 @@ export default function AppointmentRequest() {
 
   const { data: countries, isLoading: loadingCountries } = useCountries();
   const { data: centres, isLoading: loadingCentres } = useCentres(selectedCountry);
+  // Use the first selected centre for categories/subcategories
+  const firstSelectedCentre = selectedCentres.length > 0 ? selectedCentres[0] : '';
+  const { data: categories, isLoading: loadingCategories } = useCategories(selectedCountry, firstSelectedCentre);
+  const { data: subcategories, isLoading: loadingSubcategories } = useSubcategories(selectedCountry, firstSelectedCentre, selectedCategory);
   const { data: requests, isLoading: loadingRequests } = useAppointmentRequests();
   const createRequest = useCreateAppointmentRequest();
   const deleteRequest = useDeleteAppointmentRequest();
@@ -91,9 +99,15 @@ export default function AppointmentRequest() {
   };
 
   const handleCentreToggle = (centre: string) => {
-    setSelectedCentres((prev) =>
-      prev.includes(centre) ? prev.filter((c) => c !== centre) : [...prev, centre]
-    );
+    setSelectedCentres((prev) => {
+      const newCentres = prev.includes(centre) ? prev.filter((c) => c !== centre) : [...prev, centre];
+      // Reset categories and subcategories when centres change
+      if (newCentres.length === 0 || !newCentres.includes(firstSelectedCentre)) {
+        setSelectedCategory('');
+        setSelectedSubcategory('');
+      }
+      return newCentres;
+    });
   };
 
   const handleAddDate = () => {
@@ -117,6 +131,14 @@ export default function AppointmentRequest() {
 
     if (selectedCentres.length === 0) {
       newErrors.centres = t('appointmentRequest.selectCentreError');
+    }
+
+    if (!selectedCategory) {
+      newErrors.category = t('appointmentRequest.selectCategoryError', 'Please select a visa category');
+    }
+
+    if (!selectedSubcategory) {
+      newErrors.subcategory = t('appointmentRequest.selectSubcategoryError', 'Please select a visa subcategory');
     }
 
     if (selectedDates.length === 0) {
@@ -170,6 +192,8 @@ export default function AppointmentRequest() {
   const onSubmit = async (data: AppointmentRequest) => {
     data.country_code = selectedCountry;
     data.centres = selectedCentres;
+    data.visa_category = selectedCategory;
+    data.visa_subcategory = selectedSubcategory;
     data.preferred_dates = selectedDates;
     data.person_count = personCount;
 
@@ -185,6 +209,8 @@ export default function AppointmentRequest() {
       setPersonCount(1);
       setSelectedCountry('');
       setSelectedCentres([]);
+      setSelectedCategory('');
+      setSelectedSubcategory('');
       setSelectedDates([]);
       setErrors({});
     } catch (error) {
@@ -218,6 +244,10 @@ export default function AppointmentRequest() {
   const handleCopyRequest = (request: AppointmentRequestResponse) => {
     setSelectedCountry(request.country_code);
     setSelectedCentres([...request.centres]);
+    // Note: Category and subcategory will be validated by the dropdowns
+    // If they don't exist in the current cache, user will need to reselect
+    setSelectedCategory(request.visa_category || '');
+    setSelectedSubcategory(request.visa_subcategory || '');
     setSelectedDates([...request.preferred_dates]);
     setPersonCount(request.person_count);
     setValue('persons', request.persons.map(p => ({ ...p })));
@@ -230,6 +260,8 @@ export default function AppointmentRequest() {
     setPersonCount(1);
     setSelectedCountry('');
     setSelectedCentres([]);
+    setSelectedCategory('');
+    setSelectedSubcategory('');
     setSelectedDates([]);
     setErrors({});
     toast.info(t('appointmentRequest.formCleared'));
@@ -288,6 +320,8 @@ export default function AppointmentRequest() {
                   onChange={(e) => {
                     setSelectedCountry(e.target.value);
                     setSelectedCentres([]);
+                    setSelectedCategory('');
+                    setSelectedSubcategory('');
                   }}
                   className="w-full px-3 py-2 border border-dark-600 rounded-lg bg-dark-800 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   aria-required="true"
@@ -333,6 +367,81 @@ export default function AppointmentRequest() {
                     </div>
                   )}
                   {errors.centres && <p className="text-red-500 text-sm mt-1">{errors.centres}</p>}
+                </div>
+              )}
+
+              {/* Visa Kategorisi */}
+              {selectedCountry && selectedCentres.length > 0 && (
+                <div>
+                  <label htmlFor="visa-category" className="block text-sm font-medium mb-2">
+                    {t('appointmentRequest.visaCategory', 'Visa Category')}
+                  </label>
+                  {loadingCategories ? (
+                    <Loading />
+                  ) : (
+                    <>
+                      <select
+                        id="visa-category"
+                        value={selectedCategory}
+                        onChange={(e) => {
+                          setSelectedCategory(e.target.value);
+                          setSelectedSubcategory('');
+                        }}
+                        className="w-full px-3 py-2 border border-dark-600 rounded-lg bg-dark-800 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        aria-required="true"
+                        aria-invalid={!!errors.category}
+                        aria-describedby={errors.category ? 'category-error' : undefined}
+                      >
+                        <option value="">{t('appointmentRequest.selectCategory', 'Select Category')}</option>
+                        {categories?.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.category && (
+                        <p id="category-error" className="text-red-500 text-sm mt-1" role="alert">
+                          {errors.category}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Visa Alt Kategorisi */}
+              {selectedCountry && selectedCentres.length > 0 && selectedCategory && (
+                <div>
+                  <label htmlFor="visa-subcategory" className="block text-sm font-medium mb-2">
+                    {t('appointmentRequest.visaSubcategory', 'Visa Subcategory')}
+                  </label>
+                  {loadingSubcategories ? (
+                    <Loading />
+                  ) : (
+                    <>
+                      <select
+                        id="visa-subcategory"
+                        value={selectedSubcategory}
+                        onChange={(e) => setSelectedSubcategory(e.target.value)}
+                        className="w-full px-3 py-2 border border-dark-600 rounded-lg bg-dark-800 text-dark-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        aria-required="true"
+                        aria-invalid={!!errors.subcategory}
+                        aria-describedby={errors.subcategory ? 'subcategory-error' : undefined}
+                      >
+                        <option value="">{t('appointmentRequest.selectSubcategory', 'Select Subcategory')}</option>
+                        {subcategories?.map((subcategory) => (
+                          <option key={subcategory} value={subcategory}>
+                            {subcategory}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.subcategory && (
+                        <p id="subcategory-error" className="text-red-500 text-sm mt-1" role="alert">
+                          {errors.subcategory}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
