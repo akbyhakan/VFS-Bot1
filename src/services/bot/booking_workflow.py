@@ -13,7 +13,7 @@ from tenacity import (
 )
 
 from ...constants import Delays, Retries
-from ...core.exceptions import LoginError, VFSBotError
+from ...core.exceptions import BannedError, LoginError, VFSBotError
 from ...models.database import Database
 from ...repositories import (
     AppointmentRepository,
@@ -265,7 +265,7 @@ class BookingWorkflow:
             slot_found = False
             for request in appointment_requests:
                 try:
-                    # Note: _process_single_request expects user dict with:
+                    # Note: process_single_request expects user dict with:
                     # - id: for deduplication checking (using request.id for unique dedup key)
                     # - category/subcategory: fallback if not in request (should be in request)
                     # - email: for logging only
@@ -276,7 +276,7 @@ class BookingWorkflow:
                         "category": request.visa_category,  # From request
                         "subcategory": request.visa_subcategory,  # From request
                     }
-                    result = await self._process_single_request(
+                    result = await self.mission_processor.process_single_request(
                         page,
                         minimal_user,
                         request,
@@ -298,13 +298,13 @@ class BookingWorkflow:
             else:
                 return "no_slot"
 
-        except LoginError as e:
-            logger.error(f"Login error for account {masked_email}: {e}")
-            return "login_fail"
+        except BannedError:
+            logger.error(f"Account {masked_email} has been banned")
+            return "banned"
         except VFSBotError as e:
             logger.error(f"VFS error for account {masked_email}: {e}")
-            # Check if it's a ban
-            if "banned" in str(e).lower() or "captcha" in str(e).lower():
+            # Fallback string check for backward compatibility
+            if "banned" in str(e).lower():
                 return "banned"
             return "error"
         except Exception as e:
