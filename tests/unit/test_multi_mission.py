@@ -528,7 +528,7 @@ async def test_process_normal_flow_multiple_requests():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock()
+    workflow._process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -657,6 +657,7 @@ async def test_process_normal_flow_error_isolation():
     async def process_with_error(page, user, request, dedup):
         if request.id == 2:
             raise Exception("Simulated error for request 2")
+        return False
 
     workflow._process_single_request = AsyncMock(side_effect=process_with_error)
 
@@ -764,7 +765,7 @@ async def test_multi_mission_creates_separate_browsers():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock()
+    workflow._process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -868,7 +869,7 @@ async def test_single_mission_uses_original_page():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock()
+    workflow._process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -970,7 +971,7 @@ async def test_browser_cleanup_on_error():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock()
+    workflow._process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
