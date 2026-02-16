@@ -46,14 +46,14 @@ async def _get_controller() -> BotController:
 
 async def _sync_bot_state(controller: BotController) -> None:
     """
-    Sync real bot status to bot_state dict for WebSocket broadcast compatibility.
+    Sync real bot status to bot_state for WebSocket broadcast compatibility.
 
     Args:
         controller: BotController instance
     """
     status = controller.get_status()
-    bot_state["running"] = status["running"]
-    bot_state["status"] = status["status"]
+    bot_state.set_running(status["running"])
+    bot_state.set_status(status["status"])
 
 
 @router.post("/start")
@@ -222,12 +222,12 @@ async def check_now(request: Request, auth_data: dict = Depends(verify_hybrid_au
 
     if result["status"] == "success":
         # Update last check timestamp
-        bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
+        bot_state.set_last_check(datetime.now(timezone.utc).isoformat())
 
         await broadcast_message(
             {
                 "type": "status",
-                "data": {"message": result["message"], "last_check": bot_state["last_check"]},
+                "data": {"message": result["message"], "last_check": bot_state.get_last_check()},
             }
         )
 
@@ -250,7 +250,7 @@ async def get_logs(
     Returns:
         Dictionary with logs list
     """
-    logs_list = list(bot_state["logs"])
+    logs_list = bot_state.get_logs_list()
     return {"logs": logs_list[-limit:]}
 
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CreditCard, Webhook, Copy, Check, Trash2, Edit, Save, X, Plus, Zap, Upload, FileText, Globe, Timer } from 'lucide-react';
@@ -15,6 +16,7 @@ import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
 export function Settings() {
+  const { t } = useTranslation();
   const { card, loading, error, saving, deleting, saveCard, deleteCard } = usePaymentCard();
   const [isEditing, setIsEditing] = useState(false);
   const [webhookUrls, setWebhookUrls] = useState<WebhookUrls | null>(null);
@@ -81,7 +83,7 @@ export function Settings() {
 
   const handleProxyFileSelect = (file: File) => {
     if (!file.name.endsWith('.csv')) {
-      toast.error('Lütfen .csv uzantılı bir dosya seçin');
+      toast.error(t('settings.selectCsvFile'));
       return;
     }
     uploadProxyFile(file);
@@ -92,15 +94,15 @@ export function Settings() {
       setProxyUploading(true);
       const result = await proxyApi.uploadProxyCSV(file);
       setProxyFileName(result.filename);
-      toast.success(`${result.count} proxy başarıyla yüklendi`);
+      toast.success(t('settings.proxyUploaded', { count: result.count }));
       
       // Reload stats
       await loadProxyStats();
     } catch (error: unknown) {
       const message = error instanceof Error && 'response' in error 
         ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail 
-        : 'Proxy yüklenemedi';
-      toast.error(message || 'Proxy yüklenemedi');
+        : t('settings.proxyUploadFailed');
+      toast.error(message || t('settings.proxyUploadFailed'));
     } finally {
       setProxyUploading(false);
     }
@@ -128,10 +130,10 @@ export function Settings() {
 
   const handleClearProxies = async () => {
     const confirmed = await confirm({
-      title: 'Proxy Listesini Temizle',
-      message: 'Tüm proxy listesini temizlemek istediğinizden emin misiniz?',
-      confirmText: 'Temizle',
-      cancelText: 'İptal',
+      title: t('settings.clearProxiesTitle'),
+      message: t('settings.clearProxiesMessage'),
+      confirmText: t('settings.clearProxiesConfirm'),
+      cancelText: t('settings.clearProxiesCancel'),
       variant: 'danger',
     });
 
@@ -140,11 +142,11 @@ export function Settings() {
     try {
       await proxyApi.clearProxies();
       setProxyFileName(null);
-      toast.success('Proxy listesi temizlendi');
+      toast.success(t('settings.proxiesCleared'));
       await loadProxyStats();
     } catch (error: unknown) {
       logger.error('Failed to clear proxies:', error);
-      toast.error('Proxy listesi temizlenemedi');
+      toast.error(t('settings.proxiesClearFailed'));
     }
   };
 
@@ -153,12 +155,12 @@ export function Settings() {
       setCooldownSaving(true);
       await updateBotSettings({ cooldown_minutes: cooldownMinutes });
       setInitialCooldown(cooldownMinutes);
-      toast.success('Cooldown süresi güncellendi');
+      toast.success(t('settings.cooldownUpdated'));
       // Reload settings to confirm
       await loadBotSettings();
     } catch (error: unknown) {
       logger.error('Failed to update cooldown:', error);
-      toast.error('Cooldown süresi güncellenemedi');
+      toast.error(t('settings.cooldownUpdateFailed'));
     } finally {
       setCooldownSaving(false);
     }
@@ -205,7 +207,7 @@ export function Settings() {
     
     if (!validation.isValid) {
       setFormErrors(validation.errors);
-      toast.error('Lütfen form hatalarını düzeltin');
+      toast.error(t('settings.fixFormErrors'));
       return;
     }
     
@@ -224,16 +226,16 @@ export function Settings() {
         expiry_month: '',
         expiry_year: '',
       });
-      toast.success('Kart bilgileri kaydedildi');
+      toast.success(t('settings.cardSaved'));
     }
   };
 
   const handleDelete = async () => {
     const confirmed = await confirm({
-      title: 'Kredi Kartını Sil',
-      message: 'Kayıtlı kredi kartı bilgilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
-      confirmText: 'Sil',
-      cancelText: 'İptal',
+      title: t('settings.deleteCardTitle'),
+      message: t('settings.deleteCardMessage'),
+      confirmText: t('settings.deleteCardConfirm'),
+      cancelText: t('settings.deleteCardCancel'),
       variant: 'danger',
     });
 
@@ -251,8 +253,8 @@ export function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Ayarlar</h1>
-        <p className="text-dark-400">Bot ve bildirim ayarlarını yapılandırın</p>
+        <h1 className="text-3xl font-bold mb-2">{t('settings.pageTitle')}</h1>
+        <p className="text-dark-400">{t('settings.pageSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -261,40 +263,40 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Kredi Kartı Yönetimi
+              {t('settings.creditCard')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-dark-400 text-sm">Yükleniyor...</p>
+              <p className="text-dark-400 text-sm">{t('settings.loading')}</p>
             ) : error ? (
               <p className="text-red-500 text-sm">{error}</p>
             ) : !isEditing && !card ? (
               // Kart yokken "Yeni Kart Ekle" butonu göster
               <div className="text-center py-8">
                 <CreditCard className="w-12 h-12 text-dark-500 mx-auto mb-4" />
-                <p className="text-dark-400 mb-4">Henüz kayıtlı kredi kartı yok</p>
+                <p className="text-dark-400 mb-4">{t('settings.noCard')}</p>
                 <Button
                   variant="primary"
                   leftIcon={<Plus className="w-5 h-5" />}
                   onClick={handleEdit}
                 >
-                  Yeni Kart Ekle
+                  {t('settings.addCard')}
                 </Button>
               </div>
             ) : !isEditing && card ? (
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-dark-400">Kart Sahibi</label>
+                  <label className="text-sm text-dark-400">{t('settings.cardHolder')}</label>
                   <p className="font-medium">{card.card_holder_name}</p>
                 </div>
                 <div>
-                  <label className="text-sm text-dark-400">Kart Numarası</label>
+                  <label className="text-sm text-dark-400">{t('settings.cardNumber')}</label>
                   <p className="font-medium font-mono">{card.card_number_masked}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-dark-400">Son Kullanma</label>
+                    <label className="text-sm text-dark-400">{t('settings.expiryDate')}</label>
                     <p className="font-medium">{card.expiry_month}/{card.expiry_year}</p>
                   </div>
                 </div>
@@ -304,7 +306,7 @@ export function Settings() {
                     leftIcon={<Edit className="w-4 h-4" />}
                     onClick={handleEdit}
                   >
-                    Düzenle
+                    {t('settings.edit')}
                   </Button>
                   <Button
                     variant="danger"
@@ -312,14 +314,14 @@ export function Settings() {
                     onClick={handleDelete}
                     isLoading={deleting}
                   >
-                    {deleting ? 'Siliniyor...' : 'Sil'}
+                    {deleting ? t('settings.deleting') : t('settings.delete')}
                   </Button>
                 </div>
               </div>
             ) : isEditing || !card ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-dark-400 mb-1">Kart Sahibi Adı</label>
+                  <label className="block text-sm text-dark-400 mb-1">{t('settings.cardHolderName')}</label>
                   <input
                     type="text"
                     value={formData.card_holder_name}
@@ -339,7 +341,7 @@ export function Settings() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm text-dark-400 mb-1">Kart Numarası</label>
+                  <label className="block text-sm text-dark-400 mb-1">{t('settings.cardNumber')}</label>
                   <input
                     type="text"
                     value={formatCardNumber(formData.card_number)}
@@ -366,7 +368,7 @@ export function Settings() {
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm text-dark-400 mb-1">Ay</label>
+                    <label className="block text-sm text-dark-400 mb-1">{t('settings.month')}</label>
                     <input
                       type="text"
                       value={formData.expiry_month}
@@ -388,7 +390,7 @@ export function Settings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-400 mb-1">Yıl</label>
+                    <label className="block text-sm text-dark-400 mb-1">{t('settings.year')}</label>
                     <input
                       type="text"
                       value={formData.expiry_year}
@@ -422,7 +424,7 @@ export function Settings() {
                     onClick={handleSave}
                     isLoading={saving}
                   >
-                    {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                    {saving ? t('settings.saving') : t('settings.save')}
                   </Button>
                   {card && (
                     <Button
@@ -430,7 +432,7 @@ export function Settings() {
                       leftIcon={<X className="w-4 h-4" />}
                       onClick={handleCancel}
                     >
-                      İptal
+                      {t('settings.cancel')}
                     </Button>
                   )}
                 </div>
@@ -444,18 +446,18 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Webhook className="w-5 h-5" />
-              SMS Webhook Adresleri
+              {t('settings.smsWebhooks')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-dark-400 text-sm mb-4">
-              SMS Forwarder uygulamanıza bu webhook adreslerini ekleyin.
+              {t('settings.smsWebhookDesc')}
             </p>
             
             {webhookUrls ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-dark-400 mb-1">Randevu OTP Webhook</label>
+                  <label className="block text-sm text-dark-400 mb-1">{t('settings.appointmentOTP')}</label>
                   <div className="flex gap-2">
                     <input
                       readOnly
@@ -466,7 +468,7 @@ export function Settings() {
                       variant="primary"
                       size="sm"
                       onClick={() => copyToClipboard(webhookUrls.appointment_webhook, 'appointment')}
-                      title="Kopyala"
+                      title={t('settings.copy')}
                     >
                       {copiedField === 'appointment' ? (
                         <Check className="w-4 h-4" />
@@ -478,7 +480,7 @@ export function Settings() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-dark-400 mb-1">Ödeme OTP Webhook</label>
+                  <label className="block text-sm text-dark-400 mb-1">{t('settings.paymentOTP')}</label>
                   <div className="flex gap-2">
                     <input
                       readOnly
@@ -489,7 +491,7 @@ export function Settings() {
                       variant="primary"
                       size="sm"
                       onClick={() => copyToClipboard(webhookUrls.payment_webhook, 'payment')}
-                      title="Kopyala"
+                      title={t('settings.copy')}
                     >
                       {copiedField === 'payment' ? (
                         <Check className="w-4 h-4" />
@@ -509,18 +511,18 @@ export function Settings() {
                     onClick={async () => {
                       try {
                         await api.post('/api/webhook/test');
-                        toast.success('Webhook bağlantısı başarılı!');
+                        toast.success(t('settings.webhookSuccess'));
                       } catch (error) {
-                        toast.error('Webhook bağlantısı başarısız');
+                        toast.error(t('settings.webhookFailed'));
                       }
                     }}
                   >
-                    Webhook Bağlantısını Test Et
+                    {t('settings.testWebhook')}
                   </Button>
                 </div>
               </div>
             ) : (
-              <p className="text-dark-400 text-sm">Yükleniyor...</p>
+              <p className="text-dark-400 text-sm">{t('settings.loading')}</p>
             )}
           </CardContent>
         </Card>
@@ -530,18 +532,18 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Timer className="w-5 h-5" />
-              Bot Ayarları
+              {t('settings.botSettings')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {!cooldownLoaded ? (
-              <p className="text-dark-400 text-sm">Yükleniyor...</p>
+              <p className="text-dark-400 text-sm">{t('settings.loading')}</p>
             ) : (
               <div className="space-y-4">
                 {/* Cooldown Setting */}
                 <div>
                   <label className="block text-sm font-medium text-white mb-3">
-                    Cooldown Süresi: {cooldownMinutes} dakika
+                    {t('settings.cooldownDuration', { minutes: cooldownMinutes })}
                   </label>
                   <input
                     type="range"
@@ -556,11 +558,11 @@ export function Settings() {
                     }}
                   />
                   <div className="flex justify-between text-xs text-dark-400 mt-1">
-                    <span>5 dk</span>
-                    <span>60 dk</span>
+                    <span>5 {t('settings.minutes')}</span>
+                    <span>60 {t('settings.minutes')}</span>
                   </div>
                   <p className="text-dark-400 text-sm mt-3">
-                    Hesap kullanımı sonrası bekleme süresi
+                    {t('settings.cooldownDesc')}
                   </p>
                 </div>
 
@@ -568,11 +570,11 @@ export function Settings() {
                 {botSettings && (
                   <div className="pt-4 border-t border-dark-700 space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-dark-400">Karantina Süresi:</span>
-                      <span className="text-white">{botSettings.quarantine_minutes} dakika</span>
+                      <span className="text-dark-400">{t('settings.quarantineDuration')}:</span>
+                      <span className="text-white">{botSettings.quarantine_minutes} {t('settings.minutes')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-dark-400">Maksimum Başarısızlık:</span>
+                      <span className="text-dark-400">{t('settings.maxFailures')}:</span>
                       <span className="text-white">{botSettings.max_failures}</span>
                     </div>
                   </div>
@@ -587,7 +589,7 @@ export function Settings() {
                     isLoading={cooldownSaving}
                     fullWidth
                   >
-                    {cooldownSaving ? 'Kaydediliyor...' : 'Kaydet'}
+                    {cooldownSaving ? t('settings.saving') : t('settings.save')}
                   </Button>
                 )}
               </div>
@@ -598,11 +600,11 @@ export function Settings() {
         {/* Notification Settings */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Bildirim Ayarları</CardTitle>
+            <CardTitle className="text-lg">{t('settings.notificationSettings')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-dark-400 text-sm">
-              Telegram ve e-posta bildirimleri .env dosyasından yapılandırılmaktadır.
+              {t('settings.notificationDesc')}
             </p>
           </CardContent>
         </Card>
@@ -610,11 +612,11 @@ export function Settings() {
         {/* Anti-Detection Settings */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Anti-Detection Ayarları</CardTitle>
+            <CardTitle className="text-lg">{t('settings.antiDetection')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-dark-400 text-sm">
-              Anti-detection özellikleri varsayılan olarak etkin durumdadır.
+              {t('settings.antiDetectionDesc')}
             </p>
           </CardContent>
         </Card>
@@ -624,7 +626,7 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              🌐 Proxy Yönetimi (NetNut)
+              {t('settings.proxyManagement')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -634,19 +636,19 @@ export function Settings() {
                 <div className="text-2xl font-bold text-white">
                   {proxyStats?.total || 0}
                 </div>
-                <div className="text-sm text-dark-400">Toplam</div>
+                <div className="text-sm text-dark-400">{t('settings.proxyTotal')}</div>
               </div>
               <div className="bg-dark-800 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-green-500">
                   {proxyStats?.active || 0}
                 </div>
-                <div className="text-sm text-dark-400">Aktif</div>
+                <div className="text-sm text-dark-400">{t('settings.proxyActive')}</div>
               </div>
               <div className="bg-dark-800 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-red-500">
                   {proxyStats?.failed || 0}
                 </div>
-                <div className="text-sm text-dark-400">Başarısız</div>
+                <div className="text-sm text-dark-400">{t('settings.proxyFailed')}</div>
               </div>
             </div>
 
@@ -663,9 +665,9 @@ export function Settings() {
             >
               <Upload className="w-12 h-12 text-dark-500 mx-auto mb-4" />
               <p className="text-dark-300 mb-2">
-                CSV dosyasını sürükleyip bırakın
+                {t('settings.dragDropCSV')}
               </p>
-              <p className="text-dark-400 text-sm mb-4">veya</p>
+              <p className="text-dark-400 text-sm mb-4">{t('settings.or')}</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -681,10 +683,10 @@ export function Settings() {
                 onClick={() => fileInputRef.current?.click()}
                 isLoading={proxyUploading}
               >
-                {proxyUploading ? 'Yükleniyor...' : 'Dosya Seç'}
+                {proxyUploading ? t('settings.uploading') : t('settings.selectFile')}
               </Button>
               <p className="text-dark-400 text-xs mt-4">
-                Format: endpoint (server:port:user:pass)
+                {t('settings.proxyFormat')}
               </p>
             </div>
 
@@ -696,7 +698,7 @@ export function Settings() {
                   <div>
                     <p className="font-medium text-white">{proxyFileName}</p>
                     <p className="text-sm text-dark-400">
-                      {proxyStats.total} proxy yüklendi
+                      {t('settings.proxiesLoaded', { count: proxyStats.total })}
                     </p>
                   </div>
                 </div>
@@ -704,7 +706,7 @@ export function Settings() {
                   variant="ghost"
                   size="sm"
                   onClick={handleClearProxies}
-                  title="Temizle"
+                  title={t('settings.clearProxies')}
                 >
                   <Trash2 className="w-5 h-5" />
                 </Button>

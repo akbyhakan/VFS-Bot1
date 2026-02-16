@@ -8,8 +8,10 @@ import { Target, Calendar, Users as UsersIcon, Clock, RefreshCw } from 'lucide-r
 import { formatNumber, formatRelativeTime } from '@/utils/helpers';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const { data: status, refetch, isRefetching } = useBotStatus();
   const stats = useBotStore((state) => state.stats);
   const lastCheck = useBotStore((state) => state.last_check);
@@ -20,15 +22,15 @@ export function Dashboard() {
 
   const handleRefresh = () => {
     refetch();
-    toast.success('Veriler yenileniyor...');
+    toast.success(t('dashboard.refreshData'));
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Kontrol Paneli</h1>
-          <p className="text-dark-400">Bot performansını ve istatistikleri görüntüleyin</p>
+          <h1 className="text-3xl font-bold mb-2">{t('dashboard.title')}</h1>
+          <p className="text-dark-400">{t('dashboard.subtitle')}</p>
         </div>
         <Button
           variant="secondary"
@@ -36,7 +38,7 @@ export function Dashboard() {
           disabled={isRefetching}
           leftIcon={<RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />}
         >
-          {isRefetching ? 'Yenileniyor...' : 'Yenile'}
+          {isRefetching ? t('dashboard.refreshing') : t('dashboard.refresh')}
         </Button>
       </div>
 
@@ -46,26 +48,26 @@ export function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Bulunan Slotlar"
+          title={t('dashboard.slotsFound')}
           value={formatNumber(displayStats.slots_found)}
           icon={Target}
           color="primary"
         />
         <StatsCard
-          title="Alınan Randevular"
+          title={t('dashboard.appointmentsBooked')}
           value={formatNumber(displayStats.appointments_booked)}
           icon={Calendar}
           color="blue"
         />
         <StatsCard
-          title="Aktif Kullanıcılar"
+          title={t('dashboard.activeUsers')}
           value={formatNumber(displayStats.active_users)}
           icon={UsersIcon}
           color="yellow"
         />
         <StatsCard
-          title="Son Kontrol"
-          value={displayLastCheck ? formatRelativeTime(displayLastCheck) : 'Hiç'}
+          title={t('dashboard.lastCheck')}
+          value={displayLastCheck ? formatRelativeTime(displayLastCheck) : t('dashboard.never')}
           icon={Clock}
           color="red"
         />

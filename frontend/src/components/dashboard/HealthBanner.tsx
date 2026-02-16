@@ -3,8 +3,10 @@ import { AlertTriangle, XCircle, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useHealthCheck } from '@/hooks/useApi';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/utils/helpers';
+import { useTranslation } from 'react-i18next';
 
 export function HealthBanner() {
+  const { t } = useTranslation();
   const { data: health } = useHealthCheck();
   const [isDismissed, setIsDismissed] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -59,24 +61,22 @@ export function HealthBanner() {
                 isUnhealthy && 'text-red-400'
               )}
             >
-              {isDegraded && 'Sistem Performansı Düşük'}
-              {isUnhealthy && 'Sistem Sağlıksız'}
+              {isDegraded && t('healthBanner.degraded')}
+              {isUnhealthy && t('healthBanner.unhealthy')}
             </h3>
 
             <button
               onClick={() => setIsDismissed(true)}
               className="p-1 hover:bg-dark-700 rounded transition-colors"
-              aria-label="Dismiss health warning"
+              aria-label={t('healthBanner.dismissWarning')}
             >
               <X className="w-5 h-5 text-dark-400 hover:text-dark-100" />
             </button>
           </div>
 
           <p className="text-dark-300 text-sm mb-3">
-            {isDegraded &&
-              'Bazı sistem bileşenleri sorun yaşıyor. İşlevsellik sınırlı olabilir.'}
-            {isUnhealthy &&
-              'Kritik sistem bileşenleri çalışmıyor. Hizmet ciddi şekilde etkilendi.'}
+            {isDegraded && t('healthBanner.degradedMessage')}
+            {isUnhealthy && t('healthBanner.unhealthyMessage')}
           </p>
 
           {/* Component Details Toggle */}
@@ -91,12 +91,12 @@ export function HealthBanner() {
                 {isExpanded ? (
                   <>
                     <ChevronUp className="w-4 h-4" />
-                    Bileşen detaylarını gizle
+                    {t('healthBanner.hideDetails')}
                   </>
                 ) : (
                   <>
                     <ChevronDown className="w-4 h-4" />
-                    Etkilenen bileşenleri göster ({componentIssues.length})
+                    {t('healthBanner.showComponents', { count: componentIssues.length })}
                   </>
                 )}
               </button>

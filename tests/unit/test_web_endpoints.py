@@ -20,11 +20,11 @@ def client():
 @pytest.fixture
 def reset_state():
     """Reset bot state and metrics between tests."""
-    bot_state["running"] = False
-    bot_state["status"] = "stopped"
-    bot_state["slots_found"] = 0
-    bot_state["appointments_booked"] = 0
-    bot_state["active_users"] = 0
+    bot_state.set_running(False)
+    bot_state.set_status("stopped")
+    bot_state.set_slots_found(0)
+    bot_state.set_appointments_booked(0)
+    bot_state.set_active_users(0)
 
     metrics["requests_total"] = 0
     metrics["requests_success"] = 0
@@ -39,8 +39,8 @@ def reset_state():
     yield
 
     # Cleanup
-    bot_state["running"] = False
-    bot_state["status"] = "stopped"
+    bot_state.set_running(False)
+    bot_state.set_status("stopped")
 
 
 class TestHealthEndpoint:
@@ -89,7 +89,7 @@ class TestHealthEndpoint:
 
     def test_health_endpoint_bot_running(self, client, reset_state):
         """Test health endpoint reflects bot running state."""
-        bot_state["running"] = True
+        bot_state.set_running(True)
 
         response = client.get("/health")
         data = response.json()
@@ -102,7 +102,7 @@ class TestHealthEndpoint:
 
     def test_health_endpoint_bot_stopped(self, client, reset_state):
         """Test health endpoint reflects bot stopped state."""
-        bot_state["running"] = False
+        bot_state.set_running(False)
 
         response = client.get("/health")
         data = response.json()
@@ -179,7 +179,7 @@ class TestMetricsEndpoint:
 
     def test_metrics_endpoint_bot_status(self, client, reset_state):
         """Test bot status in metrics."""
-        bot_state["status"] = "running"
+        bot_state.set_status("running")
 
         response = client.get("/metrics")
         data = response.json()
@@ -231,10 +231,10 @@ class TestApiStatusEndpoint:
 
     def test_api_status_endpoint(self, client, reset_state):
         """Test /api/status endpoint returns correct data."""
-        bot_state["running"] = True
-        bot_state["status"] = "running"
-        bot_state["slots_found"] = 5
-        bot_state["appointments_booked"] = 2
+        bot_state.set_running(True)
+        bot_state.set_status("running")
+        bot_state.set_slots_found(5)
+        bot_state.set_appointments_booked(2)
 
         response = client.get("/api/status")
         data = response.json()

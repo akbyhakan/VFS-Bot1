@@ -13,16 +13,7 @@ import {
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
 import { useEffect, useRef } from 'react';
-
-const navigation = [
-  { name: 'Kontrol Paneli', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
-  { name: 'Kullanıcılar', href: ROUTES.USERS, icon: Users },
-  { name: 'Randevu Talebi', href: ROUTES.APPOINTMENTS, icon: Calendar },
-  { name: 'Denetim Logları', href: ROUTES.AUDIT_LOGS, icon: Shield },
-  { name: 'Loglar', href: ROUTES.LOGS, icon: FileText },
-  { name: 'Ayarlar', href: ROUTES.SETTINGS, icon: Settings },
-  { name: 'Sistem Sağlığı', href: ROUTES.SYSTEM_HEALTH, icon: HeartPulse },
-];
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -30,8 +21,19 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const prevPathnameRef = useRef(location.pathname);
+
+  const navigation = [
+    { href: ROUTES.DASHBOARD, icon: LayoutDashboard, nameKey: 'sidebar.dashboard' },
+    { href: ROUTES.USERS, icon: Users, nameKey: 'sidebar.users' },
+    { href: ROUTES.APPOINTMENTS, icon: Calendar, nameKey: 'sidebar.appointments' },
+    { href: ROUTES.AUDIT_LOGS, icon: Shield, nameKey: 'sidebar.auditLogs' },
+    { href: ROUTES.LOGS, icon: FileText, nameKey: 'sidebar.logs' },
+    { href: ROUTES.SETTINGS, icon: Settings, nameKey: 'sidebar.settings' },
+    { href: ROUTES.SYSTEM_HEALTH, icon: HeartPulse, nameKey: 'sidebar.systemHealth' },
+  ];
   
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -60,7 +62,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <button
             onClick={onClose}
             className="md:hidden text-dark-300 hover:text-dark-100 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
-            aria-label="Menüyü kapat"
+            aria-label={t('sidebar.closeMenu')}
           >
             <X className="w-6 h-6" />
           </button>
@@ -70,7 +72,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navigation.map((item) => (
             <NavLink
-              key={item.name}
+              key={item.href}
               to={item.href}
               className={({ isActive }) =>
                 cn(
@@ -82,7 +84,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               }
             >
               <item.icon className="w-5 h-5 mr-3" />
-              {item.name}
+              {t(item.nameKey)}
             </NavLink>
           ))}
         </nav>

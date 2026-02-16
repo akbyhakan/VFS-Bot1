@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useHealthCheck, useMetrics } from '@/hooks/useApi';
 import { Card } from '@/components/ui/Card';
 import { StatsCard } from '@/components/dashboard/StatsCard';
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export function SystemHealth() {
+  const { t } = useTranslation();
   const { data: health, isLoading: healthLoading } = useHealthCheck();
   const { data: metrics, isLoading: metricsLoading } = useMetrics();
 
@@ -33,7 +35,7 @@ export function SystemHealth() {
     return (
       <Card className="p-8 text-center">
         <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-        <p className="text-dark-300">Sistem sağlık verileri yüklenemedi</p>
+        <p className="text-dark-300">{t('systemHealth.dataLoadFailed')}</p>
       </Card>
     );
   }
@@ -65,36 +67,36 @@ export function SystemHealth() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Sistem Sağlığı</h1>
-        <p className="text-dark-400">Sistem durumu, performans ve bileşen sağlığı</p>
+        <h1 className="text-3xl font-bold mb-2">{t('systemHealth.title')}</h1>
+        <p className="text-dark-400">{t('systemHealth.subtitle')}</p>
       </div>
 
       {/* Overall Status */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Genel Durum</h2>
+          <h2 className="text-xl font-semibold">{t('systemHealth.overallStatus')}</h2>
           <span
             className={cn(
               'px-4 py-2 rounded-lg font-medium uppercase text-sm',
               getStatusColor(health.status)
             )}
           >
-            {health.status === 'healthy' && 'Sağlıklı'}
-            {health.status === 'degraded' && 'Düşük Performans'}
-            {health.status === 'unhealthy' && 'Sağlıksız'}
+            {health.status === 'healthy' && t('systemHealth.healthy')}
+            {health.status === 'degraded' && t('systemHealth.degraded')}
+            {health.status === 'unhealthy' && t('systemHealth.unhealthy')}
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-dark-400 mb-1">Versiyon</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.version')}</p>
             <p className="font-medium">{health.version}</p>
           </div>
           <div>
-            <p className="text-dark-400 mb-1">Çalışma Süresi</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.uptime')}</p>
             <p className="font-medium">{formatUptime(health.uptime_seconds)}</p>
           </div>
           <div>
-            <p className="text-dark-400 mb-1">Son Kontrol</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.lastCheck')}</p>
             <p className="font-medium">
               {new Date(health.timestamp).toLocaleTimeString('tr-TR')}
             </p>
@@ -105,13 +107,13 @@ export function SystemHealth() {
       {/* Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Başarı Oranı"
+          title={t('systemHealth.successRate')}
           value={`${successRate.toFixed(1)}%`}
           icon={TrendingUp}
           color={successRate >= 90 ? 'primary' : successRate >= 70 ? 'yellow' : 'red'}
         />
         <StatsCard
-          title="Ort. Yanıt Süresi"
+          title={t('systemHealth.avgResponseTime')}
           value={`${metrics.avg_response_time_ms.toFixed(0)}ms`}
           icon={Clock}
           color={
@@ -123,13 +125,13 @@ export function SystemHealth() {
           }
         />
         <StatsCard
-          title="İstek/Dakika"
+          title={t('systemHealth.requestsPerMinute')}
           value={metrics.requests_per_minute.toFixed(1)}
           icon={Activity}
           color="blue"
         />
         <StatsCard
-          title="Devre Kesici Tetikleme"
+          title={t('systemHealth.circuitBreakerTrips')}
           value={metrics.circuit_breaker_trips}
           icon={Shield}
           color={metrics.circuit_breaker_trips === 0 ? 'primary' : 'yellow'}
@@ -138,14 +140,14 @@ export function SystemHealth() {
 
       {/* Component Health */}
       <Card>
-        <h2 className="text-xl font-semibold mb-4">Bileşen Sağlığı</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('systemHealth.componentHealth')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Database */}
           <div className="p-4 rounded-lg bg-dark-800 border border-dark-700">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-dark-400" />
-                <span className="font-medium">Database</span>
+                <span className="font-medium">{t('systemHealth.database')}</span>
               </div>
               {getStatusIcon(health.components.database.status)}
             </div>
@@ -164,7 +166,7 @@ export function SystemHealth() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Server className="w-5 h-5 text-dark-400" />
-                <span className="font-medium">Redis</span>
+                <span className="font-medium">{t('systemHealth.redis')}</span>
               </div>
               {getStatusIcon(health.components.redis.status)}
             </div>
@@ -178,7 +180,7 @@ export function SystemHealth() {
             </span>
             {health.components.redis.backend && (
               <p className="text-xs text-dark-400 mt-2">
-                Backend: {health.components.redis.backend}
+                {t('systemHealth.backend')}: {health.components.redis.backend}
               </p>
             )}
           </div>
@@ -188,7 +190,7 @@ export function SystemHealth() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-dark-400" />
-                <span className="font-medium">Bot</span>
+                <span className="font-medium">{t('systemHealth.bot')}</span>
               </div>
               {getStatusIcon(health.components.bot.status)}
             </div>
@@ -202,9 +204,9 @@ export function SystemHealth() {
             </span>
             <div className="mt-2 space-y-1 text-xs text-dark-400">
               <p>
-                Durum: {health.components.bot.running ? 'Çalışıyor' : 'Durduruldu'}
+                {t('systemHealth.status')}: {health.components.bot.running ? t('systemHealth.running') : t('systemHealth.stopped')}
               </p>
-              <p>Başarı: {(health.components.bot.success_rate * 100).toFixed(1)}%</p>
+              <p>{t('systemHealth.success')}: {(health.components.bot.success_rate * 100).toFixed(1)}%</p>
             </div>
           </div>
 
@@ -213,7 +215,7 @@ export function SystemHealth() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-dark-400" />
-                <span className="font-medium">Devre Kesici</span>
+                <span className="font-medium">{t('systemHealth.circuitBreaker')}</span>
               </div>
               {getStatusIcon(health.components.circuit_breaker.status)}
             </div>
@@ -226,7 +228,7 @@ export function SystemHealth() {
               {health.components.circuit_breaker.status}
             </span>
             <p className="text-xs text-dark-400 mt-2">
-              Tetikleme: {health.components.circuit_breaker.trips}
+              {t('systemHealth.trips')}: {health.components.circuit_breaker.trips}
             </p>
           </div>
 
@@ -235,7 +237,7 @@ export function SystemHealth() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-dark-400" />
-                <span className="font-medium">Bildirimler</span>
+                <span className="font-medium">{t('systemHealth.notifications')}</span>
               </div>
               {getStatusIcon(health.components.notifications.status)}
             </div>
@@ -254,7 +256,7 @@ export function SystemHealth() {
       {/* Error Breakdown */}
       {metrics.errors_by_type && Object.keys(metrics.errors_by_type).length > 0 && (
         <Card>
-          <h2 className="text-xl font-semibold mb-4">Hata Dağılımı</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('systemHealth.errorBreakdown')}</h2>
           <div className="space-y-2">
             {Object.entries(metrics.errors_by_type).map(([type, count]) => (
               <div
@@ -271,24 +273,24 @@ export function SystemHealth() {
 
       {/* System Metrics */}
       <Card>
-        <h2 className="text-xl font-semibold mb-4">Sistem Metrikleri</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('systemHealth.systemMetrics')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-dark-400 mb-1">Toplam Kontrol</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.totalChecks')}</p>
             <p className="font-medium text-xl">{health.metrics.total_checks.toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-dark-400 mb-1">Bulunan Slotlar</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.slotsFound')}</p>
             <p className="font-medium text-xl">{health.metrics.slots_found.toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-dark-400 mb-1">Alınan Randevular</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.appointmentsBooked')}</p>
             <p className="font-medium text-xl">
               {health.metrics.appointments_booked.toLocaleString()}
             </p>
           </div>
           <div>
-            <p className="text-dark-400 mb-1">Aktif Kullanıcılar</p>
+            <p className="text-dark-400 mb-1">{t('systemHealth.activeUsers')}</p>
             <p className="font-medium text-xl">{health.metrics.active_users.toLocaleString()}</p>
           </div>
         </div>
