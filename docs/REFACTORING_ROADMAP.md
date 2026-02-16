@@ -130,14 +130,13 @@ except VFSBotError as e:
 
 ### Deprecated References
 
-| Location | Issue | Fix |
-|----------|-------|-----|
-| `src/services/notification/notification.py:368` | Uses `asyncio.get_event_loop().time()` — deprecated since Python 3.10, emits `DeprecationWarning` in 3.12+ | Replace with `asyncio.get_running_loop().time()` |
+✅ **All resolved.**
 
 ### Previously Migrated (Resolved)
 
 - ✅ `google-generativeai` (deprecated) → migrated to `google-genai~=1.62.0` (unified SDK)
 - ✅ `selenium` → fully replaced by `playwright>=1.58.0`
+- ✅ `asyncio.get_event_loop().time()` in `notification.py:368` → replaced with `asyncio.get_running_loop().time()` (fixed in this PR)
 
 ---
 
@@ -178,9 +177,7 @@ All credentials use environment variables:
 
 ### Deprecated Async Pattern
 
-| File | Line | Issue |
-|------|------|-------|
-| `src/services/notification/notification.py` | 368 | `asyncio.get_event_loop().time()` — should be `asyncio.get_running_loop().time()` to avoid `DeprecationWarning` |
+✅ **Resolved** — `asyncio.get_event_loop().time()` in `src/services/notification/notification.py:368` has been replaced with `asyncio.get_running_loop().time()` (fixed in this PR).
 
 ### Resource Usage
 
@@ -194,10 +191,9 @@ All credentials use environment variables:
 
 ### 🔴 High Priority (Critical fixes, security risks)
 
-1. **Fix deprecated `asyncio.get_event_loop()` call**
+1. ~~**Fix deprecated `asyncio.get_event_loop()` call**~~ ✅ **FIXED in this PR**
    - File: `src/services/notification/notification.py:368`
-   - Change: `asyncio.get_event_loop().time()` → `asyncio.get_running_loop().time()`
-   - Risk: Emits `DeprecationWarning` in Python 3.12+, will break in future Python versions
+   - Changed: `asyncio.get_event_loop().time()` → `asyncio.get_running_loop().time()`
 
 2. **Review payment stub endpoint**
    - File: `web/routes/payment.py:171`
