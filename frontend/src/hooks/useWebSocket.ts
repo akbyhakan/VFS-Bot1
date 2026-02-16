@@ -88,9 +88,10 @@ export function useWebSocket() {
                 type: 'info',
               });
             } else if (status === 'error') {
+              const errorMessage = (message.data as { message?: string }).message;
               addNotificationRef.current({
                 title: tRef.current('notifications.botError'),
-                message: message.data.message || tRef.current('notifications.botErrorMessage'),
+                message: errorMessage || tRef.current('notifications.botErrorMessage'),
                 type: 'error',
               });
             } else if (status === 'restarting') {
