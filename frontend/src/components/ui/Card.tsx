@@ -20,8 +20,8 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
         )}
         {...props}
       >
-        {children}
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-transparent pointer-events-none rounded-xl" />
+        {children}
       </div>
     );
   }
