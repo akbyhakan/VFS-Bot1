@@ -17,8 +17,8 @@ run_migrations() {
             retry_count=$((retry_count + 1))
             
             if [ $retry_count -lt $max_retries ]; then
-                # Exponential backoff: 2^(retry_count) seconds
-                wait_time=$((base_wait ** retry_count))
+                # Exponential backoff: 2 * retry_count (linear backoff for simplicity)
+                wait_time=$((base_wait * retry_count))
                 echo "⚠️ Migration failed, retrying in ${wait_time}s..."
                 sleep $wait_time
             fi

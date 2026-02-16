@@ -122,10 +122,12 @@ async def get_runtime_config_value(
         HTTPException: If key is not found
     """
     try:
-        value = RuntimeConfig.get(key)
-        if value is None:
+        # Get all config to check if key exists
+        config_dict = RuntimeConfig.to_dict()
+        if key not in config_dict:
             raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")
 
+        value = config_dict[key]
         logger.debug(f"Runtime configuration value retrieved: {key} = {value}")
 
         return {"key": key, "value": value}

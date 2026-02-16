@@ -64,57 +64,66 @@ class RuntimeConfig:
 
     def _load_defaults(self) -> None:
         """Load default values from environment variables or Final constants."""
+
+        def get_int_env(key: str, default: int) -> int:
+            """Get integer from environment with error handling."""
+            try:
+                return int(os.getenv(key, default))
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid value for {key}, using default {default}: {e}")
+                return default
+
+        def get_float_env(key: str, default: float) -> float:
+            """Get float from environment with error handling."""
+            try:
+                return float(os.getenv(key, default))
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid value for {key}, using default {default}: {e}")
+                return default
+
         # Retry configuration
-        self._config["retries.max_process_user"] = int(
-            os.getenv("RETRIES_MAX_PROCESS_USER", Retries.MAX_PROCESS_USER)
+        self._config["retries.max_process_user"] = get_int_env(
+            "RETRIES_MAX_PROCESS_USER", Retries.MAX_PROCESS_USER
         )
-        self._config["retries.max_login"] = int(
-            os.getenv("RETRIES_MAX_LOGIN", Retries.MAX_LOGIN)
+        self._config["retries.max_login"] = get_int_env("RETRIES_MAX_LOGIN", Retries.MAX_LOGIN)
+        self._config["retries.max_booking"] = get_int_env(
+            "RETRIES_MAX_BOOKING", Retries.MAX_BOOKING
         )
-        self._config["retries.max_booking"] = int(
-            os.getenv("RETRIES_MAX_BOOKING", Retries.MAX_BOOKING)
+        self._config["retries.max_network"] = get_int_env(
+            "RETRIES_MAX_NETWORK", Retries.MAX_NETWORK
         )
-        self._config["retries.max_network"] = int(
-            os.getenv("RETRIES_MAX_NETWORK", Retries.MAX_NETWORK)
+        self._config["retries.backoff_multiplier"] = get_int_env(
+            "RETRIES_BACKOFF_MULTIPLIER", Retries.BACKOFF_MULTIPLIER
         )
-        self._config["retries.backoff_multiplier"] = int(
-            os.getenv("RETRIES_BACKOFF_MULTIPLIER", Retries.BACKOFF_MULTIPLIER)
+        self._config["retries.backoff_min_seconds"] = get_int_env(
+            "RETRIES_BACKOFF_MIN_SECONDS", Retries.BACKOFF_MIN_SECONDS
         )
-        self._config["retries.backoff_min_seconds"] = int(
-            os.getenv("RETRIES_BACKOFF_MIN_SECONDS", Retries.BACKOFF_MIN_SECONDS)
-        )
-        self._config["retries.backoff_max_seconds"] = int(
-            os.getenv("RETRIES_BACKOFF_MAX_SECONDS", Retries.BACKOFF_MAX_SECONDS)
+        self._config["retries.backoff_max_seconds"] = get_int_env(
+            "RETRIES_BACKOFF_MAX_SECONDS", Retries.BACKOFF_MAX_SECONDS
         )
 
         # Circuit breaker configuration
-        self._config["circuit_breaker.fail_threshold"] = int(
-            os.getenv("CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreaker.FAIL_THRESHOLD)
+        self._config["circuit_breaker.fail_threshold"] = get_int_env(
+            "CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreaker.FAIL_THRESHOLD
         )
-        self._config["circuit_breaker.timeout_seconds"] = float(
-            os.getenv("CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreaker.TIMEOUT_SECONDS)
+        self._config["circuit_breaker.timeout_seconds"] = get_float_env(
+            "CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreaker.TIMEOUT_SECONDS
         )
-        self._config["circuit_breaker.half_open_success_threshold"] = int(
-            os.getenv(
-                "CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD",
-                CircuitBreaker.HALF_OPEN_SUCCESS_THRESHOLD,
-            )
+        self._config["circuit_breaker.half_open_success_threshold"] = get_int_env(
+            "CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD",
+            CircuitBreaker.HALF_OPEN_SUCCESS_THRESHOLD,
         )
-        self._config["circuit_breaker.max_errors_per_hour"] = int(
-            os.getenv("CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreaker.MAX_ERRORS_PER_HOUR)
+        self._config["circuit_breaker.max_errors_per_hour"] = get_int_env(
+            "CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreaker.MAX_ERRORS_PER_HOUR
         )
-        self._config["circuit_breaker.error_window_seconds"] = int(
-            os.getenv(
-                "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreaker.ERROR_WINDOW_SECONDS
-            )
+        self._config["circuit_breaker.error_window_seconds"] = get_int_env(
+            "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreaker.ERROR_WINDOW_SECONDS
         )
-        self._config["circuit_breaker.backoff_base_seconds"] = int(
-            os.getenv(
-                "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreaker.BACKOFF_BASE_SECONDS
-            )
+        self._config["circuit_breaker.backoff_base_seconds"] = get_int_env(
+            "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreaker.BACKOFF_BASE_SECONDS
         )
-        self._config["circuit_breaker.backoff_max_seconds"] = int(
-            os.getenv("CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreaker.BACKOFF_MAX_SECONDS)
+        self._config["circuit_breaker.backoff_max_seconds"] = get_int_env(
+            "CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreaker.BACKOFF_MAX_SECONDS
         )
 
     @classmethod
