@@ -51,4 +51,14 @@ describe('Button', () => {
     rerender(<Button size="lg">Large</Button>);
     expect(screen.getByRole('button')).toHaveClass('px-6', 'py-3');
   });
+
+  it('applies fullWidth class when fullWidth prop is true', () => {
+    render(<Button fullWidth>Full Width</Button>);
+    expect(screen.getByRole('button')).toHaveClass('w-full');
+  });
+
+  it('does not apply fullWidth class when fullWidth prop is false', () => {
+    render(<Button>Normal Width</Button>);
+    expect(screen.getByRole('button')).not.toHaveClass('w-full');
+  });
 });

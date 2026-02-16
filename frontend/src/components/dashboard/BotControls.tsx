@@ -4,6 +4,7 @@ import { Play, Square, RotateCcw, Search } from 'lucide-react';
 import { useBotStore } from '@/store/botStore';
 import { useStartBot, useStopBot, useRestartBot, useCheckNow } from '@/hooks/useApi';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export function BotControls() {
   const running = useBotStore((state) => state.running);
@@ -11,47 +12,48 @@ export function BotControls() {
   const stopBot = useStopBot();
   const restartBot = useRestartBot();
   const checkNow = useCheckNow();
+  const { t } = useTranslation();
 
   const handleStart = async () => {
     try {
       await startBot.mutateAsync({ action: 'start' });
-      toast.success('Bot başarıyla başlatıldı');
+      toast.success(t('botControls.startSuccess'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Bot başlatılamadı');
+      toast.error(error instanceof Error ? error.message : t('botControls.startError'));
     }
   };
 
   const handleStop = async () => {
     try {
       await stopBot.mutateAsync();
-      toast.success('Bot durduruldu');
+      toast.success(t('botControls.stopSuccess'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Bot durdurulamadı');
+      toast.error(error instanceof Error ? error.message : t('botControls.stopError'));
     }
   };
 
   const handleRestart = async () => {
     try {
       await restartBot.mutateAsync();
-      toast.success('Bot yeniden başlatıldı');
+      toast.success(t('botControls.restartSuccess'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Bot yeniden başlatılamadı');
+      toast.error(error instanceof Error ? error.message : t('botControls.restartError'));
     }
   };
 
   const handleManualCheck = async () => {
     try {
       await checkNow.mutateAsync();
-      toast.success('Manuel kontrol başlatıldı');
+      toast.success(t('botControls.checkSuccess'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Manuel kontrol başlatılamadı');
+      toast.error(error instanceof Error ? error.message : t('botControls.checkError'));
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Bot Kontrolleri</CardTitle>
+        <CardTitle className="text-lg">{t('botControls.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3">
@@ -63,7 +65,7 @@ export function BotControls() {
             leftIcon={<Play className="w-4 h-4" />}
             className="flex-1"
           >
-            Başlat
+            {t('botControls.start')}
           </Button>
           <Button
             variant="danger"
@@ -73,7 +75,7 @@ export function BotControls() {
             leftIcon={<Square className="w-4 h-4" />}
             className="flex-1"
           >
-            Durdur
+            {t('botControls.stop')}
           </Button>
           <Button
             variant="secondary"
@@ -83,7 +85,7 @@ export function BotControls() {
             leftIcon={<RotateCcw className="w-4 h-4" />}
             className="flex-1"
           >
-            Yeniden Başlat
+            {t('botControls.restart')}
           </Button>
           <Button
             variant="outline"
@@ -93,7 +95,7 @@ export function BotControls() {
             leftIcon={<Search className="w-4 h-4" />}
             className="flex-1"
           >
-            Şimdi Kontrol Et
+            {t('botControls.checkNow')}
           </Button>
         </div>
       </CardContent>

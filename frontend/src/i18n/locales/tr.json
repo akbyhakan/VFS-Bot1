@@ -43,9 +43,61 @@
     "webhookUrls": "Webhook URL'leri",
     "proxySettings": "Proxy Ayarları"
   },
+  "header": {
+    "openMenu": "Menüyü aç",
+    "notifications": "Bildirimler",
+    "changeLanguage": "Dil değiştir",
+    "switchToLight": "Açık temaya geç",
+    "switchToDark": "Koyu temaya geç",
+    "statusRunning": "Çalışıyor",
+    "statusStopped": "Durduruldu",
+    "statusIdle": "Beklemede",
+    "connected": "Bağlı",
+    "disconnected": "Bağlantı Yok",
+    "unreadNotifications": "{{count}} okunmamış bildirim"
+  },
+  "notificationPanel": {
+    "title": "Bildirimler",
+    "closePanel": "Paneli kapat",
+    "noNotifications": "Bildirim yok",
+    "deleteNotification": "Bildirimi sil",
+    "markAllRead": "Tümünü Okundu İşaretle",
+    "clearAll": "Tümünü Temizle",
+    "panelLabel": "Bildirimler paneli"
+  },
+  "botControls": {
+    "title": "Bot Kontrolleri",
+    "start": "Başlat",
+    "stop": "Durdur",
+    "restart": "Yeniden Başlat",
+    "checkNow": "Şimdi Kontrol Et",
+    "startSuccess": "Bot başarıyla başlatıldı",
+    "startError": "Bot başlatılamadı",
+    "stopSuccess": "Bot durduruldu",
+    "stopError": "Bot durdurulamadı",
+    "restartSuccess": "Bot yeniden başlatıldı",
+    "restartError": "Bot yeniden başlatılamadı",
+    "checkSuccess": "Manuel kontrol başlatıldı",
+    "checkError": "Manuel kontrol başlatılamadı"
+  },
+  "errorBoundary": {
+    "title": "Bir hata oluştu",
+    "description": "Sayfa yüklenirken beklenmeyen bir hata oluştu.",
+    "retry": "Tekrar Dene"
+  },
   "notifications": {
     "botStarted": "Bot başlatıldı",
+    "botStartedMessage": "VFS Bot başarıyla çalışmaya başladı",
     "botStopped": "Bot durduruldu",
+    "botStoppedMessage": "VFS Bot durduruldu",
+    "botError": "Bot Hatası",
+    "botErrorMessage": "VFS Bot bir hata ile karşılaştı",
+    "botRestarting": "Bot Yeniden Başlatılıyor",
+    "botRestartingMessage": "VFS Bot yeniden başlatılıyor...",
+    "rateLimitWarning": "Rate Limit Uyarısı",
+    "rateLimitMessage": "VFS tarafından rate limit uygulandı, bekleme moduna geçildi",
+    "slotFound": "Slot Bulundu!",
+    "defaultTitle": "Bildirim",
     "checkTriggered": "Manuel kontrol tetiklendi",
     "settingsSaved": "Ayarlar kaydedildi"
   },

@@ -43,9 +43,61 @@
     "webhookUrls": "Webhook URLs",
     "proxySettings": "Proxy Settings"
   },
+  "header": {
+    "openMenu": "Open menu",
+    "notifications": "Notifications",
+    "changeLanguage": "Change language",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "statusRunning": "Running",
+    "statusStopped": "Stopped",
+    "statusIdle": "Idle",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "unreadNotifications": "{{count}} unread notifications"
+  },
+  "notificationPanel": {
+    "title": "Notifications",
+    "closePanel": "Close panel",
+    "noNotifications": "No notifications",
+    "deleteNotification": "Delete notification",
+    "markAllRead": "Mark All as Read",
+    "clearAll": "Clear All",
+    "panelLabel": "Notifications panel"
+  },
+  "botControls": {
+    "title": "Bot Controls",
+    "start": "Start",
+    "stop": "Stop",
+    "restart": "Restart",
+    "checkNow": "Check Now",
+    "startSuccess": "Bot started successfully",
+    "startError": "Failed to start bot",
+    "stopSuccess": "Bot stopped",
+    "stopError": "Failed to stop bot",
+    "restartSuccess": "Bot restarted",
+    "restartError": "Failed to restart bot",
+    "checkSuccess": "Manual check started",
+    "checkError": "Failed to start manual check"
+  },
+  "errorBoundary": {
+    "title": "An error occurred",
+    "description": "An unexpected error occurred while loading the page.",
+    "retry": "Try Again"
+  },
   "notifications": {
     "botStarted": "Bot started",
+    "botStartedMessage": "VFS Bot started successfully",
     "botStopped": "Bot stopped",
+    "botStoppedMessage": "VFS Bot has been stopped",
+    "botError": "Bot Error",
+    "botErrorMessage": "VFS Bot encountered an error",
+    "botRestarting": "Bot Restarting",
+    "botRestartingMessage": "VFS Bot is restarting...",
+    "rateLimitWarning": "Rate Limit Warning",
+    "rateLimitMessage": "Rate limited by VFS, entering wait mode",
+    "slotFound": "Slot Found!",
+    "defaultTitle": "Notification",
     "checkTriggered": "Manual check triggered",
     "settingsSaved": "Settings saved"
   },
