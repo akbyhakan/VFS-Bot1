@@ -236,8 +236,10 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
 
     # Validate config with Pydantic schema
     from .config_validator import ConfigValidator
+    from ..exceptions import ConfigurationError
 
-    ConfigValidator.validate(config)
+    if not ConfigValidator.validate(config):
+        raise ConfigurationError("Configuration validation failed. Check logs for details.")
 
     return config
 

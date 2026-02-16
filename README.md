@@ -553,9 +553,10 @@ pytest tests/test_bot.py -v
 VFS-Bot1/
 ├── src/
 │   ├── core/                 # Core modules
-│   │   ├── config_loader.py  # YAML config loader
-│   │   ├── config_validator.py
-│   │   ├── env_validator.py  # Environment validation
+│   │   ├── config/           # Configuration management
+│   │   │   ├── config_loader.py  # YAML config loader
+│   │   │   ├── config_validator.py
+│   │   │   └── env_validator.py  # Environment validation
 │   │   ├── logger.py         # Structured logging (Loguru)
 │   │   ├── monitoring.py     # Sentry integration
 │   │   └── exceptions.py

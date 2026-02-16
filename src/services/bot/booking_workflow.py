@@ -238,8 +238,6 @@ class BookingWorkflow:
         Returns:
             Result string: 'success', 'no_slot', 'login_fail', 'error', 'banned'
         """
-        from src.utils.masking import mask_email
-
         masked_email = mask_email(account.email)
         logger.info(
             f"Processing mission with account {account.id} ({masked_email}), "

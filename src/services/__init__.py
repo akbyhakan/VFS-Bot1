@@ -4,13 +4,13 @@ import importlib as _importlib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .bot_service import VFSBot as VFSBot
+    from .bot.vfs_bot import VFSBot as VFSBot
     from .captcha_solver import CaptchaSolver as CaptchaSolver
     from .centre_fetcher import CentreFetcher as CentreFetcher
     from .notification import NotificationService as NotificationService
 
 _LAZY_MODULE_MAP = {
-    "VFSBot": ("src.services.bot_service", "VFSBot"),
+    "VFSBot": ("src.services.bot.vfs_bot", "VFSBot"),
     "CaptchaSolver": ("src.services.captcha_solver", "CaptchaSolver"),
     "CentreFetcher": ("src.services.centre_fetcher", "CentreFetcher"),
     "NotificationService": ("src.services.notification", "NotificationService"),
