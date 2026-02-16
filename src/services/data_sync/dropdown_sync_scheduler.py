@@ -8,7 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
 
-from src.core.countries import SUPPORTED_COUNTRIES
+from src.constants.countries import SUPPORTED_COUNTRIES
 from src.models.database import Database
 from src.repositories.dropdown_cache_repository import DropdownCacheRepository
 
