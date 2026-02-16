@@ -4,7 +4,11 @@ import { formatRelativeTime } from '@/utils/helpers';
 import { CheckCheck, Trash2, X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
-export function NotificationPanel() {
+interface NotificationPanelProps {
+  bellButtonRef: React.RefObject<HTMLButtonElement>;
+}
+
+export function NotificationPanel({ bellButtonRef }: NotificationPanelProps) {
   const { notifications, isOpen, unreadCount, togglePanel, markAllAsRead, clearAll, removeNotification } = useNotificationStore();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -12,8 +16,8 @@ export function NotificationPanel() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        const bellButton = document.querySelector('[aria-label="Bildirimler"]');
-        if (bellButton && bellButton.contains(event.target as Node)) {
+        // Check if click is on the bell button using ref
+        if (bellButtonRef.current && bellButtonRef.current.contains(event.target as Node)) {
           return;
         }
         if (isOpen) {
@@ -26,7 +30,7 @@ export function NotificationPanel() {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, togglePanel]);
+  }, [isOpen, togglePanel, bellButtonRef]);
 
   if (!isOpen) return null;
 

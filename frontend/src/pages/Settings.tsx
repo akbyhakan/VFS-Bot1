@@ -6,6 +6,7 @@ import { usePaymentCard } from '@/hooks/usePaymentCard';
 import { webhookApi } from '@/services/paymentCard';
 import { proxyApi, type ProxyStats } from '@/services/proxy';
 import { getBotSettings, updateBotSettings, type BotSettingsResponse } from '@/services/bot';
+import { api } from '@/services/api';
 import type { WebhookUrls } from '@/types/payment';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
@@ -507,17 +508,10 @@ export function Settings() {
                     className="w-full" // Note: Button doesn't have fullWidth prop yet
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/webhook/test', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                        });
-                        if (response.ok) {
-                          toast.success('Webhook bağlantısı başarılı!');
-                        } else {
-                          toast.error('Webhook bağlantısı başarısız');
-                        }
+                        await api.post('/api/webhook/test');
+                        toast.success('Webhook bağlantısı başarılı!');
                       } catch (error) {
-                        toast.info('Webhook test edilemedi - Lütfen backend\'i kontrol edin');
+                        toast.error('Webhook bağlantısı başarısız');
                       }
                     }}
                   >

@@ -8,6 +8,7 @@ import { NotificationPanel } from './NotificationPanel';
 import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-react';
 import { cn, getStatusColor } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -20,6 +21,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { theme, toggleTheme } = useThemeStore();
   const { i18n } = useTranslation();
   const { unreadCount, togglePanel } = useNotificationStore();
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleMenuClick = () => {
     onMenuClick?.();
@@ -92,6 +94,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Notification Icon */}
         <div className="relative">
           <button
+            ref={bellButtonRef}
             onClick={togglePanel}
             className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors relative"
             aria-label="Bildirimler"
@@ -102,7 +105,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             )}
           </button>
-          <NotificationPanel />
+          <NotificationPanel bellButtonRef={bellButtonRef} />
         </div>
 
         {/* Language Selector */}

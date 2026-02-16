@@ -82,9 +82,12 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
             card = dict(row)
 
-            # Decrypt card number
+            # Decrypt card number and encrypted fields
             try:
                 card["card_number"] = decrypt_password(card["card_number_encrypted"])
+                card["card_holder_name"] = decrypt_password(card["card_holder_name_encrypted"])
+                card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
+                card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
             except Exception as e:
                 logger.error(f"Failed to decrypt card data: {e}")
                 raise ValueError("Failed to decrypt card data")
@@ -114,9 +117,12 @@ class PaymentRepository(BaseRepository[PaymentCard]):
 
             card = dict(row)
 
-            # Decrypt card number
+            # Decrypt card number and encrypted fields
             try:
                 card["card_number"] = decrypt_password(card["card_number_encrypted"])
+                card["card_holder_name"] = decrypt_password(card["card_holder_name_encrypted"])
+                card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
+                card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
             except Exception as e:
                 logger.error(f"Failed to decrypt card data: {e}")
                 raise ValueError("Failed to decrypt card data")
@@ -151,8 +157,11 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card_number = decrypt_password(card["card_number_encrypted"])
                 last_four = card_number[-4:]
                 card["card_number_masked"] = f"**** **** **** {last_four}"
+                card["card_holder_name"] = decrypt_password(card["card_holder_name_encrypted"])
+                card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
+                card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
             except Exception as e:
-                logger.error(f"Failed to decrypt card number: {e}")
+                logger.error(f"Failed to decrypt card data: {e}")
                 card["card_number_masked"] = "**** **** **** ****"
 
             return PaymentCard(
@@ -269,8 +278,11 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         # Validate card data
         self._validate_card_data(data)
 
-        # Encrypt sensitive data (card number only)
+        # Encrypt sensitive data (all card fields)
         card_number_encrypted = encrypt_password(data["card_number"])
+        card_holder_name_encrypted = encrypt_password(data["card_holder_name"])
+        expiry_month_encrypted = encrypt_password(data["expiry_month"])
+        expiry_year_encrypted = encrypt_password(data["expiry_year"])
 
         async with self.db.get_connection() as conn:
             # Check if a card already exists
@@ -281,17 +293,17 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 await conn.execute(
                     """
                     UPDATE payment_card
-                    SET card_holder_name = $1,
+                    SET card_holder_name_encrypted = $1,
                         card_number_encrypted = $2,
-                        expiry_month = $3,
-                        expiry_year = $4,
+                        expiry_month_encrypted = $3,
+                        expiry_year_encrypted = $4,
                         updated_at = NOW()
                     WHERE id = $5
                     """,
-                    data["card_holder_name"],
+                    card_holder_name_encrypted,
                     card_number_encrypted,
-                    data["expiry_month"],
-                    data["expiry_year"],
+                    expiry_month_encrypted,
+                    expiry_year_encrypted,
                     existing["id"],
                 )
                 logger.info("Payment card updated")
@@ -301,15 +313,15 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card_id = await conn.fetchval(
                     """
                     INSERT INTO payment_card
-                    (card_holder_name, card_number_encrypted, expiry_month,
-                     expiry_year)
+                    (card_holder_name_encrypted, card_number_encrypted, expiry_month_encrypted,
+                     expiry_year_encrypted)
                     VALUES ($1, $2, $3, $4)
                     RETURNING id
                     """,
-                    data["card_holder_name"],
+                    card_holder_name_encrypted,
                     card_number_encrypted,
-                    data["expiry_month"],
-                    data["expiry_year"],
+                    expiry_month_encrypted,
+                    expiry_year_encrypted,
                 )
                 if card_id is None:
                     raise RuntimeError("Failed to get inserted card ID")

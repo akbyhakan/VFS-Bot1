@@ -19,6 +19,10 @@ from web.models.auth import LoginRequest, TokenResponse
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
+# Dummy bcrypt hash for timing attack protection
+# Used when username is invalid to maintain constant-time behavior
+_DUMMY_BCRYPT_HASH = "$2b$12$LJ3m4ys3Lg7E16OlByBg6eKDoYkBWKJkG1VyNlITNYDR8xPz.k9hK"
+
 
 async def _is_admin_secret_consumed(db: Database) -> bool:
     """
@@ -130,17 +134,13 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
             detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
         )
 
-    # Check username with constant-time comparison to prevent timing attacks
-    if not hmac.compare_digest(credentials.username, admin_username):
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Constant-time username comparison to prevent timing attacks
+    username_valid = hmac.compare_digest(credentials.username, admin_username)
 
+    # Validate bcrypt format only when username is valid (skip if username is wrong)
     # Check password - ONLY accept bcrypt hashed passwords
     # Security requirement: Plaintext passwords are not allowed in ANY environment
-    if not admin_password.startswith(("$2b$", "$2a$", "$2y$")):
+    if username_valid and not admin_password.startswith(("$2b$", "$2a$", "$2y$")):
         raise HTTPException(
             status_code=500,
             detail="Server configuration error: ADMIN_PASSWORD must be bcrypt hashed. "
@@ -148,9 +148,13 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
             "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
         )
 
-    password_valid = verify_password(credentials.password, admin_password)
+    # ALWAYS run password verification to prevent timing attack
+    # Use a dummy hash when username is wrong to maintain constant execution time
+    password_hash_to_check = admin_password if username_valid else _DUMMY_BCRYPT_HASH
+    password_valid = verify_password(credentials.password, password_hash_to_check)
 
-    if not password_valid:
+    # Only consider password valid if username was also valid
+    if not username_valid or not password_valid:
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
