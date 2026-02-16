@@ -2,9 +2,10 @@
 
 import asyncio
 import html
+from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, Union
 
 import aiosmtplib
 from loguru import logger
@@ -14,22 +15,89 @@ from src.utils.decorators import retry_async
 
 # Type aliases for better type hints
 NotificationPriority = Literal["low", "normal", "high"]
-NotificationConfig = Dict[str, Any]  # Could be TypedDict for more specificity
+
+
+@dataclass
+class TelegramConfig:
+    """Telegram notification configuration."""
+
+    enabled: bool = False
+    bot_token: Optional[str] = None
+    chat_id: Optional[str] = None
+
+
+@dataclass
+class EmailConfig:
+    """Email notification configuration."""
+
+    enabled: bool = False
+    sender: Optional[str] = None
+    password: Optional[str] = None
+    receiver: Optional[str] = None
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+
+
+@dataclass
+class NotificationConfig:
+    """Notification service configuration."""
+
+    telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    email: EmailConfig = field(default_factory=EmailConfig)
+    timezone: str = "Europe/Istanbul"
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "NotificationConfig":
+        """
+        Create NotificationConfig from dictionary (backward compatibility).
+
+        Args:
+            config_dict: Configuration dictionary
+
+        Returns:
+            NotificationConfig instance
+        """
+        telegram_data = config_dict.get("telegram", {})
+        telegram_config = TelegramConfig(
+            enabled=telegram_data.get("enabled", False),
+            bot_token=telegram_data.get("bot_token"),
+            chat_id=telegram_data.get("chat_id"),
+        )
+
+        email_data = config_dict.get("email", {})
+        email_config = EmailConfig(
+            enabled=email_data.get("enabled", False),
+            sender=email_data.get("sender"),
+            password=email_data.get("password"),
+            receiver=email_data.get("receiver"),
+            smtp_server=email_data.get("smtp_server", "smtp.gmail.com"),
+            smtp_port=email_data.get("smtp_port", 587),
+        )
+
+        return cls(
+            telegram=telegram_config,
+            email=email_config,
+            timezone=config_dict.get("timezone", "Europe/Istanbul"),
+        )
 
 
 class NotificationService:
     """Multi-channel notification service for VFS-Bot."""
 
-    def __init__(self, config: NotificationConfig):
+    def __init__(self, config: Union[NotificationConfig, Dict[str, Any]]):
         """
         Initialize notification service.
 
         Args:
-            config: Notification configuration dictionary
+            config: Notification configuration (NotificationConfig or dict for backward compatibility)
         """
+        # Convert dict to NotificationConfig for backward compatibility
+        if isinstance(config, dict):
+            config = NotificationConfig.from_dict(config)
+
         self.config = config
-        self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
-        self.email_enabled = config.get("email", {}).get("enabled", False)
+        self.telegram_enabled = config.telegram.enabled
+        self.email_enabled = config.email.enabled
         self._failed_high_priority_count = 0
         self._websocket_manager = None  # Will be set externally if available
 
@@ -37,10 +105,8 @@ class NotificationService:
         self._telegram_client = None
         if self.telegram_enabled:
             try:
-                telegram_config = config.get("telegram", {})
-                bot_token = telegram_config.get("bot_token")
-                if bot_token:
-                    self._telegram_client = TelegramClient(bot_token=bot_token)
+                if config.telegram.bot_token:
+                    self._telegram_client = TelegramClient(bot_token=config.telegram.bot_token)
             except ImportError:
                 logger.warning("python-telegram-bot not installed")
             except Exception as e:
@@ -61,8 +127,7 @@ class NotificationService:
         if self._telegram_client is not None:
             return self._telegram_client
 
-        telegram_config = self.config.get("telegram", {})
-        bot_token = telegram_config.get("bot_token")
+        bot_token = self.config.telegram.bot_token
 
         if not bot_token:
             logger.error("Telegram bot_token missing")
@@ -222,8 +287,7 @@ class NotificationService:
             True if successful
         """
         try:
-            telegram_config = self.config.get("telegram", {})
-            chat_id = telegram_config.get("chat_id")
+            chat_id = self.config.telegram.chat_id
 
             if not chat_id:
                 logger.error("Telegram chat_id missing")
@@ -271,12 +335,11 @@ class NotificationService:
             True if successful
         """
         try:
-            email_config = self.config.get("email", {})
-            sender = email_config.get("sender")
-            password = email_config.get("password")
-            receiver = email_config.get("receiver")
-            smtp_server = email_config.get("smtp_server", "smtp.gmail.com")
-            smtp_port = email_config.get("smtp_port", 587)
+            sender = self.config.email.sender
+            password = self.config.email.password
+            receiver = self.config.email.receiver
+            smtp_server = self.config.email.smtp_server
+            smtp_port = self.config.email.smtp_port
 
             if not all([sender, password, receiver]):
                 logger.error("Email credentials missing")
@@ -459,8 +522,7 @@ The bot will retry automatically.
         try:
             from pathlib import Path
 
-            telegram_config = self.config.get("telegram", {})
-            chat_id = telegram_config.get("chat_id")
+            chat_id = self.config.telegram.chat_id
 
             if not chat_id:
                 logger.error("Telegram chat_id missing")
