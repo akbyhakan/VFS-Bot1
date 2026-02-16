@@ -681,7 +681,7 @@ The bot will retry automatically.
                 people_list = "   (Information unavailable)\n"
 
             # Format datetime - use helper to convert UTC to local time for display
-            from ..utils.helpers import format_local_datetime
+            from ...utils.helpers import format_local_datetime
 
             # Get timezone from config, default to Europe/Istanbul
             timezone_name = self.config.get("timezone", "Europe/Istanbul")
