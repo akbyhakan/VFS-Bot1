@@ -16,7 +16,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     Authentication methods (in order of priority):
     1. HttpOnly cookie (access_token) - automatically sent by browser
-    2. Query parameter (?token=xxx) - for API clients
+    2. Query parameter (?token=xxx) - DEPRECATED, will be removed in v3.0 (use for API clients with caution)
     3. First message as {"token": "your-jwt-token"} - legacy fallback
 
     Args:
@@ -28,11 +28,17 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.debug("WebSocket auth via cookie")
 
     # Method 2: Try to get token from query parameter (for API clients)
+    # DEPRECATED - will be removed in v3.0
     if not token:
         query_params = dict(websocket.query_params)
         token = query_params.get("token")
         if token:
-            logger.debug("WebSocket auth via query parameter")
+            # Use fixed mask to avoid exposing any part of the token
+            logger.warning(
+                "DEPRECATED: WebSocket auth via query parameter (token=***). "
+                "This method will be removed in v3.0. Use cookie-based auth or message-based auth instead."
+            )
+            logger.debug("WebSocket auth via query parameter (deprecated)")
 
     # Pre-accept verification for cookie/query param tokens
     if token:

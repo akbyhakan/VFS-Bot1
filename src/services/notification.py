@@ -25,6 +25,14 @@ class TelegramConfig:
     bot_token: Optional[str] = None
     chat_id: Optional[str] = None
 
+    def __repr__(self) -> str:
+        """Return repr with masked bot_token."""
+        if self.bot_token:
+            masked_token = "'***'"
+        else:
+            masked_token = "None"
+        return f"TelegramConfig(enabled={self.enabled}, bot_token={masked_token}, chat_id='{self.chat_id}')"
+
 
 @dataclass
 class EmailConfig:
@@ -37,6 +45,18 @@ class EmailConfig:
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
 
+    def __repr__(self) -> str:
+        """Return repr with masked password."""
+        if self.password:
+            masked_password = "'***'"
+        else:
+            masked_password = "None"
+        return (
+            f"EmailConfig(enabled={self.enabled}, sender={repr(self.sender)}, "
+            f"password={masked_password}, receiver={repr(self.receiver)}, "
+            f"smtp_server={repr(self.smtp_server)}, smtp_port={self.smtp_port})"
+        )
+
 
 @dataclass
 class NotificationConfig:
@@ -45,6 +65,13 @@ class NotificationConfig:
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
     email: EmailConfig = field(default_factory=EmailConfig)
     timezone: str = "Europe/Istanbul"
+
+    def __repr__(self) -> str:
+        """Return repr with masked sensitive fields in nested configs."""
+        return (
+            f"NotificationConfig(telegram={repr(self.telegram)}, "
+            f"email={repr(self.email)}, timezone='{self.timezone}')"
+        )
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "NotificationConfig":

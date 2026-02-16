@@ -4,7 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.notification import NotificationService
+from src.services.notification import (
+    EmailConfig,
+    NotificationConfig,
+    NotificationService,
+    TelegramConfig,
+)
 
 
 def test_notification_service_initialization():
@@ -17,6 +22,46 @@ def test_notification_service_initialization():
     notifier = NotificationService(config)
     assert notifier.telegram_enabled is True
     assert notifier.email_enabled is False
+
+
+def test_telegram_config_repr_masks_bot_token():
+    """Test that TelegramConfig.__repr__ masks bot_token."""
+    config = TelegramConfig(enabled=True, bot_token="secret_bot_token_123", chat_id="123456")
+    repr_str = repr(config)
+    assert "secret_bot_token_123" not in repr_str
+    assert "***" in repr_str
+    assert "123456" in repr_str
+
+
+def test_email_config_repr_masks_password():
+    """Test that EmailConfig.__repr__ masks password."""
+    config = EmailConfig(
+        enabled=True,
+        sender="test@example.com",
+        password="super_secret_password",
+        receiver="receiver@example.com",
+    )
+    repr_str = repr(config)
+    assert "super_secret_password" not in repr_str
+    assert "***" in repr_str
+    assert "test@example.com" in repr_str
+
+
+def test_notification_config_repr_masks_nested_secrets():
+    """Test that NotificationConfig.__repr__ masks nested secrets."""
+    config = NotificationConfig(
+        telegram=TelegramConfig(enabled=True, bot_token="secret_token", chat_id="123"),
+        email=EmailConfig(
+            enabled=True,
+            sender=None,  # Explicitly set optional fields
+            password="secret_password",
+            receiver=None,
+        ),
+    )
+    repr_str = repr(config)
+    assert "secret_token" not in repr_str
+    assert "secret_password" not in repr_str
+    assert "***" in repr_str
 
 
 def test_notification_service_disabled():

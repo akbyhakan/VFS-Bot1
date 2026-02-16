@@ -1,7 +1,6 @@
 """Detect and bypass Cloudflare protections."""
 
 import asyncio
-import time
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -19,6 +18,14 @@ class CloudflareHandler:
         "browser_check": "Browser Check",
         "blocked": "Blocked",
     }
+    
+    # Cloudflare Turnstile iframe selectors
+    # Detection uses broader selector, handling uses primary selector
+    TURNSTILE_IFRAME_SELECTOR = 'iframe[src*="challenges.cloudflare.com"]'
+    TURNSTILE_DETECTION_SELECTOR = (
+        'iframe[src*="challenges.cloudflare.com"], '
+        'iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
+    )
 
     def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
@@ -57,11 +64,7 @@ class CloudflareHandler:
 
             # Check for Turnstile challenge
             # Note: Cloudflare may use different challenge domains
-            turnstile_selector = (
-                'iframe[src*="challenges.cloudflare.com"], '
-                'iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
-            )
-            turnstile = await page.locator(turnstile_selector).count()
+            turnstile = await page.locator(self.TURNSTILE_DETECTION_SELECTOR).count()
             if turnstile > 0:
                 logger.info("Detected Cloudflare Turnstile challenge")
                 return "turnstile"
@@ -92,24 +95,25 @@ class CloudflareHandler:
         logger.info(f"Handling Waiting Room (max wait: {self.max_wait_time}s)")
 
         try:
-            # Wait for page to change or timeout
-            start_time = time.monotonic()
-
-            while True:
-                # Check if we've waited too long
-                elapsed = time.monotonic() - start_time
-                if elapsed > self.max_wait_time:
-                    logger.warning("Waiting Room timeout")
-                    return False
-
-                # Check if still in waiting room
+            # Use event-driven approach with fallback to polling
+            try:
+                # Wait for title to change (not contain "waiting room")
+                await asyncio.wait_for(
+                    page.wait_for_function(
+                        "() => !document.title.toLowerCase().includes('waiting room')"
+                    ),
+                    timeout=self.max_wait_time,
+                )
+                logger.info("Cleared Waiting Room (event-driven)")
+                return True
+            except asyncio.TimeoutError:
+                # Fallback: Double-check with polling in case event-driven approach missed it
                 title = await page.title()
                 if "waiting room" not in title.lower():
-                    logger.info("Cleared Waiting Room")
+                    logger.info("Cleared Waiting Room (fallback check)")
                     return True
-
-                # Wait before checking again
-                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
+                logger.warning("Waiting Room timeout")
+                return False
 
         except Exception as e:
             logger.error(f"Error handling Waiting Room: {e}")
@@ -132,28 +136,38 @@ class CloudflareHandler:
                 # Wait for manual solving
                 logger.info(f"Waiting for manual Turnstile solve ({self.max_wait_time}s)")
                 await asyncio.sleep(self.max_wait_time)
+                
+                # Verify challenge was actually solved
+                turnstile_count = await page.locator(self.TURNSTILE_IFRAME_SELECTOR).count()
+                if turnstile_count == 0:
+                    logger.info("Turnstile challenge passed (manual solve verified)")
+                    return True
+                else:
+                    logger.warning("Turnstile still present after manual solve timeout")
+                    return False
             else:
-                # Wait for auto-solve
-                logger.info("Waiting for Turnstile auto-solve")
-                start_time = time.monotonic()
-
-                while True:
-                    elapsed = time.monotonic() - start_time
-                    if elapsed > self.max_wait_time:
-                        logger.warning("Turnstile timeout")
-                        return False
-
-                    # Check if turnstile is still present
-                    turnstile = await page.locator(
-                        'iframe[src*="challenges.cloudflare.com"]'
-                    ).count()
-                    if turnstile == 0:
-                        logger.info("Turnstile challenge passed")
+                # Use event-driven approach: wait for iframe to disappear
+                logger.info("Waiting for Turnstile auto-solve (event-driven)")
+                
+                try:
+                    # Wait for the iframe to be detached (removed from DOM)
+                    await asyncio.wait_for(
+                        page.wait_for_selector(
+                            self.TURNSTILE_IFRAME_SELECTOR,
+                            state="detached",
+                        ),
+                        timeout=self.max_wait_time,
+                    )
+                    logger.info("Turnstile challenge passed (event-driven)")
+                    return True
+                except asyncio.TimeoutError:
+                    # Fallback: check if iframe still exists
+                    turnstile_count = await page.locator(self.TURNSTILE_IFRAME_SELECTOR).count()
+                    if turnstile_count == 0:
+                        logger.info("Turnstile challenge passed (fallback check)")
                         return True
-
-                    await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
-
-            return True
+                    logger.warning("Turnstile timeout")
+                    return False
 
         except Exception as e:
             logger.error(f"Error handling Turnstile: {e}")
@@ -172,22 +186,25 @@ class CloudflareHandler:
         logger.info("Handling Browser Check")
 
         try:
-            # Wait for page to change
-            start_time = time.monotonic()
-
-            while True:
-                elapsed = time.monotonic() - start_time
-                if elapsed > self.max_wait_time:
-                    logger.warning("Browser Check timeout")
-                    return False
-
-                # Check if still on challenge page
+            # Use event-driven approach with fallback to polling
+            try:
+                # Wait for title to change (not contain "just a moment")
+                await asyncio.wait_for(
+                    page.wait_for_function(
+                        "() => !document.title.toLowerCase().includes('just a moment')"
+                    ),
+                    timeout=self.max_wait_time,
+                )
+                logger.info("Browser Check passed (event-driven)")
+                return True
+            except asyncio.TimeoutError:
+                # Fallback: Double-check with polling in case event-driven approach missed it
                 title = await page.title()
                 if "just a moment" not in title.lower():
-                    logger.info("Browser Check passed")
+                    logger.info("Browser Check passed (fallback check)")
                     return True
-
-                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
+                logger.warning("Browser Check timeout")
+                return False
 
         except Exception as e:
             logger.error(f"Error handling Browser Check: {e}")

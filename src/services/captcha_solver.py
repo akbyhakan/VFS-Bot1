@@ -1,6 +1,7 @@
 """Captcha solving module using 2Captcha service."""
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
@@ -26,8 +27,22 @@ class CaptchaSolver:
         if not api_key:
             raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
 
-        self.api_key = api_key
+        self._api_key = api_key
         logger.info("CaptchaSolver initialized with 2Captcha")
+
+    @property
+    def api_key(self) -> str:
+        """Get API key (property for backward compatibility)."""
+        return self._api_key
+
+    def __repr__(self) -> str:
+        """Return repr with masked API key."""
+        # Use fixed mask to avoid exposing any part of the key
+        return f"CaptchaSolver(api_key='***')"
+
+    def __str__(self) -> str:
+        """Return string representation with masked API key."""
+        return self.__repr__()
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
@@ -147,7 +162,7 @@ class CaptchaSolver:
                     const el = document.querySelector('[name="g-recaptcha-response"]');
                     if (el) {
                         el.value = token;
-                        el.innerHTML = token;
+                        el.textContent = token;
                     }
                     // Trigger callback if exists
                     if (typeof ___grecaptcha_cfg !== 'undefined') {
@@ -166,3 +181,33 @@ class CaptchaSolver:
         except Exception as e:
             logger.error(f"Failed to inject captcha solution: {e}")
             return False
+
+    @classmethod
+    def shutdown(cls, wait: bool = True) -> None:
+        """
+        Shutdown the thread pool executor.
+
+        Args:
+            wait: If True, wait for pending tasks to complete before shutdown
+        """
+        # Guard against multiple shutdown calls
+        if not hasattr(cls, '_executor') or cls._executor is None:
+            logger.debug("Executor already shut down or not initialized")
+            return
+        
+        try:
+            cls._executor.shutdown(wait=wait)
+            logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
+        except RuntimeError:
+            # Executor may have been shut down by another thread
+            logger.debug("Executor shutdown already in progress")
+        finally:
+            cls._executor = None
+
+
+# Register automatic cleanup on module exit
+# Note: Using wait=False to avoid blocking process termination.
+# Captcha solving tasks are API calls that can be safely interrupted during shutdown.
+# Trade-off: In-flight API requests to 2Captcha may be interrupted, potentially wasting
+# credits if a solve was in progress. This is acceptable to prevent hanging on shutdown.
+atexit.register(CaptchaSolver.shutdown, wait=False)
