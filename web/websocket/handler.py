@@ -83,7 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Send initial status
     await websocket.send_json(
-        {"type": "status", "data": {"running": bot_state["running"], "status": bot_state["status"]}}
+        {"type": "status", "data": {"running": bot_state.get_running(), "status": bot_state.get_status()}}
     )
 
     try:
@@ -118,22 +118,22 @@ async def update_bot_stats(
         active_users: Number of active users
     """
     if slots_found is not None:
-        bot_state["slots_found"] = slots_found
+        bot_state.set_slots_found(slots_found)
     if appointments_booked is not None:
-        bot_state["appointments_booked"] = appointments_booked
+        bot_state.set_appointments_booked(appointments_booked)
     if active_users is not None:
-        bot_state["active_users"] = active_users
+        bot_state.set_active_users(active_users)
 
-    bot_state["last_check"] = datetime.now(timezone.utc).isoformat()
+    bot_state.set_last_check(datetime.now(timezone.utc).isoformat())
 
     await broadcast_message(
         {
             "type": "stats",
             "data": {
-                "slots_found": bot_state["slots_found"],
-                "appointments_booked": bot_state["appointments_booked"],
-                "active_users": bot_state["active_users"],
-                "last_check": bot_state["last_check"],
+                "slots_found": bot_state.get_slots_found(),
+                "appointments_booked": bot_state.get_appointments_booked(),
+                "active_users": bot_state.get_active_users(),
+                "last_check": bot_state.get_last_check(),
             },
         }
     )
@@ -150,7 +150,7 @@ async def add_log(message: str, level: str = "INFO") -> None:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] [{level}] {message}"
 
-    bot_state["logs"].append(log_entry)
+    bot_state.append_log(log_entry)
     # deque with maxlen=500 automatically removes oldest entries
 
     await broadcast_message(

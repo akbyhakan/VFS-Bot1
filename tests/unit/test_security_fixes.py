@@ -322,50 +322,52 @@ def test_thread_safe_bot_state_initialization():
     """Test that ThreadSafeBotState initializes correctly."""
     state = ThreadSafeBotState()
 
-    assert state["running"] is False
-    assert state["status"] == "stopped"
-    assert state["slots_found"] == 0
-    assert isinstance(state["logs"], deque)
+    assert state.get_running() is False
+    assert state.get_status() == "stopped"
+    assert state.get_slots_found() == 0
+    assert isinstance(state.get_logs(), deque)
 
 
 @pytest.mark.security
-def test_thread_safe_bot_state_get_set():
-    """Test get/set methods work correctly."""
+def test_thread_safe_bot_state_typed_getters_setters():
+    """Test typed getter/setter methods work correctly."""
     state = ThreadSafeBotState()
 
-    # Test set
-    state.set("running", True)
-    assert state.get("running") is True
+    # Test setters and getters
+    state.set_running(True)
+    assert state.get_running() is True
 
-    # Test default value
-    assert state.get("nonexistent", "default") == "default"
+    state.set_status("running")
+    assert state.get_status() == "running"
+
+    state.set_slots_found(42)
+    assert state.get_slots_found() == 42
 
 
 @pytest.mark.security
-def test_thread_safe_bot_state_getitem_setitem():
-    """Test dictionary-style access."""
+def test_thread_safe_bot_state_to_dict():
+    """Test to_dict method returns correct dictionary."""
     state = ThreadSafeBotState()
 
-    # Test setitem
-    state["slots_found"] = 42
-    assert state["slots_found"] == 42
+    state.set_slots_found(42)
+    state.set_status("running")
 
-    # Test getitem
-    value = state["status"]
-    assert value == "stopped"
+    result = state.to_dict()
+    assert result["slots_found"] == 42
+    assert result["status"] == "running"
 
 
 @pytest.mark.security
 def test_thread_safe_bot_state_concurrent_access():
     """Test that ThreadSafeBotState is thread-safe under concurrent access."""
     state = ThreadSafeBotState()
-    state["counter"] = 0
+    state.set_slots_found(0)
 
     def increment_counter(iterations=1000):
         """Increment counter multiple times."""
         for _ in range(iterations):
-            current = state["counter"]
-            state["counter"] = current + 1
+            current = state.get_slots_found()
+            state.set_slots_found(current + 1)
 
     # Run multiple threads concurrently
     threads = []
@@ -383,23 +385,24 @@ def test_thread_safe_bot_state_concurrent_access():
 
     # Verify final count
     expected_count = num_threads * iterations_per_thread
-    assert state["counter"] == expected_count
+    assert state.get_slots_found() == expected_count
 
 
 @pytest.mark.security
 def test_thread_safe_bot_state_logs_deque():
     """Test that logs deque in ThreadSafeBotState maintains max length."""
     state = ThreadSafeBotState()
-    logs = state["logs"]
+    logs = state.get_logs()
 
     # Add more than maxlen items
     for i in range(600):
-        logs.append(f"Log entry {i}")
+        state.append_log(f"Log entry {i}")
 
     # Should only keep last 500
+    logs = state.get_logs()
     assert len(logs) == 500
-    assert logs[0] == "Log entry 100"  # First 100 were dropped
-    assert logs[-1] == "Log entry 599"
+    assert list(logs)[0] == "Log entry 100"  # First 100 were dropped
+    assert list(logs)[-1] == "Log entry 599"
 
 
 @pytest.mark.security
@@ -409,18 +412,17 @@ async def test_thread_safe_bot_state_async_uses_same_lock():
     state = ThreadSafeBotState()
     
     # Set value using sync method
-    state["test_key"] = "sync_value"
+    state.set_running(True)
+    state.set_status("running")
     
-    # Get value using async method
-    async_value = await state.async_get("test_key")
-    assert async_value == "sync_value"
+    # Get values using async method
+    state_dict = await state.async_to_dict()
+    assert state_dict["running"] is True
+    assert state_dict["status"] == "running"
     
-    # Set value using async method
-    await state.async_set("test_key", "async_value")
-    
-    # Get value using sync method
-    sync_value = state["test_key"]
-    assert sync_value == "async_value"
+    # Verify sync and async methods see same values
+    assert state.get_running() is True
+    assert state.get_status() == "running"
 
 
 @pytest.mark.security

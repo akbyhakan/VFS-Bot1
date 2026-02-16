@@ -36,13 +36,13 @@ async def get_status() -> Dict[str, Any]:
         Status dictionary
     """
     return {
-        "running": bot_state["running"],
-        "status": bot_state["status"],
-        "last_check": bot_state["last_check"],
+        "running": bot_state.get_running(),
+        "status": bot_state.get_status(),
+        "last_check": bot_state.get_last_check(),
         "stats": {
-            "slots_found": bot_state["slots_found"],
-            "appointments_booked": bot_state["appointments_booked"],
-            "active_users": bot_state["active_users"],
+            "slots_found": bot_state.get_slots_found(),
+            "appointments_booked": bot_state.get_appointments_booked(),
+            "active_users": bot_state.get_active_users(),
         },
     }
 
@@ -69,7 +69,7 @@ async def health_check() -> Dict[str, Any]:
     bot_healthy = snapshot.success_rate > health_threshold
 
     circuit_breaker_healthy = not (
-        snapshot.circuit_breaker_trips > 0 and bot_state.get("running", False)
+        snapshot.circuit_breaker_trips > 0 and bot_state.get_running()
     )
 
     # Check notification service health
@@ -100,7 +100,7 @@ async def health_check() -> Dict[str, Any]:
             "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
-                "running": bot_state.get("running", False),
+                "running": bot_state.get_running(),
                 "success_rate": snapshot.success_rate,
             },
             "circuit_breaker": {
@@ -284,7 +284,7 @@ async def detailed_health_check() -> Dict[str, Any]:
             "redis": redis_health,
             "bot": {
                 "status": "healthy" if bot_healthy else "degraded",
-                "running": bot_state.get("running", False),
+                "running": bot_state.get_running(),
                 "success_rate": snapshot.success_rate,
                 "total_checks": snapshot.total_checks,
             },
@@ -567,7 +567,7 @@ async def get_metrics_endpoint() -> Dict[str, Any]:
         "appointments_booked": snapshot.appointments_booked,
         "captchas_solved": metrics["captchas_solved"],
         "errors_by_type": metrics["errors"],
-        "bot_status": bot_state["status"],
+        "bot_status": bot_state.get_status(),
         # New metrics from BotMetrics
         "circuit_breaker_trips": snapshot.circuit_breaker_trips,
         "active_users": snapshot.active_users,
