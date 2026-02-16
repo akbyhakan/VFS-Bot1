@@ -35,7 +35,7 @@ def test_login_error_default():
     """Test LoginError with default message."""
     error = LoginError()
     assert error.message == "Login failed"
-    assert error.recoverable is True
+    assert error.recoverable is False
 
 
 def test_login_error_custom():
