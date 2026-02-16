@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
         # Start dropdown sync scheduler
         # Non-critical: Allow app to start even if scheduler fails
         try:
-            from src.services.dropdown_sync_scheduler import DropdownSyncScheduler
+            from src.services.data_sync.dropdown_sync_scheduler import DropdownSyncScheduler
 
             dropdown_scheduler = DropdownSyncScheduler(db)
             dropdown_scheduler.start()

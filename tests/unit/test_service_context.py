@@ -14,7 +14,7 @@ from src.services.bot.service_context import (
     WorkflowServicesContext,
 )
 from src.services.captcha_solver import CaptchaSolver
-from src.services.centre_fetcher import CentreFetcher
+from src.services.data_sync.centre_fetcher import CentreFetcher
 
 
 @pytest.fixture

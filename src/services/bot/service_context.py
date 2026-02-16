@@ -25,8 +25,8 @@ from ..adaptive_scheduler import AdaptiveScheduler
 from ..notification.alert_service import AlertChannel, AlertConfig, AlertService
 from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
-from ..centre_fetcher import CentreFetcher
-from ..country_profile_loader import CountryProfileLoader
+from ..data_sync.centre_fetcher import CentreFetcher
+from ..data_sync.country_profile_loader import CountryProfileLoader
 from ..otp_webhook import get_otp_service
 from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer

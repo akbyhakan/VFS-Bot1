@@ -377,7 +377,7 @@ class TestCentreFetcherCache:
         """Test background cache cleanup removes expired entries."""
         import asyncio
 
-        from src.services.centre_fetcher import CentreFetcher
+        from src.services.data_sync.centre_fetcher import CentreFetcher
 
         fetcher = CentreFetcher(
             base_url="https://example.com",
@@ -408,7 +408,7 @@ class TestCentreFetcherCache:
         """Test that periodic cleanup task can be started."""
         import asyncio
 
-        from src.services.centre_fetcher import CentreFetcher
+        from src.services.data_sync.centre_fetcher import CentreFetcher
 
         fetcher = CentreFetcher(
             base_url="https://example.com", country="tur", mission="deu", language="tr", cache_ttl=1

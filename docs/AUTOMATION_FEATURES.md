@@ -22,7 +22,7 @@ Automatically configures bot behavior based on the target country. Each country 
 
 **Usage Example:**
 ```python
-from src.services.country_profile_loader import CountryProfileLoader
+from src.services.data_sync.country_profile_loader import CountryProfileLoader
 
 loader = CountryProfileLoader()
 profile = loader.get_profile('nld')  # Get Netherlands profile

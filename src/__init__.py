@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from .selector import get_selector_manager as get_selector_manager
     from .services.bot.vfs_bot import VFSBot as VFSBot
     from .services.captcha_solver import CaptchaSolver as CaptchaSolver
-    from .services.centre_fetcher import CentreFetcher as CentreFetcher
+    from .services.data_sync.centre_fetcher import CentreFetcher as CentreFetcher
     from .services.notification.notification import NotificationService as NotificationService
     from .utils.anti_detection import CloudflareHandler as CloudflareHandler
     from .utils.anti_detection import FingerprintBypass as FingerprintBypass
@@ -42,7 +42,7 @@ _LAZY_MODULE_MAP = {
     # Services
     "VFSBot": ("src.services.bot.vfs_bot", "VFSBot"),
     "CaptchaSolver": ("src.services.captcha_solver", "CaptchaSolver"),
-    "CentreFetcher": ("src.services.centre_fetcher", "CentreFetcher"),
+    "CentreFetcher": ("src.services.data_sync.centre_fetcher", "CentreFetcher"),
     "NotificationService": ("src.services.notification.notification", "NotificationService"),
     # Utils
     "SelectorManager": ("src.selector", "SelectorManager"),
