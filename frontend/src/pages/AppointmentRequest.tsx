@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm, UseFormRegister } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -30,6 +31,7 @@ import { AppointmentCalendar } from '@/components/appointments/AppointmentCalend
 const validatePhoneNumber = validateTurkishPhone;
 
 export default function AppointmentRequest() {
+  const { t } = useTranslation();
   const [personCount, setPersonCount] = useState<number>(1);
   const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [selectedCentres, setSelectedCentres] = useState<string[]>([]);
@@ -110,54 +112,54 @@ export default function AppointmentRequest() {
     const newErrors: Record<string, string> = {};
 
     if (!selectedCountry) {
-      newErrors.country = 'Lütfen bir ülke seçin';
+      newErrors.country = t('appointmentRequest.selectCountryError');
     }
 
     if (selectedCentres.length === 0) {
-      newErrors.centres = 'En az bir merkez seçmelisiniz';
+      newErrors.centres = t('appointmentRequest.selectCentreError');
     }
 
     if (selectedDates.length === 0) {
-      newErrors.dates = 'En az bir tarih seçmelisiniz';
+      newErrors.dates = t('appointmentRequest.selectDateError');
     }
 
     data.persons.forEach((person, index) => {
       if (!person.first_name) {
-        newErrors[`person_${index}_first_name`] = 'İsim gerekli';
+        newErrors[`person_${index}_first_name`] = t('appointmentRequest.firstNameRequired');
       }
       if (!person.last_name) {
-        newErrors[`person_${index}_last_name`] = 'Soyisim gerekli';
+        newErrors[`person_${index}_last_name`] = t('appointmentRequest.lastNameRequired');
       }
       if (!person.birth_date) {
-        newErrors[`person_${index}_birth_date`] = 'Doğum tarihi gerekli';
+        newErrors[`person_${index}_birth_date`] = t('appointmentRequest.birthDateRequired');
       } else if (!validateBirthDate(person.birth_date)) {
-        newErrors[`person_${index}_birth_date`] = 'Doğum tarihi bugünden ileri olamaz';
+        newErrors[`person_${index}_birth_date`] = t('appointmentRequest.birthDateInvalid');
       }
       if (!person.passport_number) {
-        newErrors[`person_${index}_passport_number`] = 'Pasaport numarası gerekli';
+        newErrors[`person_${index}_passport_number`] = t('appointmentRequest.passportNumberRequired');
       }
       if (!person.passport_issue_date) {
-        newErrors[`person_${index}_passport_issue_date`] = 'Geçerlilik başlangıç gerekli';
+        newErrors[`person_${index}_passport_issue_date`] = t('appointmentRequest.passportIssueRequired');
       } else if (!validatePassportIssueDate(person.passport_issue_date)) {
         newErrors[`person_${index}_passport_issue_date`] =
-          'Geçerlilik başlangıç tarihi bugünden ileri olamaz';
+          t('appointmentRequest.passportIssueInvalid');
       }
       if (!person.passport_expiry_date) {
-        newErrors[`person_${index}_passport_expiry_date`] = 'Geçerlilik bitiş gerekli';
+        newErrors[`person_${index}_passport_expiry_date`] = t('appointmentRequest.passportExpiryRequired');
       } else if (!validatePassportExpiryDate(person.passport_expiry_date)) {
         newErrors[`person_${index}_passport_expiry_date`] =
-          'Pasaport en az 3 ay daha geçerli olmalıdır';
+          t('appointmentRequest.passportExpiryInvalid');
       }
       if (!person.phone_number) {
-        newErrors[`person_${index}_phone_number`] = 'Telefon numarası gerekli';
+        newErrors[`person_${index}_phone_number`] = t('appointmentRequest.phoneRequired');
       } else if (!validatePhoneNumber(person.phone_number)) {
         newErrors[`person_${index}_phone_number`] =
-          'Geçerli bir telefon numarası girin (10 hane, 0 ile başlamaz)';
+          t('appointmentRequest.phoneInvalid');
       }
       if (!person.email) {
-        newErrors[`person_${index}_email`] = 'E-posta gerekli';
+        newErrors[`person_${index}_email`] = t('appointmentRequest.emailRequired');
       } else if (!validateEmail(person.email)) {
-        newErrors[`person_${index}_email`] = 'Geçerli bir e-posta adresi girin';
+        newErrors[`person_${index}_email`] = t('appointmentRequest.emailInvalid');
       }
     });
 
@@ -172,13 +174,13 @@ export default function AppointmentRequest() {
     data.person_count = personCount;
 
     if (!validateForm(data)) {
-      toast.error('Lütfen tüm alanları doğru şekilde doldurun');
+      toast.error(t('appointmentRequest.fillAllFields'));
       return;
     }
 
     try {
       await createRequest.mutateAsync(data);
-      toast.success('Randevu talebi oluşturuldu');
+      toast.success(t('appointmentRequest.requestCreated'));
       reset();
       setPersonCount(1);
       setSelectedCountry('');
@@ -186,16 +188,16 @@ export default function AppointmentRequest() {
       setSelectedDates([]);
       setErrors({});
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'İşlem başarısız');
+      toast.error(error instanceof Error ? error.message : t('appointmentRequest.deleteFailed'));
     }
   };
 
   const handleDelete = async (id: number) => {
     const confirmed = await confirm({
-      title: 'Talebi Sil',
-      message: 'Bu talebi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
-      confirmText: 'Sil',
-      cancelText: 'İptal',
+      title: t('appointmentRequest.deleteRequestTitle'),
+      message: t('appointmentRequest.deleteRequestMessage'),
+      confirmText: t('appointmentRequest.deleteConfirm'),
+      cancelText: t('appointmentRequest.deleteCancel'),
       variant: 'danger',
     });
 
@@ -203,9 +205,9 @@ export default function AppointmentRequest() {
 
     try {
       await deleteRequest.mutateAsync(id);
-      toast.success('Talep silindi');
+      toast.success(t('appointmentRequest.requestDeleted'));
     } catch (error) {
-      toast.error('Silme işlemi başarısız');
+      toast.error(t('appointmentRequest.deleteFailed'));
     }
   };
 
@@ -219,7 +221,7 @@ export default function AppointmentRequest() {
     setSelectedDates([...request.preferred_dates]);
     setPersonCount(request.person_count);
     setValue('persons', request.persons.map(p => ({ ...p })));
-    toast.success('Talep bilgileri forma kopyalandı');
+    toast.success(t('appointmentRequest.copiedToForm'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -230,7 +232,7 @@ export default function AppointmentRequest() {
     setSelectedCentres([]);
     setSelectedDates([]);
     setErrors({});
-    toast.info('Form temizlendi');
+    toast.info(t('appointmentRequest.formCleared'));
   };
 
   if (loadingCountries) return <Loading />;
@@ -242,19 +244,19 @@ export default function AppointmentRequest() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Yeni Randevu Talebi Oluştur
+            {t('appointmentRequest.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Ana Bilgiler */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Ana Bilgiler</h3>
+              <h3 className="text-lg font-semibold">{t('appointmentRequest.mainInfo')}</h3>
 
               {/* Kişi Sayısı */}
               <div>
                 <label htmlFor="person-count" className="block text-sm font-medium mb-2">
-                  Kişi Sayısı
+                  {t('appointmentRequest.personCount')}
                 </label>
                 <select
                   id="person-count"
@@ -265,12 +267,12 @@ export default function AppointmentRequest() {
                 >
                   {[1, 2, 3, 4, 5, 6].map((num) => (
                     <option key={num} value={num}>
-                      {num} Kişi
+                      {t('appointmentRequest.persons', { count: num })}
                     </option>
                   ))}
                 </select>
                 <span id="person-count-hint" className="sr-only">
-                  Randevu için kişi sayısını seçin
+                  {t('appointmentRequest.personCountHint')}
                 </span>
               </div>
 
@@ -278,7 +280,7 @@ export default function AppointmentRequest() {
               <div>
                 <label htmlFor="target-country" className="block text-sm font-medium mb-2">
                   <Globe className="inline h-4 w-4 mr-1" aria-hidden="true" />
-                  Hedef Ülke
+                  {t('appointmentRequest.targetCountry')}
                 </label>
                 <select
                   id="target-country"
@@ -292,7 +294,7 @@ export default function AppointmentRequest() {
                   aria-invalid={!!errors.country}
                   aria-describedby={errors.country ? 'country-error' : undefined}
                 >
-                  <option value="">Ülke Seçin</option>
+                  <option value="">{t('appointmentRequest.selectCountry')}</option>
                   {countries?.map((country) => (
                     <option key={country.code} value={country.code}>
                       {country.name_tr} ({country.name_en})
@@ -311,7 +313,7 @@ export default function AppointmentRequest() {
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     <MapPin className="inline h-4 w-4 mr-1" />
-                    Merkez(ler)
+                    {t('appointmentRequest.centres')}
                   </label>
                   {loadingCentres ? (
                     <Loading />
@@ -338,18 +340,18 @@ export default function AppointmentRequest() {
               <div>
                 <label className="block text-sm font-medium mb-2">
                   <Calendar className="inline h-4 w-4 mr-1" />
-                  Tercih Edilen Tarihler (GG/AA/YYYY)
+                  {t('appointmentRequest.preferredDates')}
                 </label>
                 <div className="flex gap-2 mb-2">
                   <Input
                     type="text"
-                    placeholder="15/02/2026"
+                    placeholder={t('appointmentRequest.datePlaceholder')}
                     value={dateInput}
                     onChange={(e) => setDateInput(e.target.value)}
                     className="flex-1"
                   />
                   <Button type="button" onClick={handleAddDate}>
-                    Ekle
+                    {t('appointmentRequest.add')}
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -390,10 +392,10 @@ export default function AppointmentRequest() {
                 onClick={handleClearForm}
                 leftIcon={<RotateCcw className="w-4 h-4" />}
               >
-                Formu Temizle
+                {t('appointmentRequest.clearForm')}
               </Button>
               <Button type="submit" disabled={createRequest.isPending}>
-                {createRequest.isPending ? 'Kaydediliyor...' : '💾 Talebi Kaydet'}
+                {createRequest.isPending ? t('appointmentRequest.saving') : `💾 ${t('appointmentRequest.saveRequest')}`}
               </Button>
             </div>
           </form>
@@ -404,7 +406,7 @@ export default function AppointmentRequest() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Mevcut Talepler</CardTitle>
+            <CardTitle>{t('appointmentRequest.existingRequests')}</CardTitle>
             <div className="flex gap-2">
               <Button
                 variant={viewMode === 'list' ? 'primary' : 'outline'}
@@ -412,7 +414,7 @@ export default function AppointmentRequest() {
                 onClick={() => setViewMode('list')}
               >
                 <List className="h-4 w-4 mr-2" />
-                Liste
+                {t('appointmentRequest.listView')}
               </Button>
               <Button
                 variant={viewMode === 'calendar' ? 'primary' : 'outline'}
@@ -420,7 +422,7 @@ export default function AppointmentRequest() {
                 onClick={() => setViewMode('calendar')}
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Takvim
+                {t('appointmentRequest.calendarView')}
               </Button>
             </div>
           </div>
@@ -441,13 +443,13 @@ export default function AppointmentRequest() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-semibold">
-                          Talep #{request.id} - {request.status}
+                          {t('appointmentRequest.requestId', { id: request.id, status: request.status })}
                         </p>
                         <p className="text-sm text-dark-400">
-                          Ülke: {request.country_code} | {request.person_count} Kişi
+                          {t('appointmentRequest.country')}: {request.country_code} | {t('appointmentRequest.personCountValue', { count: request.person_count })}
                         </p>
                         <p className="text-sm text-dark-400">
-                          Tarih: {new Date(request.created_at).toLocaleDateString('tr-TR')}
+                          {t('appointmentRequest.date')}: {new Date(request.created_at).toLocaleDateString('tr-TR')}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -455,7 +457,7 @@ export default function AppointmentRequest() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleView(request)}
-                          title="Detay Görüntüle"
+                          title={t('appointmentRequest.viewDetails')}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -463,7 +465,7 @@ export default function AppointmentRequest() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleCopyRequest(request)}
-                          title="Forma Kopyala"
+                          title={t('appointmentRequest.copyToForm')}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -471,7 +473,7 @@ export default function AppointmentRequest() {
                           variant="danger"
                           size="sm"
                           onClick={() => handleDelete(request.id)}
-                          title="Sil"
+                          title={t('appointmentRequest.deleteRequest')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -482,7 +484,7 @@ export default function AppointmentRequest() {
               </div>
             )
           ) : (
-            <p className="text-dark-400 text-center">Henüz talep yok</p>
+            <p className="text-dark-400 text-center">{t('appointmentRequest.noRequests')}</p>
           )}
         </CardContent>
       </Card>
@@ -492,31 +494,31 @@ export default function AppointmentRequest() {
         <Modal
           isOpen={!!viewingRequest}
           onClose={() => setViewingRequest(null)}
-          title={`Talep #${viewingRequest.id} Detayları`}
+          title={t('appointmentRequest.requestDetails', { id: viewingRequest.id })}
           size="lg"
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-dark-400">Durum</label>
+                <label className="text-sm text-dark-400">{t('appointmentRequest.statusLabel')}</label>
                 <p className="font-medium">{viewingRequest.status}</p>
               </div>
               <div>
-                <label className="text-sm text-dark-400">Ülke</label>
+                <label className="text-sm text-dark-400">{t('appointmentRequest.countryLabel')}</label>
                 <p className="font-medium">{viewingRequest.country_code}</p>
               </div>
               <div>
-                <label className="text-sm text-dark-400">Kişi Sayısı</label>
+                <label className="text-sm text-dark-400">{t('appointmentRequest.personCountLabel')}</label>
                 <p className="font-medium">{viewingRequest.person_count}</p>
               </div>
               <div>
-                <label className="text-sm text-dark-400">Oluşturulma</label>
+                <label className="text-sm text-dark-400">{t('appointmentRequest.created')}</label>
                 <p className="font-medium">{new Date(viewingRequest.created_at).toLocaleString('tr-TR')}</p>
               </div>
             </div>
             
             <div>
-              <label className="text-sm text-dark-400">Merkezler</label>
+              <label className="text-sm text-dark-400">{t('appointmentRequest.centresLabel')}</label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {viewingRequest.centres.map((centre) => (
                   <span key={centre} className="px-2 py-1 bg-dark-700 rounded text-sm">
@@ -527,7 +529,7 @@ export default function AppointmentRequest() {
             </div>
             
             <div>
-              <label className="text-sm text-dark-400">Tercih Edilen Tarihler</label>
+              <label className="text-sm text-dark-400">{t('appointmentRequest.preferredDatesLabel')}</label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {viewingRequest.preferred_dates.map((date) => (
                   <span key={date} className="px-2 py-1 bg-primary-600/20 text-primary-400 rounded text-sm">
@@ -538,26 +540,26 @@ export default function AppointmentRequest() {
             </div>
             
             <div>
-              <label className="text-sm text-dark-400 mb-2 block">Kişiler</label>
+              <label className="text-sm text-dark-400 mb-2 block">{t('appointmentRequest.personsLabel')}</label>
               {viewingRequest.persons.map((person, index) => (
                 <div key={index} className="p-3 bg-dark-800 rounded mb-2">
                   <p className="font-medium">{person.first_name} {person.last_name}</p>
                   <p className="text-sm text-dark-400">{person.email} | +{person.phone_code} {person.phone_number}</p>
-                  <p className="text-sm text-dark-400">Pasaport: {person.passport_number}</p>
+                  <p className="text-sm text-dark-400">{t('appointmentRequest.passportNumber')}: {person.passport_number}</p>
                 </div>
               ))}
             </div>
             
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="secondary" onClick={() => setViewingRequest(null)}>
-                Kapat
+                {t('appointmentRequest.close')}
               </Button>
               <Button variant="primary" onClick={() => {
                 handleCopyRequest(viewingRequest);
                 setViewingRequest(null);
               }}>
                 <Copy className="w-4 h-4 mr-2" />
-                Forma Kopyala
+                {t('appointmentRequest.copyToFormBtn')}
               </Button>
             </div>
           </div>
@@ -592,16 +594,17 @@ function PersonForm({
   register: UseFormRegister<AppointmentRequest>;
   errors: Record<string, string>;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4 p-4 border border-dark-600 rounded-md bg-dark-800">
       <h3 className="text-lg font-semibold flex items-center gap-2">
         <User className="h-5 w-5" />
-        Kişi {index + 1} Bilgileri
+        {t('appointmentRequest.personInfo', { number: index + 1 })}
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">İsim</label>
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.firstName')}</label>
           <Input {...register(`persons.${index}.first_name`)} />
           {errors[`person_${index}_first_name`] && (
             <p className="text-red-500 text-sm mt-1">{errors[`person_${index}_first_name`]}</p>
@@ -609,7 +612,7 @@ function PersonForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Soyisim</label>
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.lastName')}</label>
           <Input {...register(`persons.${index}.last_name`)} />
           {errors[`person_${index}_last_name`] && (
             <p className="text-red-500 text-sm mt-1">{errors[`person_${index}_last_name`]}</p>
@@ -617,21 +620,21 @@ function PersonForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Uyruk</label>
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.nationality')}</label>
           <Input {...register(`persons.${index}.nationality`)} defaultValue="Turkey" readOnly />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Doğum Tarihi (GG/AA/YYYY)</label>
-          <Input {...register(`persons.${index}.birth_date`)} placeholder="15/01/1990" />
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.birthDate')}</label>
+          <Input {...register(`persons.${index}.birth_date`)} placeholder={t('appointmentRequest.birthDatePlaceholder')} />
           {errors[`person_${index}_birth_date`] && (
             <p className="text-red-500 text-sm mt-1">{errors[`person_${index}_birth_date`]}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Pasaport No</label>
-          <Input {...register(`persons.${index}.passport_number`)} placeholder="U12345678" />
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.passportNumber')}</label>
+          <Input {...register(`persons.${index}.passport_number`)} placeholder={t('appointmentRequest.passportPlaceholder')} />
           {errors[`person_${index}_passport_number`] && (
             <p className="text-red-500 text-sm mt-1">{errors[`person_${index}_passport_number`]}</p>
           )}
@@ -639,9 +642,9 @@ function PersonForm({
 
         <div>
           <label className="block text-sm font-medium mb-2">
-            Geçerlilik Başlangıç (GG/AA/YYYY)
+            {t('appointmentRequest.passportIssue')}
           </label>
-          <Input {...register(`persons.${index}.passport_issue_date`)} placeholder="01/01/2020" />
+          <Input {...register(`persons.${index}.passport_issue_date`)} placeholder={t('appointmentRequest.passportIssuePlaceholder')} />
           {errors[`person_${index}_passport_issue_date`] && (
             <p className="text-red-500 text-sm mt-1">
               {errors[`person_${index}_passport_issue_date`]}
@@ -651,9 +654,9 @@ function PersonForm({
 
         <div>
           <label className="block text-sm font-medium mb-2">
-            Geçerlilik Bitiş (GG/AA/YYYY)
+            {t('appointmentRequest.passportExpiry')}
           </label>
-          <Input {...register(`persons.${index}.passport_expiry_date`)} placeholder="01/01/2030" />
+          <Input {...register(`persons.${index}.passport_expiry_date`)} placeholder={t('appointmentRequest.passportExpiryPlaceholder')} />
           {errors[`person_${index}_passport_expiry_date`] && (
             <p className="text-red-500 text-sm mt-1">
               {errors[`person_${index}_passport_expiry_date`]}
@@ -662,7 +665,7 @@ function PersonForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Telefon</label>
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.phone')}</label>
           <div className="flex gap-2">
             <Input
               {...register(`persons.${index}.phone_code`)}
@@ -672,7 +675,7 @@ function PersonForm({
             />
             <Input
               {...register(`persons.${index}.phone_number`)}
-              placeholder="5551234567"
+              placeholder={t('appointmentRequest.phonePlaceholder')}
               className="flex-1"
             />
           </div>
@@ -682,8 +685,8 @@ function PersonForm({
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2">E-posta</label>
-          <Input {...register(`persons.${index}.email`)} type="email" placeholder="ornek@email.com" />
+          <label className="block text-sm font-medium mb-2">{t('appointmentRequest.email')}</label>
+          <Input {...register(`persons.${index}.email`)} type="email" placeholder={t('appointmentRequest.emailPlaceholder')} />
           {errors[`person_${index}_email`] && (
             <p className="text-red-500 text-sm mt-1">{errors[`person_${index}_email`]}</p>
           )}
