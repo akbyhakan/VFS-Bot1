@@ -244,8 +244,10 @@ export default function AppointmentRequest() {
   const handleCopyRequest = (request: AppointmentRequestResponse) => {
     setSelectedCountry(request.country_code);
     setSelectedCentres([...request.centres]);
-    setSelectedCategory(request.visa_category);
-    setSelectedSubcategory(request.visa_subcategory);
+    // Note: Category and subcategory will be validated by the dropdowns
+    // If they don't exist in the current cache, user will need to reselect
+    setSelectedCategory(request.visa_category || '');
+    setSelectedSubcategory(request.visa_subcategory || '');
     setSelectedDates([...request.preferred_dates]);
     setPersonCount(request.person_count);
     setValue('persons', request.persons.map(p => ({ ...p })));

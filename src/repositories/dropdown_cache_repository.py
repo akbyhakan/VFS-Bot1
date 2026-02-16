@@ -212,7 +212,7 @@ class DropdownCacheRepository(BaseRepository):
                 """
                 SELECT country_code
                 FROM vfs_dropdown_cache
-                WHERE last_synced_at < NOW() - INTERVAL '%s hours'
+                WHERE last_synced_at < NOW() - make_interval(hours => $1)
                 ORDER BY last_synced_at ASC
                 """,
                 hours,
