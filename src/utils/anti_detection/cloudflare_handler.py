@@ -18,6 +18,14 @@ class CloudflareHandler:
         "browser_check": "Browser Check",
         "blocked": "Blocked",
     }
+    
+    # Cloudflare Turnstile iframe selectors
+    # Detection uses broader selector, handling uses primary selector
+    TURNSTILE_IFRAME_SELECTOR = 'iframe[src*="challenges.cloudflare.com"]'
+    TURNSTILE_DETECTION_SELECTOR = (
+        'iframe[src*="challenges.cloudflare.com"], '
+        'iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
+    )
 
     def __init__(self, config: Optional[Dict[Any, Any]] = None):
         """
@@ -56,11 +64,7 @@ class CloudflareHandler:
 
             # Check for Turnstile challenge
             # Note: Cloudflare may use different challenge domains
-            turnstile_selector = (
-                'iframe[src*="challenges.cloudflare.com"], '
-                'iframe[src*="cloudflare.com/cdn-cgi/challenge-platform"]'
-            )
-            turnstile = await page.locator(turnstile_selector).count()
+            turnstile = await page.locator(self.TURNSTILE_DETECTION_SELECTOR).count()
             if turnstile > 0:
                 logger.info("Detected Cloudflare Turnstile challenge")
                 return "turnstile"
@@ -137,13 +141,12 @@ class CloudflareHandler:
             else:
                 # Use event-driven approach: wait for iframe to disappear
                 logger.info("Waiting for Turnstile auto-solve (event-driven)")
-                turnstile_selector = 'iframe[src*="challenges.cloudflare.com"]'
                 
                 try:
                     # Wait for the iframe to be detached (removed from DOM)
                     await asyncio.wait_for(
                         page.wait_for_selector(
-                            turnstile_selector,
+                            self.TURNSTILE_IFRAME_SELECTOR,
                             state="detached",
                             timeout=self.max_wait_time * 1000,  # Convert to milliseconds
                         ),
@@ -153,7 +156,7 @@ class CloudflareHandler:
                     return True
                 except asyncio.TimeoutError:
                     # Fallback: check if iframe still exists
-                    turnstile_count = await page.locator(turnstile_selector).count()
+                    turnstile_count = await page.locator(self.TURNSTILE_IFRAME_SELECTOR).count()
                     if turnstile_count == 0:
                         logger.info("Turnstile challenge passed (fallback check)")
                         return True
