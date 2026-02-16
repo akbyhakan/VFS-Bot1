@@ -21,6 +21,7 @@ const Logs = lazy(() => import('@/pages/Logs'));
 const AppointmentRequest = lazy(() => import('@/pages/AppointmentRequest'));
 const AuditLogs = lazy(() => import('@/pages/AuditLogs'));
 const SystemHealth = lazy(() => import('@/pages/SystemHealth'));
+const DropdownManagement = lazy(() => import('@/pages/DropdownManagement'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // Create a client
@@ -77,6 +78,7 @@ function App() {
                 <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />
                 <Route path={ROUTES.AUDIT_LOGS} element={<AuditLogs />} />
                 <Route path={ROUTES.SYSTEM_HEALTH} element={<SystemHealth />} />
+                <Route path={ROUTES.DROPDOWN_MANAGEMENT} element={<DropdownManagement />} />
               </Route>
 
               {/* 404 */}

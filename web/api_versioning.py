@@ -26,6 +26,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
         audit_router,
         auth_router,
         bot_router,
+        dropdown_sync_router,
         payment_router,
         proxy_router,
         users_router,
@@ -39,6 +40,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
     api_v1_router.include_router(payment_router)
     api_v1_router.include_router(proxy_router)
     api_v1_router.include_router(bot_router)
+    api_v1_router.include_router(dropdown_sync_router)
 
     # Register the v1 router with the app
     app.include_router(api_v1_router)

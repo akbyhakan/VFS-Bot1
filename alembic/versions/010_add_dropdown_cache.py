@@ -26,9 +26,12 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS vfs_dropdown_cache (
             id SERIAL PRIMARY KEY,
             country_code VARCHAR(3) NOT NULL,
-            dropdown_data JSONB NOT NULL,
-            last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            dropdown_data JSONB,
+            sync_status VARCHAR(20) DEFAULT 'pending',
+            last_synced_at TIMESTAMP WITH TIME ZONE,
+            error_message TEXT,
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             UNIQUE(country_code)
         );
         
@@ -39,6 +42,10 @@ def upgrade() -> None:
         -- Create index on last_synced_at for finding stale data
         CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_synced 
             ON vfs_dropdown_cache(last_synced_at);
+        
+        -- Create index on sync_status for filtering
+        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_status
+            ON vfs_dropdown_cache(sync_status);
     """)
 
 

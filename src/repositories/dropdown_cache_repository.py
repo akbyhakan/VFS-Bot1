@@ -37,7 +37,7 @@ class DropdownCacheRepository(BaseRepository):
         async with self.db.get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT dropdown_data, last_synced_at
+                SELECT dropdown_data, last_synced_at, sync_status, error_message
                 FROM vfs_dropdown_cache
                 WHERE country_code = $1
                 """,
@@ -49,11 +49,13 @@ class DropdownCacheRepository(BaseRepository):
 
             return {
                 "dropdown_data": row["dropdown_data"],
-                "last_synced_at": row["last_synced_at"].isoformat(),
+                "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                "sync_status": row["sync_status"],
+                "error_message": row["error_message"],
             }
 
     async def upsert_dropdown_data(
-        self, country_code: str, dropdown_data: Dict[str, Any]
+        self, country_code: str, dropdown_data: Dict[str, Any], sync_status: str = "completed", error_message: Optional[str] = None
     ) -> bool:
         """
         Insert or update dropdown data for a country.
@@ -61,6 +63,8 @@ class DropdownCacheRepository(BaseRepository):
         Args:
             country_code: Country code (e.g., 'fra', 'nld')
             dropdown_data: Dropdown data dictionary
+            sync_status: Sync status (default: 'completed')
+            error_message: Error message if sync failed (optional)
 
         Returns:
             True if successful, False otherwise
@@ -69,18 +73,24 @@ class DropdownCacheRepository(BaseRepository):
             async with self.db.get_connection() as conn:
                 await conn.execute(
                     """
-                    INSERT INTO vfs_dropdown_cache (country_code, dropdown_data, last_synced_at)
-                    VALUES ($1, $2, $3)
+                    INSERT INTO vfs_dropdown_cache (country_code, dropdown_data, sync_status, last_synced_at, error_message, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (country_code)
                     DO UPDATE SET
                         dropdown_data = EXCLUDED.dropdown_data,
-                        last_synced_at = EXCLUDED.last_synced_at
+                        sync_status = EXCLUDED.sync_status,
+                        last_synced_at = EXCLUDED.last_synced_at,
+                        error_message = EXCLUDED.error_message,
+                        updated_at = EXCLUDED.updated_at
                     """,
                     country_code,
                     json.dumps(dropdown_data),
+                    sync_status,
+                    datetime.now(timezone.utc),
+                    error_message,
                     datetime.now(timezone.utc),
                 )
-            logger.info(f"Upserted dropdown data for country: {country_code}")
+            logger.info(f"Upserted dropdown data for country: {country_code} with status: {sync_status}")
             return True
         except Exception as e:
             logger.error(f"Failed to upsert dropdown data for {country_code}: {e}")
@@ -219,3 +229,96 @@ class DropdownCacheRepository(BaseRepository):
             )
 
             return [row["country_code"] for row in rows]
+
+    async def get_sync_status(self, country_code: str) -> Optional[Dict[str, Any]]:
+        """
+        Get sync status for a country.
+
+        Args:
+            country_code: Country code (e.g., 'fra', 'nld')
+
+        Returns:
+            Dictionary with sync status information or None if not found
+        """
+        async with self.db.get_connection() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT sync_status, last_synced_at, error_message
+                FROM vfs_dropdown_cache
+                WHERE country_code = $1
+                """,
+                country_code,
+            )
+
+            if row is None:
+                return None
+
+            return {
+                "country_code": country_code,
+                "sync_status": row["sync_status"],
+                "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                "error_message": row["error_message"],
+            }
+
+    async def update_sync_status(
+        self, country_code: str, status: str, error_message: Optional[str] = None
+    ) -> bool:
+        """
+        Update sync status for a country.
+
+        Args:
+            country_code: Country code (e.g., 'fra', 'nld')
+            status: New sync status ('pending', 'syncing', 'completed', 'failed')
+            error_message: Error message if status is 'failed' (optional)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            async with self.db.get_connection() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO vfs_dropdown_cache (country_code, sync_status, error_message, updated_at)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (country_code)
+                    DO UPDATE SET
+                        sync_status = EXCLUDED.sync_status,
+                        error_message = EXCLUDED.error_message,
+                        updated_at = EXCLUDED.updated_at
+                    """,
+                    country_code,
+                    status,
+                    error_message,
+                    datetime.now(timezone.utc),
+                )
+            logger.info(f"Updated sync status for {country_code} to {status}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update sync status for {country_code}: {e}")
+            return False
+
+    async def get_all_sync_statuses(self) -> List[Dict[str, Any]]:
+        """
+        Get sync statuses for all countries.
+
+        Returns:
+            List of dictionaries with sync status information for each country
+        """
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT country_code, sync_status, last_synced_at, error_message
+                FROM vfs_dropdown_cache
+                ORDER BY country_code
+                """
+            )
+
+            return [
+                {
+                    "country_code": row["country_code"],
+                    "sync_status": row["sync_status"],
+                    "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                    "error_message": row["error_message"],
+                }
+                for row in rows
+            ]
