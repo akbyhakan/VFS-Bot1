@@ -1,10 +1,8 @@
 """VFS Bot orchestrator - coordinates all bot components."""
 
 import asyncio
-import os
 import random
-import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from loguru import logger
 from playwright.async_api import Page

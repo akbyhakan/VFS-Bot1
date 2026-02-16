@@ -13,7 +13,7 @@ from tenacity import (
 )
 
 from ...constants import Delays, Retries
-from ...core.exceptions import LoginError, VFSBotError
+from ...core.exceptions import BannedError, LoginError, VFSBotError
 from ...models.database import Database
 from ...repositories import (
     AppointmentRepository,
@@ -238,8 +238,6 @@ class BookingWorkflow:
         Returns:
             Result string: 'success', 'no_slot', 'login_fail', 'error', 'banned'
         """
-        from src.utils.masking import mask_email
-
         masked_email = mask_email(account.email)
         logger.info(
             f"Processing mission with account {account.id} ({masked_email}), "
@@ -260,58 +258,95 @@ class BookingWorkflow:
                     logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
                     return "no_slot"
 
-            # Process appointment requests
-            dedup_service = await get_deduplication_service()
+            # Process appointment requests with retry mechanism
+            return await self._process_mission_requests(
+                page, account, appointment_requests, masked_email
+            )
 
-            # Process each request
-            slot_found = False
-            for request in appointment_requests:
-                try:
-                    # Note: _process_single_request expects user dict with:
-                    # - id: for deduplication checking (using request.id for unique dedup key)
-                    # - category/subcategory: fallback if not in request (should be in request)
-                    # - email: for logging only
-                    # In pool mode, we provide minimal dict since requests have all needed fields
-                    minimal_user = {
-                        "id": request.id,  # Use appointment request ID for unique dedup key
-                        "email": account.email,  # For logging
-                        "category": request.visa_category,  # From request
-                        "subcategory": request.visa_subcategory,  # From request
-                    }
-                    result = await self._process_single_request(
-                        page,
-                        minimal_user,
-                        request,
-                        dedup_service,
-                    )
-                    if result:
-                        slot_found = True
-                        # Mark request as completed
-                        await self.appointment_request_repo.update_status(
-                            request.id,
-                            "completed",
-                        )
-                except Exception as e:
-                    logger.error(f"Error processing request {request.id}: {e}")
-                    continue
-
-            if slot_found:
-                return "success"
-            else:
-                return "no_slot"
-
-        except LoginError as e:
-            logger.error(f"Login error for account {masked_email}: {e}")
-            return "login_fail"
+        except BannedError:
+            logger.error(f"Account {masked_email} has been banned")
+            return "banned"
         except VFSBotError as e:
             logger.error(f"VFS error for account {masked_email}: {e}")
-            # Check if it's a ban
-            if "banned" in str(e).lower() or "captcha" in str(e).lower():
+            # Fallback string check for backward compatibility
+            if "banned" in str(e).lower():
                 return "banned"
             return "error"
         except Exception as e:
             logger.error(f"Unexpected error for account {masked_email}: {e}", exc_info=True)
             return "error"
+
+    @retry(
+        stop=stop_after_attempt(Retries.MAX_PROCESS_USER),
+        wait=wait_random_exponential(
+            multiplier=Retries.BACKOFF_MULTIPLIER,
+            min=Retries.BACKOFF_MIN_SECONDS,
+            max=Retries.BACKOFF_MAX_SECONDS,
+        ),
+        retry=retry_if_exception(_is_recoverable_vfs_error),
+        reraise=True,
+    )
+    async def _process_mission_requests(
+        self,
+        page: Page,
+        account: "PooledAccount",
+        appointment_requests: List["AppointmentRequest"],
+        masked_email: str,
+    ) -> str:
+        """
+        Process appointment requests with retry mechanism for recoverable errors.
+
+        Args:
+            page: Playwright page object
+            account: PooledAccount from the pool
+            appointment_requests: List of AppointmentRequest entities
+            masked_email: Masked email for logging
+
+        Returns:
+            Result string: 'success' or 'no_slot'
+
+        Raises:
+            VFSBotError: For recoverable errors that should be retried
+        """
+        # Process appointment requests
+        dedup_service = await get_deduplication_service()
+
+        # Process each request
+        slot_found = False
+        for request in appointment_requests:
+            try:
+                # Note: process_single_request expects user dict with:
+                # - id: for deduplication checking (using request.id for unique dedup key)
+                # - category/subcategory: fallback if not in request (should be in request)
+                # - email: for logging only
+                # In pool mode, we provide minimal dict since requests have all needed fields
+                minimal_user = {
+                    "id": request.id,  # Use appointment request ID for unique dedup key
+                    "email": account.email,  # For logging
+                    "category": request.visa_category,  # From request
+                    "subcategory": request.visa_subcategory,  # From request
+                }
+                result = await self.mission_processor.process_single_request(
+                    page,
+                    minimal_user,
+                    request,
+                    dedup_service,
+                )
+                if result:
+                    slot_found = True
+                    # Mark request as completed
+                    await self.appointment_request_repo.update_status(
+                        request.id,
+                        "completed",
+                    )
+            except Exception as e:
+                logger.error(f"Error processing request {request.id}: {e}")
+                continue
+
+        if slot_found:
+            return "success"
+        else:
+            return "no_slot"
 
     async def process_waitlist_flow(self, page: Page, user: UserDict) -> None:
         """

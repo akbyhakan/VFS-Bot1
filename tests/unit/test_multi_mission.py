@@ -528,7 +528,7 @@ async def test_process_normal_flow_multiple_requests():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock(return_value=False)
+    workflow.mission_processor.process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -557,12 +557,12 @@ async def test_process_normal_flow_multiple_requests():
         # Run the method
         await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
-        # Verify _process_single_request was called 3 times (once per request)
-        assert workflow._process_single_request.call_count == 3
+        # Verify process_single_request was called 3 times (once per request)
+        assert workflow.mission_processor.process_single_request.call_count == 3
 
         # Verify all requests were processed
         processed_request_ids = {
-            call.args[2].id for call in workflow._process_single_request.call_args_list
+            call.args[2].id for call in workflow.mission_processor.process_single_request.call_args_list
         }
         assert processed_request_ids == {1, 2, 3}
 
@@ -659,7 +659,7 @@ async def test_process_normal_flow_error_isolation():
             raise Exception("Simulated error for request 2")
         return False
 
-    workflow._process_single_request = AsyncMock(side_effect=process_with_error)
+    workflow.mission_processor.process_single_request = AsyncMock(side_effect=process_with_error)
 
     # Mock user
     user = {
@@ -689,7 +689,7 @@ async def test_process_normal_flow_error_isolation():
         await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify all 3 requests were attempted
-        assert workflow._process_single_request.call_count == 3
+        assert workflow.mission_processor.process_single_request.call_count == 3
 
 
 @pytest.mark.asyncio
@@ -765,7 +765,7 @@ async def test_multi_mission_creates_separate_browsers():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock(return_value=False)
+    workflow.mission_processor.process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -869,7 +869,7 @@ async def test_single_mission_uses_original_page():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock(return_value=False)
+    workflow.mission_processor.process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {
@@ -891,9 +891,9 @@ async def test_single_mission_uses_original_page():
         # Verify NO new BrowserManager instances were created (backward compatible)
         MockBrowserManager.assert_not_called()
         
-        # Verify _process_single_request was called with the original page
-        workflow._process_single_request.assert_called_once()
-        call_args = workflow._process_single_request.call_args
+        # Verify process_single_request was called with the original page
+        workflow.mission_processor.process_single_request.assert_called_once()
+        call_args = workflow.mission_processor.process_single_request.call_args
         assert call_args[0][0] == page  # First arg should be the original page
 
 
@@ -971,7 +971,7 @@ async def test_browser_cleanup_on_error():
     workflow.appointment_request_repo.get_all_pending_for_user = AsyncMock(
         return_value=mock_requests
     )
-    workflow._process_single_request = AsyncMock(return_value=False)
+    workflow.mission_processor.process_single_request = AsyncMock(return_value=False)
 
     # Mock user
     user = {

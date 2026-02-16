@@ -337,6 +337,13 @@ class CaptchaRequiredError(VFSApiError):
         super().__init__(message, recoverable=True)
 
 
+class BannedError(VFSBotError):
+    """Account has been banned or blocked by VFS."""
+
+    def __init__(self, message: str = "Account has been banned or blocked"):
+        super().__init__(message, recoverable=False)
+
+
 # Validation Errors
 class ValidationError(VFSBotError):
     """Input validation error."""
