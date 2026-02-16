@@ -54,7 +54,7 @@ export function BotControls() {
         <CardTitle className="text-lg">Bot Kontrolleri</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3">
           <Button
             variant="primary"
             onClick={handleStart}

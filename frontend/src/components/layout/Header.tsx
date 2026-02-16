@@ -1,11 +1,12 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBotStore } from '@/store/botStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import { useHealthCheck } from '@/hooks/useApi';
 import { Button } from '@/components/ui/Button';
+import { NotificationPanel } from './NotificationPanel';
 import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-react';
 import { cn, getStatusColor } from '@/utils/helpers';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface HeaderProps {
@@ -18,10 +19,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { data: health } = useHealthCheck();
   const { theme, toggleTheme } = useThemeStore();
   const { i18n } = useTranslation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { unreadCount, togglePanel } = useNotificationStore();
 
   const handleMenuClick = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
     onMenuClick?.();
   };
 
@@ -38,7 +38,6 @@ export function Header({ onMenuClick }: HeaderProps) {
           className="md:hidden text-dark-300 hover:text-dark-100 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
           onClick={handleMenuClick}
           aria-label="Menüyü aç"
-          aria-expanded={isMobileMenuOpen}
         >
           <Menu className="w-6 h-6" aria-hidden="true" />
         </button>
@@ -91,15 +90,20 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       <div className="flex items-center gap-4">
         {/* Notification Icon */}
-        <button
-          className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors relative"
-          aria-label="Bildirimler"
-          title="Bildirimler"
-        >
-          <Bell className="w-5 h-5" />
-          {/* Notification badge - can be conditionally shown */}
-          {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span> */}
-        </button>
+        <div className="relative">
+          <button
+            onClick={togglePanel}
+            className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors relative"
+            aria-label="Bildirimler"
+            title="Bildirimler"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </button>
+          <NotificationPanel />
+        </div>
 
         {/* Language Selector */}
         <button
