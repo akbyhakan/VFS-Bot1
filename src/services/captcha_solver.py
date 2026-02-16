@@ -1,6 +1,7 @@
 """Captcha solving module using 2Captcha service."""
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
 from loguru import logger
@@ -9,6 +10,8 @@ from playwright.async_api import Page
 
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
+
+    _executor = ThreadPoolExecutor(max_workers=2)
 
     def __init__(self, api_key: str):
         """
@@ -65,7 +68,7 @@ class CaptchaSolver:
             # Run in thread pool to avoid blocking
             loop = asyncio.get_running_loop()
             result: Any = await loop.run_in_executor(
-                None, lambda: solver.recaptcha(sitekey=site_key, url=url)
+                self._executor, lambda: solver.recaptcha(sitekey=site_key, url=url)
             )
 
             # Safe key access - KeyError fix
@@ -107,7 +110,7 @@ class CaptchaSolver:
             # Run in thread pool to avoid blocking
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
-                None,
+                self._executor,
                 lambda: solver.turnstile(
                     sitekey=site_key,
                     url=page_url,

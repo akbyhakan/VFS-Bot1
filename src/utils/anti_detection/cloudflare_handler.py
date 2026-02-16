@@ -187,7 +187,7 @@ class CloudflareHandler:
                     logger.info("Browser Check passed")
                     return True
 
-                await asyncio.sleep(1)
+                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
 
         except Exception as e:
             logger.error(f"Error handling Browser Check: {e}")

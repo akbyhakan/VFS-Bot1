@@ -588,9 +588,9 @@ VFS-Bot1/
 ## 💳 Payment Security (PCI-DSS Compliant)
 
 ### What We Store:
-- ✅ Card holder name (plain text)
+- ✅ Card holder name (Fernet encrypted)
 - ✅ Card number (Fernet encrypted)
-- ✅ Expiry date (plain text)
+- ✅ Expiry date (Fernet encrypted)
 
 ### What We DO NOT Store (PCI-DSS Requirement):
 - ❌ CVV/CVC (never stored, requested at payment time)
@@ -725,9 +725,9 @@ If validation fails in strict mode, the bot will not start.
 VFS-Bot implements **PCI-DSS Level 1** compliant payment card storage:
 
 #### What is Stored:
-- ✅ **Card holder name** (plain text - not sensitive per PCI-DSS)
+- ✅ **Card holder name** (Fernet encrypted)
 - ✅ **Card number** (Fernet encrypted with AES-128)
-- ✅ **Expiry date** (plain text - not sensitive per PCI-DSS)
+- ✅ **Expiry date** (Fernet encrypted)
 
 #### What is NOT Stored:
 - ❌ **CVV/CVC** (PCI-DSS violation to store CVV - NEVER stored)

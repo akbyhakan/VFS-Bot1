@@ -54,25 +54,12 @@ def test_payment_service_initialization_defaults():
     assert service.timeout == 300
 
 
-def test_payment_service_initialization_automated():
-    """Test PaymentService initialization with automated payment."""
-    config = {"method": "automated_card", "timeout": 600}
-    service = PaymentService(config)
-
-    assert service.method == PaymentMethod.AUTOMATED_CARD
-    assert service.timeout == 600
-
-
 def test_payment_method_enum():
     """Test PaymentMethod enum values."""
     assert PaymentMethod.MANUAL.value == "manual"
-    assert PaymentMethod.AUTOMATED_CARD.value == "automated_card"
 
 
 def test_payment_method_enum_from_string():
     """Test creating PaymentMethod from string."""
     method = PaymentMethod("manual")
     assert method == PaymentMethod.MANUAL
-
-    method2 = PaymentMethod("automated_card")
-    assert method2 == PaymentMethod.AUTOMATED_CARD

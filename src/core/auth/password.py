@@ -43,6 +43,29 @@ from passlib.context import CryptContext  # noqa: E402
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _verify_bcrypt_patch():
+    """Verify that the bcrypt monkey-patch is working correctly at startup."""
+    try:
+        test_password = "patch_verification_test"
+        hashed = pwd_context.hash(test_password)
+        if not pwd_context.verify(test_password, hashed):
+            raise RuntimeError(
+                "CRITICAL: bcrypt monkey-patch verification failed! "
+                "Password hashing/verification is broken. "
+                "Check passlib and bcrypt library versions."
+            )
+    except Exception as e:
+        if isinstance(e, RuntimeError):
+            raise
+        raise RuntimeError(
+            f"CRITICAL: bcrypt monkey-patch verification failed: {e}. "
+            "Check passlib and bcrypt library versions."
+        ) from e
+
+
+_verify_bcrypt_patch()
+
+
 def _truncate_password(password: str) -> str:
     """
     Truncate password to 72 bytes for bcrypt, handling UTF-8 safely.
