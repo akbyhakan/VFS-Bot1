@@ -37,8 +37,8 @@ class CaptchaSolver:
 
     def __repr__(self) -> str:
         """Return repr with masked API key."""
-        masked_key = f"{self._api_key[:8]}..." if len(self._api_key) > 8 else "***"
-        return f"CaptchaSolver(api_key='{masked_key}')"
+        # Use fixed mask to avoid exposing any part of the key
+        return f"CaptchaSolver(api_key='***')"
 
     def __str__(self) -> str:
         """Return string representation with masked API key."""
@@ -190,8 +190,19 @@ class CaptchaSolver:
         Args:
             wait: If True, wait for pending tasks to complete before shutdown
         """
-        cls._executor.shutdown(wait=wait)
-        logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
+        # Guard against multiple shutdown calls
+        if not hasattr(cls, '_executor') or cls._executor is None:
+            logger.debug("Executor already shut down or not initialized")
+            return
+        
+        try:
+            cls._executor.shutdown(wait=wait)
+            logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
+        except RuntimeError:
+            # Executor may have been shut down by another thread
+            logger.debug("Executor shutdown already in progress")
+        finally:
+            cls._executor = None
 
 
 # Register automatic cleanup on module exit

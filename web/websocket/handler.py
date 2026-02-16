@@ -33,10 +33,9 @@ async def websocket_endpoint(websocket: WebSocket):
         query_params = dict(websocket.query_params)
         token = query_params.get("token")
         if token:
-            # Mask token in logs to prevent exposure in access logs
-            masked_token = f"{token[:8]}..." if len(token) > 8 else "***"
+            # Use fixed mask to avoid exposing any part of the token
             logger.warning(
-                f"DEPRECATED: WebSocket auth via query parameter (token={masked_token}). "
+                "DEPRECATED: WebSocket auth via query parameter (token=***). "
                 "This method will be removed in v3.0. Use cookie-based auth or message-based auth instead."
             )
             logger.debug("WebSocket auth via query parameter (deprecated)")
