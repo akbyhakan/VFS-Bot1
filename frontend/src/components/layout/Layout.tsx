@@ -28,7 +28,10 @@ export function Layout() {
       />
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <Header 
+          onMenuClick={() => setIsMobileSidebarOpen(true)}
+          isSidebarOpen={isMobileSidebarOpen}
+        />
         
         <main id="main-content" className="flex-1 overflow-y-auto p-6">
           <Outlet />

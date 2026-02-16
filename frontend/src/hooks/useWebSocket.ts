@@ -6,18 +6,21 @@ import type { WebSocketMessage, LogEntry } from '@/types/api';
 import { isBotStatusData, isLogEntry, isStatsData } from '@/utils/typeGuards';
 import { logger } from '@/utils/logger';
 import { WEBSOCKET_THROTTLE } from '@/utils/constants';
+import { useTranslation } from 'react-i18next';
 
 const { LOG_BUFFER_TIME, STATUS_THROTTLE_TIME } = WEBSOCKET_THROTTLE;
 
 export function useWebSocket() {
   const { updateStatus, addLogs, setConnected } = useBotStore();
   const { addNotification } = useNotificationStore();
+  const { t } = useTranslation();
   
   // Store refs for store functions to prevent stale closures
   const addNotificationRef = useRef(addNotification);
   const addLogsRef = useRef(addLogs);
   const updateStatusRef = useRef(updateStatus);
   const setConnectedRef = useRef(setConnected);
+  const tRef = useRef(t);
 
   // Keep refs up to date (ref changes don't trigger re-renders)
   useEffect(() => {
@@ -25,6 +28,7 @@ export function useWebSocket() {
     addLogsRef.current = addLogs;
     updateStatusRef.current = updateStatus;
     setConnectedRef.current = setConnected;
+    tRef.current = t;
   });
   
   // Buffers for batching
@@ -35,6 +39,14 @@ export function useWebSocket() {
 
   // Maximum buffer size to prevent memory leak
   const MAX_LOG_BUFFER_SIZE = 100;
+
+  // Helper to safely extract error message from status data
+  const getErrorMessage = (data: unknown): string | undefined => {
+    if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+      return data.message;
+    }
+    return undefined;
+  };
 
   // Flush log buffer - now with stable dependencies
   const flushLogs = useCallback(() => {
@@ -73,15 +85,34 @@ export function useWebSocket() {
             const status = message.data.status;
             if (status === 'running') {
               addNotificationRef.current({
-                title: 'Bot Başlatıldı',
-                message: 'VFS Bot başarıyla çalışmaya başladı',
+                title: tRef.current('notifications.botStarted'),
+                message: tRef.current('notifications.botStartedMessage'),
                 type: 'success',
               });
             } else if (status === 'stopped') {
               addNotificationRef.current({
-                title: 'Bot Durduruldu',
-                message: 'VFS Bot durduruldu',
+                title: tRef.current('notifications.botStopped'),
+                message: tRef.current('notifications.botStoppedMessage'),
                 type: 'info',
+              });
+            } else if (status === 'error') {
+              const errorMessage = getErrorMessage(message.data);
+              addNotificationRef.current({
+                title: tRef.current('notifications.botError'),
+                message: errorMessage || tRef.current('notifications.botErrorMessage'),
+                type: 'error',
+              });
+            } else if (status === 'restarting') {
+              addNotificationRef.current({
+                title: tRef.current('notifications.botRestarting'),
+                message: tRef.current('notifications.botRestartingMessage'),
+                type: 'warning',
+              });
+            } else if (status === 'rate_limited') {
+              addNotificationRef.current({
+                title: tRef.current('notifications.rateLimitWarning'),
+                message: tRef.current('notifications.rateLimitMessage'),
+                type: 'warning',
               });
             }
           }
@@ -94,7 +125,7 @@ export function useWebSocket() {
             // Check for slot found notification
             if (message.data.level === 'SUCCESS' && message.data.message.toLowerCase().includes('slot')) {
               addNotificationRef.current({
-                title: 'Slot Bulundu!',
+                title: tRef.current('notifications.slotFound'),
                 message: message.data.message,
                 type: 'success',
               });
@@ -132,7 +163,7 @@ export function useWebSocket() {
               type?: 'success' | 'error' | 'warning' | 'info';
             };
             addNotificationRef.current({
-              title: notificationData.title || 'Bildirim',
+              title: notificationData.title || tRef.current('notifications.defaultTitle'),
               message: notificationData.message || '',
               type: notificationData.type || 'info',
             });

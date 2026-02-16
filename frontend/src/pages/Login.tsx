@@ -116,7 +116,7 @@ export function Login() {
           <Button
             type="submit"
             variant="primary"
-            className="w-full"
+            fullWidth
             isLoading={isSubmitting}
             disabled={!!rateLimit.isLocked}
           >

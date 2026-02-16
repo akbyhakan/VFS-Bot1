@@ -12,14 +12,15 @@ import { useRef } from 'react';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  isSidebarOpen?: boolean;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, isSidebarOpen = false }: HeaderProps) {
   const { logout } = useAuth();
   const { status, isConnected } = useBotStore();
   const { data: health } = useHealthCheck();
   const { theme, toggleTheme } = useThemeStore();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { unreadCount, togglePanel } = useNotificationStore();
   const bellButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -39,7 +40,8 @@ export function Header({ onMenuClick }: HeaderProps) {
         <button
           className="md:hidden text-dark-300 hover:text-dark-100 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
           onClick={handleMenuClick}
-          aria-label="Menüyü aç"
+          aria-label={t('header.openMenu')}
+          aria-expanded={isSidebarOpen}
         >
           <Menu className="w-6 h-6" aria-hidden="true" />
         </button>
@@ -55,9 +57,9 @@ export function Header({ onMenuClick }: HeaderProps) {
             )}
           />
           <span className={cn('text-sm font-medium', getStatusColor(status))}>
-            {status === 'running' && 'Çalışıyor'}
-            {status === 'stopped' && 'Durduruldu'}
-            {status === 'idle' && 'Beklemede'}
+            {status === 'running' && t('header.statusRunning')}
+            {status === 'stopped' && t('header.statusStopped')}
+            {status === 'idle' && t('header.statusIdle')}
           </span>
           
           {/* System Health Indicator */}
@@ -79,12 +81,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           {isConnected ? (
             <>
               <Wifi className="w-4 h-4 text-primary-500" />
-              <span>Bağlı</span>
+              <span>{t('header.connected')}</span>
             </>
           ) : (
             <>
               <WifiOff className="w-4 h-4 text-red-500" />
-              <span>Bağlantı Yok</span>
+              <span>{t('header.disconnected')}</span>
             </>
           )}
         </div>
@@ -97,12 +99,15 @@ export function Header({ onMenuClick }: HeaderProps) {
             ref={bellButtonRef}
             onClick={togglePanel}
             className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors relative"
-            aria-label="Bildirimler"
-            title="Bildirimler"
+            aria-label={t('header.notifications')}
+            title={t('header.notifications')}
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              <>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" aria-hidden="true" />
+                <span className="sr-only">{t('header.unreadNotifications', { count: unreadCount })}</span>
+              </>
             )}
           </button>
           <NotificationPanel bellButtonRef={bellButtonRef} />
@@ -112,8 +117,8 @@ export function Header({ onMenuClick }: HeaderProps) {
         <button
           onClick={toggleLanguage}
           className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors flex items-center gap-1"
-          aria-label="Dil değiştir"
-          title="Dil değiştir"
+          aria-label={t('header.changeLanguage')}
+          title={t('header.changeLanguage')}
         >
           <Globe className="w-5 h-5" />
           <span className="text-sm font-medium uppercase">{i18n.language}</span>
@@ -123,14 +128,14 @@ export function Header({ onMenuClick }: HeaderProps) {
         <button
           onClick={toggleTheme}
           className="p-2 text-dark-300 hover:text-dark-100 rounded hover:bg-dark-700 transition-colors"
-          aria-label={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
-          title={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
+          aria-label={theme === 'dark' ? t('header.switchToLight') : t('header.switchToDark')}
+          title={theme === 'dark' ? t('header.switchToLight') : t('header.switchToDark')}
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
         <Button variant="ghost" size="sm" onClick={logout} leftIcon={<LogOut className="w-4 h-4" />}>
-          Çıkış
+          {t('auth.logout')}
         </Button>
       </div>
     </header>
