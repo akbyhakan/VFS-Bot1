@@ -83,7 +83,7 @@ M365_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx  # Replace with your actual app password
 ### 4.1 Basic Connection Test
 
 ```python
-from src.services.email_otp_handler import EmailOTPHandler
+from src.services.otp_manager.email_otp_handler import EmailOTPHandler
 
 # Initialize handler
 handler = EmailOTPHandler(
@@ -119,7 +119,7 @@ handler.close()
 ### Single Bot Session
 
 ```python
-from src.services.email_otp_handler import EmailOTPHandler
+from src.services.otp_manager.email_otp_handler import EmailOTPHandler
 import os
 
 handler = EmailOTPHandler(
@@ -137,7 +137,7 @@ if otp:
 ### Multiple Concurrent Bot Sessions
 
 ```python
-from src.services.email_otp_handler import get_email_otp_handler
+from src.services.otp_manager.email_otp_handler import get_email_otp_handler
 import threading
 import os
 
@@ -213,7 +213,7 @@ for t in threads:
 If using a different IMAP server:
 
 ```python
-from src.services.email_otp_handler import EmailOTPHandler, IMAPConfig
+from src.services.otp_manager.email_otp_handler import EmailOTPHandler, IMAPConfig
 
 config = IMAPConfig(
     host="imap.custom.com",

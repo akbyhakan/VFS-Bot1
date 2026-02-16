@@ -21,7 +21,7 @@ from src.middleware import CorrelationMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.models.db_factory import DatabaseFactory
-from src.services.otp_webhook_routes import router as otp_router
+from src.services.otp_manager.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
 from web.ip_utils import get_real_client_ip
@@ -100,7 +100,7 @@ async def lifespan(app: FastAPI):
 
     # Stop OTP cleanup scheduler
     try:
-        from src.services.otp_webhook import get_otp_service
+        from src.services.otp_manager.otp_webhook import get_otp_service
 
         otp_service = get_otp_service()
         await asyncio.wait_for(otp_service.stop_cleanup_scheduler(), timeout=5)

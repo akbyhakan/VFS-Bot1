@@ -281,7 +281,7 @@ class OTPManager:
         if not hasattr(self, "_account_manager"):
             import os
 
-            from src.services.webhook_token_manager import WebhookTokenManager
+            from .webhook_token_manager import WebhookTokenManager
 
             base_url = os.getenv("WEBHOOK_BASE_URL")
             if not base_url:

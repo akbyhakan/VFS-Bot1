@@ -74,7 +74,7 @@ class TestWebhookFlow:
     def test_otp_extraction_from_message(self, client):
         """Test that OTP is correctly extracted from SMS message."""
         # This would require mocking the OTP service
-        with patch("src.services.otp_webhook.get_otp_service") as mock_service:
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service") as mock_service:
             mock_otp_service = AsyncMock()
             mock_otp_service.receive_sms = AsyncMock(
                 return_value={
@@ -151,7 +151,7 @@ class TestOTPDeliveryFlow:
 
     def test_otp_service_integration(self, client, mock_otp_service):
         """Test OTP service integration with webhook endpoint."""
-        with patch("src.services.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
             response = client.post(
                 "/api/webhook/sms", json={"from": "+1234567890", "text": "Your code is 123456"}
             )
@@ -168,7 +168,7 @@ class TestOTPDeliveryFlow:
             "OTP 777666",
         ]
 
-        with patch("src.services.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
             for message in test_messages:
                 response = client.post(
                     "/api/webhook/sms", json={"from": "+1234567890", "text": message}
@@ -181,7 +181,7 @@ class TestOTPDeliveryFlow:
         """Test handling of duplicate OTP messages."""
         message = {"from": "+1234567890", "text": "Your OTP is: 123456"}
 
-        with patch("src.services.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
             # Send same OTP twice
             response1 = client.post("/api/webhook/sms", json=message)
             response2 = client.post("/api/webhook/sms", json=message)

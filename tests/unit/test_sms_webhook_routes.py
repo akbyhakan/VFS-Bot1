@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.services.webhook_token_manager import WebhookToken, WebhookTokenManager
+from src.services.otp_manager.webhook_token_manager import WebhookToken, WebhookTokenManager
 from web.app import create_app
 from web.routes.sms_webhook import set_webhook_manager
 
@@ -44,7 +44,7 @@ class TestSMSWebhookRoutes:
         """Test successful SMS reception."""
         payload = {"message": "Your OTP is 123456", "from": "+905551234567"}
 
-        with patch("src.services.otp_webhook.get_otp_service"):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         assert response.status_code == 200
@@ -103,7 +103,7 @@ class TestSMSWebhookRoutes:
 
         # Mock OTP service
         mock_otp_service = MagicMock()
-        with patch("src.services.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         assert response.status_code == 200
@@ -122,7 +122,7 @@ class TestSMSWebhookRoutes:
         ]
 
         for payload in formats:
-            with patch("src.services.otp_webhook.get_otp_service"):
+            with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
                 response = client.post("/webhook/sms/tk_test123456789", json=payload)
             assert response.status_code == 200, f"Failed for payload: {payload}"
 
@@ -233,7 +233,7 @@ class TestSMSWebhookRoutes:
 
         def send_sms(otp_value):
             payload = {"message": f"OTP: {otp_value}"}
-            with patch("src.services.otp_webhook.get_otp_service"):
+            with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
                 response = client.post("/webhook/sms/tk_test123456789", json=payload)
             results.append(response.status_code)
 
@@ -307,7 +307,7 @@ class TestSMSWebhookHMACVerification:
         # Generate valid signature
         signature = generate_webhook_signature(payload_str, secret)
 
-        with patch("src.services.otp_webhook.get_otp_service"):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post(
                 "/webhook/sms/tk_test123456789",
                 json=payload,
@@ -324,7 +324,7 @@ class TestSMSWebhookHMACVerification:
 
         payload = {"message": "OTP: 123456"}
 
-        with patch("src.services.otp_webhook.get_otp_service"):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         # Should succeed in development mode
@@ -347,7 +347,7 @@ class TestSMSWebhookHMACVerification:
 
         signature = generate_webhook_signature(payload_str, secret)
 
-        with patch("src.services.otp_webhook.get_otp_service"):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post(
                 "/webhook/sms/tk_test123456789",
                 json=payload,
@@ -365,7 +365,7 @@ class TestSMSWebhookHMACVerification:
 
         payload = {"message": "OTP: 123456"}
 
-        with patch("src.services.otp_webhook.get_otp_service"):
+        with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         # Should work without HMAC when secret not configured

@@ -30,7 +30,7 @@ class VFSAccountManager:
             webhook_token_manager: Optional WebhookTokenManager instance.
                                   If None, creates a new instance.
         """
-        from src.services.webhook_token_manager import WebhookTokenManager
+        from src.services.otp_manager.webhook_token_manager import WebhookTokenManager
 
         self.webhook_manager = webhook_token_manager or WebhookTokenManager()
         self._accounts: Dict[str, VFSAccount] = {}
