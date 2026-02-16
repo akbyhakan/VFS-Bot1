@@ -254,35 +254,18 @@ class BookingWorkflow:
         )
         
         try:
-            # Login with pooled account
-            login_success = await self.deps.workflow.auth_service.login(page, account.email, account.password)
-            if not login_success:
-                logger.error(f"Login failed for account {masked_email}")
-                return "login_fail"
-
-            # Wait for page to stabilize after login
-            state = await self.deps.workflow.page_state_detector.wait_for_stable_state(
-                page,
-                expected_states=frozenset(
-                    {
-                        PageState.DASHBOARD,
-                        PageState.APPOINTMENT_PAGE,
-                        PageState.OTP_LOGIN,
-                        PageState.SESSION_EXPIRED,
-                        PageState.CLOUDFLARE_CHALLENGE,
-                    }
-                ),
-            )
-
-            if state.needs_recovery:
-                logger.error(f"Post-login error: {state.state.name}")
-                return "error"
-
-            # Check for waitlist mode
-            is_waitlist = await self.deps.workflow.waitlist_handler.detect_waitlist_mode(page)
-            if is_waitlist:
-                logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
-                return "no_slot"
+            # Use centralized login and stabilization flow
+            success, issue = await self._login_and_stabilize(page, account.email, account.password)
+            if not success:
+                if issue == 'login_fail':
+                    logger.error(f"Login failed for account {masked_email}")
+                    return "login_fail"
+                elif issue == 'needs_recovery':
+                    logger.error(f"Post-login error for account {masked_email}")
+                    return "error"
+                elif issue == 'waitlist':
+                    logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
+                    return "no_slot"
 
             # Process appointment requests
             dedup_service = await get_deduplication_service()
@@ -292,12 +275,12 @@ class BookingWorkflow:
             for request in appointment_requests:
                 try:
                     # Note: _process_single_request expects user dict with:
-                    # - id: for deduplication checking (not used in pool mode since no user context)
+                    # - id: for deduplication checking (using request.id for unique dedup key)
                     # - category/subcategory: fallback if not in request (should be in request)
                     # - email: for logging only
                     # In pool mode, we provide minimal dict since requests have all needed fields
                     minimal_user = {
-                        "id": 0,  # Dummy ID - dedup not used in pool mode per request
+                        "id": request.id,  # Use appointment request ID for unique dedup key
                         "email": account.email,  # For logging
                         "category": request.visa_category,  # From request
                         "subcategory": request.visa_subcategory,  # From request
@@ -755,7 +738,7 @@ class BookingWorkflow:
 
     async def _process_single_request(
         self, page: Page, user: UserDict, appointment_request: Any, dedup_service: Any
-    ) -> None:
+    ) -> bool:
         """
         Process a single appointment request (slot checking and booking).
 
@@ -764,6 +747,9 @@ class BookingWorkflow:
             user: User dictionary from database
             appointment_request: AppointmentRequest entity
             dedup_service: Deduplication service instance
+            
+        Returns:
+            True if slot was found and booking executed, False otherwise
         """
         # Extract criteria from AppointmentRequest
         person_count = appointment_request.person_count or len(appointment_request.persons or [])
@@ -830,8 +816,11 @@ class BookingWorkflow:
                         page, reservation, user, centre, slot, dedup_service,
                         category=category, subcategory=subcategory
                     )
+                    return True
 
                 break
+        
+        return False
 
     def _build_reservation_from_request(
         self, request: Dict[str, Any], slot: "SlotInfo"

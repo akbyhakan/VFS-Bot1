@@ -24,7 +24,9 @@ JWT_EXPIRY_HOURS=24
 
 # Admin Credentials
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-secure-password
+# ⚠️ MUST be a bcrypt hash in production. Generate with:
+#   python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your-password'))"
+ADMIN_PASSWORD=$2b$12$your-bcrypt-hashed-password-here
 ```
 
 ### Login Endpoint
