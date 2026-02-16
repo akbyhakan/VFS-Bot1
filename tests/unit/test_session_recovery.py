@@ -258,7 +258,7 @@ class TestSessionRecovery:
         recovery.save_checkpoint(
             step="logged_in",
             user_id=123,
-            context={"email": "test@example.com", "password": "secret"},
+            context={"email": "test@example.com", "centre": "Amsterdam"},
         )
 
         assert temp_checkpoint_file.exists()
@@ -276,7 +276,7 @@ class TestSessionRecovery:
         assert checkpoint["step"] == "logged_in"
         assert checkpoint["user_id"] == 123
         assert checkpoint["context"]["email"] == "test@example.com"
-        assert checkpoint["context"]["password"] == "secret"
+        assert checkpoint["context"]["centre"] == "Amsterdam"
 
     def test_init_raises_without_encryption_key(self, temp_checkpoint_file, monkeypatch):
         """Test that SessionRecovery raises ConfigurationError when ENCRYPTION_KEY is not set."""
@@ -325,7 +325,7 @@ class TestSessionRecovery:
             "step_index": 1,
             "user_id": 123,
             "timestamp": datetime.now().isoformat(),
-            "context": {"email": "test@example.com", "password": "legacy_secret"},
+            "context": {"email": "test@example.com", "session_id": "legacy_abc123"},
         }
 
         with open(temp_checkpoint_file, "w") as f:
@@ -333,7 +333,7 @@ class TestSessionRecovery:
 
         # Verify it's plaintext
         raw_data_before = temp_checkpoint_file.read_bytes()
-        assert b"legacy_secret" in raw_data_before
+        assert b"legacy_abc123" in raw_data_before
 
         # Now enable encryption and create recovery instance
         from cryptography.fernet import Fernet
@@ -348,13 +348,13 @@ class TestSessionRecovery:
         assert checkpoint is not None
         assert checkpoint["step"] == "logged_in"
         assert checkpoint["user_id"] == 123
-        assert checkpoint["context"]["password"] == "legacy_secret"
+        assert checkpoint["context"]["session_id"] == "legacy_abc123"
 
         # Verify the file is now encrypted (re-encrypted on load)
         raw_data_after = temp_checkpoint_file.read_bytes()
         
         # Verify it's encrypted by checking that plaintext is NOT visible
-        assert b"legacy_secret" not in raw_data_after, "Plaintext should not be visible in encrypted file"
+        assert b"legacy_abc123" not in raw_data_after, "Plaintext should not be visible in encrypted file"
         
         # Also verify it's not the same as the original plaintext JSON
         assert raw_data_after != raw_data_before, "File should be different after re-encryption"
@@ -363,7 +363,7 @@ class TestSessionRecovery:
         recovery2 = SessionRecovery(str(temp_checkpoint_file))
         checkpoint2 = recovery2.load_checkpoint()
         assert checkpoint2 is not None
-        assert checkpoint2["context"]["password"] == "legacy_secret"
+        assert checkpoint2["context"]["session_id"] == "legacy_abc123"
 
     def test_encrypted_checkpoint_wrong_key(self, temp_checkpoint_file, monkeypatch):
         """Test that loading with wrong encryption key fails gracefully."""
@@ -389,7 +389,7 @@ class TestSessionRecovery:
         assert checkpoint is None
 
     def test_encrypted_checkpoint_sensitive_data(self, temp_checkpoint_file, monkeypatch):
-        """Test that sensitive data in context is encrypted."""
+        """Test that data in context is encrypted."""
         from cryptography.fernet import Fernet
 
         # Set encryption key
@@ -398,27 +398,27 @@ class TestSessionRecovery:
 
         recovery = SessionRecovery(str(temp_checkpoint_file))
 
-        # Save checkpoint with sensitive data
-        sensitive_context = {
+        # Save checkpoint with data
+        context = {
             "email": "user@example.com",
-            "password": "supersecret123",
-            "token": "auth-token-xyz",
+            "session_id": "session_xyz123",
+            "booking_ref": "BOOK-456789",
             "user_id": 456,
         }
-        recovery.save_checkpoint(step="logged_in", user_id=123, context=sensitive_context)
+        recovery.save_checkpoint(step="logged_in", user_id=123, context=context)
 
         # Read raw file data
         raw_data = temp_checkpoint_file.read_bytes()
 
-        # Verify sensitive data is NOT in plaintext
+        # Verify data is NOT in plaintext (encrypted)
         raw_text = raw_data.decode("utf-8", errors="ignore")
-        assert "supersecret123" not in raw_text
-        assert "auth-token-xyz" not in raw_text
+        assert "session_xyz123" not in raw_text
+        assert "BOOK-456789" not in raw_text
         assert "user@example.com" not in raw_text
 
         # But should be retrievable when decrypted
         checkpoint = recovery.load_checkpoint()
         assert checkpoint is not None
-        assert checkpoint["context"]["password"] == "supersecret123"
-        assert checkpoint["context"]["token"] == "auth-token-xyz"
+        assert checkpoint["context"]["session_id"] == "session_xyz123"
+        assert checkpoint["context"]["booking_ref"] == "BOOK-456789"
         assert checkpoint["context"]["email"] == "user@example.com"

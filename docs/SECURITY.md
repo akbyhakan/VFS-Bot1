@@ -70,21 +70,9 @@ app.add_middleware(SecurityHeadersMiddleware, strict_csp=False)
 
 ## Payment Security
 
-### Automated Payments Are Disabled
-
-**CRITICAL:** Automated card payment processing is **completely disabled** for PCI-DSS compliance.
-
-Any attempt to configure automated payments will result in a `ValueError`:
-
-```python
-# This will FAIL
-config = {"payment": {"method": "automated_card"}}
-service = PaymentService(config)  # Raises ValueError
-```
-
 ### Manual Payment Only
 
-Only manual payment processing is supported:
+**CRITICAL:** Only manual payment processing is supported for PCI-DSS compliance.
 
 ```python
 config = {"payment": {"method": "manual"}}

@@ -151,18 +151,21 @@ class NotificationService:
             priority: Priority level (low, normal, high)
         """
         tasks = []
+        channel_names = []
 
         if self.telegram_enabled:
             tasks.append(self.send_telegram(title, message))
+            channel_names.append("telegram")
 
         if self.email_enabled:
             tasks.append(self.send_email(title, message))
+            channel_names.append("email")
 
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
-                    logger.error(f"Notification failed: {result}")
+                    logger.error(f"Notification channel '{channel_names[i]}' failed: {result}")
         else:
             logger.warning("No notification channels enabled")
 
