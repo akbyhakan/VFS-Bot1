@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -92,7 +91,6 @@ function getStatusDisplay(status: DropdownSyncStatus['sync_status']) {
 
 export default function DropdownManagement() {
   const { t } = useTranslation();
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   
   const { data: statuses, isLoading } = useDropdownSyncStatuses();
   const triggerCountrySync = useTriggerCountrySync();
