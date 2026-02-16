@@ -97,15 +97,29 @@ class TestWebSocketEndpoint:
         - WebSocket accepts connection with query param
         - Valid token from query param is accepted
         - Initial status message is sent
+        - Deprecation warning is logged
         """
-        with test_app.websocket_connect(f"/ws?token={valid_token}") as websocket:
-            # No need to send token message - query param handles auth
-            # Should receive initial status message immediately
-            message = websocket.receive_json()
-            assert message["type"] == "status"
-            assert "data" in message
-            assert "running" in message["data"]
-            assert "status" in message["data"]
+        # Capture logs to verify deprecation warning
+        import logging
+        from unittest.mock import patch
+
+        with patch("loguru.logger.warning") as mock_warning:
+            with test_app.websocket_connect(f"/ws?token={valid_token}") as websocket:
+                # No need to send token message - query param handles auth
+                # Should receive initial status message immediately
+                message = websocket.receive_json()
+                assert message["type"] == "status"
+                assert "data" in message
+                assert "running" in message["data"]
+                assert "status" in message["data"]
+
+            # Verify deprecation warning was logged
+            mock_warning.assert_called_once()
+            warning_call = mock_warning.call_args[0][0]
+            assert "DEPRECATED" in warning_call
+            assert "v3.0" in warning_call
+            # Verify token is masked in log
+            assert valid_token not in warning_call or valid_token[:8] in warning_call
 
     def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
         """

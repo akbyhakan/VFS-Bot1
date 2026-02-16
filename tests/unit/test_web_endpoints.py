@@ -266,18 +266,26 @@ class TestWebSocketAuthentication:
             assert "data" in data
 
     def test_websocket_query_param_auth(self, client):
-        """Test WebSocket connection with query parameter authentication."""
+        """Test WebSocket connection with query parameter authentication and deprecation warning."""
         from src.core.auth import create_access_token
+        from unittest.mock import patch
 
         # Create a valid token
         token = create_access_token({"sub": "test_user"})
 
-        # Connect with token in query param
-        with client.websocket_connect(f"/ws?token={token}") as websocket:
-            # Should receive initial status message without sending token message
-            data = websocket.receive_json()
-            assert data["type"] == "status"
-            assert "data" in data
+        # Connect with token in query param and verify deprecation warning
+        with patch("loguru.logger.warning") as mock_warning:
+            with client.websocket_connect(f"/ws?token={token}") as websocket:
+                # Should receive initial status message without sending token message
+                data = websocket.receive_json()
+                assert data["type"] == "status"
+                assert "data" in data
+
+            # Verify deprecation warning was logged
+            mock_warning.assert_called_once()
+            warning_msg = mock_warning.call_args[0][0]
+            assert "DEPRECATED" in warning_msg
+            assert "v3.0" in warning_msg
 
     def test_websocket_requires_token(self, client):
         """Test that WebSocket connection requires a token."""

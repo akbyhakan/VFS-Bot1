@@ -19,6 +19,31 @@ def test_captcha_solver_initialization_no_key():
         CaptchaSolver(api_key="")
 
 
+def test_captcha_solver_repr_masks_api_key():
+    """Test that __repr__ masks the API key."""
+    solver = CaptchaSolver(api_key="very_secret_key_12345")
+    repr_str = repr(solver)
+    assert "very_secret_key_12345" not in repr_str
+    assert "very_sec..." in repr_str
+    assert "CaptchaSolver" in repr_str
+
+
+def test_captcha_solver_str_masks_api_key():
+    """Test that __str__ masks the API key."""
+    solver = CaptchaSolver(api_key="very_secret_key_12345")
+    str_repr = str(solver)
+    assert "very_secret_key_12345" not in str_repr
+    assert "very_sec..." in str_repr
+
+
+def test_captcha_solver_short_key_masking():
+    """Test that short API keys are masked with ***."""
+    solver = CaptchaSolver(api_key="short")
+    repr_str = repr(solver)
+    assert "short" not in repr_str
+    assert "***" in repr_str
+
+
 @pytest.mark.asyncio
 async def test_solve_turnstile_success():
     """Test successful Turnstile solving."""
