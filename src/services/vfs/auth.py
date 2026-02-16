@@ -3,7 +3,7 @@
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 
 import aiohttp
 from loguru import logger
@@ -232,3 +232,94 @@ class VFSAuth:
         finally:
             self._is_refreshing = False
             self._refresh_complete_event.set()  # Signal completion
+
+    def check_and_update_token_from_data(
+        self, data: Union[Dict[str, Any], list], response_headers: Any
+    ) -> bool:
+        """
+        Check and update token from response data and headers.
+
+        This method handles dynamic token updates that may occur in intermediate
+        API responses (not just login/refresh). VFS API may return new tokens in:
+        1. Set-Cookie header with 'accesstoken=' prefix
+        2. Response body with 'accessToken' or 'access_token' key
+
+        Args:
+            data: Parsed response data (dict or list)
+            response_headers: Response headers from aiohttp
+
+        Returns:
+            True if token was updated, False otherwise
+        """
+        if not self.session:
+            # No active session to update
+            return False
+
+        token_updated = False
+        new_access_token = None
+        new_refresh_token = None
+        new_expires_in = None
+
+        # 1. Check Set-Cookie header for accesstoken
+        try:
+            set_cookie = response_headers.get("Set-Cookie", "")
+            if set_cookie and "accesstoken=" in set_cookie.lower():
+                # Parse cookie value (simple extraction)
+                for cookie_part in set_cookie.split(";"):
+                    cookie_part = cookie_part.strip()
+                    if cookie_part.lower().startswith("accesstoken="):
+                        cookie_value = cookie_part.split("=", 1)[1]
+                        if cookie_value and cookie_value != self.session.access_token:
+                            new_access_token = cookie_value
+                            logger.info("Found new access token in Set-Cookie header")
+                            break
+        except Exception as e:
+            logger.debug(f"Error checking Set-Cookie header: {e}")
+
+        # 2. Check response body for token fields (only if data is a dict)
+        if isinstance(data, dict):
+            # Check for accessToken or access_token in response
+            body_access_token = data.get("accessToken") or data.get("access_token")
+            if body_access_token and body_access_token != self.session.access_token:
+                new_access_token = body_access_token
+                logger.info("Found new access token in response body")
+
+            # Also check for refresh token and expiry
+            new_refresh_token = data.get("refreshToken") or data.get("refresh_token")
+            new_expires_in = data.get("expiresIn") or data.get("expires_in")
+
+        # 3. Update session if new token found
+        if new_access_token:
+            self.session.access_token = new_access_token
+            token_updated = True
+
+            # Update refresh token if present
+            if new_refresh_token:
+                self.session.refresh_token = new_refresh_token
+
+            # Update expiry time if present
+            if new_expires_in:
+                token_refresh_buffer = _get_token_refresh_buffer()
+                effective_expiry = calculate_effective_expiry(
+                    new_expires_in, token_refresh_buffer
+                )
+                self.session.expires_at = datetime.now(timezone.utc) + timedelta(
+                    minutes=effective_expiry
+                )
+            else:
+                # Default expiry if not provided (1 hour with buffer)
+                token_refresh_buffer = _get_token_refresh_buffer()
+                effective_expiry = calculate_effective_expiry(60, token_refresh_buffer)
+                self.session.expires_at = datetime.now(timezone.utc) + timedelta(
+                    minutes=effective_expiry
+                )
+
+            # Update session headers with new token
+            self._session.headers.update({"Authorization": f"Bearer {new_access_token}"})
+
+            logger.info(
+                f"Token updated dynamically from API response, "
+                f"expires at {self.session.expires_at}"
+            )
+
+        return token_updated

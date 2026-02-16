@@ -62,11 +62,13 @@ class VFSApiClient:
             endpoint_limiter=self.endpoint_limiter,
             http_session_getter=lambda: self._session,
             ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+            token_update_callback=self._auth.check_and_update_token_from_data,
         )
         self._booking = VFSBooking(
             endpoint_limiter=self.endpoint_limiter,
             http_session_getter=lambda: self._session,
             ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+            token_update_callback=self._auth.check_and_update_token_from_data,
         )
 
         logger.info(
