@@ -2,19 +2,17 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 
-from src.repositories import AppointmentRequestRepository, PaymentRepository
+from src.repositories import PaymentRepository
 from web.dependencies import (
-    get_appointment_request_repository,
     get_payment_repository,
     verify_jwt_token,
 )
 from web.models.payment import (
     PaymentCardRequest,
     PaymentCardResponse,
-    PaymentInitiateRequest,
 )
 
 router = APIRouter(prefix="/payment", tags=["payment"])
@@ -134,42 +132,4 @@ async def delete_payment_card(
         raise HTTPException(status_code=500, detail="Failed to delete payment card")
 
 
-@router.post("/payment/initiate")
-async def initiate_payment(
-    request: PaymentInitiateRequest,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    payment_repo: PaymentRepository = Depends(get_payment_repository),
-    appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
-):
-    """
-    Initiate payment for an appointment.
 
-    NOTE: Payment processing is not yet implemented.
-    This endpoint returns 501 until a payment gateway is integrated.
-    """
-    # Validate appointment exists
-    try:
-        appointment = await appt_req_repo.get_by_id(request.appointment_id)
-        if not appointment:
-            raise HTTPException(404, "Appointment not found")
-
-        # Validate card exists
-        card = await payment_repo.get()
-        if not card:
-            raise HTTPException(404, "No payment card saved")
-
-        # Payment processing not yet implemented
-        logger.warning(
-            f"Payment initiation attempted for appointment {request.appointment_id} "
-            "but payment processing is not yet implemented"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Payment processing is not yet implemented. "
-            "This endpoint will be available once a payment gateway is integrated.",
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Payment processing error: {e}")
-        raise HTTPException(500, "Payment processing failed")
