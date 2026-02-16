@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.services.bot.booking_workflow import BookingWorkflow
+from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 
 # Add parent directory to path for imports
 
@@ -55,7 +56,37 @@ class TestBookingWorkflowMultiPerson:
 
     def test_build_reservation_from_request_single_person(self, mock_dependencies):
         """Test building reservation from appointment request with single person."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         appointment_request = {
             "id": 1,
@@ -91,7 +122,37 @@ class TestBookingWorkflowMultiPerson:
 
     def test_build_reservation_from_request_multi_person(self, mock_dependencies):
         """Test building reservation from appointment request with multiple persons."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         appointment_request = {
             "id": 2,
@@ -153,7 +214,38 @@ class TestBookingWorkflowMultiPerson:
         """Test building reservation when no payment card is configured."""
         # Remove payment card from config
         mock_dependencies["config"] = {"bot": {"screenshot_on_error": True}}
-        workflow = BookingWorkflow(**mock_dependencies)
+        
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         appointment_request = {
             "id": 1,
@@ -184,7 +276,37 @@ class TestBookingWorkflowMultiPerson:
 
     def test_build_reservation_legacy_single_person(self, mock_dependencies):
         """Test legacy _build_reservation method still works (backward compatibility)."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         user = {"id": 1, "email": "test@example.com"}
 
@@ -213,7 +335,37 @@ class TestBookingWorkflowMultiPerson:
 
     def test_build_reservation_from_request_field_mapping(self, mock_dependencies):
         """Test that field mapping is correct for appointment_persons."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         # Note: appointment_persons uses different field names than personal_details
         appointment_request = {
@@ -249,7 +401,37 @@ class TestBookingWorkflowMultiPerson:
 
     def test_payment_card_is_sensitive_dict(self, mock_dependencies):
         """Test that payment card is wrapped in SensitiveDict."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         appointment_request = {
             "id": 1,

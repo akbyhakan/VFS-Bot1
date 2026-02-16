@@ -6,6 +6,7 @@ import pytest
 
 from src.core.exceptions import VFSBotError
 from src.services.bot.booking_workflow import BookingWorkflow
+from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 from src.utils.error_capture import ErrorCapture
 
 # Add parent directory to path for imports
@@ -81,25 +82,109 @@ class TestBookingWorkflowErrorCapture:
         """Test BookingWorkflow initialization with ErrorCapture."""
         error_capture = ErrorCapture()
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         assert workflow.error_capture is error_capture
 
     def test_init_without_error_capture(self, mock_dependencies):
         """Test BookingWorkflow initialization without ErrorCapture creates default instance."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         assert workflow.error_capture is not None
         assert isinstance(workflow.error_capture, ErrorCapture)
 
     def test_init_with_none_error_capture(self, mock_dependencies):
         """Test BookingWorkflow initialization with None creates default instance."""
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         assert workflow.error_capture is not None
@@ -111,9 +196,36 @@ class TestBookingWorkflowErrorCapture:
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
@@ -160,9 +272,36 @@ class TestBookingWorkflowErrorCapture:
         # Disable screenshot_on_error
         mock_dependencies["config"]["bot"]["screenshot_on_error"] = False
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
@@ -190,9 +329,36 @@ class TestBookingWorkflowErrorCapture:
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
@@ -242,7 +408,37 @@ class TestBookingWorkflowErrorCapture:
     @pytest.mark.asyncio
     async def test_process_waitlist_flow_calls_form_filling(self, mock_dependencies):
         """Test that process_waitlist_flow calls the form filling methods."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -302,7 +498,37 @@ class TestBookingWorkflowErrorCapture:
     @pytest.mark.asyncio
     async def test_process_waitlist_flow_no_personal_details(self, mock_dependencies):
         """Test that process_waitlist_flow returns early if no personal details found."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -332,9 +558,36 @@ class TestBookingWorkflowErrorCapture:
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock(side_effect=Exception("Error capture failed"))
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
