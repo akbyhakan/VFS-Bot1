@@ -97,79 +97,7 @@ class BookingWorkflow:
             booking_executor=self.booking_executor,
         )
 
-    @retry(
-        stop=stop_after_attempt(Retries.MAX_PROCESS_USER),
-        wait=wait_random_exponential(
-            multiplier=Retries.BACKOFF_MULTIPLIER,
-            min=Retries.BACKOFF_MIN_SECONDS,
-            max=Retries.BACKOFF_MAX_SECONDS,
-        ),
-        retry=retry_if_exception(_is_recoverable_vfs_error),
-        reraise=True,
-    )
-    async def process_user(self, page: Page, user: UserDict) -> None:
-        """
-        Process a single user's appointment booking.
 
-        Args:
-            page: Playwright page object
-            user: User dictionary from database
-        """
-        masked_email = mask_email(user["email"])
-
-        # Check if user has a pending appointment request BEFORE login
-        # This is a defensive check - users should already be filtered in run_bot_loop(),
-        # but we verify here to prevent login attempts if status changed or if process_user
-        # is called directly from other code paths
-        has_pending = await self.appointment_request_repo.get_pending_for_user(user["id"])
-        if not has_pending:
-            logger.info(f"Skipping user {masked_email}: no pending appointment request")
-            return
-
-        logger.info(f"Processing user: {masked_email}")
-
-        try:
-            # Use centralized login and stabilization flow
-            success, issue = await self._login_and_stabilize(page, user["email"], user["password"])
-            if not success:
-                if issue == "login_fail":
-                    logger.error(f"Login failed for {masked_email}")
-                    raise LoginError(f"Login failed for {masked_email}")
-                elif issue == "needs_recovery":
-                    logger.error(f"Post-login error for {masked_email}")
-                    raise VFSBotError(f"Post-login error for {masked_email}", recoverable=True)
-                elif issue == "waitlist":
-                    logger.info(f"Waitlist mode detected for {masked_email}")
-                    # Handle waitlist flow
-                    await self.process_waitlist_flow(page, user)
-                    return
-
-            # Save checkpoint after successful login
-            self.deps.workflow.session_recovery.save_checkpoint(
-                "logged_in", user["id"], {"masked_email": masked_email}
-            )
-
-            # Normal appointment flow
-            dedup_service = await get_deduplication_service()
-            await self.mission_processor.process_normal_flow(page, user, dedup_service)
-
-        except VFSBotError as e:
-            # Capture error
-            await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
-
-            # Log and handle based on recoverability
-            if not getattr(e, "recoverable", False):
-                logger.error(
-                    f"Non-recoverable error for {masked_email}: {e.__class__.__name__}: {e}"
-                )
-
-            # Only retry if recoverable
-            raise
-        except Exception as e:
-            # Wrap unexpected exceptions in VFSBotError and re-raise for retry
-            logger.error(f"Error processing user {masked_email}: {e}")
-            await self._capture_error_safe(page, e, "process_user", user["id"], masked_email)
-            raise VFSBotError(f"Error processing user {masked_email}: {e}", recoverable=True) from e
 
     async def _login_and_stabilize(
         self, page: Page, email: str, password: str
@@ -178,7 +106,7 @@ class BookingWorkflow:
         Login, detect page state, check waitlist.
 
         This is the single source of truth for login + stabilization flow.
-        Used by both process_user and process_mission to avoid code duplication.
+        Used by process_mission to avoid code duplication.
 
         Args:
             page: Playwright page object
