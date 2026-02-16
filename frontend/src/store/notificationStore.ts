@@ -83,6 +83,7 @@ export const useNotificationStore = create<NotificationState>()(
       partialize: (state) => ({
         notifications: state.notifications,
         unreadCount: state.unreadCount,
+        // isOpen is intentionally excluded - UI state should reset on page load
       }),
     }
   )
