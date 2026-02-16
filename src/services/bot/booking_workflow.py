@@ -36,7 +36,7 @@ from .reservation_builder import ReservationBuilder
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories.appointment_request_repository import AppointmentRequest
-    from ..account_pool import PooledAccount
+    from ..session.account_pool import PooledAccount
 
 
 def _is_recoverable_vfs_error(exception: BaseException) -> bool:

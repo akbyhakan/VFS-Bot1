@@ -11,10 +11,10 @@ from ...constants import AccountPoolConfig, CircuitBreakerConfig
 from ...constants import Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
-from ..account_pool import AccountPool
+from ..session.account_pool import AccountPool
 from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
-from ..session_orchestrator import SessionOrchestrator
+from ..session.session_orchestrator import SessionOrchestrator
 from .booking_dependencies import BookingDependencies, InfraServices, WorkflowServices
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager

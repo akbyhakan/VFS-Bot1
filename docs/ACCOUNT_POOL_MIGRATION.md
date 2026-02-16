@@ -91,7 +91,7 @@ class AccountPoolConfig:
 
 Check pool status:
 ```python
-from src.services.account_pool import AccountPool
+from src.services.session.account_pool import AccountPool
 from src.models.database import Database
 
 async def check_pool():

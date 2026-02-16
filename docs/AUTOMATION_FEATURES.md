@@ -179,7 +179,7 @@ Allows the bot to recover and continue from the last successful step if it crash
 
 **Usage Example:**
 ```python
-from src.services.session_recovery import SessionRecovery
+from src.services.session.session_recovery import SessionRecovery
 
 recovery = SessionRecovery()
 

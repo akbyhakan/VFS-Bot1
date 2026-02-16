@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ..notification.alert_service import AlertService
     from ..booking import BookingOrchestrator
     from ..notification.notification import NotificationService
-    from ..session_recovery import SessionRecovery
+    from ..session.session_recovery import SessionRecovery
     from ..slot_analyzer import SlotPatternAnalyzer
     from .auth_service import AuthService
     from .browser_manager import BrowserManager

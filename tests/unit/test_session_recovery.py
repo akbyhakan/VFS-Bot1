@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.services.session_recovery import SessionRecovery
+from src.services.session.session_recovery import SessionRecovery
 
 
 class TestSessionRecovery:

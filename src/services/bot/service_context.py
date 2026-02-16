@@ -28,7 +28,7 @@ from ..captcha_solver import CaptchaSolver
 from ..centre_fetcher import CentreFetcher
 from ..country_profile_loader import CountryProfileLoader
 from ..otp_webhook import get_otp_service
-from ..session_recovery import SessionRecovery
+from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
 from ..token_sync_service import TokenSyncService
 from .auth_service import AuthService

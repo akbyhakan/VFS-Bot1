@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.account_pool import AccountPool, PooledAccount
+from src.services.session.account_pool import AccountPool, PooledAccount
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def mock_account_pool_repo():
 @pytest.fixture
 def account_pool(mock_db, mock_account_pool_repo):
     """Create AccountPool instance with mocked dependencies."""
-    with patch("src.services.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
         pool = AccountPool(
             db=mock_db,
             cooldown_seconds=60,
