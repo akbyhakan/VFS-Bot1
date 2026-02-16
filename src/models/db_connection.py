@@ -13,7 +13,7 @@ from src.core.exceptions import (
     DatabaseNotConnectedError,
     DatabasePoolTimeoutError,
 )
-from src.utils.masking import _mask_database_url
+from src.utils.masking import mask_database_url
 
 
 class DatabaseConnectionManager:
@@ -165,7 +165,7 @@ class DatabaseConnectionManager:
 
                 logger.info(
                     f"Database connected with pool size {min_pool}-{self.pool_size}: "
-                    f"{_mask_database_url(self.database_url)}"
+                    f"{mask_database_url(self.database_url)}"
                 )
 
                 # Record pool size metric

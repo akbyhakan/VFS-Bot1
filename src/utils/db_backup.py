@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from cryptography.fernet import Fernet, MultiFernet
 from loguru import logger
 
-from src.utils.masking import _mask_database_url
+from src.utils.masking import mask_database_url
 
 
 class DatabaseBackup:
@@ -60,7 +60,7 @@ class DatabaseBackup:
 
         retention_info = f"{max_backups} backups" if max_backups else f"{retention_days}d"
         logger.info(
-            f"Database backup initialized: {_mask_database_url(self._database_url)} -> {backup_dir} "
+            f"Database backup initialized: {mask_database_url(self._database_url)} -> {backup_dir} "
             f"(retention: {retention_info}, interval: {interval_hours}h)"
         )
 
@@ -582,7 +582,7 @@ class DatabaseBackup:
                     total_size += size
 
         return {
-            "database_url": _mask_database_url(self._database_url),
+            "database_url": mask_database_url(self._database_url),
             "backup_dir": str(self._backup_dir),
             "retention_days": self._retention_days,
             "interval_hours": self._interval_hours,

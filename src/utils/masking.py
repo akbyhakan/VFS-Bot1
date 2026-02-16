@@ -93,10 +93,6 @@ def mask_database_url(url: str) -> str:
         return "<unparseable-url>"
 
 
-# Keep old name for backward compatibility
-_mask_database_url = mask_database_url
-
-
 def mask_email(email: str) -> str:
     """
     Mask email address for logging purposes.
