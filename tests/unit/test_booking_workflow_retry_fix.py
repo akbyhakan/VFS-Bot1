@@ -579,7 +579,7 @@ class TestBookingWorkflowHelperMethods:
             return_value=mock_appointment_request
         )
 
-        reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
 
         assert reservation is not None
         assert reservation["person_count"] == 2
@@ -633,7 +633,7 @@ class TestBookingWorkflowHelperMethods:
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
         workflow.user_repo.get_personal_details = AsyncMock(return_value=mock_details)
 
-        reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
 
         assert reservation is not None
         assert reservation["person_count"] == 1
@@ -682,6 +682,6 @@ class TestBookingWorkflowHelperMethods:
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
         workflow.user_repo.get_personal_details = AsyncMock(return_value=None)
 
-        reservation = await workflow._build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
 
         assert reservation is None

@@ -111,31 +111,29 @@ class BookingWorkflow:
             user: User dictionary from database
         """
         masked_email = mask_email(user["email"])
-        
+
         # Check if user has a pending appointment request BEFORE login
         # This is a defensive check - users should already be filtered in run_bot_loop(),
-        # but we verify here to prevent login attempts if status changed or if process_user 
+        # but we verify here to prevent login attempts if status changed or if process_user
         # is called directly from other code paths
         has_pending = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if not has_pending:
-            logger.info(
-                f"Skipping user {masked_email}: no pending appointment request"
-            )
+            logger.info(f"Skipping user {masked_email}: no pending appointment request")
             return
-        
+
         logger.info(f"Processing user: {masked_email}")
 
         try:
             # Use centralized login and stabilization flow
             success, issue = await self._login_and_stabilize(page, user["email"], user["password"])
             if not success:
-                if issue == 'login_fail':
+                if issue == "login_fail":
                     logger.error(f"Login failed for {masked_email}")
                     raise LoginError(f"Login failed for {masked_email}")
-                elif issue == 'needs_recovery':
+                elif issue == "needs_recovery":
                     logger.error(f"Post-login error for {masked_email}")
                     raise VFSBotError(f"Post-login error for {masked_email}", recoverable=True)
-                elif issue == 'waitlist':
+                elif issue == "waitlist":
                     logger.info(f"Waitlist mode detected for {masked_email}")
                     # Handle waitlist flow
                     await self.process_waitlist_flow(page, user)
@@ -173,15 +171,15 @@ class BookingWorkflow:
     ) -> tuple[bool, Optional[str]]:
         """
         Login, detect page state, check waitlist.
-        
+
         This is the single source of truth for login + stabilization flow.
         Used by both process_user and process_mission to avoid code duplication.
-        
+
         Args:
             page: Playwright page object
             email: User/account email
             password: User/account password
-        
+
         Returns:
             (success: bool, issue: Optional[str])
             issue can be: 'login_fail', 'needs_recovery', 'waitlist', None (success)
@@ -189,7 +187,7 @@ class BookingWorkflow:
         # Login
         login_success = await self.deps.workflow.auth_service.login(page, email, password)
         if not login_success:
-            return (False, 'login_fail')
+            return (False, "login_fail")
 
         # Wait for page to stabilize after login
         state = await self.deps.workflow.page_state_detector.wait_for_stable_state(
@@ -206,12 +204,12 @@ class BookingWorkflow:
         )
 
         if state.needs_recovery:
-            return (False, 'needs_recovery')
+            return (False, "needs_recovery")
 
         # Check for waitlist mode
         is_waitlist = await self.deps.workflow.waitlist_handler.detect_waitlist_mode(page)
         if is_waitlist:
-            return (False, 'waitlist')
+            return (False, "waitlist")
 
         return (True, None)
 
@@ -223,43 +221,43 @@ class BookingWorkflow:
     ) -> str:
         """
         Process a mission (country) using a pooled account.
-        
+
         This method is called by SessionOrchestrator with an account from the pool
         and a list of appointment requests for a specific country/mission.
-        
+
         Args:
             page: Playwright page object
             account: PooledAccount from the pool
             appointment_requests: List of AppointmentRequest entities for this mission
-            
+
         Returns:
             Result string: 'success', 'no_slot', 'login_fail', 'error', 'banned'
         """
         from src.utils.masking import mask_email
-        
+
         masked_email = mask_email(account.email)
         logger.info(
             f"Processing mission with account {account.id} ({masked_email}), "
             f"{len(appointment_requests)} request(s)"
         )
-        
+
         try:
             # Use centralized login and stabilization flow
             success, issue = await self._login_and_stabilize(page, account.email, account.password)
             if not success:
-                if issue == 'login_fail':
+                if issue == "login_fail":
                     logger.error(f"Login failed for account {masked_email}")
                     return "login_fail"
-                elif issue == 'needs_recovery':
+                elif issue == "needs_recovery":
                     logger.error(f"Post-login error for account {masked_email}")
                     return "error"
-                elif issue == 'waitlist':
+                elif issue == "waitlist":
                     logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
                     return "no_slot"
 
             # Process appointment requests
             dedup_service = await get_deduplication_service()
-            
+
             # Process each request
             slot_found = False
             for request in appointment_requests:

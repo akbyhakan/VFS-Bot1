@@ -7,7 +7,7 @@ from ...core.sensitive import SensitiveDict
 
 class PersonDict(TypedDict, total=False):
     """Person information for visa application.
-    
+
     Attributes:
         first_name: Person's first name
         last_name: Person's last name
@@ -35,7 +35,7 @@ class PersonDict(TypedDict, total=False):
 
 class ReservationDict(TypedDict, total=False):
     """Reservation data for appointment booking.
-    
+
     Attributes:
         person_count: Number of persons in the booking
         preferred_dates: List of preferred appointment dates in DD/MM/YYYY format

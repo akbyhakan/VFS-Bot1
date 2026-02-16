@@ -181,7 +181,9 @@ class SlotChecker:
                 # Get slot selectors from SelectorManager
                 date_selector = self._get_selector("appointment.slot_date", ".slot-date")
                 time_selector = self._get_selector("appointment.slot_time", ".slot-time")
-                capacity_selector = self._get_selector("appointment.slot_capacity", ".slot-capacity")
+                capacity_selector = self._get_selector(
+                    "appointment.slot_capacity", ".slot-capacity"
+                )
 
                 # Get first available slot
                 date_content = await page.locator(date_selector).first.text_content()
@@ -218,7 +220,9 @@ class SlotChecker:
                     if required_capacity > 1:
                         try:
                             # Try to read capacity from page
-                            capacity_content = await page.locator(capacity_selector).first.text_content()
+                            capacity_content = await page.locator(
+                                capacity_selector
+                            ).first.text_content()
                             if capacity_content:
                                 # Parse capacity (assuming it's a number)
                                 capacity = int(capacity_content.strip())

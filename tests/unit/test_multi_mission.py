@@ -555,7 +555,7 @@ async def test_process_normal_flow_multiple_requests():
         MockBrowserManager.side_effect = create_browser_instance
 
         # Run the method
-        await workflow._process_normal_flow(page, user, dedup_service)
+        await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify _process_single_request was called 3 times (once per request)
         assert workflow._process_single_request.call_count == 3
@@ -686,7 +686,7 @@ async def test_process_normal_flow_error_isolation():
         MockBrowserManager.side_effect = create_browser_instance
 
         # Run the method - should not raise even though request 2 fails
-        await workflow._process_normal_flow(page, user, dedup_service)
+        await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify all 3 requests were attempted
         assert workflow._process_single_request.call_count == 3
@@ -801,7 +801,7 @@ async def test_multi_mission_creates_separate_browsers():
         MockBrowserManager.side_effect = create_browser_instance
 
         # Run the method
-        await workflow._process_normal_flow(page, user, dedup_service)
+        await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify 2 separate BrowserManager instances were created (one per country)
         assert MockBrowserManager.call_count == 2
@@ -886,7 +886,7 @@ async def test_single_mission_uses_original_page():
     # Mock BrowserManager to verify it's NOT instantiated
     with patch("src.services.bot.booking_workflow.BrowserManager") as MockBrowserManager:
         # Run the method
-        await workflow._process_normal_flow(page, user, dedup_service)
+        await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify NO new BrowserManager instances were created (backward compatible)
         MockBrowserManager.assert_not_called()
@@ -1012,7 +1012,7 @@ async def test_browser_cleanup_on_error():
         MockBrowserManager.side_effect = create_browser_instance
 
         # Run the method
-        await workflow._process_normal_flow(page, user, dedup_service)
+        await workflow.mission_processor.process_normal_flow(page, user, dedup_service)
 
         # Verify 2 browsers were created
         assert MockBrowserManager.call_count == 2

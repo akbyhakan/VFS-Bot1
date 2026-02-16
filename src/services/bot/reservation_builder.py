@@ -53,9 +53,7 @@ class ReservationBuilder:
             Reservation dict or None if no data available
         """
         # Try multi-person flow first
-        appointment_request = await self.appointment_request_repo.get_pending_for_user(
-            user["id"]
-        )
+        appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if appointment_request:
             return self.build_reservation_from_request(appointment_request.to_dict(), slot)
 

@@ -50,9 +50,7 @@ class MissionProcessor:
         self.reservation_builder = reservation_builder
         self.booking_executor = booking_executor
 
-    async def process_normal_flow(
-        self, page: Page, user: "UserDict", dedup_service: Any
-    ) -> None:
+    async def process_normal_flow(self, page: Page, user: "UserDict", dedup_service: Any) -> None:
         """
         Process normal appointment flow (slot checking and booking) for ALL pending requests.
 
@@ -184,9 +182,7 @@ class MissionProcessor:
                 )
 
                 if not login_success:
-                    logger.error(
-                        f"Login failed for {country_code} portal, skipping country group"
-                    )
+                    logger.error(f"Login failed for {country_code} portal, skipping country group")
                     continue
 
                 # Shuffle requests within this country group for anti-detection
@@ -213,9 +209,7 @@ class MissionProcessor:
 
             except Exception as e:
                 # Log error but continue with next country (error isolation)
-                logger.error(
-                    f"Error processing country {country_code} for user {user['id']}: {e}"
-                )
+                logger.error(f"Error processing country {country_code} for user {user['id']}: {e}")
                 continue
 
             finally:
@@ -256,9 +250,7 @@ class MissionProcessor:
             Exception: Any exception from booking flow is propagated to caller
         """
         # Extract criteria from AppointmentRequest
-        person_count = appointment_request.person_count or len(
-            appointment_request.persons or []
-        )
+        person_count = appointment_request.person_count or len(appointment_request.persons or [])
         preferred_dates = appointment_request.preferred_dates or []
         centres = appointment_request.centres
         category = appointment_request.visa_category or user["category"]
