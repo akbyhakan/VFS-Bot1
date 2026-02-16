@@ -79,6 +79,43 @@ class RateLimiter:
             "available": self.max_requests - recent_requests,
         }
 
+    async def get_rate_limit_info(self, client_id: str) -> dict:
+        """
+        Get rate limit information for a client.
+
+        This method provides rate limit headers information compatible with
+        the RateLimitHeadersMiddleware.
+
+        Args:
+            client_id: Client identifier (IP address or user ID)
+
+        Returns:
+            Dictionary with limit, remaining, and reset timestamp
+        """
+        async with self._lock:
+            current_time = time.time()
+
+            # Clean old requests
+            while self.requests and self.requests[0] < current_time - self.time_window:
+                self.requests.popleft()
+
+            # Calculate remaining requests
+            recent_requests = len(self.requests)
+            remaining = max(0, self.max_requests - recent_requests)
+
+            # Calculate reset timestamp (when oldest request expires)
+            if self.requests:
+                oldest_request = self.requests[0]
+                reset_timestamp = int(oldest_request + self.time_window)
+            else:
+                reset_timestamp = int(current_time + self.time_window)
+
+            return {
+                "limit": self.max_requests,
+                "remaining": remaining,
+                "reset": reset_timestamp,
+            }
+
 
 # Global rate limiter instance
 _global_limiter: Optional[RateLimiter] = None
