@@ -12,6 +12,7 @@ export const ROUTES = {
   APPOINTMENTS: '/appointments',
   SYSTEM_HEALTH: '/system',
   AUDIT_LOGS: '/audit-logs',
+  DROPDOWN_MANAGEMENT: '/dropdown-management',
 } as const;
 
 export const LOG_LEVELS = {

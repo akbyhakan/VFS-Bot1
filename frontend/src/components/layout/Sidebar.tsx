@@ -10,6 +10,7 @@ import {
   HeartPulse,
   Shield,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import { ROUTES } from '@/utils/constants';
 import { useEffect, useRef } from 'react';
@@ -29,6 +30,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     { href: ROUTES.DASHBOARD, icon: LayoutDashboard, nameKey: 'sidebar.dashboard' },
     { href: ROUTES.USERS, icon: Users, nameKey: 'sidebar.users' },
     { href: ROUTES.APPOINTMENTS, icon: Calendar, nameKey: 'sidebar.appointments' },
+    { href: ROUTES.DROPDOWN_MANAGEMENT, icon: RefreshCw, nameKey: 'sidebar.dropdownManagement' },
     { href: ROUTES.AUDIT_LOGS, icon: Shield, nameKey: 'sidebar.auditLogs' },
     { href: ROUTES.LOGS, icon: FileText, nameKey: 'sidebar.logs' },
     { href: ROUTES.SETTINGS, icon: Settings, nameKey: 'sidebar.settings' },

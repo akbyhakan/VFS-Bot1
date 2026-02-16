@@ -52,6 +52,9 @@ class DropdownSyncService:
         """
         try:
             logger.info(f"Syncing dropdown data for {country_code}...")
+            
+            # Update status to 'syncing'
+            await self.dropdown_cache_repo.update_sync_status(country_code, 'syncing')
 
             # Initialize CentreFetcher for this country
             fetcher = CentreFetcher(
@@ -67,11 +70,14 @@ class DropdownSyncService:
 
             if not dropdown_data:
                 logger.warning(f"No dropdown data fetched for {country_code}")
+                await self.dropdown_cache_repo.update_sync_status(
+                    country_code, 'failed', 'No dropdown data returned from VFS website'
+                )
                 return None
 
-            # Store in database
+            # Store in database with 'completed' status
             success = await self.dropdown_cache_repo.upsert_dropdown_data(
-                country_code, dropdown_data
+                country_code, dropdown_data, 'completed', None
             )
 
             if success:
@@ -82,10 +88,15 @@ class DropdownSyncService:
                 return dropdown_data
             else:
                 logger.error(f"Failed to store dropdown data for {country_code}")
+                await self.dropdown_cache_repo.update_sync_status(
+                    country_code, 'failed', 'Failed to store data in database'
+                )
                 return None
 
         except Exception as e:
-            logger.error(f"Error syncing dropdown data for {country_code}: {e}")
+            error_msg = str(e)
+            logger.error(f"Error syncing dropdown data for {country_code}: {error_msg}")
+            await self.dropdown_cache_repo.update_sync_status(country_code, 'failed', error_msg)
             return None
 
     async def sync_all_countries(
