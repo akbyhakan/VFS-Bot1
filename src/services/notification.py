@@ -550,8 +550,9 @@ The bot will retry automatically.
             )
 
             # If caption was truncated, send remaining text as separate message
+            # Client truncates to (LIMIT - 3) and adds "...", so start from there
             if success and len(full_message) > TelegramClient.TELEGRAM_CAPTION_LIMIT:
-                remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT :]
+                remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT - 3 :]
                 await client.send_message(chat_id=chat_id, text=remaining_text)
 
             if success:

@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+import aiohttp
+import aiosmtplib
 from loguru import logger
 
 from src.services.telegram_client import TelegramClient
