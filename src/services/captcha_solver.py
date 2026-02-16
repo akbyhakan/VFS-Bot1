@@ -1,6 +1,7 @@
 """Captcha solving module using 2Captcha service."""
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
@@ -26,8 +27,22 @@ class CaptchaSolver:
         if not api_key:
             raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
 
-        self.api_key = api_key
+        self._api_key = api_key
         logger.info("CaptchaSolver initialized with 2Captcha")
+
+    @property
+    def api_key(self) -> str:
+        """Get API key (property for backward compatibility)."""
+        return self._api_key
+
+    def __repr__(self) -> str:
+        """Return repr with masked API key."""
+        masked_key = f"{self._api_key[:8]}..." if len(self._api_key) > 8 else "***"
+        return f"CaptchaSolver(api_key='{masked_key}')"
+
+    def __str__(self) -> str:
+        """Return string representation with masked API key."""
+        return self.__repr__()
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
@@ -147,7 +162,7 @@ class CaptchaSolver:
                     const el = document.querySelector('[name="g-recaptcha-response"]');
                     if (el) {
                         el.value = token;
-                        el.innerHTML = token;
+                        el.textContent = token;
                     }
                     // Trigger callback if exists
                     if (typeof ___grecaptcha_cfg !== 'undefined') {
@@ -166,3 +181,18 @@ class CaptchaSolver:
         except Exception as e:
             logger.error(f"Failed to inject captcha solution: {e}")
             return False
+
+    @classmethod
+    def shutdown(cls, wait: bool = True) -> None:
+        """
+        Shutdown the thread pool executor.
+
+        Args:
+            wait: If True, wait for pending tasks to complete before shutdown
+        """
+        cls._executor.shutdown(wait=wait)
+        logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
+
+
+# Register automatic cleanup on module exit
+atexit.register(CaptchaSolver.shutdown, wait=False)

@@ -18,7 +18,12 @@ security = HTTPBearer()
 
 
 class APIKeyManager:
-    """Thread-safe API key manager using singleton pattern."""
+    """
+    Thread-safe API key manager using singleton pattern.
+
+    Note: Uses threading.RLock as all operations are CPU-bound and sub-millisecond.
+    For I/O-bound operations, consider asyncio.Lock.
+    """
 
     _instance: Optional["APIKeyManager"] = None
     _lock = RLock()

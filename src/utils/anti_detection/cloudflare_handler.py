@@ -1,7 +1,6 @@
 """Detect and bypass Cloudflare protections."""
 
 import asyncio
-import time
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -92,24 +91,26 @@ class CloudflareHandler:
         logger.info(f"Handling Waiting Room (max wait: {self.max_wait_time}s)")
 
         try:
-            # Wait for page to change or timeout
-            start_time = time.monotonic()
-
-            while True:
-                # Check if we've waited too long
-                elapsed = time.monotonic() - start_time
-                if elapsed > self.max_wait_time:
-                    logger.warning("Waiting Room timeout")
-                    return False
-
-                # Check if still in waiting room
+            # Use event-driven approach with fallback to polling
+            try:
+                # Wait for title to change (not contain "waiting room")
+                await asyncio.wait_for(
+                    page.wait_for_function(
+                        "() => !document.title.toLowerCase().includes('waiting room')",
+                        timeout=self.max_wait_time * 1000,  # Convert to milliseconds
+                    ),
+                    timeout=self.max_wait_time,
+                )
+                logger.info("Cleared Waiting Room (event-driven)")
+                return True
+            except asyncio.TimeoutError:
+                # Fallback: Double-check with polling in case event-driven approach missed it
                 title = await page.title()
                 if "waiting room" not in title.lower():
-                    logger.info("Cleared Waiting Room")
+                    logger.info("Cleared Waiting Room (fallback check)")
                     return True
-
-                # Wait before checking again
-                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
+                logger.warning("Waiting Room timeout")
+                return False
 
         except Exception as e:
             logger.error(f"Error handling Waiting Room: {e}")
@@ -132,28 +133,32 @@ class CloudflareHandler:
                 # Wait for manual solving
                 logger.info(f"Waiting for manual Turnstile solve ({self.max_wait_time}s)")
                 await asyncio.sleep(self.max_wait_time)
+                return True
             else:
-                # Wait for auto-solve
-                logger.info("Waiting for Turnstile auto-solve")
-                start_time = time.monotonic()
-
-                while True:
-                    elapsed = time.monotonic() - start_time
-                    if elapsed > self.max_wait_time:
-                        logger.warning("Turnstile timeout")
-                        return False
-
-                    # Check if turnstile is still present
-                    turnstile = await page.locator(
-                        'iframe[src*="challenges.cloudflare.com"]'
-                    ).count()
-                    if turnstile == 0:
-                        logger.info("Turnstile challenge passed")
+                # Use event-driven approach: wait for iframe to disappear
+                logger.info("Waiting for Turnstile auto-solve (event-driven)")
+                turnstile_selector = 'iframe[src*="challenges.cloudflare.com"]'
+                
+                try:
+                    # Wait for the iframe to be hidden or detached
+                    await asyncio.wait_for(
+                        page.wait_for_selector(
+                            turnstile_selector,
+                            state="hidden",
+                            timeout=self.max_wait_time * 1000,  # Convert to milliseconds
+                        ),
+                        timeout=self.max_wait_time,
+                    )
+                    logger.info("Turnstile challenge passed (event-driven)")
+                    return True
+                except asyncio.TimeoutError:
+                    # Fallback: check if iframe still exists
+                    turnstile_count = await page.locator(turnstile_selector).count()
+                    if turnstile_count == 0:
+                        logger.info("Turnstile challenge passed (fallback check)")
                         return True
-
-                    await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
-
-            return True
+                    logger.warning("Turnstile timeout")
+                    return False
 
         except Exception as e:
             logger.error(f"Error handling Turnstile: {e}")
@@ -172,22 +177,26 @@ class CloudflareHandler:
         logger.info("Handling Browser Check")
 
         try:
-            # Wait for page to change
-            start_time = time.monotonic()
-
-            while True:
-                elapsed = time.monotonic() - start_time
-                if elapsed > self.max_wait_time:
-                    logger.warning("Browser Check timeout")
-                    return False
-
-                # Check if still on challenge page
+            # Use event-driven approach with fallback to polling
+            try:
+                # Wait for title to change (not contain "just a moment")
+                await asyncio.wait_for(
+                    page.wait_for_function(
+                        "() => !document.title.toLowerCase().includes('just a moment')",
+                        timeout=self.max_wait_time * 1000,  # Convert to milliseconds
+                    ),
+                    timeout=self.max_wait_time,
+                )
+                logger.info("Browser Check passed (event-driven)")
+                return True
+            except asyncio.TimeoutError:
+                # Fallback: Double-check with polling in case event-driven approach missed it
                 title = await page.title()
                 if "just a moment" not in title.lower():
-                    logger.info("Browser Check passed")
+                    logger.info("Browser Check passed (fallback check)")
                     return True
-
-                await asyncio.sleep(Delays.CHALLENGE_POLL_INTERVAL)
+                logger.warning("Browser Check timeout")
+                return False
 
         except Exception as e:
             logger.error(f"Error handling Browser Check: {e}")
