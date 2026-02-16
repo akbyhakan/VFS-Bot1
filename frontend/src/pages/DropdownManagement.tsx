@@ -242,7 +242,7 @@ export default function DropdownManagement() {
             </div>
 
             {/* Empty state */}
-            {!statuses || statuses.length === 0 && (
+            {(!statuses || statuses.length === 0) && (
               <div className="text-center py-12">
                 <Clock className="h-12 w-12 text-dark-500 mx-auto mb-3" />
                 <p className="text-dark-400">
