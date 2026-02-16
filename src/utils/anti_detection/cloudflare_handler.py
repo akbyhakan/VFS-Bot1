@@ -140,11 +140,11 @@ class CloudflareHandler:
                 turnstile_selector = 'iframe[src*="challenges.cloudflare.com"]'
                 
                 try:
-                    # Wait for the iframe to be hidden or detached
+                    # Wait for the iframe to be detached (removed from DOM)
                     await asyncio.wait_for(
                         page.wait_for_selector(
                             turnstile_selector,
-                            state="hidden",
+                            state="detached",
                             timeout=self.max_wait_time * 1000,  # Convert to milliseconds
                         ),
                         timeout=self.max_wait_time,
