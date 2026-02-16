@@ -6,7 +6,7 @@ import time
 import pytest
 
 from src.utils.audit_logger import AuditAction, AuditLogger
-from src.utils.decorators import log_errors, retry_async, timed_async
+from src.utils.decorators import handle_errors, retry_async, timed_async
 from src.utils.security.adaptive_rate_limiter import AdaptiveRateLimiter
 from src.utils.webhook_utils import generate_webhook_signature, verify_webhook_signature
 
@@ -205,10 +205,10 @@ class TestDecorators:
         assert call_count == 3  # Initial + 2 retries
 
     @pytest.mark.asyncio
-    async def test_log_errors_decorator_reraise(self):
-        """Test log_errors decorator with reraise."""
+    async def test_handle_errors_no_wrap_reraise(self):
+        """Test handle_errors decorator without wrapping with reraise."""
 
-        @log_errors(reraise=True)
+        @handle_errors(wrap_error=False, reraise=True)
         async def failing_func():
             raise ValueError("Test error")
 
@@ -216,10 +216,10 @@ class TestDecorators:
             await failing_func()
 
     @pytest.mark.asyncio
-    async def test_log_errors_decorator_default_return(self):
-        """Test log_errors decorator with default return."""
+    async def test_handle_errors_no_wrap_default_return(self):
+        """Test handle_errors decorator without wrapping with default return."""
 
-        @log_errors(reraise=False, default_return="default")
+        @handle_errors(wrap_error=False, reraise=False, default_return="default")
         async def failing_func():
             raise ValueError("Test error")
 

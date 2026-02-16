@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from src.core.exceptions import VFSBotError
-from src.utils.decorators import handle_errors, log_errors
+from src.utils.decorators import handle_errors
 
 
 class TestHandleErrors:
@@ -131,14 +131,14 @@ class TestHandleErrors:
         assert my_async_function.__doc__ == "My docstring."
 
 
-class TestLogErrors:
-    """Tests for log_errors decorator."""
+class TestHandleErrorsWithoutWrapping:
+    """Tests for handle_errors decorator with wrap_error=False (replaces old log_errors)."""
 
     @pytest.mark.asyncio
-    async def test_log_errors_success(self):
-        """Test log_errors with successful function."""
+    async def test_handle_errors_no_wrap_success(self):
+        """Test handle_errors without error wrapping with successful function."""
 
-        @log_errors()
+        @handle_errors(wrap_error=False)
         async def successful_func():
             return "success"
 
@@ -146,21 +146,22 @@ class TestLogErrors:
         assert result == "success"
 
     @pytest.mark.asyncio
-    async def test_log_errors_failure_reraise(self):
-        """Test log_errors with function that raises."""
+    async def test_handle_errors_no_wrap_failure_reraise(self):
+        """Test handle_errors without wrapping with function that raises."""
 
-        @log_errors(reraise=True)
+        @handle_errors(wrap_error=False, reraise=True)
         async def failing_func():
             raise ValueError("Test error")
 
+        # Should reraise the original ValueError, not VFSBotError
         with pytest.raises(ValueError):
             await failing_func()
 
     @pytest.mark.asyncio
-    async def test_log_errors_failure_no_reraise(self):
-        """Test log_errors without reraising."""
+    async def test_handle_errors_no_wrap_failure_no_reraise(self):
+        """Test handle_errors without wrapping and without reraising."""
 
-        @log_errors(reraise=False)
+        @handle_errors(wrap_error=False, reraise=False)
         async def failing_func():
             raise ValueError("Test error")
 
@@ -168,10 +169,10 @@ class TestLogErrors:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_log_errors_with_default_return(self):
-        """Test log_errors with custom default return value."""
+    async def test_handle_errors_no_wrap_with_default_return(self):
+        """Test handle_errors with custom default return value."""
 
-        @log_errors(reraise=False, default_return=[])
+        @handle_errors(wrap_error=False, reraise=False, default_return=[])
         async def failing_func():
             raise ValueError("Test error")
 
@@ -179,10 +180,10 @@ class TestLogErrors:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_log_errors_with_args(self):
-        """Test log_errors with function that has arguments."""
+    async def test_handle_errors_no_wrap_with_args(self):
+        """Test handle_errors without wrapping with function that has arguments."""
 
-        @log_errors()
+        @handle_errors(wrap_error=False)
         async def func_with_args(a, b):
             return a + b
 
@@ -190,10 +191,10 @@ class TestLogErrors:
         assert result == 5
 
     @pytest.mark.asyncio
-    async def test_log_errors_with_kwargs(self):
-        """Test log_errors with keyword arguments."""
+    async def test_handle_errors_no_wrap_with_kwargs(self):
+        """Test handle_errors without wrapping with keyword arguments."""
 
-        @log_errors()
+        @handle_errors(wrap_error=False)
         async def func_with_kwargs(a, b=10):
             return a + b
 
@@ -201,10 +202,10 @@ class TestLogErrors:
         assert result == 12
 
     @pytest.mark.asyncio
-    async def test_log_errors_preserves_function_name(self):
+    async def test_handle_errors_no_wrap_preserves_function_name(self):
         """Test that decorator preserves function metadata."""
 
-        @log_errors()
+        @handle_errors(wrap_error=False)
         async def my_function():
             """My docstring."""
             return "test"

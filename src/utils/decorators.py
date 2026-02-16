@@ -12,24 +12,39 @@ F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def handle_errors(
-    operation_name: str, reraise: bool = True, log_level: str = "error"
+    operation_name: Optional[str] = None,
+    reraise: bool = True,
+    log_level: str = "error",
+    wrap_error: bool = True,
+    default_return: Any = None,
 ) -> Callable[[F], F]:
     """
-    Decorator for consistent error handling across async operations.
+    Decorator for consistent error handling across async and sync operations.
 
-    Wraps exceptions in VFSBotError for consistent error handling across the application.
-    For simple error logging without VFSBotError wrapping, use `log_errors` decorator instead.
+    Unified error handler that can both wrap exceptions in VFSBotError or simply log them.
+    Replaces both the old handle_errors and log_errors decorators.
 
     Args:
-        operation_name: Name of the operation for logging
-        reraise: Whether to reraise the exception
+        operation_name: Name of the operation for logging. If None, defaults to module.function_name
+        reraise: Whether to reraise the exception after logging
         log_level: Logging level for errors (error, warning, info)
+        wrap_error: If True, wraps exceptions in VFSBotError (default). If False, reraised original exception
+        default_return: Value to return if not reraising (default: None)
 
-    See Also:
-        log_errors: Simpler decorator for error logging without VFSBotError wrapping
+    Examples:
+        @handle_errors("fetch_data")  # Wraps in VFSBotError
+        async def fetch_data():
+            ...
+
+        @handle_errors(wrap_error=False, reraise=False, default_return=[])  # Simple logging
+        async def get_items():
+            ...
     """
 
     def decorator(func: F) -> F:
+        # Determine operation name
+        op_name = operation_name if operation_name is not None else f"{func.__module__}.{func.__name__}"
+
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
             try:
@@ -38,17 +53,25 @@ def handle_errors(
                 # Import here to avoid circular dependency
                 from ..core.exceptions import VFSBotError
 
+                # VFSBotError always passes through
                 if isinstance(e, VFSBotError):
-                    raise  # Already handled, reraise as-is
+                    raise
+                
+                # CancelledError always passes through
                 if isinstance(e, asyncio.CancelledError):
-                    logger.info(f"{operation_name} was cancelled")
+                    logger.info(f"{op_name} was cancelled")
                     raise
 
+                # Log the error
                 log_func = getattr(logger, log_level, logger.error)
-                log_func(f"{operation_name} failed: {e}", exc_info=True)
+                log_func(f"{op_name} failed: {e}", exc_info=True)
+                
                 if reraise:
-                    raise VFSBotError(f"{operation_name} failed: {str(e)}") from e
-                return None
+                    if wrap_error:
+                        raise VFSBotError(f"{op_name} failed: {str(e)}") from e
+                    else:
+                        raise
+                return default_return
 
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
@@ -58,59 +81,24 @@ def handle_errors(
                 # Import here to avoid circular dependency
                 from ..core.exceptions import VFSBotError
 
+                # VFSBotError always passes through
                 if isinstance(e, VFSBotError):
                     raise
 
+                # Log the error
                 log_func = getattr(logger, log_level, logger.error)
-                log_func(f"{operation_name} failed: {e}", exc_info=True)
+                log_func(f"{op_name} failed: {e}", exc_info=True)
+                
                 if reraise:
-                    raise VFSBotError(f"{operation_name} failed: {str(e)}") from e
-                return None
+                    if wrap_error:
+                        raise VFSBotError(f"{op_name} failed: {str(e)}") from e
+                    else:
+                        raise
+                return default_return
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
-
-    return decorator
-
-
-def log_errors(
-    reraise: bool = True, default_return: Any = None, log_level: int = _stdlib_logging.ERROR
-) -> Callable[[F], F]:
-    """
-    Decorator to log errors from async functions.
-
-    Simple error logging for async functions. If you need VFSBotError wrapping
-    for consistent error handling, use `handle_errors` decorator instead.
-
-    Args:
-        reraise: Whether to reraise the exception after logging
-        default_return: Value to return if not reraising
-        log_level: Logging level for errors
-
-    Example:
-        @log_errors(reraise=False, default_return=[])
-        async def get_items():
-            ...
-
-    See Also:
-        handle_errors: Error handler with VFSBotError wrapping and operation naming
-    """
-
-    def decorator(func: F) -> F:
-        @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                logger.log(
-                    log_level, f"{func.__module__}.{func.__name__} failed: {e}", exc_info=True
-                )
-                if reraise:
-                    raise
-                return default_return
-
-        return wrapper  # type: ignore[return-value]
 
     return decorator
 
