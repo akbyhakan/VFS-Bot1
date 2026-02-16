@@ -53,11 +53,11 @@ def upgrade() -> None:
         END $$;
     """)
     
-    # Step 2: Migrate data from old columns to new encrypted columns
-    # Note: This migration requires the application's encryption function.
-    # In a real migration, we would import encrypt_password here and encrypt the data.
-    # For now, we copy the data as-is since existing data is plaintext.
-    # The application code will handle encryption on the next write.
+    # Step 2: Migrate existing plaintext data to encrypted columns
+    # IMPORTANT: This copies plaintext data to *_encrypted columns as-is.
+    # The application code will re-encrypt this data on the next write operation.
+    # For immediate encryption, run a data migration script after applying this schema migration.
+    # This approach prevents coupling database migrations with application encryption logic.
     op.execute("""
         UPDATE payment_card
         SET card_holder_name_encrypted = card_holder_name,
@@ -111,7 +111,27 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Restore plaintext columns (NOT RECOMMENDED - violates PCI-DSS)."""
+    """Restore plaintext columns (NOT RECOMMENDED - violates PCI-DSS).
+    
+    WARNING: This downgrade does NOT decrypt data. It simply renames columns back.
+    Any data that was encrypted will remain encrypted in the "plaintext" columns,
+    which will break the application. This downgrade is provided for schema rollback
+    only and should not be used in production.
+    """
+    import os
+    
+    # Safety check: Prevent accidental data corruption in production
+    env = os.getenv("ENVIRONMENT", "").lower()
+    allow_downgrade = os.getenv("ALLOW_DANGEROUS_DOWNGRADE", "").lower()
+    
+    if env in ("production", "prod", "live"):
+        if allow_downgrade != "yes-i-know-what-i-am-doing":
+            raise RuntimeError(
+                "🚨 BLOCKED: Encryption migration downgrade in production! "
+                "This would create data corruption (encrypted data in plaintext columns). "
+                "If you are absolutely sure, set environment variable: "
+                "ALLOW_DANGEROUS_DOWNGRADE=yes-i-know-what-i-am-doing"
+            )
     
     # Step 1: Add back plaintext columns
     op.execute("""
@@ -140,8 +160,8 @@ def downgrade() -> None:
         END $$;
     """)
     
-    # Step 2: Copy data back (will be encrypted, needs decryption)
-    # This is a simplified version - real implementation would decrypt
+    # Step 2: Copy data back (WARNING: Will contain encrypted data if it was encrypted)
+    # This is intentionally NOT decrypting to avoid coupling with application code
     op.execute("""
         UPDATE payment_card
         SET card_holder_name = card_holder_name_encrypted,

@@ -161,7 +161,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
                 card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
             except Exception as e:
-                logger.error(f"Failed to decrypt card number: {e}")
+                logger.error(f"Failed to decrypt card data: {e}")
                 card["card_number_masked"] = "**** **** **** ****"
 
             return PaymentCard(
