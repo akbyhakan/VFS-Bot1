@@ -62,11 +62,13 @@ class VFSApiClient:
             endpoint_limiter=self.endpoint_limiter,
             http_session_getter=lambda: self._session,
             ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+            token_update_callback=self._auth.check_and_update_token_from_data,
         )
         self._booking = VFSBooking(
             endpoint_limiter=self.endpoint_limiter,
             http_session_getter=lambda: self._session,
             ensure_authenticated=lambda: self._auth.ensure_authenticated(),
+            token_update_callback=self._auth.check_and_update_token_from_data,
         )
 
         logger.info(
@@ -170,6 +172,15 @@ class VFSApiClient:
         """
         await self._init_http_session()
         return await self._auth.login(email, password, turnstile_token)
+
+    async def _ensure_authenticated(self) -> None:
+        """
+        Ensure we have a valid session (for testing and backward compatibility).
+
+        Raises:
+            VFSSessionExpiredError: If session is not valid or has expired
+        """
+        await self._auth.ensure_authenticated()
 
     async def get_centres(self) -> List[CentreInfo]:
         """
