@@ -146,3 +146,184 @@ class TestCircuitBreaker:
         assert stats["name"] == "test"
         assert stats["state"] == "closed"
         assert stats["failure_count"] == 0
+
+
+# ==============================================================================
+# Persistence Tests
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_without_persistence():
+    """Test circuit breaker works normally without state_file."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+
+    # Should work normally without persistence
+    assert cb.state == CircuitState.CLOSED
+    stats = cb.get_stats()
+    assert stats["persistent"] is False
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_persistence_on_state_change():
+    """Test circuit breaker persists state when it changes."""
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+        state_file = f.name
+
+    try:
+        cb = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=5, state_file=state_file, name="TestCB"
+        )
+
+        # Record failures to open the circuit
+        await cb.record_failure()
+        await cb.record_failure()
+
+        assert cb.state == CircuitState.OPEN
+
+        # Verify state was persisted
+        state_path = Path(state_file)
+        assert state_path.exists()
+
+        import json
+
+        with open(state_file, "r") as f:
+            state_data = json.load(f)
+
+        assert state_data["state"] == CircuitState.OPEN.value
+        assert state_data["failure_count"] == 2
+        assert state_data["last_failure_time"] is not None
+
+    finally:
+        Path(state_file).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_loads_persisted_state():
+    """Test circuit breaker loads state from file on initialization."""
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+        state_file = f.name
+
+    try:
+        # Create first circuit breaker and open it
+        cb1 = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=60, state_file=state_file, name="TestCB1"
+        )
+
+        await cb1.record_failure()
+        await cb1.record_failure()
+        assert cb1.state == CircuitState.OPEN
+
+        # Create second circuit breaker with same state file
+        cb2 = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=60, state_file=state_file, name="TestCB2"
+        )
+
+        # Should have loaded the OPEN state
+        assert cb2.state == CircuitState.OPEN
+        assert cb2.failure_count == 2
+
+    finally:
+        Path(state_file).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_persistence_on_reset():
+    """Test circuit breaker persists state after manual reset."""
+    import tempfile
+    from pathlib import Path
+    import json
+
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+        state_file = f.name
+
+    try:
+        cb = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=5, state_file=state_file, name="TestCB"
+        )
+
+        # Open the circuit
+        await cb.record_failure()
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        # Reset it
+        await cb.reset()
+        assert cb.state == CircuitState.CLOSED
+
+        # Verify persisted state is CLOSED
+        with open(state_file, "r") as f:
+            state_data = json.load(f)
+
+        assert state_data["state"] == CircuitState.CLOSED.value
+        assert state_data["failure_count"] == 0
+
+    finally:
+        Path(state_file).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_creates_state_dir():
+    """Test circuit breaker creates directory for state file if it doesn't exist."""
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        state_file = Path(temp_dir) / "subdir" / "state.json"
+
+        cb = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=5, state_file=str(state_file), name="TestCB"
+        )
+
+        # Record a failure to trigger persistence
+        await cb.record_failure()
+
+        # Verify directory was created
+        assert state_file.parent.exists()
+        assert state_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_handles_missing_state_file():
+    """Test circuit breaker handles missing state file gracefully."""
+    state_file = "/tmp/nonexistent_dir_12345/state.json"
+
+    # Should not raise an exception even if file doesn't exist
+    cb = CircuitBreaker(
+        failure_threshold=2, timeout_seconds=5, state_file=state_file, name="TestCB"
+    )
+
+    assert cb.state == CircuitState.CLOSED
+    assert cb.failure_count == 0
+
+
+@pytest.mark.asyncio
+async def test_get_stats_includes_persistent_flag():
+    """Test get_stats includes persistent flag."""
+    import tempfile
+    from pathlib import Path
+
+    # Without persistence
+    cb1 = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+    stats1 = cb1.get_stats()
+    assert "persistent" in stats1
+    assert stats1["persistent"] is False
+
+    # With persistence
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+        state_file = f.name
+
+    try:
+        cb2 = CircuitBreaker(failure_threshold=2, timeout_seconds=5, state_file=state_file)
+        stats2 = cb2.get_stats()
+        assert "persistent" in stats2
+        assert stats2["persistent"] is True
+
+    finally:
+        Path(state_file).unlink(missing_ok=True)

@@ -312,9 +312,185 @@ async def test_send_notification_priority():
     notifier = NotificationService(config)
 
     # Should not raise exception with different priority levels
-    await notifier.send_notification("Test", "Message", priority="low")
-    await notifier.send_notification("Test", "Message", priority="normal")
-    await notifier.send_notification("Test", "Message", priority="high")
+    result_low = await notifier.send_notification("Test", "Message", priority="low")
+    result_normal = await notifier.send_notification("Test", "Message", priority="normal")
+    result_high = await notifier.send_notification("Test", "Message", priority="high")
+
+    # All should return False since no channels are enabled
+    assert result_low is False
+    assert result_normal is False
+    assert result_high is False
+
+
+@pytest.mark.asyncio
+async def test_send_notification_returns_bool():
+    """Test send_notification returns bool indicating success."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
+        "email": {"enabled": False},
+    }
+
+    with patch("telegram.Bot") as MockBot:
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        mock_bot.send_message = AsyncMock()
+
+        notifier = NotificationService(config)
+
+        # Should return True when Telegram succeeds
+        result = await notifier.send_notification("Test", "Message")
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_send_notification_all_channels_fail():
+    """Test send_notification returns False when all channels fail."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
+        "email": {
+            "enabled": True,
+            "sender": "sender@example.com",
+            "password": "password",
+            "receiver": "receiver@example.com",
+        },
+    }
+
+    with patch("telegram.Bot") as MockBot, patch(
+        "src.services.notification.aiosmtplib.SMTP"
+    ) as MockSMTP:
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
+
+        mock_smtp = AsyncMock()
+        MockSMTP.return_value.__aenter__.return_value = mock_smtp
+        mock_smtp.starttls = AsyncMock(side_effect=Exception("SMTP error"))
+
+        notifier = NotificationService(config)
+
+        # Should return False when all channels fail
+        result = await notifier.send_notification("Test", "Message")
+        assert result is False
+
+
+@pytest.mark.asyncio
+async def test_send_notification_high_priority_websocket_fallback():
+    """Test high-priority notification uses WebSocket fallback when primary channels fail."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
+        "email": {"enabled": False},
+    }
+
+    with patch("telegram.Bot") as MockBot:
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        # Make all attempts fail
+        mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
+
+        notifier = NotificationService(config)
+
+        # Mock WebSocket manager
+        mock_ws_manager = AsyncMock()
+        mock_ws_manager.broadcast = AsyncMock()
+        notifier.set_websocket_manager(mock_ws_manager)
+
+        # Send high-priority notification
+        result = await notifier.send_notification("Test", "Critical Alert", priority="high")
+
+        # WebSocket fallback should have been called
+        mock_ws_manager.broadcast.assert_called_once()
+
+        # Should return True if WebSocket succeeded
+        assert result is True
+
+
+@pytest.mark.asyncio
+async def test_send_notification_high_priority_no_websocket():
+    """Test high-priority notification without WebSocket manager."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
+    }
+
+    with patch("telegram.Bot") as MockBot:
+        mock_bot = AsyncMock()
+        MockBot.return_value = mock_bot
+        mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
+
+        notifier = NotificationService(config)
+
+        # Send high-priority notification without WebSocket manager
+        result = await notifier.send_notification("Test", "Critical Alert", priority="high")
+
+        # Should return False when all channels fail and no WebSocket
+        assert result is False
+
+        # Failed high-priority count should increment
+        stats = notifier.get_notification_stats()
+        assert stats["failed_high_priority_notifications"] == 1
+
+
+@pytest.mark.asyncio
+async def test_websocket_fallback_broadcast():
+    """Test WebSocket broadcast method."""
+    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    notifier = NotificationService(config)
+
+    # Mock WebSocket manager
+    mock_ws_manager = AsyncMock()
+    mock_ws_manager.broadcast = AsyncMock()
+    notifier.set_websocket_manager(mock_ws_manager)
+
+    # Call broadcast directly
+    result = await notifier._broadcast_via_websocket("Test Title", "Test Message")
+
+    # Should succeed
+    assert result is True
+    mock_ws_manager.broadcast.assert_called_once()
+
+    # Verify the broadcast data structure
+    call_args = mock_ws_manager.broadcast.call_args[0][0]
+    assert call_args["type"] == "critical_notification"
+    assert call_args["data"]["title"] == "Test Title"
+    assert call_args["data"]["message"] == "Test Message"
+    assert call_args["data"]["priority"] == "high"
+
+
+@pytest.mark.asyncio
+async def test_websocket_fallback_no_manager():
+    """Test WebSocket broadcast without manager."""
+    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    notifier = NotificationService(config)
+
+    # Call broadcast without setting manager
+    result = await notifier._broadcast_via_websocket("Test Title", "Test Message")
+
+    # Should fail gracefully
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_get_notification_stats():
+    """Test get_notification_stats method."""
+    config = {
+        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
+        "email": {"enabled": False},
+    }
+
+    notifier = NotificationService(config)
+
+    stats = notifier.get_notification_stats()
+
+    assert stats["telegram_enabled"] is True
+    assert stats["email_enabled"] is False
+    assert stats["websocket_available"] is False
+    assert stats["failed_high_priority_notifications"] == 0
+
+    # Set WebSocket manager
+    mock_ws_manager = AsyncMock()
+    notifier.set_websocket_manager(mock_ws_manager)
+
+    stats = notifier.get_notification_stats()
+    assert stats["websocket_available"] is True
 
 
 def test_split_message_short_text():
