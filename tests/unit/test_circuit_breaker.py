@@ -418,7 +418,7 @@ async def test_circuit_breaker_failure_time_utc():
 @pytest.mark.asyncio
 async def test_batch_error_rate_threshold_constant_exists():
     """Test that BATCH_ERROR_RATE_THRESHOLD constant exists in CircuitBreaker config."""
-    from src.constants import CircuitBreaker as CircuitBreakerConfig
+    from src.constants import CircuitBreakerConfig
     
     # Verify constant exists
     assert hasattr(CircuitBreakerConfig, "BATCH_ERROR_RATE_THRESHOLD")

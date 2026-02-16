@@ -84,7 +84,7 @@ class VFSBotError(Exception):
 class LoginError(VFSBotError):
     """Login operation failed."""
 
-    def __init__(self, message: str = "Login failed", recoverable: bool = True):
+    def __init__(self, message: str = "Login failed", recoverable: bool = False):
         super().__init__(message, recoverable)
 
 
@@ -337,7 +337,7 @@ class CaptchaRequiredError(VFSApiError):
         super().__init__(message, recoverable=True)
 
 
-class BannedError(VFSBotError):
+class BannedError(VFSApiError):
     """Account has been banned or blocked by VFS."""
 
     def __init__(self, message: str = "Account has been banned or blocked"):

@@ -191,17 +191,24 @@ class BookingWorkflow:
                 page, account, appointment_requests, masked_email
             )
 
-        except BannedError:
-            logger.error(f"Account {masked_email} has been banned")
+        except LoginError as e:
+            logger.error(f"Login error for account {masked_email}: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
+            return "login_fail"
+        except BannedError as e:
+            logger.error(f"Account {masked_email} has been banned: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             return "banned"
         except VFSBotError as e:
             logger.error(f"VFS error for account {masked_email}: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             # Fallback string check for backward compatibility
             if "banned" in str(e).lower():
                 return "banned"
             return "error"
         except Exception as e:
             logger.error(f"Unexpected error for account {masked_email}: {e}", exc_info=True)
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             return "error"
 
     @retry(
@@ -267,9 +274,19 @@ class BookingWorkflow:
                         request.id,
                         "completed",
                     )
+            except VFSBotError as e:
+                if e.recoverable:
+                    logger.warning(f"Recoverable error for request {request.id}, will retry: {e}")
+                    # Raise to let @retry decorator retry the entire method
+                    # Completed requests won't be reprocessed (marked in DB)
+                    # Dedup service prevents duplicate bookings on retry
+                    raise
+                else:
+                    logger.error(f"Non-recoverable error for request {request.id}: {e}")
+                    continue  # Skip this request, try next
             except Exception as e:
-                logger.error(f"Error processing request {request.id}: {e}")
-                continue
+                logger.error(f"Unexpected error processing request {request.id}: {e}")
+                continue  # Skip unexpected errors
 
         if slot_found:
             return "success"

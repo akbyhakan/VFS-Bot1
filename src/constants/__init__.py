@@ -19,7 +19,7 @@ from .timing import (
 # Resilience-related
 from .resilience import (
     AccountPoolConfig,
-    CircuitBreaker,
+    CircuitBreakerConfig,
     RateLimits,
     Retries,
 )
@@ -68,7 +68,7 @@ __all__ = [
     # Resilience
     "Retries",
     "RateLimits",
-    "CircuitBreaker",
+    "CircuitBreakerConfig",
     "AccountPoolConfig",
     # Security
     "Security",

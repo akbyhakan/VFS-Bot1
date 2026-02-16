@@ -30,7 +30,7 @@ class RateLimits:
     AUTH_RATE_LIMIT_WINDOW: Final[int] = 60
 
 
-class CircuitBreaker:
+class CircuitBreakerConfig:
     """Circuit breaker configuration."""
 
     FAIL_THRESHOLD: Final[int] = 5
