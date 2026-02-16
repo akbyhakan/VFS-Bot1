@@ -27,7 +27,7 @@ from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
 from ..data_sync.centre_fetcher import CentreFetcher
 from ..data_sync.country_profile_loader import CountryProfileLoader
-from ..otp_webhook import get_otp_service
+from ..otp_manager.otp_webhook import get_otp_service
 from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
 from ..account.token_sync_service import TokenSyncService
