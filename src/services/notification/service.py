@@ -320,7 +320,7 @@ The bot will retry automatically.
             from src.utils.helpers import format_local_datetime
 
             # Get timezone from config, default to Europe/Istanbul
-            timezone_name = self.config.get("timezone", "Europe/Istanbul")
+            timezone_name = getattr(self.config, "timezone", "Europe/Istanbul")
             dt_str = format_local_datetime(tz_name=timezone_name)
 
             # Build message
