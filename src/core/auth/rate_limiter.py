@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from ...constants import RateLimits
-from ...utils.masking import _mask_database_url
+from ...utils.masking import mask_database_url
 
 # Lua script for atomic rate limiting (check + record in one operation)
 # KEYS[1] = rate limit key
@@ -261,11 +261,11 @@ class AuthRateLimiter:
                 client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
-                logger.info(f"AuthRateLimiter using Redis backend: {_mask_database_url(redis_url)}")
+                logger.info(f"AuthRateLimiter using Redis backend: {mask_database_url(redis_url)}")
                 return RedisBackend(client)
             except Exception as e:
                 logger.critical(
-                    f"🚨 REDIS FALLBACK: Failed to connect to Redis ({_mask_database_url(redis_url)}), "
+                    f"🚨 REDIS FALLBACK: Failed to connect to Redis ({mask_database_url(redis_url)}), "
                     f"falling back to in-memory backend. Rate limiting will NOT be shared across workers! Error: {e}"
                 )
                 # Attempt to send notification alert
@@ -289,7 +289,7 @@ class AuthRateLimiter:
             # Create notification message
             message = (
                 f"⚠️ Redis Connection Failed - Fallback to In-Memory\n\n"
-                f"Redis URL: {_mask_database_url(redis_url)}\n"
+                f"Redis URL: {mask_database_url(redis_url)}\n"
                 f"Error: {error}\n\n"
                 f"⚠️ WARNING: Rate limiting is NOT shared across workers in fallback mode!"
             )

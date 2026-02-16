@@ -36,7 +36,7 @@ from .infra.shutdown import (
     setup_signal_handlers,
 )
 from .infra.startup import validate_environment, verify_critical_dependencies
-from .logger import JSONFormatter, setup_structured_logging
+from .logger import setup_structured_logging
 from .security import APIKeyManager, generate_api_key, verify_api_key
 
 __all__ = [
@@ -45,7 +45,6 @@ __all__ = [
     "EnvValidator",
     "BotController",
     "setup_structured_logging",
-    "JSONFormatter",
     "APIKeyManager",
     "generate_api_key",
     "verify_api_key",

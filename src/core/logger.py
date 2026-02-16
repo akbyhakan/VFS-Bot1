@@ -18,57 +18,7 @@ correlation_id_ctx: contextvars.ContextVar[Optional[str]] = contextvars.ContextV
     "correlation_id", default=None
 )
 
-__all__ = ["correlation_id_ctx", "setup_structured_logging", "CorrelationIdFilter", "JSONFormatter"]
-
-
-class CorrelationIdFilter(logging.Filter):
-    """
-    Add correlation ID to log records.
-
-    Legacy - kept for backward compatibility with stdlib logging consumers.
-    """
-
-    def filter(self, record):
-        record.correlation_id = correlation_id_ctx.get() or "N/A"
-        return True
-
-
-class JSONFormatter(logging.Formatter):
-    """
-    Format log records as JSON.
-
-    Legacy - kept for backward compatibility with stdlib logging consumers.
-    """
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Format log record as JSON string."""
-        log_data: Dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
-        }
-
-        # Add correlation ID if available
-        if hasattr(record, "correlation_id"):
-            log_data["correlation_id"] = record.correlation_id
-
-        # Add exception info if present
-        if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
-
-        # Add custom fields
-        if hasattr(record, "user_id"):
-            log_data["user_id"] = record.user_id
-        if hasattr(record, "centre"):
-            log_data["centre"] = record.centre
-        if hasattr(record, "action"):
-            log_data["action"] = record.action
-
-        return json.dumps(log_data)
+__all__ = ["correlation_id_ctx", "setup_structured_logging"]
 
 
 def _correlation_patcher(record: Dict[str, Any]) -> None:

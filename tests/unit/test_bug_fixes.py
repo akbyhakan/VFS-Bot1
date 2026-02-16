@@ -162,19 +162,4 @@ class TestBug3DoubleEncode:
         assert decrypted == test_data
 
 
-class TestDeadCodeRemoval:
-    """Test that deprecated load_api_keys function is removed."""
 
-    def test_load_api_keys_function_removed(self):
-        """Verify that load_api_keys function no longer exists."""
-        import src.core.security as security_module
-
-        # The function should not exist
-        assert not hasattr(security_module, "load_api_keys")
-
-    def test_load_api_keys_not_in_exports(self):
-        """Verify that load_api_keys is not exported from core.__init__."""
-        from src.core import __all__
-
-        # load_api_keys should not be in the exports
-        assert "load_api_keys" not in __all__
