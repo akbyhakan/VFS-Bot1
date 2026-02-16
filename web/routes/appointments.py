@@ -12,8 +12,10 @@ from loguru import logger
 from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
 from src.repositories import AppointmentRequestRepository
+from src.repositories.dropdown_cache_repository import DropdownCacheRepository
 from web.dependencies import (
     get_appointment_request_repository,
+    get_db,
     verify_jwt_token,
 )
 from web.models.appointments import (
@@ -77,25 +79,116 @@ async def get_countries():
 
 
 @router.get("/countries/{country_code}/centres")
-async def get_country_centres(country_code: str):
+async def get_country_centres(
+    country_code: str,
+    db = Depends(get_db),
+):
     """
     Get list of centres for a specific country.
 
     Args:
         country_code: Country code (e.g., 'nld', 'aut')
+        db: Database instance
 
     Returns:
         List of centre names
 
     Note:
-        Currently returns Turkish VFS centres regardless of country_code.
-        This is because appointments are made at Turkish VFS centres for
-        all destination countries. In the future, this could be dynamically
-        fetched from VFS or cached.
+        Returns centres from cached dropdown data if available.
+        Falls back to hardcoded Turkish VFS centres if cache is empty.
     """
-    # Turkish VFS centres (same for all countries as applications are made in Turkey)
-    centres = ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"]
-    return centres
+    try:
+        # Try to get centres from cache
+        dropdown_cache_repo = DropdownCacheRepository(db)
+        centres = await dropdown_cache_repo.get_centres(country_code)
+        
+        if centres:
+            logger.debug(f"Returning {len(centres)} cached centres for {country_code}")
+            return centres
+        
+        # Fallback to hardcoded centres if cache is empty
+        logger.warning(
+            f"No cached centres for {country_code}, returning fallback centres"
+        )
+        centres = ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"]
+        return centres
+    except Exception as e:
+        logger.error(f"Error fetching centres for {country_code}: {e}")
+        # Return fallback centres on error
+        return ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"]
+
+
+@router.get("/countries/{country_code}/centres/{centre_name}/categories")
+async def get_centre_categories(
+    country_code: str,
+    centre_name: str,
+    db = Depends(get_db),
+):
+    """
+    Get list of visa categories for a specific centre.
+
+    Args:
+        country_code: Country code (e.g., 'fra', 'nld')
+        centre_name: Centre name (e.g., 'Istanbul', 'Ankara')
+        db: Database instance
+
+    Returns:
+        List of category names
+    """
+    try:
+        dropdown_cache_repo = DropdownCacheRepository(db)
+        categories = await dropdown_cache_repo.get_categories(country_code, centre_name)
+        
+        if not categories:
+            logger.warning(
+                f"No cached categories for {country_code}/{centre_name}"
+            )
+        
+        return categories
+    except Exception as e:
+        logger.error(
+            f"Error fetching categories for {country_code}/{centre_name}: {e}"
+        )
+        return []
+
+
+@router.get("/countries/{country_code}/centres/{centre_name}/categories/{category_name}/subcategories")
+async def get_category_subcategories(
+    country_code: str,
+    centre_name: str,
+    category_name: str,
+    db = Depends(get_db),
+):
+    """
+    Get list of visa subcategories for a specific centre and category.
+
+    Args:
+        country_code: Country code (e.g., 'fra', 'nld')
+        centre_name: Centre name (e.g., 'Istanbul', 'Ankara')
+        category_name: Category name
+        db: Database instance
+
+    Returns:
+        List of subcategory names
+    """
+    try:
+        dropdown_cache_repo = DropdownCacheRepository(db)
+        subcategories = await dropdown_cache_repo.get_subcategories(
+            country_code, centre_name, category_name
+        )
+        
+        if not subcategories:
+            logger.warning(
+                f"No cached subcategories for {country_code}/{centre_name}/{category_name}"
+            )
+        
+        return subcategories
+    except Exception as e:
+        logger.error(
+            f"Error fetching subcategories for "
+            f"{country_code}/{centre_name}/{category_name}: {e}"
+        )
+        return []
 
 
 @router.post("/appointment-requests", status_code=201)
