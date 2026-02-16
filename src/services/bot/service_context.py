@@ -372,7 +372,13 @@ class BotServiceFactory:
             cloudflare_handler=anti_detection.cloudflare_handler,
         )
 
-        # Create slot checker
+        # Get selector manager for country-aware selectors
+        from src.selector import get_selector_manager
+
+        country = config.get("vfs", {}).get("mission", "default")
+        selector_manager = get_selector_manager(country)
+
+        # Create slot checker with selector manager injection
         slot_checker = SlotChecker(
             config,
             core.rate_limiter,
@@ -380,6 +386,7 @@ class BotServiceFactory:
             anti_detection.cloudflare_handler,
             core.error_capture,
             page_state_detector,
+            selector_manager,
         )
 
         return WorkflowServicesContext(

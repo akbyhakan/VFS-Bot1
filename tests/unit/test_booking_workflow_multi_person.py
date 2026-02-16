@@ -110,7 +110,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
 
         assert reservation["person_count"] == 1
         assert len(reservation["persons"]) == 1
@@ -200,7 +200,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "14:00"}
 
-        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
 
         assert reservation["person_count"] == 3
         assert len(reservation["persons"]) == 3
@@ -269,7 +269,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
 
         assert reservation["person_count"] == 1
         assert "payment_card" not in reservation
@@ -390,7 +390,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "11:30"}
 
-        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
 
         # Verify field mapping
         person = reservation["persons"][0]
@@ -455,7 +455,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow._build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
 
         # Verify repr and str don't contain actual card number
         repr_str = repr(reservation["payment_card"])

@@ -2,7 +2,7 @@
 
 import asyncio
 import random
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 
 from loguru import logger
 from playwright.async_api import Page
@@ -15,6 +15,9 @@ from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.security.rate_limiter import RateLimiter
 from ...utils.spa_navigation import navigate_to_appointment_page
+
+if TYPE_CHECKING:
+    from ...core.infra.runners import BotConfigDict
 
 
 class SlotInfo(TypedDict, total=False):
@@ -30,12 +33,13 @@ class SlotChecker:
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: "Dict[str, Any]",
         rate_limiter: RateLimiter,
         human_sim: Optional[HumanSimulator] = None,
         cloudflare_handler: Optional[CloudflareHandler] = None,
         error_capture: Optional[ErrorCapture] = None,
         page_state_detector: Optional[Any] = None,
+        selector_manager: Optional[Any] = None,
     ):
         """
         Initialize slot checker.
@@ -47,6 +51,7 @@ class SlotChecker:
             cloudflare_handler: Optional CloudflareHandler for bypassing challenges
             error_capture: Optional ErrorCapture for capturing errors
             page_state_detector: Optional PageStateDetector for smart navigation
+            selector_manager: Optional SelectorManager instance (for dependency injection)
         """
         self.config = config
         self.rate_limiter = rate_limiter
@@ -55,11 +60,15 @@ class SlotChecker:
         self.error_capture = error_capture or ErrorCapture()
         self.page_state_detector = page_state_detector
 
-        # Initialize SelectorManager for country-aware selectors
-        from src.selector import get_selector_manager
+        # Initialize SelectorManager (with DI support and fallback to lazy import)
+        if selector_manager is not None:
+            self._selector_manager = selector_manager
+        else:
+            # Fallback: lazy import for backward compatibility
+            from src.selector import get_selector_manager
 
-        country = config.get("vfs", {}).get("mission", "default")
-        self._selector_manager = get_selector_manager(country)
+            country = config.get("vfs", {}).get("mission", "default")
+            self._selector_manager = get_selector_manager(country)
 
     def _get_selector(self, selector_path: str, fallback: str) -> str:
         """
@@ -172,7 +181,9 @@ class SlotChecker:
                 # Get slot selectors from SelectorManager
                 date_selector = self._get_selector("appointment.slot_date", ".slot-date")
                 time_selector = self._get_selector("appointment.slot_time", ".slot-time")
-                capacity_selector = self._get_selector("appointment.slot_capacity", ".slot-capacity")
+                capacity_selector = self._get_selector(
+                    "appointment.slot_capacity", ".slot-capacity"
+                )
 
                 # Get first available slot
                 date_content = await page.locator(date_selector).first.text_content()
@@ -209,7 +220,9 @@ class SlotChecker:
                     if required_capacity > 1:
                         try:
                             # Try to read capacity from page
-                            capacity_content = await page.locator(capacity_selector).first.text_content()
+                            capacity_content = await page.locator(
+                                capacity_selector
+                            ).first.text_content()
                             if capacity_content:
                                 # Parse capacity (assuming it's a number)
                                 capacity = int(capacity_content.strip())
