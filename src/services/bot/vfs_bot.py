@@ -9,14 +9,15 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import CircuitBreaker as CircuitBreakerConfig
+from ...constants import AccountPoolConfig, CircuitBreaker as CircuitBreakerConfig
 from ...constants import Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ..account_pool import AccountPool
-from ..alert_service import AlertSeverity
+from ..alert_service import AlertSeverity, send_alert_safe
 from ..notification import NotificationService
 from ..session_orchestrator import SessionOrchestrator
+from .booking_dependencies import BookingDependencies, InfraServices, WorkflowServices
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .service_context import BotServiceContext, BotServiceFactory
@@ -100,24 +101,36 @@ class VFSBot:
         )
 
         # Initialize booking workflow after all dependencies are ready
-        self.booking_workflow = BookingWorkflow(
-            config=self.config,
-            db=self.db,
-            notifier=self.notifier,
+        workflow_services = WorkflowServices(
             auth_service=self.services.workflow.auth_service,
             slot_checker=self.services.workflow.slot_checker,
             booking_service=self.services.workflow.booking_service,
             waitlist_handler=self.services.workflow.waitlist_handler,
             error_handler=self.services.workflow.error_handler,
+            page_state_detector=self.services.workflow.page_state_detector,
             slot_analyzer=self.services.automation.slot_analyzer,
             session_recovery=self.services.automation.session_recovery,
-            page_state_detector=self.services.workflow.page_state_detector,
-            human_sim=self.services.anti_detection.human_sim,
-            error_capture=self.services.core.error_capture,
             alert_service=self.services.workflow.alert_service,
+        )
+        
+        infra_services = InfraServices(
             browser_manager=self.browser_manager,
             header_manager=self.services.anti_detection.header_manager,
             proxy_manager=self.services.anti_detection.proxy_manager,
+            human_sim=self.services.anti_detection.human_sim,
+            error_capture=self.services.core.error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        self.booking_workflow = BookingWorkflow(
+            config=self.config,
+            db=self.db,
+            notifier=self.notifier,
+            deps=deps,
         )
 
         # Initialize account pool and session orchestrator
@@ -237,7 +250,8 @@ class VFSBot:
             logger.info(f"Waiting for {active_count} active booking(s) to complete...")
 
             # Notify about pending shutdown
-            await self._send_alert_safe(
+            await send_alert_safe(
+                alert_service=self.services.workflow.alert_service,
                 message=(
                     f"⏳ Bot shutting down - waiting for {active_count} "
                     f"active booking(s) to complete ({grace_period_display} grace period)"
@@ -281,7 +295,8 @@ class VFSBot:
                     logger.error(f"Failed to save checkpoint during shutdown: {checkpoint_error}")
 
                 # Notify about forced cancellation with checkpoint info
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    alert_service=self.services.workflow.alert_service,
                     message=(
                         f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
                         f"booking(s) cancelled after {grace_period_display} timeout"
@@ -309,31 +324,6 @@ class VFSBot:
     def trigger_immediate_check(self) -> None:
         """Trigger an immediate slot check by setting the trigger event."""
         self._trigger_event.set()
-
-    async def _send_alert_safe(
-        self,
-        message: str,
-        severity: AlertSeverity = AlertSeverity.ERROR,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """
-        Send alert through alert service, silently failing on errors.
-
-        Args:
-            message: Alert message to send
-            severity: Alert severity level
-            metadata: Optional metadata dictionary
-        """
-        if not self.services.workflow.alert_service:
-            return
-        try:
-            await self.services.workflow.alert_service.send_alert(
-                message=message,
-                severity=severity,
-                metadata=metadata or {},
-            )
-        except Exception as e:
-            logger.debug(f"Alert delivery failed: {e}")
 
     def _handle_task_exception(self, task: asyncio.Task) -> None:
         """
@@ -417,7 +407,8 @@ class VFSBot:
                 reconnected = await self.db.reconnect()
                 if reconnected:
                     logger.info("Database reconnection successful")
-                    await self._send_alert_safe(
+                    await send_alert_safe(
+                        alert_service=self.services.workflow.alert_service,
                         message="Database connection restored",
                         severity=AlertSeverity.INFO,
                         metadata={"previous_state": db_state, "new_state": self.db.state},
@@ -458,7 +449,8 @@ class VFSBot:
         )
 
         # Send alert for circuit breaker open (WARNING severity)
-        await self._send_alert_safe(
+        await send_alert_safe(
+            alert_service=self.services.workflow.alert_service,
             message=(
                 f"Circuit breaker OPEN - consecutive errors: "
                 f"{stats['failure_count']}, waiting {wait_time}s"
@@ -525,7 +517,9 @@ class VFSBot:
                 if account_count == 0:
                     logger.warning("No available accounts in pool - waiting before retry")
                     # Wait for accounts to become available or cooldown to expire
-                    wait_success = await self.account_pool.wait_for_available_account(timeout=60.0)
+                    wait_success = await self.account_pool.wait_for_available_account(
+                        timeout=AccountPoolConfig.WAIT_FOR_ACCOUNT_TIMEOUT
+                    )
                     if not wait_success:
                         # Still no accounts - wait adaptive interval
                         if await self._wait_adaptive_interval():
@@ -566,7 +560,8 @@ class VFSBot:
                 await self._record_circuit_breaker_trip()
 
                 # Send alert for bot loop error (ERROR severity)
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    alert_service=self.services.workflow.alert_service,
                     message=f"Bot loop error: {str(e)}",
                     severity=AlertSeverity.ERROR,
                     metadata={"error": str(e), "type": type(e).__name__},

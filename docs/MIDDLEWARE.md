@@ -32,7 +32,7 @@ Common cross-cutting concerns are handled in the following locations:
 |---------|----------|--------------|
 | Rate Limiting (In-Memory) | `src/utils/security/` | `RateLimiter` |
 | Rate Limiting (Redis-backed) | `src/core/auth.py` | `AuthRateLimiter` |
-| Circuit Breaker | `src/core/circuit_breaker.py` | `CircuitBreaker` |
+| Circuit Breaker | `src/core/infra/circuit_breaker.py` | `CircuitBreaker` |
 | Request Retry Logic | `src/utils/anti_detection/` | `TLSHandler.make_request()` |
 | Authentication | `src/core/auth.py` | `AuthManager` |
 | Session Management | `src/utils/security/` | `SessionManager` |

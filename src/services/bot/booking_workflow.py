@@ -15,29 +15,21 @@ from ...core.sensitive import SensitiveDict
 from ...models.database import Database
 from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
 from ...types.user import UserDict
-from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
-from ..alert_service import AlertSeverity
+from ..alert_service import AlertSeverity, send_alert_safe
 from ..appointment_deduplication import get_deduplication_service
 from ..booking import get_selector
 from ..notification import NotificationService
-from ..session_recovery import SessionRecovery
-from ..slot_analyzer import SlotPatternAnalyzer
-from .browser_manager import BrowserManager
+from .booking_dependencies import BookingDependencies
 from .page_state_detector import PageState
 
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
-    from ...utils.security.header_manager import HeaderManager
-    from ...utils.security.proxy_manager import ProxyManager
-    from ..booking import BookingOrchestrator
-    from .auth_service import AuthService
-    from .error_handler import ErrorHandler
-    from .page_state_detector import PageStateDetector
-    from .slot_checker import SlotChecker, SlotInfo
-    from .waitlist_handler import WaitlistHandler
+    from ...repositories.appointment_request_repository import AppointmentRequest
+    from ..account_pool import PooledAccount
+    from .slot_checker import SlotInfo
 
 
 def _is_recoverable_vfs_error(exception: BaseException) -> bool:
@@ -53,20 +45,7 @@ class BookingWorkflow:
         config: "BotConfigDict",
         db: Database,
         notifier: NotificationService,
-        auth_service: "AuthService",
-        slot_checker: "SlotChecker",
-        booking_service: "BookingOrchestrator",
-        waitlist_handler: "WaitlistHandler",
-        error_handler: "ErrorHandler",
-        slot_analyzer: SlotPatternAnalyzer,
-        session_recovery: SessionRecovery,
-        page_state_detector: "PageStateDetector",
-        human_sim: Optional[HumanSimulator] = None,
-        error_capture: Optional[ErrorCapture] = None,
-        alert_service: Optional[Any] = None,
-        browser_manager: Optional["BrowserManager"] = None,
-        header_manager: Optional["HeaderManager"] = None,
-        proxy_manager: Optional["ProxyManager"] = None,
+        deps: BookingDependencies,
     ):
         """
         Initialize booking workflow with dependencies.
@@ -75,38 +54,12 @@ class BookingWorkflow:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
-            auth_service: Authentication service instance
-            slot_checker: Slot checker instance
-            booking_service: Appointment booking service instance
-            waitlist_handler: Waitlist handler instance
-            error_handler: Error handler instance
-            slot_analyzer: Slot pattern analyzer instance
-            session_recovery: Session recovery instance
-            page_state_detector: Page state detector instance
-            human_sim: Optional human simulator for anti-detection
-            error_capture: Optional error capture instance for detailed error diagnostics
-            alert_service: Optional AlertService for critical notifications
-            browser_manager: Optional BrowserManager for creating separate browser instances
-            header_manager: Optional HeaderManager for custom headers
-            proxy_manager: Optional ProxyManager for proxy configuration
+            deps: BookingDependencies container with all required services
         """
         self.config = config
         self.db = db
         self.notifier = notifier
-        self.auth_service = auth_service
-        self.slot_checker = slot_checker
-        self.booking_service = booking_service
-        self.waitlist_handler = waitlist_handler
-        self.error_handler = error_handler
-        self.slot_analyzer = slot_analyzer
-        self.session_recovery = session_recovery
-        self.page_state_detector = page_state_detector
-        self.human_sim = human_sim
-        self.error_capture = error_capture or ErrorCapture()
-        self.alert_service = alert_service
-        self.browser_manager = browser_manager
-        self.header_manager = header_manager
-        self.proxy_manager = proxy_manager
+        self.deps = deps
 
         # Initialize repositories
         self.appointment_repo = AppointmentRepository(db)
@@ -151,7 +104,7 @@ class BookingWorkflow:
             state = await self._login_and_detect_state(page, user, masked_email)
 
             # Check for waitlist mode first
-            is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
+            is_waitlist = await self.deps.workflow.waitlist_handler.detect_waitlist_mode(page)
 
             if is_waitlist:
                 logger.info(f"Waitlist mode detected for {masked_email}")
@@ -197,12 +150,12 @@ class BookingWorkflow:
             VFSBotError: If post-login state needs recovery
         """
         # Login
-        if not await self.auth_service.login(page, user["email"], user["password"]):
+        if not await self.deps.workflow.auth_service.login(page, user["email"], user["password"]):
             logger.error(f"Login failed for {masked_email}")
             raise LoginError(f"Login failed for {masked_email}")
 
         # Wait for page to stabilize after login
-        state = await self.page_state_detector.wait_for_stable_state(
+        state = await self.deps.workflow.page_state_detector.wait_for_stable_state(
             page,
             expected_states=frozenset(
                 {
@@ -219,17 +172,64 @@ class BookingWorkflow:
             raise VFSBotError(f"Post-login error: {state.state.name}", recoverable=True)
 
         # Save checkpoint after successful login
-        self.session_recovery.save_checkpoint(
+        self.deps.workflow.session_recovery.save_checkpoint(
             "logged_in", user["id"], {"masked_email": masked_email}
         )
 
         return state
 
+    async def _login_and_stabilize(
+        self, page: Page, email: str, password: str
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Login, detect page state, check waitlist.
+        
+        This is a common flow for both process_user and process_mission to avoid
+        code duplication.
+        
+        Args:
+            page: Playwright page object
+            email: User/account email
+            password: User/account password
+        
+        Returns:
+            (success: bool, issue: Optional[str])
+            issue can be: 'login_fail', 'needs_recovery', 'waitlist', None (success)
+        """
+        # Login
+        login_success = await self.deps.workflow.auth_service.login(page, email, password)
+        if not login_success:
+            return (False, 'login_fail')
+
+        # Wait for page to stabilize after login
+        state = await self.deps.workflow.page_state_detector.wait_for_stable_state(
+            page,
+            expected_states=frozenset(
+                {
+                    PageState.DASHBOARD,
+                    PageState.APPOINTMENT_PAGE,
+                    PageState.OTP_LOGIN,
+                    PageState.SESSION_EXPIRED,
+                    PageState.CLOUDFLARE_CHALLENGE,
+                }
+            ),
+        )
+
+        if state.needs_recovery:
+            return (False, 'needs_recovery')
+
+        # Check for waitlist mode
+        is_waitlist = await self.deps.workflow.waitlist_handler.detect_waitlist_mode(page)
+        if is_waitlist:
+            return (False, 'waitlist')
+
+        return (True, None)
+
     async def process_mission(
         self,
         page: Page,
-        account: Any,  # PooledAccount from account_pool module
-        appointment_requests: List[Any],  # List of AppointmentRequest entities
+        account: "PooledAccount",
+        appointment_requests: List["AppointmentRequest"],
     ) -> str:
         """
         Process a mission (country) using a pooled account.
@@ -255,13 +255,13 @@ class BookingWorkflow:
         
         try:
             # Login with pooled account
-            login_success = await self.auth_service.login(page, account.email, account.password)
+            login_success = await self.deps.workflow.auth_service.login(page, account.email, account.password)
             if not login_success:
                 logger.error(f"Login failed for account {masked_email}")
                 return "login_fail"
 
             # Wait for page to stabilize after login
-            state = await self.page_state_detector.wait_for_stable_state(
+            state = await self.deps.workflow.page_state_detector.wait_for_stable_state(
                 page,
                 expected_states=frozenset(
                     {
@@ -279,7 +279,7 @@ class BookingWorkflow:
                 return "error"
 
             # Check for waitlist mode
-            is_waitlist = await self.waitlist_handler.detect_waitlist_mode(page)
+            is_waitlist = await self.deps.workflow.waitlist_handler.detect_waitlist_mode(page)
             if is_waitlist:
                 logger.info(f"Waitlist mode detected for account {masked_email} - skipping")
                 return "no_slot"
@@ -350,12 +350,12 @@ class BookingWorkflow:
             logger.info(f"Starting waitlist flow for {masked_email}")
 
             # Step 1: Join waitlist (check waitlist checkbox on Application Details)
-            if not await self.waitlist_handler.join_waitlist(page):
+            if not await self.deps.workflow.waitlist_handler.join_waitlist(page):
                 logger.error("Failed to join waitlist")
                 return
 
             # Click Continue button to proceed to next step
-            await smart_click(page, get_selector("continue_button"), self.human_sim)
+            await smart_click(page, get_selector("continue_button"), self.deps.infra.human_sim)
             await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
 
             # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
@@ -366,21 +366,21 @@ class BookingWorkflow:
 
             # Use empty slot for waitlist since no specific date/time is selected
             reservation = self._build_reservation(user, {"date": "", "time": ""}, details)
-            await self.booking_service.fill_all_applicants(page, reservation)
+            await self.deps.workflow.booking_service.fill_all_applicants(page, reservation)
             logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
 
             # Step 2: Accept all checkboxes on Review and Pay screen
-            if not await self.waitlist_handler.accept_review_checkboxes(page):
+            if not await self.deps.workflow.waitlist_handler.accept_review_checkboxes(page):
                 logger.error("Failed to accept review checkboxes")
                 return
 
             # Step 3: Click Confirm button
-            if not await self.waitlist_handler.click_confirm_button(page):
+            if not await self.deps.workflow.waitlist_handler.click_confirm_button(page):
                 logger.error("Failed to click confirm button")
                 return
 
             # Step 4: Handle success screen
-            waitlist_details = await self.waitlist_handler.handle_waitlist_success(
+            waitlist_details = await self.deps.workflow.waitlist_handler.handle_waitlist_success(
                 page, user["email"]
             )
 
@@ -391,7 +391,8 @@ class BookingWorkflow:
                 logger.info(f"Waitlist registration successful for {masked_email}")
 
                 # Send alert for waitlist success (INFO severity)
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    self.deps.workflow.alert_service,
                     message=f"✅ Waitlist registration successful for {masked_email}",
                     severity=AlertSeverity.INFO,
                     metadata={"user_email": masked_email, "details": waitlist_details},
@@ -400,7 +401,8 @@ class BookingWorkflow:
                 logger.error("Failed to handle waitlist success screen")
 
                 # Send alert for waitlist failure (ERROR severity)
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    self.deps.workflow.alert_service,
                     message=f"❌ Failed to handle waitlist success for {masked_email}",
                     severity=AlertSeverity.ERROR,
                     metadata={"user_email": masked_email},
@@ -411,31 +413,6 @@ class BookingWorkflow:
             await self._capture_error_safe(
                 page, e, "waitlist_flow", user["id"], mask_email(user["email"])
             )
-
-    async def _send_alert_safe(
-        self,
-        message: str,
-        severity: AlertSeverity = AlertSeverity.ERROR,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """
-        Send alert through alert service, silently failing on errors.
-
-        Args:
-            message: Alert message to send
-            severity: Alert severity level
-            metadata: Optional metadata dictionary
-        """
-        if not self.alert_service:
-            return
-        try:
-            await self.alert_service.send_alert(
-                message=message,
-                severity=severity,
-                metadata=metadata or {},
-            )
-        except Exception as e:
-            logger.debug(f"Alert delivery failed: {e}")
 
     async def _capture_error_safe(
         self, page: Page, error: Exception, step: str, user_id: int, masked_email: str
@@ -452,7 +429,7 @@ class BookingWorkflow:
         """
         if self.config["bot"].get("screenshot_on_error", True):
             try:
-                await self.error_capture.capture(
+                await self.deps.infra.error_capture.capture(
                     page,
                     error,
                     context={
@@ -524,11 +501,11 @@ class BookingWorkflow:
         final_category = category or user["category"]
         final_subcategory = subcategory or user["subcategory"]
         
-        success = await self.booking_service.run_booking_flow(page, reservation)
+        success = await self.deps.workflow.booking_service.run_booking_flow(page, reservation)
 
         if success:
             # Verify booking confirmation and extract reference
-            confirmation = await self.booking_service.verify_booking_confirmation(page)
+            confirmation = await self.deps.workflow.booking_service.verify_booking_confirmation(page)
             if confirmation.get("success"):
                 reference = confirmation.get("reference", "UNKNOWN")
                 await self.appointment_repo.create(
@@ -547,7 +524,8 @@ class BookingWorkflow:
                 )
 
                 # Send alert for booking success (INFO severity)
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    self.deps.workflow.alert_service,
                     message=f"✅ Booking successful: {centre} - {slot['date']} {slot['time']} (Ref: {reference})",
                     severity=AlertSeverity.INFO,
                     metadata={
@@ -563,13 +541,14 @@ class BookingWorkflow:
                 await dedup_service.mark_booked(user["id"], centre, final_category, slot["date"])
 
                 # Clear checkpoint after successful booking
-                self.session_recovery.clear_checkpoint()
+                self.deps.workflow.session_recovery.clear_checkpoint()
                 logger.info("Booking completed - checkpoint cleared")
             else:
                 logger.error(f"Booking verification failed: {confirmation.get('error')}")
 
                 # Send alert for booking verification failure (ERROR severity)
-                await self._send_alert_safe(
+                await send_alert_safe(
+                    self.deps.workflow.alert_service,
                     message=f"❌ Booking verification failed: {confirmation.get('error')}",
                     severity=AlertSeverity.ERROR,
                     metadata={
@@ -582,7 +561,8 @@ class BookingWorkflow:
             logger.error("Booking flow failed")
 
             # Send alert for booking flow failure (ERROR severity)
-            await self._send_alert_safe(
+            await send_alert_safe(
+                self.deps.workflow.alert_service,
                 message=f"❌ Booking flow failed for {centre}",
                 severity=AlertSeverity.ERROR,
                 metadata={
@@ -673,7 +653,7 @@ class BookingWorkflow:
             VFSBotError: If required managers are not available for multi-mission processing
         """
         # Validate that we have the necessary managers for creating browser instances
-        if self.header_manager is None or self.proxy_manager is None:
+        if self.deps.infra.header_manager is None or self.deps.infra.proxy_manager is None:
             error_msg = (
                 "Multi-mission processing requires header_manager and proxy_manager "
                 "to create separate browser instances. These managers were not provided "
@@ -706,8 +686,8 @@ class BookingWorkflow:
                 # Instantiate a new BrowserManager for this country
                 country_browser = BrowserManager(
                     config=self.config,
-                    header_manager=self.header_manager,
-                    proxy_manager=self.proxy_manager,
+                    header_manager=self.deps.infra.header_manager,
+                    proxy_manager=self.deps.infra.proxy_manager,
                 )
                 
                 logger.info(f"Starting new browser instance for country {country_code}")
@@ -718,7 +698,7 @@ class BookingWorkflow:
                 
                 # Login to the mission-specific portal
                 logger.info(f"Logging in to {country_code} portal for user {user['id']}")
-                login_success = await self.auth_service.login_for_mission(
+                login_success = await self.deps.workflow.auth_service.login_for_mission(
                     country_page, user["email"], user["password"], country_code
                 )
                 
@@ -803,7 +783,7 @@ class BookingWorkflow:
         for centre in centres:
             centre = centre.strip()
             
-            slot = await self.slot_checker.check_slots(
+            slot = await self.deps.workflow.slot_checker.check_slots(
                 page,
                 centre,
                 category,
@@ -820,7 +800,7 @@ class BookingWorkflow:
                 )
 
                 # Record slot pattern with country from AppointmentRequest
-                await self.slot_analyzer.record_slot_found_async(
+                await self.deps.workflow.slot_analyzer.record_slot_found_async(
                     country=appointment_request.country_code,
                     centre=centre,
                     category=category,

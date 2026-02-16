@@ -5,7 +5,7 @@ This is the single source of truth for circuit breaker logic in the application.
 All other circuit breaker implementations should delegate to this class.
 
 Architecture:
-    - Core implementation: src/core/circuit_breaker.py (this file)
+    - Core implementation: src/core/infra/circuit_breaker.py (this file)
     - Bot service wrapper: src/services/bot/circuit_breaker_service.py
         Thin wrapper maintaining backward compatibility with bot's API
 
