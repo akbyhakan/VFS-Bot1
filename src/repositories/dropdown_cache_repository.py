@@ -49,7 +49,7 @@ class DropdownCacheRepository(BaseRepository):
 
             return {
                 "dropdown_data": row["dropdown_data"],
-                "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                "last_synced_at": row["last_synced_at"].isoformat(),
             }
 
     async def upsert_dropdown_data(
