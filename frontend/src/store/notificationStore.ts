@@ -36,8 +36,17 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         read: false,
       };
 
-      const notifications = [newNotification, ...state.notifications].slice(0, MAX_NOTIFICATIONS);
-      const unreadCount = notifications.filter((n) => !n.read).length;
+      const allNotifications = [newNotification, ...state.notifications];
+      const notifications = allNotifications.slice(0, MAX_NOTIFICATIONS);
+      
+      // Calculate how many unread notifications were dropped due to slice
+      const droppedCount = allNotifications.length - notifications.length;
+      const droppedUnread = droppedCount > 0
+        ? allNotifications.slice(MAX_NOTIFICATIONS).filter(n => !n.read).length
+        : 0;
+      
+      // Increment unreadCount for new notification, subtract any dropped unread
+      const unreadCount = state.unreadCount + 1 - droppedUnread;
 
       return { notifications, unreadCount };
     }),
@@ -59,8 +68,10 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 
   removeNotification: (id) =>
     set((state) => {
+      const removed = state.notifications.find((n) => n.id === id);
       const notifications = state.notifications.filter((n) => n.id !== id);
-      const unreadCount = notifications.filter((n) => !n.read).length;
+      // Only decrement if the removed notification was unread
+      const unreadCount = removed && !removed.read ? state.unreadCount - 1 : state.unreadCount;
       return { notifications, unreadCount };
     }),
 }));
