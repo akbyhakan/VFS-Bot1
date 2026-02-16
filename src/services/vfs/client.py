@@ -173,6 +173,15 @@ class VFSApiClient:
         await self._init_http_session()
         return await self._auth.login(email, password, turnstile_token)
 
+    async def _ensure_authenticated(self) -> None:
+        """
+        Ensure we have a valid session (for testing and backward compatibility).
+
+        Raises:
+            VFSSessionExpiredError: If session is not valid or has expired
+        """
+        await self._auth.ensure_authenticated()
+
     async def get_centres(self) -> List[CentreInfo]:
         """
         Get available VFS centres.
