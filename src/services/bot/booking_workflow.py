@@ -191,13 +191,13 @@ class BookingWorkflow:
                 page, account, appointment_requests, masked_email
             )
 
-        except LoginError:
-            logger.error(f"Login error for account {masked_email}")
-            await self._capture_error_safe(page, LoginError(), "process_mission", account.id, masked_email)
+        except LoginError as e:
+            logger.error(f"Login error for account {masked_email}: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             return "login_fail"
-        except BannedError:
-            logger.error(f"Account {masked_email} has been banned")
-            await self._capture_error_safe(page, BannedError(), "process_mission", account.id, masked_email)
+        except BannedError as e:
+            logger.error(f"Account {masked_email} has been banned: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             return "banned"
         except VFSBotError as e:
             logger.error(f"VFS error for account {masked_email}: {e}")
@@ -277,7 +277,10 @@ class BookingWorkflow:
             except VFSBotError as e:
                 if e.recoverable:
                     logger.warning(f"Recoverable error for request {request.id}, will retry: {e}")
-                    raise  # Let @retry handle it
+                    # Raise to let @retry decorator retry the entire method
+                    # Completed requests won't be reprocessed (marked in DB)
+                    # Dedup service prevents duplicate bookings on retry
+                    raise
                 else:
                     logger.error(f"Non-recoverable error for request {request.id}: {e}")
                     continue  # Skip this request, try next
