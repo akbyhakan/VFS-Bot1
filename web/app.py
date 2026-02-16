@@ -45,9 +45,11 @@ async def lifespan(app: FastAPI):
     - Database connection on startup
     - Database cleanup on shutdown
     - OTP service cleanup on shutdown
+    - Dropdown sync scheduler startup and shutdown
     """
     # Startup
     logger.info("FastAPI application starting up...")
+    dropdown_scheduler = None
     try:
         # Ensure database is connected
         db = await DatabaseFactory.ensure_connected()
@@ -67,6 +69,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Failed to load blacklisted tokens from database: {e}")
             logger.info("Application will continue with empty blacklist")
+
+        # Start dropdown sync scheduler
+        # Non-critical: Allow app to start even if scheduler fails
+        try:
+            from src.services.dropdown_sync_scheduler import DropdownSyncScheduler
+
+            dropdown_scheduler = DropdownSyncScheduler(db)
+            dropdown_scheduler.start()
+            logger.info("Dropdown sync scheduler started (weekly Saturday 00:00 UTC)")
+        except Exception as e:
+            logger.warning(f"Failed to start dropdown sync scheduler: {e}")
+            logger.info("Application will continue without automatic dropdown sync")
     except Exception as e:
         logger.error(f"Failed to connect database during startup: {e}")
         raise
@@ -75,6 +89,14 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("FastAPI application shutting down...")
+
+    # Stop dropdown sync scheduler
+    if dropdown_scheduler:
+        try:
+            dropdown_scheduler.stop()
+            logger.info("Dropdown sync scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping dropdown sync scheduler: {e}")
 
     # Stop OTP cleanup scheduler
     try:
