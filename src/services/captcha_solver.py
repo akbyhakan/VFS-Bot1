@@ -195,4 +195,6 @@ class CaptchaSolver:
 
 
 # Register automatic cleanup on module exit
+# Note: Using wait=False to avoid blocking process termination.
+# Captcha solving tasks are API calls that can be safely interrupted during shutdown.
 atexit.register(CaptchaSolver.shutdown, wait=False)

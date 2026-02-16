@@ -51,7 +51,12 @@ def test_notification_config_repr_masks_nested_secrets():
     """Test that NotificationConfig.__repr__ masks nested secrets."""
     config = NotificationConfig(
         telegram=TelegramConfig(enabled=True, bot_token="secret_token", chat_id="123"),
-        email=EmailConfig(enabled=True, password="secret_password"),
+        email=EmailConfig(
+            enabled=True,
+            sender=None,  # Explicitly set optional fields
+            password="secret_password",
+            receiver=None,
+        ),
     )
     repr_str = repr(config)
     assert "secret_token" not in repr_str
