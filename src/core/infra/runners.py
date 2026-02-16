@@ -15,7 +15,7 @@ from src.core.bot_controller import BotController
 from src.core.exceptions import ShutdownTimeoutError
 from src.models.database import Database
 from src.services.bot import VFSBot
-from src.services.notification import NotificationService
+from src.services.notification.notification import NotificationService
 
 from .shutdown import (
     graceful_shutdown_with_timeout,
@@ -186,7 +186,7 @@ async def run_web_mode(
 
     import uvicorn
 
-    from src.services.cleanup_service import CleanupService
+    from src.services.scheduling.cleanup_service import CleanupService
     from web.app import create_app
 
     # Initialize database if not provided

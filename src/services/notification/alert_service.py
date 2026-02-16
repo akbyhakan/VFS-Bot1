@@ -10,7 +10,7 @@ import aiohttp
 import aiosmtplib
 from loguru import logger
 
-from src.services.telegram_client import TelegramClient
+from src.services.notification.telegram_client import TelegramClient
 
 
 class AlertSeverity(Enum):

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.notification import (
+from src.services.notification.notification import (
     EmailConfig,
     NotificationConfig,
     NotificationService,
@@ -166,7 +166,7 @@ async def test_send_email_exception():
 
     notifier = NotificationService(config)
 
-    with patch("src.services.notification.aiosmtplib.SMTP") as MockSMTP:
+    with patch("src.services.notification.notification.aiosmtplib.SMTP") as MockSMTP:
         # Make SMTP raise exception on all attempts
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
@@ -219,7 +219,7 @@ async def test_send_email_retry_then_success():
 
     notifier = NotificationService(config)
 
-    with patch("src.services.notification.aiosmtplib.SMTP") as MockSMTP:
+    with patch("src.services.notification.notification.aiosmtplib.SMTP") as MockSMTP:
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
 
@@ -401,7 +401,7 @@ async def test_send_notification_all_channels_fail():
     }
 
     with patch("telegram.Bot") as MockBot, patch(
-        "src.services.notification.aiosmtplib.SMTP"
+        "src.services.notification.notification.aiosmtplib.SMTP"
     ) as MockSMTP:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
@@ -594,7 +594,7 @@ async def test_send_telegram_long_message_splits():
     # Create a very long message (more than 4096 characters)
     long_message = "A" * 5000
 
-    with patch("src.services.notification.Bot") as MockBot:
+    with patch("src.services.notification.notification.Bot") as MockBot:
         mock_bot = MagicMock()
         mock_bot.send_message = AsyncMock()
         MockBot.return_value = mock_bot

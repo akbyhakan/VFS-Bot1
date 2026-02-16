@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from src.services.adaptive_scheduler import AdaptiveScheduler
+from src.services.scheduling.adaptive_scheduler import AdaptiveScheduler
 
 
 class TestAdaptiveScheduler:
@@ -26,7 +26,7 @@ class TestAdaptiveScheduler:
         assert scheduler.timezone == ZoneInfo("Europe/Amsterdam")
         assert scheduler.country_multiplier == 1.5
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_current_mode_peak(self, mock_datetime):
         """Test getting current mode during peak hours."""
         mock_datetime.now.return_value = datetime(
@@ -38,7 +38,7 @@ class TestAdaptiveScheduler:
 
         assert mode == "peak"
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_current_mode_normal(self, mock_datetime):
         """Test getting current mode during normal hours."""
         mock_datetime.now.return_value = datetime(
@@ -50,7 +50,7 @@ class TestAdaptiveScheduler:
 
         assert mode == "normal"
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_current_mode_low(self, mock_datetime):
         """Test getting current mode during low activity hours."""
         mock_datetime.now.return_value = datetime(
@@ -62,7 +62,7 @@ class TestAdaptiveScheduler:
 
         assert mode == "low"
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_current_mode_sleep(self, mock_datetime):
         """Test getting current mode during sleep hours."""
         mock_datetime.now.return_value = datetime(
@@ -74,7 +74,7 @@ class TestAdaptiveScheduler:
 
         assert mode == "sleep"
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_optimal_interval_peak(self, mock_datetime):
         """Test getting optimal interval during peak hours."""
         mock_datetime.now.return_value = datetime(
@@ -87,7 +87,7 @@ class TestAdaptiveScheduler:
         # Should be between 15 and 30 seconds for peak
         assert 15 <= interval <= 30
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_optimal_interval_with_multiplier(self, mock_datetime):
         """Test getting optimal interval with country multiplier."""
         mock_datetime.now.return_value = datetime(
@@ -100,7 +100,7 @@ class TestAdaptiveScheduler:
         # Should be reduced due to multiplier, but minimum 10 seconds
         assert interval >= 10
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_optimal_interval_minimum(self, mock_datetime):
         """Test that optimal interval never goes below 10 seconds."""
         mock_datetime.now.return_value = datetime(
@@ -113,7 +113,7 @@ class TestAdaptiveScheduler:
 
         assert interval >= 10
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_get_mode_info(self, mock_datetime):
         """Test getting mode information."""
         mock_datetime.now.return_value = datetime(
@@ -129,7 +129,7 @@ class TestAdaptiveScheduler:
         assert mode_info["current_hour"] == 9
         assert mode_info["country_multiplier"] == 1.5
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_is_sleep_mode_true(self, mock_datetime):
         """Test is_sleep_mode returns True during sleep hours."""
         mock_datetime.now.return_value = datetime(
@@ -140,7 +140,7 @@ class TestAdaptiveScheduler:
 
         assert scheduler.is_sleep_mode() is True
 
-    @patch("src.services.adaptive_scheduler.datetime")
+    @patch("src.services.scheduling.adaptive_scheduler.datetime")
     def test_is_sleep_mode_false(self, mock_datetime):
         """Test is_sleep_mode returns False during active hours."""
         mock_datetime.now.return_value = datetime(

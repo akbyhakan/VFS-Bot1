@@ -44,7 +44,7 @@ import pytest
 import pytest_asyncio
 
 from src.models.database import Database
-from src.services.notification import NotificationService
+from src.services.notification.notification import NotificationService
 
 
 def pytest_configure(config):

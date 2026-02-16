@@ -319,7 +319,7 @@ class TestFastAPILifespan:
             with patch(
                 "web.app.DatabaseFactory.close_instance", new_callable=AsyncMock
             ) as mock_close:
-                with patch("src.services.otp_webhook.get_otp_service") as mock_otp:
+                with patch("src.services.otp_manager.otp_webhook.get_otp_service") as mock_otp:
                     mock_otp_service = AsyncMock()
                     mock_otp_service.stop_cleanup_scheduler = AsyncMock()
                     mock_otp.return_value = mock_otp_service
@@ -348,7 +348,7 @@ class TestFastAPILifespan:
                 new_callable=AsyncMock,
                 side_effect=Exception("Close failed"),
             ):
-                with patch("src.services.otp_webhook.get_otp_service") as mock_otp:
+                with patch("src.services.otp_manager.otp_webhook.get_otp_service") as mock_otp:
                     mock_otp_service = AsyncMock()
                     mock_otp_service.stop_cleanup_scheduler = AsyncMock()
                     mock_otp.return_value = mock_otp_service

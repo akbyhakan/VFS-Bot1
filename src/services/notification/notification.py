@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import aiosmtplib
 from loguru import logger
 
-from src.services.telegram_client import TelegramClient
+from src.services.notification.telegram_client import TelegramClient
 from src.utils.decorators import retry_async
 
 # Type aliases for better type hints
@@ -681,7 +681,7 @@ The bot will retry automatically.
                 people_list = "   (Information unavailable)\n"
 
             # Format datetime - use helper to convert UTC to local time for display
-            from ..utils.helpers import format_local_datetime
+            from ...utils.helpers import format_local_datetime
 
             # Get timezone from config, default to Europe/Istanbul
             timezone_name = self.config.get("timezone", "Europe/Istanbul")

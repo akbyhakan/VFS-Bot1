@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.token_sync_service import TokenSyncService
+from src.services.account.token_sync_service import TokenSyncService
 
 
 @pytest.fixture

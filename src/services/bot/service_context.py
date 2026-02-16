@@ -21,16 +21,16 @@ from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
 from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
-from ..adaptive_scheduler import AdaptiveScheduler
-from ..alert_service import AlertChannel, AlertConfig, AlertService
+from ..scheduling.adaptive_scheduler import AdaptiveScheduler
+from ..notification.alert_service import AlertChannel, AlertConfig, AlertService
 from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
-from ..centre_fetcher import CentreFetcher
-from ..country_profile_loader import CountryProfileLoader
-from ..otp_webhook import get_otp_service
-from ..session_recovery import SessionRecovery
+from ..data_sync.centre_fetcher import CentreFetcher
+from ..data_sync.country_profile_loader import CountryProfileLoader
+from ..otp_manager.otp_webhook import get_otp_service
+from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
-from ..token_sync_service import TokenSyncService
+from ..account.token_sync_service import TokenSyncService
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .page_state_detector import PageStateDetector

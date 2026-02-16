@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from playwright.async_api import Page
 
-from src.services.centre_fetcher import CacheEntry, CentreFetcher
+from src.services.data_sync.centre_fetcher import CacheEntry, CentreFetcher
 
 
 class TestCacheEntry:

@@ -11,7 +11,7 @@ from src.constants import AccountPoolConfig
 from src.models.database import Database
 from src.repositories.account_pool_repository import AccountPoolRepository
 from src.repositories.appointment_request_repository import AppointmentRequestRepository
-from src.services.account_pool import AccountPool, PooledAccount
+from .account_pool import AccountPool, PooledAccount
 
 if TYPE_CHECKING:
     from src.services.bot.booking_workflow import BookingWorkflow

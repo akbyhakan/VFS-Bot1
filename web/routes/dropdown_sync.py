@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from loguru import logger
 
-from src.core.countries import SUPPORTED_COUNTRIES
+from src.constants.countries import SUPPORTED_COUNTRIES
 from src.repositories.dropdown_cache_repository import DropdownCacheRepository
 from web.dependencies import get_db, verify_jwt_token
 

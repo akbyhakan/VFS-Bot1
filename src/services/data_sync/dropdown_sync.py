@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 from playwright.async_api import Browser, Page
 
-from src.core.countries import SUPPORTED_COUNTRIES
+from src.constants.countries import SUPPORTED_COUNTRIES
 from src.models.database import Database
 from src.repositories.dropdown_cache_repository import DropdownCacheRepository
-from src.services.centre_fetcher import CentreFetcher
+from .centre_fetcher import CentreFetcher
 
 
 class DropdownSyncService:

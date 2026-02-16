@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.services.email_otp_handler import (
+from src.services.otp_manager.email_otp_handler import (
     EmailOTPEntry,
     EmailOTPHandler,
     IMAPConfig,
@@ -395,7 +395,7 @@ class TestEmailOTPHandlerSingleton:
 
     def test_get_handler_first_time(self):
         """Test getting handler for first time requires credentials."""
-        from src.services.email_otp_handler import get_email_otp_handler
+        from src.services.otp_manager.email_otp_handler import get_email_otp_handler
         from src.utils.singleton import reset
 
         # Reset singleton
@@ -406,7 +406,7 @@ class TestEmailOTPHandlerSingleton:
 
     def test_singleton_pattern(self):
         """Test that singleton returns same instance."""
-        from src.services.email_otp_handler import get_email_otp_handler
+        from src.services.otp_manager.email_otp_handler import get_email_otp_handler
         from src.utils.singleton import reset
 
         # Reset singleton

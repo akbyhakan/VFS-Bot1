@@ -5,7 +5,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from src.services.country_profile_loader import CountryProfileLoader
+from src.services.data_sync.country_profile_loader import CountryProfileLoader
 
 
 class TestCountryProfileLoader:

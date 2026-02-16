@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 from loguru import logger
 
-from ...core.countries import get_country_info, get_route, validate_mission_code
+from ...constants.countries import get_country_info, get_route, validate_mission_code
 from ...utils.security.endpoint_rate_limiter import EndpointRateLimiter
 from .auth import VFSAuth
 from .booking import VFSBooking

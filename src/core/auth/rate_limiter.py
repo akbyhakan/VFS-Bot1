@@ -284,7 +284,7 @@ class AuthRateLimiter:
             error: Error message
         """
         try:
-            from src.services.notification import NotificationService
+            from src.services.notification.notification import NotificationService
 
             # Create notification message
             message = (
@@ -328,7 +328,7 @@ class AuthRateLimiter:
             message: Notification message
         """
         try:
-            from src.services.notification import NotificationService
+            from src.services.notification.notification import NotificationService
 
             # Build notification config from environment
             config = {

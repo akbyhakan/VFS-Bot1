@@ -22,7 +22,7 @@ Automatically configures bot behavior based on the target country. Each country 
 
 **Usage Example:**
 ```python
-from src.services.country_profile_loader import CountryProfileLoader
+from src.services.data_sync.country_profile_loader import CountryProfileLoader
 
 loader = CountryProfileLoader()
 profile = loader.get_profile('nld')  # Get Netherlands profile
@@ -39,7 +39,7 @@ multiplier = loader.get_retry_multiplier('nld')
 
 ### 2. ⏰ Adaptive Scheduler
 
-**Service:** `src/services/adaptive_scheduler.py`
+**Service:** `src/services/scheduling/adaptive_scheduler.py`
 
 Automatically adjusts check intervals based on time of day to optimize resource usage and appointment availability patterns.
 
@@ -60,7 +60,7 @@ Automatically adjusts check intervals based on time of day to optimize resource 
 
 **Usage Example:**
 ```python
-from src.services.adaptive_scheduler import AdaptiveScheduler
+from src.services.scheduling.adaptive_scheduler import AdaptiveScheduler
 
 scheduler = AdaptiveScheduler(
     timezone="Europe/Amsterdam",
@@ -179,7 +179,7 @@ Allows the bot to recover and continue from the last successful step if it crash
 
 **Usage Example:**
 ```python
-from src.services.session_recovery import SessionRecovery
+from src.services.session.session_recovery import SessionRecovery
 
 recovery = SessionRecovery()
 

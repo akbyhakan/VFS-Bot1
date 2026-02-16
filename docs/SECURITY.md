@@ -363,7 +363,7 @@ The alert service supports multiple notification channels:
 ### Configuration
 
 ```python
-from src.services.alert_service import (
+from src.services.notification.alert_service import (
     configure_alert_service,
     AlertConfig,
     AlertChannel,
@@ -384,7 +384,7 @@ configure_alert_service(config)
 ### Sending Alerts
 
 ```python
-from src.services.alert_service import send_critical_alert
+from src.services.notification.alert_service import send_critical_alert
 
 # Send critical alert
 await send_critical_alert(

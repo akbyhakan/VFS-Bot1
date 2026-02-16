@@ -88,7 +88,7 @@ class VFSAuth:
         encrypted_password = VFSPasswordEncryption.encrypt(password)
 
         # Import here to avoid circular dependency
-        from ...core.countries import SOURCE_COUNTRY_CODE
+        from ...constants.countries import SOURCE_COUNTRY_CODE
 
         payload = {
             "username": email,

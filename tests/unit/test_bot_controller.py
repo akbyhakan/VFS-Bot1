@@ -8,7 +8,7 @@ import pytest_asyncio
 
 from src.core.bot_controller import BotController
 from src.models.database import Database
-from src.services.notification import NotificationService
+from src.services.notification.notification import NotificationService
 
 # Add parent directory to path for imports
 

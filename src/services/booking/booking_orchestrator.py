@@ -9,7 +9,7 @@ from playwright.async_api import Page
 
 from ...constants import BookingOTPSelectors
 from ...core.sensitive import SensitiveDict
-from ..otp_webhook import get_otp_service
+from ..otp_manager.otp_webhook import get_otp_service
 from .booking_validator import BookingValidator
 from .form_filler import FormFiller
 from .payment_handler import PaymentHandler

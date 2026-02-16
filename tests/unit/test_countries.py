@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.core.countries import (
+from src.constants.countries import (
     SOURCE_COUNTRY_CODE,
     SOURCE_LANGUAGE,
     SUPPORTED_COUNTRIES,

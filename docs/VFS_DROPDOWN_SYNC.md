@@ -88,7 +88,7 @@ Features:
 To manually sync dropdown data for all countries:
 
 ```python
-from src.services.dropdown_sync import DropdownSyncService
+from src.services.data_sync.dropdown_sync import DropdownSyncService
 from src.models.database import Database
 
 async def sync_dropdowns():
@@ -116,7 +116,7 @@ async def sync_dropdowns():
 Add to application startup (in `main.py` or similar):
 
 ```python
-from src.services.dropdown_sync import DropdownSyncService
+from src.services.data_sync.dropdown_sync import DropdownSyncService
 import asyncio
 
 @app.on_event("startup")

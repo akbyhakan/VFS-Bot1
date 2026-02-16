@@ -3,7 +3,7 @@
 import pytest
 
 from src.services.captcha_solver import CaptchaSolver
-from src.services.centre_fetcher import CentreFetcher
+from src.services.data_sync.centre_fetcher import CentreFetcher
 from src.services.payment_service import PaymentMethod, PaymentService
 
 

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ...models.database import Database
     from ...repositories import AppointmentRepository, AppointmentRequestRepository
     from ...types.user import UserDict
-    from ..notification import NotificationService
+    from ..notification.notification import NotificationService
     from .booking_dependencies import BookingDependencies
     from .slot_checker import SlotInfo
 

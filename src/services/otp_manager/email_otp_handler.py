@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from src.services.otp_manager.pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
+from .pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
 from src.utils.singleton import get_or_create_sync
 
 

@@ -422,7 +422,7 @@ Mevcut `src/services/otp_webhook.py` ile entegrasyon:
 
 ```python
 from src.services.otp_manager import get_otp_manager
-from src.services.otp_webhook import get_otp_service
+from src.services.otp_manager.otp_webhook import get_otp_service
 
 # OTP Manager'ı başlat
 otp_manager = get_otp_manager(

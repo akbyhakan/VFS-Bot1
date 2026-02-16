@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.services.webhook_token_manager import (
+from src.services.otp_manager.webhook_token_manager import (
     SMSPayload,
     SMSPayloadParser,
     WebhookToken,

@@ -250,7 +250,7 @@ async def safe_shutdown_cleanup(
 
     # Cleanup OTP service
     try:
-        from src.services.otp_webhook import get_otp_service
+        from src.services.otp_manager.otp_webhook import get_otp_service
 
         otp_service = get_otp_service()
         await asyncio.wait_for(otp_service.stop_cleanup_scheduler(), timeout=5)

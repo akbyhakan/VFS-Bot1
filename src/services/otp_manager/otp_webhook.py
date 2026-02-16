@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-from src.services.otp_manager.pattern_matcher import OTPPatternMatcher, SMS_OTP_PATTERNS
+from .pattern_matcher import OTPPatternMatcher, SMS_OTP_PATTERNS
 from src.utils.singleton import get_or_create_sync
 
 

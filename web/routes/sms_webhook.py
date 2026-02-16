@@ -11,7 +11,7 @@ from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from src.services.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
+from src.services.otp_manager.webhook_token_manager import SMSPayloadParser, WebhookTokenManager
 from web.dependencies import verify_webhook_request
 
 # Initialize router
@@ -114,7 +114,7 @@ async def receive_sms(token: str, request: Request, _: None = Depends(verify_web
         if webhook_token.session_id:
             try:
                 # Import here to avoid circular dependency
-                from src.services.otp_webhook import get_otp_service
+                from src.services.otp_manager.otp_webhook import get_otp_service
 
                 otp_service = get_otp_service()
 

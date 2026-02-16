@@ -9,7 +9,7 @@ import pytest
 from src.core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 from src.models.database import Database
 from src.services.bot.vfs_bot import VFSBot
-from src.services.notification import NotificationService
+from src.services.notification.notification import NotificationService
 
 
 @pytest.mark.asyncio

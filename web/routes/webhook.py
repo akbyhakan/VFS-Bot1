@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
 from src.repositories import UserRepository, WebhookRepository
-from src.services.otp_webhook import get_otp_service
+from src.services.otp_manager.otp_webhook import get_otp_service
 from web.dependencies import (
     get_user_repository,
     get_webhook_repository,

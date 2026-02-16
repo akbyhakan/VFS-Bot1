@@ -8,7 +8,7 @@ import pytest_asyncio
 
 from src.models.database import Database
 from src.services.bot.vfs_bot import VFSBot
-from src.services.notification import NotificationService
+from src.services.notification.notification import NotificationService
 
 
 @pytest.fixture

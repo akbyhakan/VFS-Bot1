@@ -16,7 +16,7 @@ from src.constants import Delays
 if TYPE_CHECKING:
     from src.models.database import Database
     from src.services.bot.vfs_bot import VFSBot
-    from src.services.notification import NotificationService
+    from src.services.notification.notification import NotificationService
 
 
 class BotController:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.services.alert_service import (
+from src.services.notification.alert_service import (
     AlertChannel,
     AlertConfig,
     AlertService,

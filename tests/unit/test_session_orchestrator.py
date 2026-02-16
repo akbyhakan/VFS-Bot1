@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from src.services.session_orchestrator import SessionOrchestrator
+from src.services.session.session_orchestrator import SessionOrchestrator
 
 
 @pytest.mark.asyncio
@@ -22,8 +22,8 @@ async def test_process_mission_creates_isolated_browser():
     browser_manager.proxy_manager = MagicMock()
     
     # Mock the repositories that are instantiated in __init__
-    with patch("src.services.session_orchestrator.AppointmentRequestRepository"), \
-         patch("src.services.session_orchestrator.AccountPoolRepository"):
+    with patch("src.services.session.session_orchestrator.AppointmentRequestRepository"), \
+         patch("src.services.session.session_orchestrator.AccountPoolRepository"):
         # Create orchestrator
         orchestrator = SessionOrchestrator(
             db=db,
@@ -113,8 +113,8 @@ async def test_process_mission_multiple_missions_isolated():
     browser_manager.proxy_manager = MagicMock()
     
     # Mock the repositories that are instantiated in __init__
-    with patch("src.services.session_orchestrator.AppointmentRequestRepository"), \
-         patch("src.services.session_orchestrator.AccountPoolRepository"):
+    with patch("src.services.session.session_orchestrator.AppointmentRequestRepository"), \
+         patch("src.services.session.session_orchestrator.AccountPoolRepository"):
         # Create orchestrator
         orchestrator = SessionOrchestrator(
             db=db,
@@ -187,8 +187,8 @@ async def test_process_mission_browser_cleanup_on_error():
     browser_manager.proxy_manager = MagicMock()
     
     # Mock the repositories that are instantiated in __init__
-    with patch("src.services.session_orchestrator.AppointmentRequestRepository"), \
-         patch("src.services.session_orchestrator.AccountPoolRepository"):
+    with patch("src.services.session.session_orchestrator.AppointmentRequestRepository"), \
+         patch("src.services.session.session_orchestrator.AccountPoolRepository"):
         # Create orchestrator
         orchestrator = SessionOrchestrator(
             db=db,

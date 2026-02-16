@@ -854,7 +854,7 @@ class TestWaitOrShutdownEventBased:
     @pytest.fixture
     def mock_notifier(self):
         """Mock notification service fixture."""
-        from src.services.notification import NotificationService
+        from src.services.notification.notification import NotificationService
 
         notifier = AsyncMock(spec=NotificationService)
         notifier.notify_slot_found = AsyncMock()

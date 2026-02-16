@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import pytest
 
 from src.services.otp_manager.pattern_matcher import OTPPatternMatcher
-from src.services.otp_webhook import OTPWebhookService
+from src.services.otp_manager.otp_webhook import OTPWebhookService
 
 
 class TestOTPPatternMatcher:
