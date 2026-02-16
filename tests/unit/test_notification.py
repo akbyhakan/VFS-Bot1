@@ -166,7 +166,7 @@ async def test_send_email_exception():
 
     notifier = NotificationService(config)
 
-    with patch("src.services.notification.notification.aiosmtplib.SMTP") as MockSMTP:
+    with patch("src.services.notification.channels.email.aiosmtplib.SMTP") as MockSMTP:
         # Make SMTP raise exception on all attempts
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
@@ -219,7 +219,7 @@ async def test_send_email_retry_then_success():
 
     notifier = NotificationService(config)
 
-    with patch("src.services.notification.notification.aiosmtplib.SMTP") as MockSMTP:
+    with patch("src.services.notification.channels.email.aiosmtplib.SMTP") as MockSMTP:
         mock_smtp_instance = AsyncMock()
         MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
 
@@ -401,7 +401,7 @@ async def test_send_notification_all_channels_fail():
     }
 
     with patch("telegram.Bot") as MockBot, patch(
-        "src.services.notification.notification.aiosmtplib.SMTP"
+        "src.services.notification.channels.email.aiosmtplib.SMTP"
     ) as MockSMTP:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
