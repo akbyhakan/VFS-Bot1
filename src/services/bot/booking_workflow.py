@@ -192,24 +192,27 @@ class BookingWorkflow:
             )
 
         except LoginError as e:
-            logger.error(f"Login error for account {masked_email}: {e}")
-            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
-            return "login_fail"
+            return await self._handle_workflow_exception(
+                page, e, account.id, masked_email, "login_fail",
+                f"Login error for account {masked_email}: {e}",
+            )
         except BannedError as e:
-            logger.error(f"Account {masked_email} has been banned: {e}")
-            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
-            return "banned"
+            return await self._handle_workflow_exception(
+                page, e, account.id, masked_email, "banned",
+                f"Account {masked_email} has been banned: {e}",
+            )
         except VFSBotError as e:
-            logger.error(f"VFS error for account {masked_email}: {e}")
-            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
-            # Fallback string check for backward compatibility
-            if "banned" in str(e).lower():
-                return "banned"
-            return "error"
+            result = "banned" if "banned" in str(e).lower() else "error"
+            return await self._handle_workflow_exception(
+                page, e, account.id, masked_email, result,
+                f"VFS error for account {masked_email}: {e}",
+            )
         except Exception as e:
-            logger.error(f"Unexpected error for account {masked_email}: {e}", exc_info=True)
-            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
-            return "error"
+            return await self._handle_workflow_exception(
+                page, e, account.id, masked_email, "error",
+                f"Unexpected error for account {masked_email}: {e}",
+                exc_info=True,
+            )
 
     @retry(
         stop=stop_after_attempt(Retries.MAX_PROCESS_USER),
@@ -371,6 +374,21 @@ class BookingWorkflow:
             await self._capture_error_safe(
                 page, e, "waitlist_flow", user["id"], mask_email(user["email"])
             )
+
+    async def _handle_workflow_exception(
+        self,
+        page: Page,
+        error: Exception,
+        account_id: int,
+        masked_email: str,
+        result: str,
+        log_message: str,
+        exc_info: bool = False,
+    ) -> str:
+        """Handle workflow exception with consistent logging and error capture."""
+        logger.error(log_message, exc_info=exc_info)
+        await self._capture_error_safe(page, error, "process_mission", account_id, masked_email)
+        return result
 
     async def _capture_error_safe(
         self, page: Page, error: Exception, step: str, user_id: int, masked_email: str
