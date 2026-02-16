@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from src.repositories import AppointmentRequestRepository, PaymentRepository
@@ -142,41 +142,32 @@ async def initiate_payment(
     appt_req_repo: AppointmentRequestRepository = Depends(get_appointment_request_repository),
 ):
     """
-    Initiate payment.
+    Initiate payment for an appointment.
 
-    Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
-    Payment processing requires CVV to be collected at payment time.
-
-    Args:
-        request: Payment initiation data with appointment_id
-        token_data: JWT token data
-        payment_repo: PaymentRepository instance
-        appt_req_repo: AppointmentRequestRepository instance
-
-    Returns:
-        Payment result
+    NOTE: Payment processing is not yet implemented.
+    This endpoint returns 501 until a payment gateway is integrated.
     """
+    # Validate appointment exists
     try:
-        # Get appointment
         appointment = await appt_req_repo.get_by_id(request.appointment_id)
         if not appointment:
             raise HTTPException(404, "Appointment not found")
 
-        # Get saved card
+        # Validate card exists
         card = await payment_repo.get()
         if not card:
             raise HTTPException(404, "No payment card saved")
 
-        # Process payment (CVV must be collected at payment time)
-        # TODO: Implement actual payment processing
-        logger.info(f"Payment initiated for appointment {request.appointment_id}")
-
-        return {
-            "success": True,
-            "message": "Payment completed",
-            "appointment_id": request.appointment_id,
-        }
-
+        # Payment processing not yet implemented
+        logger.warning(
+            f"Payment initiation attempted for appointment {request.appointment_id} "
+            "but payment processing is not yet implemented"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Payment processing is not yet implemented. "
+            "This endpoint will be available once a payment gateway is integrated.",
+        )
     except HTTPException:
         raise
     except Exception as e:
