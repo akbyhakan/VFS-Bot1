@@ -106,7 +106,7 @@ class BookingWorkflow:
         Login, detect page state, check waitlist.
 
         This is the single source of truth for login + stabilization flow.
-        Used by both process_user and process_mission to avoid code duplication.
+        Used by process_mission to avoid code duplication.
 
         Args:
             page: Playwright page object
