@@ -13,6 +13,20 @@ export function useWebSocket() {
   const { updateStatus, addLogs, setConnected } = useBotStore();
   const { addNotification } = useNotificationStore();
   
+  // Store refs for store functions to prevent stale closures
+  const addNotificationRef = useRef(addNotification);
+  const addLogsRef = useRef(addLogs);
+  const updateStatusRef = useRef(updateStatus);
+  const setConnectedRef = useRef(setConnected);
+
+  // Keep refs up to date (ref changes don't trigger re-renders)
+  useEffect(() => {
+    addNotificationRef.current = addNotification;
+    addLogsRef.current = addLogs;
+    updateStatusRef.current = updateStatus;
+    setConnectedRef.current = setConnected;
+  });
+  
   // Buffers for batching
   const logBuffer = useRef<LogEntry[]>([]);
   const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -22,23 +36,23 @@ export function useWebSocket() {
   // Maximum buffer size to prevent memory leak
   const MAX_LOG_BUFFER_SIZE = 100;
 
-  // Flush log buffer
+  // Flush log buffer - now with stable dependencies
   const flushLogs = useCallback(() => {
     if (logBuffer.current.length > 0) {
-      addLogs(logBuffer.current);
+      addLogsRef.current(logBuffer.current);
       logBuffer.current = [];
     }
     logTimerRef.current = null;
-  }, [addLogs]);
+  }, []); // Empty dependency array - stable reference
 
-  // Flush status update
+  // Flush status update - now with stable dependencies
   const flushStatus = useCallback(() => {
     if (pendingStatusUpdate.current) {
-      updateStatus(pendingStatusUpdate.current);
+      updateStatusRef.current(pendingStatusUpdate.current);
       pendingStatusUpdate.current = null;
     }
     statusTimerRef.current = null;
-  }, [updateStatus]);
+  }, []); // Empty dependency array - stable reference
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -58,13 +72,13 @@ export function useWebSocket() {
             // Create notifications for status changes
             const status = message.data.status;
             if (status === 'running') {
-              addNotification({
+              addNotificationRef.current({
                 title: 'Bot Başlatıldı',
                 message: 'VFS Bot başarıyla çalışmaya başladı',
                 type: 'success',
               });
             } else if (status === 'stopped') {
-              addNotification({
+              addNotificationRef.current({
                 title: 'Bot Durduruldu',
                 message: 'VFS Bot durduruldu',
                 type: 'info',
@@ -79,7 +93,7 @@ export function useWebSocket() {
             
             // Check for slot found notification
             if (message.data.level === 'SUCCESS' && message.data.message.toLowerCase().includes('slot')) {
-              addNotification({
+              addNotificationRef.current({
                 title: 'Slot Bulundu!',
                 message: message.data.message,
                 type: 'success',
@@ -117,7 +131,7 @@ export function useWebSocket() {
               message?: string;
               type?: 'success' | 'error' | 'warning' | 'info';
             };
-            addNotification({
+            addNotificationRef.current({
               title: notificationData.title || 'Bildirim',
               message: notificationData.message || '',
               type: notificationData.type || 'info',
@@ -132,15 +146,15 @@ export function useWebSocket() {
           logger.warn('Unknown message type:', message.type);
       }
     },
-    [flushLogs, flushStatus, addNotification]
+    [flushLogs, flushStatus] // Now stable callbacks
   );
 
   const handleOpen = useCallback(() => {
-    setConnected(true);
-  }, [setConnected]);
+    setConnectedRef.current(true);
+  }, []); // Stable reference
 
   const handleClose = useCallback(() => {
-    setConnected(false);
+    setConnectedRef.current(false);
     // Flush any pending updates
     if (logTimerRef.current) {
       clearTimeout(logTimerRef.current);
@@ -150,7 +164,7 @@ export function useWebSocket() {
       clearTimeout(statusTimerRef.current);
       flushStatus();
     }
-  }, [setConnected, flushLogs, flushStatus]);
+  }, [flushLogs, flushStatus]); // Now stable callbacks
 
   const handleError = useCallback((error: Event) => {
     logger.error('WebSocket error:', error);
@@ -182,7 +196,7 @@ export function useWebSocket() {
       unsubError();
       websocketService.disconnect();
     };
-  }, [handleMessage, handleOpen, handleClose, handleError]);
+  }, [handleMessage, handleOpen, handleClose, handleError]); // Now stable dependencies
 
   return {
     isConnected: useBotStore((state) => state.isConnected),
