@@ -12,13 +12,15 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'rounded-lg p-6',
-          glass && (hover ? 'glass-hover' : 'glass'),
+          'rounded-xl p-6 transition-all duration-300 relative',
+          glass && (hover ? 'glass-hover hover:-translate-y-1' : 'glass'),
           !glass && 'bg-dark-800 border border-dark-700',
+          'shadow-2xl shadow-black/20',
           className
         )}
         {...props}
       >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-transparent pointer-events-none rounded-xl" />
         {children}
       </div>
     );

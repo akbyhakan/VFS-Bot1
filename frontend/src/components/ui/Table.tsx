@@ -60,8 +60,8 @@ export function Table<T>({
                 <tr
                   key={keyExtractor(item)}
                   className={cn(
-                    'border-b border-dark-800 transition-colors',
-                    hoverable && 'hover:bg-dark-800/50',
+                    'border-b border-white/5 transition-colors duration-200',
+                    hoverable && 'hover:bg-white/5',
                     onRowClick && 'cursor-pointer'
                   )}
                   onClick={() => onRowClick?.(item)}

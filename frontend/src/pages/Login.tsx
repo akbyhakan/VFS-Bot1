@@ -72,8 +72,12 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
-      <Card className="w-full max-w-md glass-hover">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-dark-950">
+      {/* Background effects */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-600/20 rounded-full blur-[128px] animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px] animate-pulse" style={{ animationDelay: '1s' }} />
+
+      <Card className="w-full max-w-md glass-hover relative z-10 border-white/10">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-primary-500/10 rounded-full">
