@@ -275,7 +275,7 @@ class OTPManager:
             print(account.webhook_url)
             # → https://api.vizecep.com/webhook/sms/tk_a1b2c3d4e5f6
         """
-        from src.services.vfs_account_manager import VFSAccountManager
+        from src.services.account.vfs_account_manager import VFSAccountManager
 
         # Initialize account manager if not already done
         if not hasattr(self, "_account_manager"):

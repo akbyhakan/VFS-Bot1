@@ -30,7 +30,7 @@ from ..data_sync.country_profile_loader import CountryProfileLoader
 from ..otp_webhook import get_otp_service
 from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
-from ..token_sync_service import TokenSyncService
+from ..account.token_sync_service import TokenSyncService
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .page_state_detector import PageStateDetector
