@@ -7,7 +7,7 @@ import pytest
 
 from src.utils.audit_logger import AuditAction, AuditLogger
 from src.utils.decorators import handle_errors, retry_async, timed_async
-from src.utils.security.adaptive_rate_limiter import AdaptiveRateLimiter
+from src.core.rate_limiting import AdaptiveRateLimiter
 from src.utils.webhook_utils import generate_webhook_signature, verify_webhook_signature
 
 

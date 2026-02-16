@@ -8,7 +8,7 @@ import aiohttp
 from loguru import logger
 
 from ...constants.countries import get_country_info, get_route, validate_mission_code
-from ...utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 from .auth import VFSAuth
 from .booking import VFSBooking
 from .models import (

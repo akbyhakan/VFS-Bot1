@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.auth import AuthRateLimiter, InMemoryBackend, RedisBackend
+from src.core.rate_limiting import AuthRateLimiter, InMemoryBackend, RedisBackend
 
 
 class TestAuthRateLimiter:

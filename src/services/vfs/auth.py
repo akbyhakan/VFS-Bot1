@@ -13,7 +13,7 @@ from ...core.exceptions import (
     VFSRateLimitError,
     VFSSessionExpiredError,
 )
-from ...utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 from ...utils.token_utils import calculate_effective_expiry
 from .encryption import VFSPasswordEncryption, get_vfs_api_base
 from .models import VFSSession

@@ -19,7 +19,7 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
-from ...utils.security.rate_limiter import get_rate_limiter
+from src.core.rate_limiting import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
 from ..scheduling.adaptive_scheduler import AdaptiveScheduler
 from ..notification.alert_service import AlertChannel, AlertConfig, AlertService

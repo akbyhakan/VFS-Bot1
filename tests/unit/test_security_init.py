@@ -148,7 +148,7 @@ def test_direct_import_session_manager():
 
 def test_direct_import_rate_limiter():
     """Test direct import from rate_limiter module."""
-    from src.utils.security.rate_limiter import RateLimiter
+    from src.core.rate_limiting import RateLimiter
 
     assert RateLimiter is not None
     limiter = RateLimiter(max_requests=10, time_window=60)

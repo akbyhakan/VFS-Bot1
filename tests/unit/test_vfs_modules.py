@@ -12,7 +12,7 @@ from src.core.exceptions import (
 )
 from src.services.vfs import VFSAuth, VFSBooking, VFSSlots
 from src.services.vfs.models import VFSSession
-from src.utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 
 
 class TestVFSAuth:
