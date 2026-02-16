@@ -52,3 +52,4 @@ class AccountPoolConfig:
     QUARANTINE_SECONDS: Final[int] = 1800  # 30 minutes
     MAX_FAILURES: Final[int] = 3
     MAX_CONCURRENT_MISSIONS: Final[int] = 5
+    WAIT_FOR_ACCOUNT_TIMEOUT: Final[float] = 60.0  # seconds

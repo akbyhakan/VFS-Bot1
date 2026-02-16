@@ -10,6 +10,7 @@ from src.models.database import Database
 from src.repositories.appointment_repository import AppointmentRepository
 from src.repositories.user_repository import UserRepository
 from src.services.notification import NotificationService
+from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 
 logger = logging.getLogger(__name__)
 
@@ -144,18 +145,36 @@ class TestBookingWorkflowE2E:
             mock_recovery = MockRecovery.return_value
 
             # Create workflow
-            workflow = BookingWorkflow(
-                config=config,
-                db=test_db,
-                notifier=mock_notifier,
+            workflow_services = WorkflowServices(
                 auth_service=mock_auth,
                 slot_checker=mock_slot_checker,
                 booking_service=mock_booking,
                 waitlist_handler=mock_waitlist,
                 error_handler=mock_error_handler,
+                page_state_detector=MagicMock(),
                 slot_analyzer=mock_analyzer,
                 session_recovery=mock_recovery,
-                page_state_detector=MagicMock(),
+                alert_service=None,
+            )
+            
+            infra_services = InfraServices(
+                browser_manager=None,
+                header_manager=None,
+                proxy_manager=None,
+                human_sim=None,
+                error_capture=None,
+            )
+            
+            deps = BookingDependencies(
+                workflow=workflow_services,
+                infra=infra_services,
+            )
+            
+            workflow = BookingWorkflow(
+                config=config,
+                db=test_db,
+                notifier=mock_notifier,
+                deps=deps,
             )
 
             # Step 4: Process user (this is the real workflow call!)
@@ -234,18 +253,36 @@ class TestBookingWorkflowE2E:
                 "bot": {"headless": True},
             }
 
-            workflow = BookingWorkflow(
-                config=config,
-                db=test_db,
-                notifier=mock_notifier,
+            workflow_services = WorkflowServices(
                 auth_service=mock_auth,
                 slot_checker=mock_slot_checker,
                 booking_service=mock_booking,
                 waitlist_handler=mock_waitlist,
                 error_handler=mock_error_handler,
+                page_state_detector=MagicMock(),
                 slot_analyzer=mock_analyzer,
                 session_recovery=mock_recovery,
-                page_state_detector=MagicMock(),
+                alert_service=None,
+            )
+            
+            infra_services = InfraServices(
+                browser_manager=None,
+                header_manager=None,
+                proxy_manager=None,
+                human_sim=None,
+                error_capture=None,
+            )
+            
+            deps = BookingDependencies(
+                workflow=workflow_services,
+                infra=infra_services,
+            )
+            
+            workflow = BookingWorkflow(
+                config=config,
+                db=test_db,
+                notifier=mock_notifier,
+                deps=deps,
             )
 
             # Process user should raise LoginError

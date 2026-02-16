@@ -7,6 +7,7 @@ from tenacity import RetryError
 
 from src.core.exceptions import LoginError, VFSBotError
 from src.services.bot.booking_workflow import BookingWorkflow
+from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 
 # Add parent directory to path for imports
 
@@ -80,7 +81,37 @@ class TestBookingWorkflowRetryFix:
     @pytest.mark.asyncio
     async def test_login_failure_raises_exception(self, mock_dependencies):
         """Test that login failure raises LoginError instead of returning."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -103,7 +134,37 @@ class TestBookingWorkflowRetryFix:
     @pytest.mark.asyncio
     async def test_login_error_triggers_retry(self, mock_dependencies):
         """Test that LoginError triggers retry mechanism."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -138,7 +199,37 @@ class TestBookingWorkflowRetryFix:
     @pytest.mark.asyncio
     async def test_exception_wrapped_in_vfserror_and_reraised(self, mock_dependencies):
         """Test that unexpected exceptions are wrapped in VFSBotError and re-raised."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -161,7 +252,37 @@ class TestBookingWorkflowRetryFix:
     @pytest.mark.asyncio
     async def test_vfserror_triggers_retry_and_eventually_propagates(self, mock_dependencies):
         """Test that VFSBotError triggers retry and eventually propagates."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -190,7 +311,37 @@ class TestBookingWorkflowRetryFix:
     @pytest.mark.asyncio
     async def test_checkpoint_does_not_store_plaintext_email(self, mock_dependencies):
         """Test that checkpoint stores only masked_email, not plaintext email."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_page = AsyncMock()
         mock_user = {
@@ -225,9 +376,36 @@ class TestBookingWorkflowRetryFix:
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
@@ -300,9 +478,36 @@ class TestBookingWorkflowHelperMethods:
         mock_error_capture = MagicMock()
         mock_error_capture.capture = AsyncMock()
 
-        workflow = BookingWorkflow(
-            **mock_dependencies,
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
             error_capture=mock_error_capture,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
         )
 
         mock_page = AsyncMock()
@@ -325,7 +530,37 @@ class TestBookingWorkflowHelperMethods:
         self, mock_dependencies
     ):
         """Test _build_reservation_for_user with multi-person data."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_user = {"id": 123}
         mock_slot = {"date": "2024-01-15", "time": "10:00"}
@@ -355,7 +590,37 @@ class TestBookingWorkflowHelperMethods:
         self, mock_dependencies
     ):
         """Test _build_reservation_for_user falls back to single-person flow."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_user = {"id": 123}
         mock_slot = {"date": "2024-01-15", "time": "10:00"}
@@ -379,7 +644,37 @@ class TestBookingWorkflowHelperMethods:
         self, mock_dependencies
     ):
         """Test _build_reservation_for_user returns None when no data available."""
-        workflow = BookingWorkflow(**mock_dependencies)
+        workflow_services = WorkflowServices(
+            auth_service=mock_dependencies["auth_service"],
+            slot_checker=mock_dependencies["slot_checker"],
+            booking_service=mock_dependencies["booking_service"],
+            waitlist_handler=mock_dependencies["waitlist_handler"],
+            error_handler=mock_dependencies["error_handler"],
+            page_state_detector=mock_dependencies["page_state_detector"],
+            slot_analyzer=mock_dependencies["slot_analyzer"],
+            session_recovery=mock_dependencies["session_recovery"],
+            alert_service=None,
+        )
+        
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+        
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+        
+        workflow = BookingWorkflow(
+            config=mock_dependencies["config"],
+            db=mock_dependencies["db"],
+            notifier=mock_dependencies["notifier"],
+            deps=deps,
+        )
 
         mock_user = {"id": 123}
         mock_slot = {"date": "2024-01-15", "time": "10:00"}

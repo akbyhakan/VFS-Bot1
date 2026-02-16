@@ -266,6 +266,36 @@ This is an automated alert from VFS-Bot Alert Service.
             return False
 
 
+async def send_alert_safe(
+    alert_service: Optional[Any],
+    message: str,
+    severity: AlertSeverity = AlertSeverity.ERROR,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Send alert through alert service, silently failing on errors.
+    
+    This is a safe wrapper around AlertService.send_alert() that handles
+    cases where alert_service is None or when sending fails.
+    
+    Args:
+        alert_service: AlertService instance (can be None)
+        message: Alert message to send
+        severity: Alert severity level
+        metadata: Optional metadata dictionary
+    """
+    if not alert_service:
+        return
+    try:
+        await alert_service.send_alert(
+            message=message,
+            severity=severity,
+            metadata=metadata or {},
+        )
+    except Exception as e:
+        logger.debug(f"Alert delivery failed: {e}")
+
+
 # Global alert service instance
 _alert_service: Optional[AlertService] = None
 
