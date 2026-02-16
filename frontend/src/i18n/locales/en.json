@@ -37,12 +37,6 @@
     "reconnecting": "Reconnecting...",
     "maxReconnectReached": "Maximum reconnection attempts reached"
   },
-  "settings": {
-    "title": "Settings",
-    "selectCsvFile": "Please select a .csv file",
-    "webhookUrls": "Webhook URLs",
-    "proxySettings": "Proxy Settings"
-  },
   "header": {
     "openMenu": "Open menu",
     "notifications": "Notifications",
@@ -126,6 +120,7 @@
   "settings": {
     "pageTitle": "Settings",
     "pageSubtitle": "Configure bot and notification settings",
+    "selectCsvFile": "Please select a .csv file",
     "loading": "Loading...",
     "creditCard": "Credit Card Management",
     "noCard": "No credit card registered yet",

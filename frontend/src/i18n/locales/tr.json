@@ -37,12 +37,6 @@
     "reconnecting": "Yeniden bağlanılıyor...",
     "maxReconnectReached": "Maksimum yeniden bağlanma denemesi aşıldı"
   },
-  "settings": {
-    "title": "Ayarlar",
-    "selectCsvFile": "Lütfen .csv uzantılı bir dosya seçin",
-    "webhookUrls": "Webhook URL'leri",
-    "proxySettings": "Proxy Ayarları"
-  },
   "header": {
     "openMenu": "Menüyü aç",
     "notifications": "Bildirimler",
@@ -126,6 +120,7 @@
   "settings": {
     "pageTitle": "Ayarlar",
     "pageSubtitle": "Bot ve bildirim ayarlarını yapılandırın",
+    "selectCsvFile": "Lütfen .csv uzantılı bir dosya seçin",
     "loading": "Yükleniyor...",
     "creditCard": "Kredi Kartı Yönetimi",
     "noCard": "Henüz kayıtlı kredi kartı yok",
