@@ -6,7 +6,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+import aiohttp
+import aiosmtplib
 from loguru import logger
+
+from src.services.telegram_client import TelegramClient
 
 
 class AlertSeverity(Enum):
@@ -44,9 +48,6 @@ class AlertConfig:
 class AlertService:
     """Service for sending alerts through multiple channels."""
 
-    # Telegram API message limit (same as in NotificationService)
-    TELEGRAM_MESSAGE_LIMIT = 4096
-
     def __init__(self, config: AlertConfig):
         """
         Initialize alert service.
@@ -56,6 +57,19 @@ class AlertService:
         """
         self.config = config
         self.enabled_channels = set(config.enabled_channels)
+
+        # Cache Telegram client instance if enabled
+        self._telegram_client = None
+        if (
+            AlertChannel.TELEGRAM in self.enabled_channels
+            and config.telegram_bot_token
+        ):
+            try:
+                self._telegram_client = TelegramClient(bot_token=config.telegram_bot_token)
+            except ImportError:
+                logger.warning("python-telegram-bot not installed")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Telegram client: {e}")
 
     async def send_alert(
         self,
@@ -131,7 +145,9 @@ class AlertService:
             return False
 
         try:
-            import aiohttp
+            # Get or create client instance
+            if not self._telegram_client:
+                self._telegram_client = TelegramClient(bot_token=self.config.telegram_bot_token)
 
             severity = alert_data["severity"]
             message = alert_data["message"]
@@ -140,29 +156,22 @@ class AlertService:
             emoji_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "critical": "🚨"}
 
             emoji = emoji_map.get(severity, "📢")
-            text = f"{emoji} *ALERT [{severity.upper()}]*\n\n{message}\n\n_Time: {timestamp}_"
+            # Escape markdown to prevent injection
+            escaped_message = TelegramClient.escape_markdown(message)
+            text = f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
 
-            # Truncate message to fit Telegram's message limit
-            if len(text) > self.TELEGRAM_MESSAGE_LIMIT:
-                text = text[: self.TELEGRAM_MESSAGE_LIMIT]
+            # Send message (client handles splitting automatically)
+            success = await self._telegram_client.send_message(
+                chat_id=self.config.telegram_chat_id, text=text
+            )
 
-            url = f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage"
-            payload = {
-                "chat_id": self.config.telegram_chat_id,
-                "text": text,
-                "parse_mode": "Markdown",
-            }
+            if success:
+                logger.debug("Alert sent via Telegram")
+            return success
 
-            async with aiohttp.ClientSession() as session:
-                timeout = aiohttp.ClientTimeout(total=10)
-                async with session.post(url, json=payload, timeout=timeout) as response:
-                    if response.status == 200:
-                        logger.debug("Alert sent via Telegram")
-                        return True
-                    else:
-                        logger.error(f"Telegram API error: {response.status}")
-                        return False
-
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
+            return False
         except Exception as e:
             logger.error(f"Failed to send Telegram alert: {e}")
             return False
@@ -215,6 +224,12 @@ This is an automated alert from VFS-Bot Alert Service.
             logger.debug("Alert sent via email")
             return True
 
+        except aiosmtplib.SMTPException as e:
+            logger.error(f"SMTP error sending email alert: {e}")
+            return False
+        except ConnectionError as e:
+            logger.error(f"Connection error sending email alert: {e}")
+            return False
         except Exception as e:
             logger.error(f"Failed to send email alert: {e}")
             return False
@@ -240,6 +255,12 @@ This is an automated alert from VFS-Bot Alert Service.
                         logger.error(f"Webhook error: {response.status}")
                         return False
 
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP client error sending webhook alert: {e}")
+            return False
+        except asyncio.TimeoutError as e:
+            logger.error(f"Timeout sending webhook alert: {e}")
+            return False
         except Exception as e:
             logger.error(f"Failed to send webhook alert: {e}")
             return False

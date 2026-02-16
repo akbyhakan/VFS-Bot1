@@ -2,144 +2,146 @@
 
 import asyncio
 import html
+from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, Union
 
 import aiosmtplib
 from loguru import logger
 
+from src.services.telegram_client import TelegramClient
 from src.utils.decorators import retry_async
 
 # Type aliases for better type hints
 NotificationPriority = Literal["low", "normal", "high"]
-NotificationConfig = Dict[str, Any]  # Could be TypedDict for more specificity
+
+
+@dataclass
+class TelegramConfig:
+    """Telegram notification configuration."""
+
+    enabled: bool = False
+    bot_token: Optional[str] = None
+    chat_id: Optional[str] = None
+
+
+@dataclass
+class EmailConfig:
+    """Email notification configuration."""
+
+    enabled: bool = False
+    sender: Optional[str] = None
+    password: Optional[str] = None
+    receiver: Optional[str] = None
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+
+
+@dataclass
+class NotificationConfig:
+    """Notification service configuration."""
+
+    telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    email: EmailConfig = field(default_factory=EmailConfig)
+    timezone: str = "Europe/Istanbul"
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "NotificationConfig":
+        """
+        Create NotificationConfig from dictionary (backward compatibility).
+
+        Args:
+            config_dict: Configuration dictionary
+
+        Returns:
+            NotificationConfig instance
+        """
+        telegram_data = config_dict.get("telegram", {})
+        telegram_config = TelegramConfig(
+            enabled=telegram_data.get("enabled", False),
+            bot_token=telegram_data.get("bot_token"),
+            chat_id=telegram_data.get("chat_id"),
+        )
+
+        email_data = config_dict.get("email", {})
+        email_config = EmailConfig(
+            enabled=email_data.get("enabled", False),
+            sender=email_data.get("sender"),
+            password=email_data.get("password"),
+            receiver=email_data.get("receiver"),
+            smtp_server=email_data.get("smtp_server", "smtp.gmail.com"),
+            smtp_port=email_data.get("smtp_port", 587),
+        )
+
+        return cls(
+            telegram=telegram_config,
+            email=email_config,
+            timezone=config_dict.get("timezone", "Europe/Istanbul"),
+        )
 
 
 class NotificationService:
     """Multi-channel notification service for VFS-Bot."""
 
-    # Telegram API message limits
-    TELEGRAM_MESSAGE_LIMIT = 4096
-    TELEGRAM_CAPTION_LIMIT = 1024
-
-    def __init__(self, config: NotificationConfig):
+    def __init__(self, config: Union[NotificationConfig, Dict[str, Any]]):
         """
         Initialize notification service.
 
         Args:
-            config: Notification configuration dictionary
+            config: Notification configuration (NotificationConfig or dict for backward compatibility)
         """
+        # Convert dict to NotificationConfig for backward compatibility
+        if isinstance(config, dict):
+            config = NotificationConfig.from_dict(config)
+
         self.config = config
-        self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
-        self.email_enabled = config.get("email", {}).get("enabled", False)
+        self.telegram_enabled = config.telegram.enabled
+        self.email_enabled = config.email.enabled
         self._failed_high_priority_count = 0
         self._websocket_manager = None  # Will be set externally if available
 
-        # Cache Telegram bot instance if enabled
-        self._telegram_bot = None
+        # Cache Telegram client instance if enabled
+        self._telegram_client = None
         if self.telegram_enabled:
             try:
-                from telegram import Bot
-
-                telegram_config = config.get("telegram", {})
-                bot_token = telegram_config.get("bot_token")
-                if bot_token:
-                    self._telegram_bot = Bot(token=bot_token)
+                if config.telegram.bot_token:
+                    self._telegram_client = TelegramClient(bot_token=config.telegram.bot_token)
+            except ImportError:
+                logger.warning("python-telegram-bot not installed")
             except Exception as e:
-                logger.warning(f"Failed to initialize Telegram bot: {e}")
+                logger.warning(f"Failed to initialize Telegram client: {e}")
 
         logger.info(
             f"NotificationService initialized "
             f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
         )
 
-    def _get_or_create_telegram_bot(self) -> Optional[Any]:
+    def _get_or_create_telegram_client(self) -> Optional[TelegramClient]:
         """
-        Get cached Telegram bot instance or create a new one.
+        Get cached Telegram client instance or create a new one.
 
         Returns:
-            Telegram Bot instance or None if bot_token is missing
+            TelegramClient instance or None if bot_token is missing
         """
-        if self._telegram_bot is not None:
-            return self._telegram_bot
+        if self._telegram_client is not None:
+            return self._telegram_client
 
-        telegram_config = self.config.get("telegram", {})
-        bot_token = telegram_config.get("bot_token")
+        bot_token = self.config.telegram.bot_token
 
         if not bot_token:
             logger.error("Telegram bot_token missing")
             return None
 
         try:
-            from telegram import Bot
-
-            self._telegram_bot = Bot(token=bot_token)
-            return self._telegram_bot
-        except Exception as e:
-            logger.error(f"Failed to create Telegram bot: {e}")
+            self._telegram_client = TelegramClient(bot_token=bot_token)
+            return self._telegram_client
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
             return None
-
-    @staticmethod
-    def _split_message(text: str, max_length: int) -> list:
-        """
-        Split a message into chunks that fit within the max_length limit.
-
-        Tries to split at newlines first, then at spaces to avoid breaking words.
-
-        Args:
-            text: Text to split
-            max_length: Maximum length per chunk
-
-        Returns:
-            List of text chunks, each <= max_length
-        """
-        if len(text) <= max_length:
-            return [text]
-
-        chunks = []
-        remaining = text
-
-        while remaining:
-            if len(remaining) <= max_length:
-                chunks.append(remaining)
-                break
-
-            # Try to find a newline to split at
-            split_pos = remaining.rfind("\n", 0, max_length)
-
-            # If no newline found, try to split at a space
-            if split_pos == -1:
-                split_pos = remaining.rfind(" ", 0, max_length)
-
-            # If no space found either, force split at max_length
-            if split_pos == -1:
-                split_pos = max_length
-                chunks.append(remaining[:split_pos])
-                remaining = remaining[split_pos:]
-            else:
-                # Split at newline or space, skip the delimiter
-                chunks.append(remaining[:split_pos])
-                remaining = remaining[split_pos + 1 :]
-
-        return chunks
-
-    @staticmethod
-    def _escape_markdown(text: str) -> str:
-        """
-        Escape Telegram Markdown special characters.
-
-        Args:
-            text: Text to escape
-
-        Returns:
-            Escaped text safe for Markdown parse_mode
-        """
-        # Escape Markdown special characters: * _ ` [ ] ( )
-        special_chars = ["*", "_", "`", "[", "]", "(", ")"]
-        for char in special_chars:
-            text = text.replace(char, "\\" + char)
-        return text
+        except Exception as e:
+            logger.error(f"Failed to create Telegram client: {e}")
+            return None
 
     def set_websocket_manager(self, manager) -> None:
         """
@@ -285,32 +287,32 @@ class NotificationService:
             True if successful
         """
         try:
-            telegram_config = self.config.get("telegram", {})
-            chat_id = telegram_config.get("chat_id")
+            chat_id = self.config.telegram.chat_id
 
             if not chat_id:
                 logger.error("Telegram chat_id missing")
                 return False
 
-            # Use helper to get or create bot instance
-            bot = self._get_or_create_telegram_bot()
-            if bot is None:
+            # Use helper to get or create client instance
+            client = self._get_or_create_telegram_client()
+            if client is None:
                 return False
 
             # Escape markdown special characters to prevent injection
-            escaped_title = self._escape_markdown(title)
-            escaped_message = self._escape_markdown(message)
+            escaped_title = TelegramClient.escape_markdown(title)
+            escaped_message = TelegramClient.escape_markdown(message)
             full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
-            # Split message if it exceeds Telegram's limit
-            message_chunks = self._split_message(full_message, self.TELEGRAM_MESSAGE_LIMIT)
+            # Send message (client handles splitting automatically)
+            success = await client.send_message(chat_id=chat_id, text=full_message)
 
-            # Send all chunks
-            for chunk in message_chunks:
-                await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
+            if success:
+                logger.info("Telegram notification sent successfully")
+            return success
 
-            logger.info("Telegram notification sent successfully")
-            return True
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
+            return False
         except Exception as e:
             logger.error(f"Telegram notification failed: {e}")
             return False
@@ -333,12 +335,11 @@ class NotificationService:
             True if successful
         """
         try:
-            email_config = self.config.get("email", {})
-            sender = email_config.get("sender")
-            password = email_config.get("password")
-            receiver = email_config.get("receiver")
-            smtp_server = email_config.get("smtp_server", "smtp.gmail.com")
-            smtp_port = email_config.get("smtp_port", 587)
+            sender = self.config.email.sender
+            password = self.config.email.password
+            receiver = self.config.email.receiver
+            smtp_server = self.config.email.smtp_server
+            smtp_port = self.config.email.smtp_port
 
             if not all([sender, password, receiver]):
                 logger.error("Email credentials missing")
@@ -521,8 +522,7 @@ The bot will retry automatically.
         try:
             from pathlib import Path
 
-            telegram_config = self.config.get("telegram", {})
-            chat_id = telegram_config.get("chat_id")
+            chat_id = self.config.telegram.chat_id
 
             if not chat_id:
                 logger.error("Telegram chat_id missing")
@@ -534,39 +534,34 @@ The bot will retry automatically.
                 # Fall back to text-only message
                 return await self.send_telegram(title, message)
 
-            # Use helper to get or create bot instance
-            bot = self._get_or_create_telegram_bot()
-            if bot is None:
+            # Use helper to get or create client instance
+            client = self._get_or_create_telegram_client()
+            if client is None:
                 return False
 
             # Escape markdown special characters to prevent injection
-            escaped_title = self._escape_markdown(title)
-            escaped_message = self._escape_markdown(message)
+            escaped_title = TelegramClient.escape_markdown(title)
+            escaped_message = TelegramClient.escape_markdown(message)
             full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
 
-            # Truncate caption to fit Telegram's limit for photo captions
-            caption = full_message
-            remaining_text = ""
+            # Send photo with caption (client handles truncation)
+            success = await client.send_photo(
+                chat_id=chat_id, photo_path=photo_path, caption=full_message
+            )
 
-            if len(full_message) > self.TELEGRAM_CAPTION_LIMIT:
-                caption = full_message[: self.TELEGRAM_CAPTION_LIMIT]
-                remaining_text = full_message[self.TELEGRAM_CAPTION_LIMIT :]
+            # If caption was truncated, send remaining text as separate message
+            # Client truncates to (LIMIT - 3) and adds "...", so start from there
+            if success and len(full_message) > TelegramClient.TELEGRAM_CAPTION_LIMIT:
+                remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT - 3 :]
+                await client.send_message(chat_id=chat_id, text=remaining_text)
 
-            with open(photo_file, "rb") as photo:
-                await bot.send_photo(
-                    chat_id=chat_id, photo=photo, caption=caption, parse_mode="Markdown"
-                )
+            if success:
+                logger.info("Telegram notification with photo sent successfully")
+            return success
 
-            # Send remaining text as a separate message if needed
-            if remaining_text:
-                message_chunks = self._split_message(
-                    remaining_text, self.TELEGRAM_MESSAGE_LIMIT
-                )
-                for chunk in message_chunks:
-                    await bot.send_message(chat_id=chat_id, text=chunk, parse_mode="Markdown")
-
-            logger.info("Telegram notification with photo sent successfully")
-            return True
+        except ImportError:
+            logger.warning("python-telegram-bot not installed")
+            return False
         except Exception as e:
             logger.error(f"Telegram notification with photo failed: {e}")
             return False
