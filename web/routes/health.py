@@ -85,9 +85,7 @@ async def health_check() -> Dict[str, Any]:
     # Redis unhealthy results in degraded status (not unhealthy) since it can fallback
     # Proxy is informational only - doesn't affect overall status unless all proxies are down
     if db_healthy and bot_healthy and circuit_breaker_healthy:
-        if redis_health.get("status") == "unhealthy":
-            overall_status = "degraded"
-        elif proxy_health.get("status") == "unhealthy":
+        if redis_health.get("status") == "unhealthy" or proxy_health.get("status") == "unhealthy":
             overall_status = "degraded"
         else:
             overall_status = "healthy"
