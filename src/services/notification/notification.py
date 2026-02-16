@@ -365,7 +365,7 @@ class WebSocketChannel(NotificationChannel):
                 "data": {
                     "title": title,
                     "message": message,
-                    "timestamp": asyncio.get_event_loop().time(),
+                    "timestamp": asyncio.get_running_loop().time(),
                     "priority": "high",
                 },
             }
