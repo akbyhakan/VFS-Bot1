@@ -7,6 +7,7 @@ from loguru import logger
 from playwright.async_api import Page
 
 from src.constants import Delays, TURKISH_MONTHS
+from src.utils.page_helpers import wait_for_overlay_hidden
 
 from .selector_utils import get_selector, resolve_selector, try_selectors
 
@@ -24,28 +25,9 @@ class SlotSelector:
         self.captcha_solver = captcha_solver
 
     async def wait_for_overlay(self, page: Page, timeout: int = 30000) -> None:
-        """
-        Wait for loading overlay to disappear.
-        Tries multiple overlay selectors.
-
-        Args:
-            page: Playwright page
-            timeout: Maximum wait time in ms
-        """
-        try:
-            selectors = resolve_selector("overlay")
-            for selector in selectors:
-                try:
-                    overlay = page.locator(selector)
-                    if await overlay.count() > 0:
-                        await overlay.wait_for(state="hidden", timeout=timeout)
-                        logger.debug(f"Overlay disappeared: {selector}")
-                        return
-                except Exception as e:
-                    logger.debug(f"Overlay selector '{selector}' not found: {e}")
-                    continue
-        except Exception as e:
-            logger.debug(f"Overlay not present or already hidden: {e}")
+        """Wait for loading overlay to disappear. Delegates to shared helper."""
+        selectors = resolve_selector("overlay")
+        await wait_for_overlay_hidden(page, selectors, timeout)
 
     def parse_aria_label_to_date(self, aria_label: str) -> Optional[str]:
         """
