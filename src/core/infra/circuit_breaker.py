@@ -43,11 +43,13 @@ Example:
 """
 
 import asyncio
+import json
 import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import wraps
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional, Type, TypeVar
 
 from loguru import logger
@@ -108,6 +110,7 @@ class CircuitBreaker:
         error_tracking_window: int = 3600,
         backoff_base: int = 60,
         backoff_max: int = 600,
+        state_file: Optional[str] = None,
     ):
         """
         Initialize circuit breaker.
@@ -122,6 +125,7 @@ class CircuitBreaker:
             error_tracking_window: Time window for error tracking in seconds
             backoff_base: Base backoff time in seconds for exponential backoff
             backoff_max: Maximum backoff time in seconds
+            state_file: Optional path to JSON file for state persistence
         """
         self.failure_threshold = failure_threshold
         self.timeout_seconds = timeout_seconds
@@ -132,6 +136,7 @@ class CircuitBreaker:
         self._error_tracking_window = error_tracking_window
         self._backoff_base = backoff_base
         self._backoff_max = backoff_max
+        self._state_file = state_file
 
         self._state = CircuitState.CLOSED
         self._failure_count = 0
@@ -144,6 +149,10 @@ class CircuitBreaker:
             maxlen=max_errors_per_hour if max_errors_per_hour else 100
         )
 
+        # Load persisted state if state_file is provided
+        if self._state_file:
+            self._load_state()
+
     @property
     def state(self) -> CircuitState:
         """Get current circuit state."""
@@ -153,6 +162,70 @@ class CircuitBreaker:
     def failure_count(self) -> int:
         """Get current failure count."""
         return self._failure_count
+
+    def _save_state(self) -> None:
+        """Save circuit breaker state to JSON file (synchronous, non-blocking)."""
+        if not self._state_file:
+            return
+
+        try:
+            state_data = {
+                "state": self._state.value,
+                "failure_count": self._failure_count,
+                "last_failure_time": (
+                    self._last_failure_time.isoformat() if self._last_failure_time else None
+                ),
+                "error_timestamps": list(self._error_timestamps),
+            }
+
+            state_path = Path(self._state_file)
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(state_path, "w") as f:
+                json.dump(state_data, f, indent=2)
+
+            logger.debug(f"{self.name}: State persisted to {self._state_file}")
+        except Exception as e:
+            logger.warning(f"{self.name}: Failed to persist state to {self._state_file}: {e}")
+
+    def _load_state(self) -> None:
+        """Load circuit breaker state from JSON file (synchronous)."""
+        if not self._state_file:
+            return
+
+        try:
+            state_path = Path(self._state_file)
+            if not state_path.exists():
+                logger.debug(f"{self.name}: No persisted state file found at {self._state_file}")
+                return
+
+            with open(state_path, "r") as f:
+                state_data = json.load(f)
+
+            # Restore state
+            self._state = CircuitState(state_data.get("state", CircuitState.CLOSED.value))
+            self._failure_count = state_data.get("failure_count", 0)
+
+            if state_data.get("last_failure_time"):
+                self._last_failure_time = datetime.fromisoformat(
+                    state_data["last_failure_time"]
+                )
+
+            # Restore error timestamps
+            if state_data.get("error_timestamps"):
+                self._error_timestamps = deque(
+                    state_data["error_timestamps"],
+                    maxlen=self._max_errors_per_hour if self._max_errors_per_hour else 100,
+                )
+
+            logger.info(
+                f"{self.name}: Loaded persisted state from {self._state_file} "
+                f"(state={self._state.value}, failures={self._failure_count})"
+            )
+        except Exception as e:
+            logger.warning(
+                f"{self.name}: Failed to load persisted state from {self._state_file}: {e}"
+            )
 
     async def _update_state(self) -> None:
         """
@@ -167,21 +240,29 @@ class CircuitBreaker:
                 if time_since_failure >= timedelta(seconds=self.timeout_seconds):
                     self._state = CircuitState.HALF_OPEN
                     self._half_open_successes = 0
+                    self._save_state()
                     logger.info(f"{self.name}: Circuit half-open, testing recovery")
 
     async def record_success(self) -> None:
         """Record a successful call."""
         async with self._lock:
+            state_changed = False
             if self._state == CircuitState.HALF_OPEN:
                 self._half_open_successes += 1
                 if self._half_open_successes >= self._half_open_threshold:
                     self._state = CircuitState.CLOSED
                     self._failure_count = 0
                     self._half_open_successes = 0
+                    state_changed = True
                     logger.info(f"{self.name}: Circuit closed after successful recovery test")
             elif self._state == CircuitState.CLOSED:
                 # Reset failure count on success in closed state
-                self._failure_count = 0
+                if self._failure_count > 0:
+                    self._failure_count = 0
+                    state_changed = True
+
+            if state_changed:
+                self._save_state()
 
     async def record_failure(self) -> None:
         """Record a failed call."""
@@ -199,10 +280,12 @@ class CircuitBreaker:
                 while self._error_timestamps and self._error_timestamps[0] < cutoff_time:
                     self._error_timestamps.popleft()
 
+            state_changed = False
             if self._state == CircuitState.HALF_OPEN:
                 # Any failure in half-open state reopens the circuit
                 self._state = CircuitState.OPEN
                 self._half_open_successes = 0
+                state_changed = True
                 logger.warning(f"{self.name}: Circuit reopened after failure during recovery test")
             elif self._state == CircuitState.CLOSED:
                 # Check consecutive failures threshold
@@ -215,9 +298,13 @@ class CircuitBreaker:
 
                 if should_open:
                     self._state = CircuitState.OPEN
+                    state_changed = True
                     logger.warning(
                         f"{self.name}: Circuit opened after {self._failure_count} failures"
                     )
+
+            if state_changed:
+                self._save_state()
 
     async def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt recovery."""
@@ -308,6 +395,7 @@ class CircuitBreaker:
             self._failure_count = 0
             self._last_failure_time = None
             self._error_timestamps.clear()
+            self._save_state()
             logger.info(f"{self.name}: Circuit manually reset to closed state")
 
     async def get_wait_time(self) -> float:
@@ -330,7 +418,7 @@ class CircuitBreaker:
         Get current circuit breaker statistics.
 
         Returns:
-            Dictionary with state, failure_count, and last_failure_time
+            Dictionary with state, failure_count, last_failure_time, and persistent flag
         """
         return {
             "name": self.name,
@@ -344,4 +432,5 @@ class CircuitBreaker:
             "total_errors_in_window": (
                 len(self._error_timestamps) if self._max_errors_per_hour else 0
             ),
+            "persistent": self._state_file is not None,
         }

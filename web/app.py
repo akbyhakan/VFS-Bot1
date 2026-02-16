@@ -25,7 +25,7 @@ from src.services.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
 from web.ip_utils import get_real_client_ip
-from web.middleware import HTTPSRedirectMiddleware, SecurityHeadersMiddleware
+from web.middleware import HTTPSRedirectMiddleware, RateLimitHeadersMiddleware, SecurityHeadersMiddleware
 from web.routes import (
     dashboard_router,
     health_router,
@@ -286,17 +286,32 @@ API endpoints are rate-limited to prevent abuse:
             "X-Requested-With",
             "X-CSRF-Token",
         ],
-        expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
+        expose_headers=[
+            "X-Total-Count",
+            "X-Page",
+            "X-Per-Page",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+        ],
         max_age=3600,  # Cache preflight requests for 1 hour
     )
 
     # 5. Add request tracking middleware
     app.add_middleware(RequestTrackingMiddleware)
 
+    # 6. Add rate limit headers middleware
+    app.add_middleware(RateLimitHeadersMiddleware)
+
     # Initialize rate limiter with improved IP detection
     limiter = Limiter(key_func=get_real_client_ip)
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    # Initialize custom rate limiter for rate limit headers
+    from src.utils.security.rate_limiter import get_rate_limiter
+
+    app.state.custom_rate_limiter = get_rate_limiter()
 
     # Mount static files
     static_dir = Path(__file__).parent / "static"

@@ -41,12 +41,10 @@ class RateLimitHeadersMiddleware(BaseHTTPMiddleware):
         # Process the request
         response = await call_next(request)
 
-        # Check if rate limiter is available in app state
-        if hasattr(request.app.state, "limiter"):
+        # Check if custom rate limiter is available in app state
+        if hasattr(request.app.state, "custom_rate_limiter"):
             try:
-                from src.utils.security.rate_limiter import RateLimiter
-
-                limiter: Optional[RateLimiter] = getattr(request.app.state, "limiter", None)
+                limiter = getattr(request.app.state, "custom_rate_limiter", None)
 
                 if limiter and hasattr(limiter, "get_rate_limit_info"):
                     # Get client identifier (IP address or user ID)

@@ -31,6 +31,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
         proxy_router,
         users_router,
     )
+    from web.routes.config import router as config_router
 
     # Include all API routers under v1
     api_v1_router.include_router(auth_router)
@@ -41,6 +42,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
     api_v1_router.include_router(proxy_router)
     api_v1_router.include_router(bot_router)
     api_v1_router.include_router(dropdown_sync_router)
+    api_v1_router.include_router(config_router)
 
     # Register the v1 router with the app
     app.include_router(api_v1_router)

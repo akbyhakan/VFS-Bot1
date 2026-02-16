@@ -33,6 +33,8 @@ class NotificationService:
         self.config = config
         self.telegram_enabled = config.get("telegram", {}).get("enabled", False)
         self.email_enabled = config.get("email", {}).get("enabled", False)
+        self._failed_high_priority_count = 0
+        self._websocket_manager = None  # Will be set externally if available
 
         # Cache Telegram bot instance if enabled
         self._telegram_bot = None
@@ -139,9 +141,72 @@ class NotificationService:
             text = text.replace(char, "\\" + char)
         return text
 
+    def set_websocket_manager(self, manager) -> None:
+        """
+        Set WebSocket manager for fallback notifications.
+
+        Args:
+            manager: WebSocket ConnectionManager instance
+        """
+        self._websocket_manager = manager
+        logger.debug("WebSocket manager set for notification fallback")
+
+    async def _broadcast_via_websocket(self, title: str, message: str) -> bool:
+        """
+        Broadcast critical notification via WebSocket as fallback.
+
+        Args:
+            title: Notification title
+            message: Notification message
+
+        Returns:
+            True if broadcast succeeded
+        """
+        if not self._websocket_manager:
+            logger.debug("WebSocket manager not available for fallback")
+            return False
+
+        try:
+            notification_data = {
+                "type": "critical_notification",
+                "data": {
+                    "title": title,
+                    "message": message,
+                    "timestamp": asyncio.get_event_loop().time(),
+                    "priority": "high",
+                },
+            }
+
+            # Use broadcast method if available
+            if hasattr(self._websocket_manager, "broadcast"):
+                await self._websocket_manager.broadcast(notification_data)
+                logger.info(f"Critical notification broadcasted via WebSocket: {title}")
+                return True
+            else:
+                logger.warning("WebSocket manager has no broadcast method")
+                return False
+
+        except Exception as e:
+            logger.error(f"WebSocket broadcast failed: {e}")
+            return False
+
+    def get_notification_stats(self) -> dict:
+        """
+        Get notification service statistics.
+
+        Returns:
+            Dictionary with notification stats including failed high-priority count
+        """
+        return {
+            "telegram_enabled": self.telegram_enabled,
+            "email_enabled": self.email_enabled,
+            "websocket_available": self._websocket_manager is not None,
+            "failed_high_priority_notifications": self._failed_high_priority_count,
+        }
+
     async def send_notification(
         self, title: str, message: str, priority: NotificationPriority = "normal"
-    ) -> None:
+    ) -> bool:
         """
         Send notification through all enabled channels.
 
@@ -149,6 +214,9 @@ class NotificationService:
             title: Notification title
             message: Notification message
             priority: Priority level (low, normal, high)
+
+        Returns:
+            True if at least one channel succeeded, False if all failed
         """
         tasks = []
         channel_names = []
@@ -161,13 +229,43 @@ class NotificationService:
             tasks.append(self.send_email(title, message))
             channel_names.append("email")
 
-        if tasks:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    logger.error(f"Notification channel '{channel_names[i]}' failed: {result}")
-        else:
+        if not tasks:
             logger.warning("No notification channels enabled")
+            return False
+
+        # Execute all notification tasks
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Track success/failure
+        any_success = False
+        all_failed = True
+
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Notification channel '{channel_names[i]}' failed: {result}")
+            elif result is True:
+                any_success = True
+                all_failed = False
+
+        # If all primary channels failed and priority is high, try WebSocket fallback
+        if all_failed and priority == "high":
+            logger.warning(
+                f"All primary channels failed for high-priority notification: {title}"
+            )
+            self._failed_high_priority_count += 1
+
+            # Try WebSocket fallback
+            ws_success = await self._broadcast_via_websocket(title, message)
+            if ws_success:
+                logger.info("WebSocket fallback succeeded for high-priority notification")
+                return True
+            else:
+                logger.error(
+                    "All channels (including WebSocket fallback) failed for high-priority notification"
+                )
+                return False
+
+        return any_success
 
     @retry_async(
         max_retries=2,
