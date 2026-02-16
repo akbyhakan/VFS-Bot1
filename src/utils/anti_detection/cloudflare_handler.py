@@ -100,8 +100,7 @@ class CloudflareHandler:
                 # Wait for title to change (not contain "waiting room")
                 await asyncio.wait_for(
                     page.wait_for_function(
-                        "() => !document.title.toLowerCase().includes('waiting room')",
-                        timeout=self.max_wait_time * 1000,  # Convert to milliseconds
+                        "() => !document.title.toLowerCase().includes('waiting room')"
                     ),
                     timeout=self.max_wait_time,
                 )
@@ -137,7 +136,15 @@ class CloudflareHandler:
                 # Wait for manual solving
                 logger.info(f"Waiting for manual Turnstile solve ({self.max_wait_time}s)")
                 await asyncio.sleep(self.max_wait_time)
-                return True
+                
+                # Verify challenge was actually solved
+                turnstile_count = await page.locator(self.TURNSTILE_IFRAME_SELECTOR).count()
+                if turnstile_count == 0:
+                    logger.info("Turnstile challenge passed (manual solve verified)")
+                    return True
+                else:
+                    logger.warning("Turnstile still present after manual solve timeout")
+                    return False
             else:
                 # Use event-driven approach: wait for iframe to disappear
                 logger.info("Waiting for Turnstile auto-solve (event-driven)")
@@ -148,7 +155,6 @@ class CloudflareHandler:
                         page.wait_for_selector(
                             self.TURNSTILE_IFRAME_SELECTOR,
                             state="detached",
-                            timeout=self.max_wait_time * 1000,  # Convert to milliseconds
                         ),
                         timeout=self.max_wait_time,
                     )
@@ -185,8 +191,7 @@ class CloudflareHandler:
                 # Wait for title to change (not contain "just a moment")
                 await asyncio.wait_for(
                     page.wait_for_function(
-                        "() => !document.title.toLowerCase().includes('just a moment')",
-                        timeout=self.max_wait_time * 1000,  # Convert to milliseconds
+                        "() => !document.title.toLowerCase().includes('just a moment')"
                     ),
                     timeout=self.max_wait_time,
                 )
