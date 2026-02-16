@@ -27,8 +27,11 @@ class TelegramConfig:
 
     def __repr__(self) -> str:
         """Return repr with masked bot_token."""
-        masked_token = "***" if self.bot_token else None
-        return f"TelegramConfig(enabled={self.enabled}, bot_token='{masked_token}', chat_id='{self.chat_id}')"
+        if self.bot_token:
+            masked_token = "'***'"
+        else:
+            masked_token = "None"
+        return f"TelegramConfig(enabled={self.enabled}, bot_token={masked_token}, chat_id='{self.chat_id}')"
 
 
 @dataclass
@@ -44,11 +47,14 @@ class EmailConfig:
 
     def __repr__(self) -> str:
         """Return repr with masked password."""
-        masked_password = "***" if self.password else None
+        if self.password:
+            masked_password = "'***'"
+        else:
+            masked_password = "None"
         return (
-            f"EmailConfig(enabled={self.enabled}, sender='{self.sender}', "
-            f"password='{masked_password}', receiver='{self.receiver}', "
-            f"smtp_server='{self.smtp_server}', smtp_port={self.smtp_port})"
+            f"EmailConfig(enabled={self.enabled}, sender={repr(self.sender)}, "
+            f"password={masked_password}, receiver={repr(self.receiver)}, "
+            f"smtp_server={repr(self.smtp_server)}, smtp_port={self.smtp_port})"
         )
 
 
