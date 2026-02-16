@@ -100,7 +100,6 @@ class TestWebSocketEndpoint:
         - Deprecation warning is logged
         """
         # Capture logs to verify deprecation warning
-        import logging
         from unittest.mock import patch
 
         with patch("loguru.logger.warning") as mock_warning:
@@ -118,8 +117,8 @@ class TestWebSocketEndpoint:
             warning_call = mock_warning.call_args[0][0]
             assert "DEPRECATED" in warning_call
             assert "v3.0" in warning_call
-            # Verify token is masked in log
-            assert valid_token not in warning_call or valid_token[:8] in warning_call
+            # Verify token is masked in log (first 8 chars present, full token absent)
+            assert valid_token not in warning_call and valid_token[:8] in warning_call
 
     def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
         """
