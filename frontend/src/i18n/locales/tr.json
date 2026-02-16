@@ -188,7 +188,7 @@
     "unhealthy": "Sistem Sağlıksız",
     "degradedMessage": "Bazı sistem bileşenleri sorun yaşıyor. İşlevsellik sınırlı olabilir.",
     "unhealthyMessage": "Kritik sistem bileşenleri çalışmıyor. Hizmet ciddi şekilde etkilendi.",
-    "dismissWarning": "Dismiss health warning",
+    "dismissWarning": "Sağlık uyarısını kapat",
     "hideDetails": "Bileşen detaylarını gizle",
     "showComponents": "Etkilenen bileşenleri göster ({{count}})"
   },
