@@ -7,7 +7,6 @@ from loguru import logger
 from playwright.async_api import Page
 
 from ...core.exceptions import VFSBotError
-from ...utils.masking import mask_email
 from .browser_manager import BrowserManager
 
 if TYPE_CHECKING:
@@ -52,13 +51,14 @@ class MissionProcessor:
 
     async def process_normal_flow(self, page: Page, user: "UserDict", dedup_service: Any) -> None:
         """
-        Process normal appointment flow (slot checking and booking) for ALL pending requests.
+        Process normal appointment flow (slot checking and booking).
 
-        This method handles multiple appointment requests across different countries and visa categories.
-        For multi-mission scenarios, each country gets a separate browser instance (Chromium process).
+        This method handles multiple appointment requests across different
+        countries and visa categories. For multi-mission scenarios, each
+        country gets a separate browser instance (Chromium process).
 
         Args:
-            page: Playwright page object (used only for backward compatibility with single-mission)
+            page: Playwright page object (backward compatibility)
             user: User dictionary from database
             dedup_service: Deduplication service instance
         """
@@ -199,9 +199,10 @@ class MissionProcessor:
                             country_page, user, request, dedup_service
                         )
                     except Exception as e:
-                        # Log error but continue with next request (error isolation)
+                        # Log error but continue (error isolation)
                         logger.error(
-                            f"Error processing request #{request.id} for country {country_code}: {e}"
+                            f"Error processing request #{request.id} "
+                            f"for country {country_code}: {e}"
                         )
                         continue
 

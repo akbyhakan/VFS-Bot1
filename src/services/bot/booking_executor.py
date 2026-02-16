@@ -124,7 +124,8 @@ class BookingExecutor:
                     )
                 else:
                     logger.warning(
-                        f"Duplicate booking detected for {mask_email(user['email'])}, skipping notification"
+                        f"Duplicate booking detected for {mask_email(user['email'])}, "
+                        f"skipping notification"
                     )
 
                 # Mark appointment request as booked if exists

@@ -1,20 +1,26 @@
 """Booking workflow orchestration - handles user booking flows."""
 
 import asyncio
-import random
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from loguru import logger
 from playwright.async_api import Page
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from ...constants import Delays, Retries
 from ...core.exceptions import LoginError, VFSBotError
 from ...models.database import Database
-from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
+from ...repositories import (
+    AppointmentRepository,
+    AppointmentRequestRepository,
+    UserRepository,
+)
 from ...types.user import UserDict
-from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..alert_service import AlertSeverity, send_alert_safe
@@ -31,7 +37,6 @@ if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories.appointment_request_repository import AppointmentRequest
     from ..account_pool import PooledAccount
-    from .slot_checker import SlotInfo
 
 
 def _is_recoverable_vfs_error(exception: BaseException) -> bool:
@@ -336,7 +341,9 @@ class BookingWorkflow:
                 return
 
             # Use empty slot for waitlist since no specific date/time is selected
-            reservation = self._build_reservation(user, {"date": "", "time": ""}, details)
+            reservation = self.reservation_builder.build_reservation(
+                user, {"date": "", "time": ""}, details
+            )
             await self.deps.workflow.booking_service.fill_all_applicants(page, reservation)
             logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
 
