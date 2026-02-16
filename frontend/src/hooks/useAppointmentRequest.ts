@@ -25,6 +25,26 @@ export function useCentres(countryCode: string) {
   });
 }
 
+// Query to get categories for a specific centre
+export function useCategories(countryCode: string, centreName: string) {
+  return useQuery<string[]>({
+    queryKey: ['categories', countryCode, centreName],
+    queryFn: () => api.get<string[]>(`/api/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories`),
+    enabled: !!countryCode && !!centreName,
+    staleTime: 3600000, // 1 hour
+  });
+}
+
+// Query to get subcategories for a specific centre and category
+export function useSubcategories(countryCode: string, centreName: string, categoryName: string) {
+  return useQuery<string[]>({
+    queryKey: ['subcategories', countryCode, centreName, categoryName],
+    queryFn: () => api.get<string[]>(`/api/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories/${encodeURIComponent(categoryName)}/subcategories`),
+    enabled: !!countryCode && !!centreName && !!categoryName,
+    staleTime: 3600000, // 1 hour
+  });
+}
+
 // Query to get all appointment requests
 export function useAppointmentRequests(status?: string) {
   return useQuery<AppointmentRequestResponse[]>({
