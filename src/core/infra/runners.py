@@ -186,7 +186,7 @@ async def run_web_mode(
 
     import uvicorn
 
-    from src.services.cleanup_service import CleanupService
+    from src.services.scheduling.cleanup_service import CleanupService
     from web.app import create_app
 
     # Initialize database if not provided

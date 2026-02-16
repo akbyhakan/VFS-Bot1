@@ -39,7 +39,7 @@ multiplier = loader.get_retry_multiplier('nld')
 
 ### 2. ⏰ Adaptive Scheduler
 
-**Service:** `src/services/adaptive_scheduler.py`
+**Service:** `src/services/scheduling/adaptive_scheduler.py`
 
 Automatically adjusts check intervals based on time of day to optimize resource usage and appointment availability patterns.
 
@@ -60,7 +60,7 @@ Automatically adjusts check intervals based on time of day to optimize resource 
 
 **Usage Example:**
 ```python
-from src.services.adaptive_scheduler import AdaptiveScheduler
+from src.services.scheduling.adaptive_scheduler import AdaptiveScheduler
 
 scheduler = AdaptiveScheduler(
     timezone="Europe/Amsterdam",

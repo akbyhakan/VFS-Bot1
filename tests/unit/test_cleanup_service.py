@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.cleanup_service import CleanupService
+from src.services.scheduling.cleanup_service import CleanupService
 
 
 class TestCleanupService:

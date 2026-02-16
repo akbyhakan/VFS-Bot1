@@ -21,7 +21,7 @@ from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
 from ...utils.security.rate_limiter import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
-from ..adaptive_scheduler import AdaptiveScheduler
+from ..scheduling.adaptive_scheduler import AdaptiveScheduler
 from ..notification.alert_service import AlertChannel, AlertConfig, AlertService
 from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
