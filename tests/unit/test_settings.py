@@ -127,7 +127,6 @@ def test_settings_default_values():
         assert settings.db_pool_size == 10
         assert settings.db_connection_timeout == 30.0
         assert settings.rate_limit_enabled is True
-        assert settings.headless is True
 
 
 def test_settings_db_pool_size_validation():
@@ -247,30 +246,3 @@ def test_settings_secret_str_fields():
     # String representation should not reveal password
     settings_str = str(settings)
     assert "mypassword" not in settings_str
-
-
-def test_settings_check_interval_validation():
-    """Test check interval validation."""
-    # Valid range
-    settings = VFSSettings(
-        encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
-        api_secret_key="a" * 64,
-        check_interval=120,
-    )
-    assert settings.check_interval == 120
-
-    # Too small
-    with pytest.raises(ValidationError):
-        VFSSettings(
-            encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
-            api_secret_key="a" * 64,
-            check_interval=5,
-        )
-
-    # Too large
-    with pytest.raises(ValidationError):
-        VFSSettings(
-            encryption_key="dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=",
-            api_secret_key="a" * 64,
-            check_interval=4000,
-        )

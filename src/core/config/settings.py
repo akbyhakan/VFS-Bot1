@@ -97,27 +97,9 @@ class VFSSettings(BaseSettings):
         default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
-    # VFS Bot Configuration
-    check_interval: int = Field(
-        default=60, ge=10, le=3600, description="Interval between slot checks in seconds"
-    )
-    max_retries: int = Field(
-        default=3, ge=1, le=10, description="Maximum retry attempts for operations"
-    )
-    headless: bool = Field(default=True, description="Run browser in headless mode")
-
-    # Notification Settings
-    telegram_enabled: bool = Field(default=False, description="Enable Telegram notifications")
-    telegram_bot_token: Optional[SecretStr] = Field(default=None, description="Telegram bot token")
-    telegram_chat_id: Optional[str] = Field(default=None, description="Telegram chat ID")
-
-    email_enabled: bool = Field(default=False, description="Enable email notifications")
-    smtp_server: Optional[str] = Field(default=None, description="SMTP server address")
-    smtp_port: int = Field(default=587, description="SMTP server port")
-    smtp_username: Optional[str] = Field(default=None, description="SMTP username")
-    smtp_password: Optional[SecretStr] = Field(default=None, description="SMTP password")
-    email_from: Optional[str] = Field(default=None, description="Email sender address")
-    email_to: Optional[str] = Field(default=None, description="Email recipient address")
+    # NOTE: Bot configuration parameters (check_interval, max_retries, headless,
+    # notification settings) are managed via config/config.yaml (YAML Config).
+    # See config_loader.py and config_validator.py for runtime configuration management.
 
     model_config = SettingsConfigDict(
         env_file=".env",
