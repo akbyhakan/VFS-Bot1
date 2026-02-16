@@ -68,6 +68,13 @@ export interface HealthCheck {
     bot: { status: string; running: boolean; success_rate: number };
     circuit_breaker: { status: string; trips: number };
     notifications: { status: string };
+    proxy: {
+      status: string;
+      total_proxies?: number;
+      active_proxies?: number;
+      inactive_proxies?: number;
+      avg_failure_count?: number;
+    };
   };
   metrics: {
     total_checks: number;
