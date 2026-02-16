@@ -115,7 +115,7 @@ class CleanupService:
             message: Alert message
         """
         try:
-            from src.services.alert_service import send_critical_alert
+            from src.services.notification.alert_service import send_critical_alert
 
             await send_critical_alert(message, metadata={"service": "cleanup"})
         except Exception as e:

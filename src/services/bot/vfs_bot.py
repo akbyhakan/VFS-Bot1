@@ -12,8 +12,8 @@ from ...constants import Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ..account_pool import AccountPool
-from ..alert_service import AlertSeverity, send_alert_safe
-from ..notification import NotificationService
+from ..notification.alert_service import AlertSeverity, send_alert_safe
+from ..notification.notification import NotificationService
 from ..session_orchestrator import SessionOrchestrator
 from .booking_dependencies import BookingDependencies, InfraServices, WorkflowServices
 from .booking_workflow import BookingWorkflow

@@ -23,10 +23,10 @@ from ...repositories import (
 from ...types.user import UserDict
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
-from ..alert_service import AlertSeverity, send_alert_safe
+from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..appointment_deduplication import get_deduplication_service
 from ..booking import get_selector
-from ..notification import NotificationService
+from ..notification.notification import NotificationService
 from .booking_dependencies import BookingDependencies
 from .booking_executor import BookingExecutor
 from .mission_processor import MissionProcessor

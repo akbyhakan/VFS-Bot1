@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories import AppointmentRequestRepository
     from ...types.user import UserDict
-    from ..notification import NotificationService
+    from ..notification.notification import NotificationService
     from .booking_dependencies import BookingDependencies
     from .booking_executor import BookingExecutor
     from .reservation_builder import ReservationBuilder

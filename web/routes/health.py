@@ -410,7 +410,7 @@ async def check_notification_health() -> Dict[str, Any]:
         Dictionary with notification service status
     """
     try:
-        from src.services.notification import NotificationService
+        from src.services.notification.notification import NotificationService
 
         # Check if notification service can be initialized
         # We don't actually send a notification, just check the service is available

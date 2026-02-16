@@ -10,9 +10,9 @@ if TYPE_CHECKING:
     from ...utils.error_capture import ErrorCapture
     from ...utils.security.header_manager import HeaderManager
     from ...utils.security.proxy_manager import ProxyManager
-    from ..alert_service import AlertService
+    from ..notification.alert_service import AlertService
     from ..booking import BookingOrchestrator
-    from ..notification import NotificationService
+    from ..notification.notification import NotificationService
     from ..session_recovery import SessionRecovery
     from ..slot_analyzer import SlotPatternAnalyzer
     from .auth_service import AuthService

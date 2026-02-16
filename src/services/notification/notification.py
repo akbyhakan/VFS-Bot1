@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import aiosmtplib
 from loguru import logger
 
-from src.services.telegram_client import TelegramClient
+from src.services.notification.telegram_client import TelegramClient
 from src.utils.decorators import retry_async
 
 # Type aliases for better type hints
