@@ -8,6 +8,10 @@ Public API:
 - NotificationConfig: Notification service configuration
 - TelegramConfig: Telegram channel configuration
 - EmailConfig: Email channel configuration
+- NotificationChannel: Abstract base class for notification channels
+- TelegramChannel: Telegram notification channel
+- EmailChannel: Email notification channel
+- WebSocketChannel: WebSocket notification channel
 - TelegramClient: Unified Telegram client wrapper
 - AlertService: Multi-channel alert service
 - AlertConfig: Alert service configuration
@@ -29,16 +33,16 @@ from .alert_service import (
     send_alert_safe,
     send_critical_alert,
 )
-from .notification import (
-    EmailChannel,
+from .base import (
     EmailConfig,
     NotificationChannel,
     NotificationConfig,
-    NotificationService,
-    TelegramChannel,
     TelegramConfig,
-    WebSocketChannel,
 )
+from .channels.email import EmailChannel
+from .channels.telegram import TelegramChannel
+from .channels.websocket import WebSocketChannel
+from .service import NotificationService
 from .telegram_client import TelegramClient
 
 __all__ = [
