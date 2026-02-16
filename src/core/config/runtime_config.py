@@ -27,7 +27,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from src.constants import CircuitBreaker, Retries
+from src.constants import CircuitBreakerConfig, Retries
 
 
 class RuntimeConfig:
@@ -104,26 +104,26 @@ class RuntimeConfig:
 
         # Circuit breaker configuration
         self._config["circuit_breaker.fail_threshold"] = get_int_env(
-            "CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreaker.FAIL_THRESHOLD
+            "CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreakerConfig.FAIL_THRESHOLD
         )
         self._config["circuit_breaker.timeout_seconds"] = get_float_env(
-            "CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreaker.TIMEOUT_SECONDS
+            "CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreakerConfig.TIMEOUT_SECONDS
         )
         self._config["circuit_breaker.half_open_success_threshold"] = get_int_env(
             "CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD",
-            CircuitBreaker.HALF_OPEN_SUCCESS_THRESHOLD,
+            CircuitBreakerConfig.HALF_OPEN_SUCCESS_THRESHOLD,
         )
         self._config["circuit_breaker.max_errors_per_hour"] = get_int_env(
-            "CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreaker.MAX_ERRORS_PER_HOUR
+            "CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreakerConfig.MAX_ERRORS_PER_HOUR
         )
         self._config["circuit_breaker.error_window_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreaker.ERROR_WINDOW_SECONDS
+            "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreakerConfig.ERROR_WINDOW_SECONDS
         )
         self._config["circuit_breaker.backoff_base_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreaker.BACKOFF_BASE_SECONDS
+            "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreakerConfig.BACKOFF_BASE_SECONDS
         )
         self._config["circuit_breaker.backoff_max_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreaker.BACKOFF_MAX_SECONDS
+            "CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreakerConfig.BACKOFF_MAX_SECONDS
         )
 
     @classmethod

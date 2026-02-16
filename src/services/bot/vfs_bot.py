@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import AccountPoolConfig, CircuitBreaker as CircuitBreakerConfig
+from ...constants import AccountPoolConfig, CircuitBreakerConfig
 from ...constants import Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState

@@ -1,7 +1,6 @@
 """Mission processor for handling multi-country appointment requests."""
 
-import random
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from playwright.async_api import Page
@@ -142,6 +141,9 @@ class MissionProcessor:
                     )
                     return True
 
-                break
+                logger.warning(
+                    f"Failed to build reservation for centre {centre}, trying next centre"
+                )
+                continue
 
         return False

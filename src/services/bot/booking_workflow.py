@@ -191,17 +191,24 @@ class BookingWorkflow:
                 page, account, appointment_requests, masked_email
             )
 
+        except LoginError:
+            logger.error(f"Login error for account {masked_email}")
+            await self._capture_error_safe(page, LoginError(), "process_mission", account.id, masked_email)
+            return "login_fail"
         except BannedError:
             logger.error(f"Account {masked_email} has been banned")
+            await self._capture_error_safe(page, BannedError(), "process_mission", account.id, masked_email)
             return "banned"
         except VFSBotError as e:
             logger.error(f"VFS error for account {masked_email}: {e}")
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             # Fallback string check for backward compatibility
             if "banned" in str(e).lower():
                 return "banned"
             return "error"
         except Exception as e:
             logger.error(f"Unexpected error for account {masked_email}: {e}", exc_info=True)
+            await self._capture_error_safe(page, e, "process_mission", account.id, masked_email)
             return "error"
 
     @retry(
@@ -267,9 +274,16 @@ class BookingWorkflow:
                         request.id,
                         "completed",
                     )
+            except VFSBotError as e:
+                if e.recoverable:
+                    logger.warning(f"Recoverable error for request {request.id}, will retry: {e}")
+                    raise  # Let @retry handle it
+                else:
+                    logger.error(f"Non-recoverable error for request {request.id}: {e}")
+                    continue  # Skip this request, try next
             except Exception as e:
-                logger.error(f"Error processing request {request.id}: {e}")
-                continue
+                logger.error(f"Unexpected error processing request {request.id}: {e}")
+                continue  # Skip unexpected errors
 
         if slot_found:
             return "success"
