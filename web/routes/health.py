@@ -78,10 +78,14 @@ async def health_check() -> Dict[str, Any]:
     # Check Redis health
     redis_health = await check_redis()
 
+    # Check proxy health
+    proxy_health = await check_proxy_health()
+
     # Determine overall status based on component health
     # Redis unhealthy results in degraded status (not unhealthy) since it can fallback
+    # Proxy is informational only - doesn't affect overall status unless all proxies are down
     if db_healthy and bot_healthy and circuit_breaker_healthy:
-        if redis_health.get("status") == "unhealthy":
+        if redis_health.get("status") == "unhealthy" or proxy_health.get("status") == "unhealthy":
             overall_status = "degraded"
         else:
             overall_status = "healthy"
@@ -108,6 +112,7 @@ async def health_check() -> Dict[str, Any]:
                 "trips": snapshot.circuit_breaker_trips,
             },
             "notifications": notification_health,
+            "proxy": proxy_health,
         },
         "metrics": {
             "total_checks": snapshot.total_checks,
@@ -422,6 +427,54 @@ async def check_notification_health() -> Dict[str, Any]:
         return {"status": "unhealthy", "error": str(e)}
 
 
+async def check_proxy_health() -> Dict[str, Any]:
+    """
+    Check proxy infrastructure health.
+
+    Returns:
+        Dictionary with proxy status and statistics
+    """
+    try:
+        from src.models.db_factory import DatabaseFactory
+        from src.repositories.proxy_repository import ProxyRepository
+
+        db = await DatabaseFactory.ensure_connected()
+        proxy_repo = ProxyRepository(db)
+        
+        # Get proxy statistics
+        stats = await proxy_repo.get_stats()
+        
+        total = stats.get("total_proxies", 0)
+        active = stats.get("active_proxies", 0)
+        inactive = stats.get("inactive_proxies", 0)
+        avg_failures = stats.get("avg_failure_count", 0.0)
+        
+        # Determine status based on proxy availability
+        if total == 0:
+            status = "not_configured"
+        elif active == 0:
+            status = "unhealthy"
+        elif avg_failures > 5:  # High failure count threshold
+            status = "degraded"
+        else:
+            status = "healthy"
+        
+        return {
+            "status": status,
+            "total_proxies": total,
+            "active_proxies": active,
+            "inactive_proxies": inactive,
+            "avg_failure_count": round(avg_failures, 2),
+        }
+    except Exception as e:
+        # Proxy is optional infrastructure, so failures should not break health check
+        logger.debug(f"Proxy health check failed (proxy is optional): {e}")
+        return {
+            "status": "not_configured",
+            "total_proxies": 0,
+        }
+
+
 async def check_vfs_api_health() -> bool:
     """
     Check VFS API connectivity.
@@ -467,17 +520,19 @@ async def check_captcha_service() -> bool:
         return False
 
 
-async def check_external_services() -> Dict[str, bool]:
+async def check_external_services() -> Dict[str, Any]:
     """
     Check external service health.
 
     Returns:
         Dictionary of service names and their health status
     """
+    proxy_health = await check_proxy_health()
     return {
         "vfs_api": await check_vfs_api_health(),
         "captcha_service": await check_captcha_service(),
         "notification_channels": (await check_notification_health()).get("status") == "healthy",
+        "proxy": proxy_health,
     }
 
 

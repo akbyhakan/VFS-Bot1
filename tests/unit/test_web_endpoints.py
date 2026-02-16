@@ -86,6 +86,19 @@ class TestHealthEndpoint:
         assert "redis" in data["components"]
         assert "bot" in data["components"]
         assert "notifications" in data["components"]
+        assert "proxy" in data["components"]
+
+    def test_health_endpoint_proxy_component(self, client, reset_state):
+        """Test health endpoint includes proxy component with status."""
+        response = client.get("/health")
+        data = response.json()
+
+        assert "proxy" in data["components"]
+        proxy_component = data["components"]["proxy"]
+        assert isinstance(proxy_component, dict)
+        assert "status" in proxy_component
+        # Status should be one of the expected values
+        assert proxy_component["status"] in ["healthy", "degraded", "unhealthy", "not_configured"]
 
     def test_health_endpoint_bot_running(self, client, reset_state):
         """Test health endpoint reflects bot running state."""
