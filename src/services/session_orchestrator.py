@@ -156,14 +156,10 @@ class SessionOrchestrator:
             f"(duration: {duration:.1f}s, missions: {len(missions)}) =========="
         )
 
-        # Restart browser after session for fresh state
-        if missions:  # Only restart if we actually processed missions
-            try:
-                logger.info("Restarting browser after session for fresh state...")
-                await self.browser_manager.restart_fresh()
-                logger.info("Browser restarted successfully after session")
-            except Exception as restart_error:
-                logger.warning(f"Failed to restart browser after session: {restart_error}")
+        # Note: Each mission now creates and closes its own isolated BrowserManager instance,
+        # so there's no need to restart the shared browser_manager after the session.
+        # The shared browser_manager is retained for backwards compatibility and potential
+        # future use cases, but is no longer used by mission processing.
 
         return summary
 
@@ -194,9 +190,11 @@ class SessionOrchestrator:
         Process a single mission (country).
         
         1. Acquire account from pool
-        2. Open browser page
-        3. Process appointment requests with booking workflow
-        4. Release account with result
+        2. Create isolated browser instance for this mission
+        3. Open browser page
+        4. Process appointment requests with booking workflow
+        5. Release account with result
+        6. Clean up browser resources
 
         Args:
             mission_code: Mission/country code
@@ -212,6 +210,7 @@ class SessionOrchestrator:
 
         started_at = datetime.now(timezone.utc)
         account: Optional[PooledAccount] = None
+        mission_browser = None
         page: Optional[Page] = None
         result = "error"
         error_message = None
@@ -231,8 +230,25 @@ class SessionOrchestrator:
                 f"Mission {mission_code.upper()}: Using account {account.id} ({account.email})"
             )
 
-            # Open browser page
-            page = await self.browser_manager.new_page()
+            # Create isolated BrowserManager instance for this mission
+            # This ensures each mission has its own Chromium process with separate:
+            # - Cookie jar (no session conflicts)
+            # - Proxy (from proxy pool via allocate_next())
+            # - Fingerprint (from fingerprint rotator)
+            # Note: Import here to avoid circular dependency (vfs_bot.py -> session_orchestrator.py)
+            from src.services.bot.browser_manager import BrowserManager
+            
+            mission_browser = BrowserManager(
+                config=self.browser_manager.config,
+                header_manager=self.browser_manager.header_manager,
+                proxy_manager=self.browser_manager.proxy_manager,
+            )
+            
+            logger.info(f"Starting isolated browser instance for mission {mission_code.upper()}")
+            await mission_browser.start()
+            
+            # Open browser page in the mission-specific browser
+            page = await mission_browser.new_page()
 
             # Process mission using booking workflow
             # Note: process_mission() method will be created in booking_workflow.py
@@ -275,8 +291,17 @@ class SessionOrchestrator:
             if page:
                 try:
                     await page.close()
+                    logger.debug(f"Closed page for mission {mission_code.upper()}")
                 except Exception as close_error:
-                    logger.error(f"Failed to close page: {close_error}")
+                    logger.error(f"Failed to close page for mission {mission_code}: {close_error}")
+            
+            # Always close mission-specific browser to prevent orphan processes
+            if mission_browser:
+                try:
+                    await mission_browser.close()
+                    logger.info(f"Closed browser instance for mission {mission_code.upper()}")
+                except Exception as browser_close_error:
+                    logger.error(f"Failed to close browser for mission {mission_code}: {browser_close_error}")
 
             # Always release account
             if account:
