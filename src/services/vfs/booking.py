@@ -6,7 +6,7 @@ import aiohttp
 from loguru import logger
 
 from ...core.exceptions import VFSApiError, VFSRateLimitError
-from ...utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 from .encryption import get_vfs_api_base
 from .models import BookingResponse
 

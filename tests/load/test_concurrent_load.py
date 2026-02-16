@@ -10,7 +10,7 @@ import pytest
 from src.constants import Database as DbConstants
 from src.models.database import Database
 from src.repositories import UserRepository
-from src.utils.security.rate_limiter import RateLimiter, reset_rate_limiter
+from src.core.rate_limiting import RateLimiter, reset_rate_limiter
 
 
 class TestConcurrentLoad:

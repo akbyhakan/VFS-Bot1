@@ -10,7 +10,7 @@ from src.services.vfs.auth import VFSAuth
 from src.services.vfs.booking import VFSBooking
 from src.services.vfs.models import VFSSession
 from src.services.vfs.slots import VFSSlots
-from src.utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 
 
 class TestVFSAuthTokenUpdate:

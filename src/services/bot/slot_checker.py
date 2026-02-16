@@ -13,7 +13,7 @@ from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
-from ...utils.security.rate_limiter import RateLimiter
+from src.core.rate_limiting import RateLimiter
 from ...utils.spa_navigation import navigate_to_appointment_page
 
 if TYPE_CHECKING:

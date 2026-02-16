@@ -6,7 +6,7 @@ import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
-from src.utils.security.rate_limiter import RateLimiter
+from src.core.rate_limiting import RateLimiter
 from web.middleware.rate_limit_headers import RateLimitHeadersMiddleware
 
 

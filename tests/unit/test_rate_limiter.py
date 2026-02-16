@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from src.utils.security.rate_limiter import RateLimiter, get_rate_limiter
+from src.core.rate_limiting import RateLimiter, get_rate_limiter
 
 
 class TestRateLimiter:

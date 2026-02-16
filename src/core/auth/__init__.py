@@ -26,7 +26,7 @@ from .password import (
     validate_password_length,
     verify_password,
 )
-from .rate_limiter import (
+from src.core.rate_limiting import (
     AuthRateLimiter,
     InMemoryBackend,
     RateLimiterBackend,

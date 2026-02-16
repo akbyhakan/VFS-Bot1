@@ -6,7 +6,7 @@ from typing import Dict, Optional
 
 from loguru import logger
 
-from .rate_limiter import RateLimiter
+from .sliding_window import RateLimiter
 
 
 class EndpointRateLimiter:
@@ -21,8 +21,8 @@ class EndpointRateLimiter:
     - Default: Standard (60 req/60s)
 
     NOTE: This rate limiter is designed for single-process VFS API call throttling.
-    For distributed/multi-worker deployments, see src/core/auth.py which provides
-    Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
+    For distributed/multi-worker deployments, see src/core/rate_limiting/auth_limiter.py
+    which provides Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
     """
 
     def __init__(

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.utils.security.endpoint_rate_limiter import EndpointRateLimiter
+from src.core.rate_limiting import EndpointRateLimiter
 
 
 @pytest.mark.asyncio

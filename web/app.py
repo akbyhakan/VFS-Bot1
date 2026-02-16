@@ -309,7 +309,7 @@ API endpoints are rate-limited to prevent abuse:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # Initialize custom rate limiter for rate limit headers
-    from src.utils.security.rate_limiter import get_rate_limiter
+    from src.core.rate_limiting import get_rate_limiter
 
     app.state.custom_rate_limiter = get_rate_limiter()
 

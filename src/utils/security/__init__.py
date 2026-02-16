@@ -6,16 +6,16 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .header_manager import HeaderManager as HeaderManager
     from .proxy_manager import ProxyManager as ProxyManager
-    from .rate_limiter import RateLimiter as RateLimiter
-    from .rate_limiter import get_rate_limiter as get_rate_limiter
+    from src.core.rate_limiting import RateLimiter as RateLimiter
+    from src.core.rate_limiting import get_rate_limiter as get_rate_limiter
     from .session_manager import SessionManager as SessionManager
 
 _LAZY_MODULE_MAP = {
     "HeaderManager": ("src.utils.security.header_manager", "HeaderManager"),
     "ProxyManager": ("src.utils.security.proxy_manager", "ProxyManager"),
     "SessionManager": ("src.utils.security.session_manager", "SessionManager"),
-    "RateLimiter": ("src.utils.security.rate_limiter", "RateLimiter"),
-    "get_rate_limiter": ("src.utils.security.rate_limiter", "get_rate_limiter"),
+    "RateLimiter": ("src.core.rate_limiting", "RateLimiter"),
+    "get_rate_limiter": ("src.core.rate_limiting", "get_rate_limiter"),
 }
 
 __all__ = list(_LAZY_MODULE_MAP.keys())
