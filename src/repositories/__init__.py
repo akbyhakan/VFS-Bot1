@@ -6,6 +6,7 @@ from .appointment_repository import Appointment, AppointmentRepository
 from .appointment_request_repository import AppointmentRequest, AppointmentRequestRepository
 from .audit_log_repository import AuditLogEntry, AuditLogRepository
 from .base import BaseRepository
+from .dropdown_cache_repository import DropdownCacheRepository
 from .log_repository import LogEntry, LogRepository
 from .payment_repository import PaymentCard, PaymentRepository
 from .proxy_repository import Proxy, ProxyRepository
@@ -19,6 +20,7 @@ from .webhook_repository import Webhook, WebhookRepository
 __all__ = [
     "AccountPoolRepository",
     "BaseRepository",
+    "DropdownCacheRepository",
     "UserRepository",
     "User",
     "UserReadRepository",
