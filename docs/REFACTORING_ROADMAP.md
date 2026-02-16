@@ -213,11 +213,11 @@ All credentials use environment variables:
 5. **Split `src/services/notification/notification.py` (779 lines)**
    - Extract into: `base.py`, `telegram_channel.py`, `email_channel.py`, `websocket_channel.py`, `notification_service.py`
 
-6. **Remove dead code**
-   - Remove `src/utils/form_handler.py` (362 lines, never imported)
-   - Remove `src/core/feature_flags.py` (194 lines, only in tests) — or integrate into production code
-   - Remove `src/utils/user_agent_rotator.py` (51 lines, only in tests) — or wire into `HeaderManager`
-   - Update corresponding test files accordingly
+6. ~~**Remove dead code**~~ ✅ **COMPLETED**
+   - ~~Remove `src/utils/form_handler.py` (362 lines, never imported)~~ ✅ Deleted
+   - ~~Remove `src/core/feature_flags.py` (194 lines, only in tests)~~ ✅ Deleted
+   - ~~Remove `src/utils/user_agent_rotator.py` (51 lines, only in tests)~~ ✅ Deleted
+   - ~~Update corresponding test files accordingly~~ ✅ Deleted `tests/unit/test_feature_flags.py` and `tests/unit/test_user_agent_rotator.py`
 
 7. **Extract shared slot-handling utilities**
    - Create shared helpers for overlay-waiting and Cloudflare-challenge detection used by both `slot_checker.py` and `slot_selector.py`
