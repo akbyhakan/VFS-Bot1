@@ -136,7 +136,7 @@ export default function AppointmentRequest() {
         newErrors[`person_${index}_birth_date`] = t('appointmentRequest.birthDateInvalid');
       }
       if (!person.passport_number) {
-        newErrors[`person_${index}_passport_number`] = t('appointmentRequest.passportNumberRequired');
+        newErrors[`person_${index}_passport_number`] = t('appointmentRequest.passportRequired');
       }
       if (!person.passport_issue_date) {
         newErrors[`person_${index}_passport_issue_date`] = t('appointmentRequest.passportIssueRequired');

@@ -361,7 +361,7 @@ export function Users() {
                     <button
                       onClick={() => handleToggleStatus(user)}
                       className="text-yellow-400 hover:text-yellow-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                      aria-label={user.is_active ? `${user.email} deactivate account` : `${user.email} activate account`}
+                      aria-label={user.is_active ? t('users.deactivateAccount', { email: user.email }) : t('users.activateAccount', { email: user.email })}
                       title={user.is_active ? t('users.deactivate') : t('users.activate')}
                     >
                       <Power className="w-4 h-4" aria-hidden="true" />
@@ -369,7 +369,7 @@ export function Users() {
                     <button
                       onClick={() => openEditModal(user)}
                       className="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      aria-label={`${user.email} edit account`}
+                      aria-label={t('users.editAccountLabel', { email: user.email })}
                       title={t('users.editAccount')}
                     >
                       <Pencil className="w-4 h-4" aria-hidden="true" />
@@ -377,7 +377,7 @@ export function Users() {
                     <button
                       onClick={() => handleDelete(user)}
                       className="text-red-400 hover:text-red-300 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                      aria-label={`${user.email} delete account`}
+                      aria-label={t('users.deleteAccountLabel', { email: user.email })}
                       title={t('users.deleteAccount')}
                     >
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
