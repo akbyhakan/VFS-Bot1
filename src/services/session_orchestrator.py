@@ -235,7 +235,7 @@ class SessionOrchestrator:
             # - Cookie jar (no session conflicts)
             # - Proxy (from proxy pool via allocate_next())
             # - Fingerprint (from fingerprint rotator)
-            # Import here to avoid circular dependency
+            # Note: Import here to avoid circular dependency (vfs_bot.py -> session_orchestrator.py)
             from src.services.bot.browser_manager import BrowserManager
             
             mission_browser = BrowserManager(
