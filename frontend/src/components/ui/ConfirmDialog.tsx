@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { AlertTriangle, Trash2, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -39,14 +40,18 @@ export function ConfirmDialog({
   onCancel,
   title,
   message,
-  confirmText = 'Onayla',
-  cancelText = 'İptal',
+  confirmText,
+  cancelText,
   variant = 'danger',
   isLoading = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const config = variantConfig[variant];
   const Icon = config.icon;
+
+  const defaultConfirmText = confirmText || t('confirmDialog.confirm');
+  const defaultCancelText = cancelText || t('confirmDialog.cancel');
 
   // Focus confirm button when dialog opens
   useEffect(() => {
@@ -102,7 +107,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={isLoading}
           >
-            {cancelText}
+            {defaultCancelText}
           </Button>
           <Button
             ref={confirmButtonRef}
@@ -110,7 +115,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             isLoading={isLoading}
           >
-            {confirmText}
+            {defaultConfirmText}
           </Button>
         </div>
       </div>

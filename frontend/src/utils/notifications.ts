@@ -3,6 +3,8 @@
  * Handles permission requests and sending notifications
  */
 
+import i18n from '@/i18n';
+
 /**
  * Request notification permission from the user
  * @returns The permission state
@@ -83,7 +85,7 @@ export function isNotificationPermitted(): boolean {
  */
 export async function notifyAppointmentFound(details: string): Promise<void> {
   await sendBrowserNotification(
-    '🎉 Randevu Bulundu!',
+    i18n.t('browserNotifications.appointmentFound'),
     details,
     {
       requireInteraction: true,
@@ -97,7 +99,7 @@ export async function notifyAppointmentFound(details: string): Promise<void> {
  */
 export async function notifyBotError(error: string): Promise<void> {
   await sendBrowserNotification(
-    '⚠️ Bot Hatası',
+    i18n.t('browserNotifications.botError'),
     error,
     {
       requireInteraction: false,
@@ -111,7 +113,7 @@ export async function notifyBotError(error: string): Promise<void> {
  */
 export async function notifyBotStatus(status: string, message: string): Promise<void> {
   await sendBrowserNotification(
-    `Bot ${status}`,
+    i18n.t('browserNotifications.botStatus', { status }),
     message,
     {
       requireInteraction: false,
