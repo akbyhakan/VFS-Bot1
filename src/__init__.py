@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from .core.config.config_loader import load_config as load_config
     from .core.config.config_validator import ConfigValidator as ConfigValidator
     from .core.config.env_validator import EnvValidator as EnvValidator
-    from .core.logger import JSONFormatter as JSONFormatter
     from .core.logger import setup_structured_logging as setup_structured_logging
     from .models.database import Database as Database
     from .selector import SelectorManager as SelectorManager
@@ -38,7 +37,6 @@ _LAZY_MODULE_MAP = {
     "ConfigValidator": ("src.core.config.config_validator", "ConfigValidator"),
     "EnvValidator": ("src.core.config.env_validator", "EnvValidator"),
     "setup_structured_logging": ("src.core.logger", "setup_structured_logging"),
-    "JSONFormatter": ("src.core.logger", "JSONFormatter"),
     # Models
     "Database": ("src.models.database", "Database"),
     # Services
