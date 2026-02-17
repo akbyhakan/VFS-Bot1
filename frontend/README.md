@@ -19,16 +19,16 @@ Modern, responsive React + TypeScript + Tailwind CSS dashboard for VFS-Bot autom
 
 | Technology | Version | Purpose |
 |-----------|---------|---------|
-| React | 18.2.x | UI Framework |
-| TypeScript | 5.3.x | Type Safety |
-| Vite | 5.0.x | Build Tool |
+| React | 18.3.x | UI Framework |
+| TypeScript | 5.7.x | Type Safety |
+| Vite | 6.1.x | Build Tool |
 | Tailwind CSS | 3.4.x | Styling |
-| Zustand | 4.4.x | State Management |
-| React Router | 6.21.x | Routing |
-| React Query | 5.17.x | Data Fetching |
-| React Hook Form | 7.49.x | Form Handling |
-| Zod | 3.22.x | Validation |
-| Axios | 1.6.x | HTTP Client |
+| Zustand | 5.0.x | State Management |
+| React Router | 7.1.x | Routing |
+| React Query | 5.66.x | Data Fetching |
+| React Hook Form | 7.54.x | Form Handling |
+| Zod | 3.24.x | Validation |
+| Axios | 1.13.x | HTTP Client |
 | Lucide React | Latest | Icons |
 | Sonner | 1.3.x | Toast Notifications |
 

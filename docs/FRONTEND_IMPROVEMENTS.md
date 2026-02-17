@@ -325,8 +325,8 @@ npm run size          # Size limit kontrolü
 ### Dependencies
 ```json
 {
-  "react-i18next": "^14.0.0",
-  "i18next": "^23.7.0"
+  "react-i18next": "^16.5.4",
+  "i18next": "^25.8.0"
 }
 ```
 
