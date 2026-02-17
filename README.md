@@ -161,7 +161,7 @@ The system learns over time which selectors work best and automatically promotes
 
 5. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[dev]"
    playwright install chromium
    ```
 
@@ -535,7 +535,7 @@ Run the test suite:
 
 ```bash
 # Install test dependencies
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # Run all tests
 pytest tests/
@@ -603,9 +603,8 @@ VFS-Bot1/
 ├── logs/                      # Log files (gitignored)
 ├── screenshots/               # Screenshots (gitignored)
 ├── main.py                    # Entry point (4-phase startup)
-├── requirements.txt           # Python dependencies
-├── requirements.lock          # Pinned dependencies for Docker
-├── pyproject.toml             # Project metadata & tool config
+├── pyproject.toml             # Project metadata, dependencies & tool config
+├── requirements.lock          # Pinned dependencies (generated from pyproject.toml)
 ├── Dockerfile                 # Multi-stage Docker build
 └── docker-compose.yml         # Docker Compose setup
 ```
@@ -784,7 +783,7 @@ VFS-Bot includes a comprehensive test suite with >70% code coverage.
 
 ```bash
 # Install dev dependencies
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 
 # Run all tests
 pytest

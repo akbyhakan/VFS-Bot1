@@ -585,9 +585,9 @@ REDIS_URL=redis://:your-password@redis:6379/0
 
 ### Dependency Management
 
-1. **Keep dependencies updated** - `pip install -U -r requirements.txt`
+1. **Keep dependencies updated** - `pip install -U -e ".[dev]"` or `pip install -U .`
 2. **Use security scanners** - `pip-audit`, `safety`
-3. **Pin versions** in `requirements.txt`
+3. **Pin versions** in `pyproject.toml`
 4. **Review security advisories** - Check GitHub Security tab
 
 ### Code Security

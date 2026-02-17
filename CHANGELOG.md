@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Dependency Management**: Consolidated to single source of truth (`pyproject.toml`)
+  - Removed `requirements.txt` and `requirements-dev.txt` (now redundant)
+  - Updated all CI/CD workflows to use `pip install -e ".[dev]"`
+  - Updated Makefile to generate `requirements.lock` from isolated venv
+  - Updated Dockerfile.dev to use pyproject.toml, run as non-root user (vfsbot), and removed hardcoded ENCRYPTION_KEY
+  - Updated docker-compose.dev.yml volume paths from `/root` to `/home/vfsbot`
+  - Added `scripts/verify_version_sync.py` to verify version consistency between `pyproject.toml` and `frontend/package.json`
+  - Updated `scripts/verify_lock.py` to verify against `pyproject.toml` directly
+  - Updated test suite to verify lock file consistency and version sync
 - Database: PostgreSQL with asyncpg connection pooling
 - Updated all database operations to use asyncpg patterns
 - Migrated from deprecated `google-generativeai` (v0.3.x) to `google-genai` unified SDK (v1.62.0)

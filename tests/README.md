@@ -260,7 +260,7 @@ VITE_WS_URL=ws://localhost:8000/ws
 
 ### For Unit Tests
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 
 ### For Integration Tests

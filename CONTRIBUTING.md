@@ -32,7 +32,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 ### Pull Requests
 
 1. **Fork the repo** and create your branch from `main`
-2. **Install dependencies**: `pip install -r requirements-dev.txt`
+2. **Install dependencies**: `pip install -e ".[dev]"`
 3. **Install pre-commit hooks**: `pre-commit install`
 4. **Make your changes**
 5. **Add tests** if applicable
@@ -69,17 +69,13 @@ cd VFS-Bot1
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies (Option 1: Using requirements.txt)
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Install dependencies (Option 2: Using pyproject.toml - PEP 517/518 compliant)
+# Install dependencies from pyproject.toml
 pip install -e ".[dev]"
 
 # Alternative: Install without dev dependencies
 pip install -e .
 
-# After adding/changing dependencies in requirements.txt:
+# After adding/changing dependencies in pyproject.toml:
 make lock
 
 # Install Playwright browsers
@@ -96,7 +92,7 @@ pytest tests/ --cov=src --cov-report=html
 ```
 
 **Note:** When adding or changing dependencies:
-- Update both `pyproject.toml` and `requirements.txt` to keep them synchronized
+- Update `pyproject.toml` only (single source of truth)
 - Run `make lock` to regenerate `requirements.lock`
 - Run `make verify-lock` to verify consistency
 
