@@ -113,7 +113,19 @@ skip_gitignore = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra --verbose --strict-markers --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml --cov-fail-under=80 --cov-branch -m \"not integration and not e2e\""
+addopts = [
+    "-ra",
+    "--verbose",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+    "--cov-branch",
+    "-m",
+    "not integration and not e2e",
+]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
@@ -153,7 +165,9 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Minimum coverage threshold is set via --cov-fail-under=80 in addopts to avoid duplication
+# Coverage threshold is configured via --cov-fail-under=80 in addopts above.
+# This was moved from [tool.coverage.report] fail_under to avoid conflicts,
+# as pytest.ini previously took precedence and ignored pyproject.toml settings.
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
