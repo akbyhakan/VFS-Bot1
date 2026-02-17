@@ -126,41 +126,24 @@ class EmailConfig(BaseModel):
 class NotificationConfig(BaseModel):
     """Notification services configuration."""
 
-    telegram_enabled: bool = Field(default=False)
-    telegram_bot_token: SecretStr = Field(default=SecretStr(""))
-    telegram_chat_id: str = Field(default="")
-    email_enabled: bool = Field(default=False)
-    email_sender: str = Field(default="")
-    email_password: SecretStr = Field(default=SecretStr(""))
-    email_receiver: str = Field(default="")
-    smtp_server: str = Field(default="smtp.gmail.com")
-    smtp_port: int = Field(default=587)
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
     webhook_enabled: bool = Field(default=False)
     webhook_url: Optional[str] = Field(default=None)
-    # Nested structures for compatibility
-    telegram: Optional[TelegramConfig] = Field(default=None)
-    email: Optional[EmailConfig] = Field(default=None)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NotificationConfig":
-        """Create from dictionary with nested telegram/email support for backward compatibility."""
-        # Handle nested structure
-        if "telegram" in data and isinstance(data["telegram"], dict):
-            telegram = data["telegram"]
-            data["telegram_enabled"] = telegram.get("enabled", False)
-            data["telegram_bot_token"] = telegram.get("bot_token", "")
-            data["telegram_chat_id"] = telegram.get("chat_id", "")
-
-        if "email" in data and isinstance(data["email"], dict):
-            email_data = data["email"]
-            data["email_enabled"] = email_data.get("enabled", False)
-            data["email_sender"] = email_data.get("sender", "")
-            data["email_password"] = email_data.get("password", "")
-            data["email_receiver"] = email_data.get("receiver", "")
-            data["smtp_server"] = email_data.get("smtp_server", "smtp.gmail.com")
-            data["smtp_port"] = email_data.get("smtp_port", 587)
-
-        return cls.model_validate(data)
+        """Create from dictionary with nested telegram/email support."""
+        # Handle nested structure - data should contain telegram and email as dicts
+        telegram_data = data.get("telegram", {})
+        email_data = data.get("email", {})
+        
+        return cls(
+            telegram=TelegramConfig(**telegram_data) if telegram_data else TelegramConfig(),
+            email=EmailConfig(**email_data) if email_data else EmailConfig(),
+            webhook_enabled=data.get("webhook_enabled", False),
+            webhook_url=data.get("webhook_url"),
+        )
 
 
 # Additional Configuration Models

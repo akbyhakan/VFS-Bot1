@@ -37,12 +37,24 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Logging level",
     )
+    parser.add_argument(
+        "--read-only",
+        action="store_true",
+        help="Run in read-only/degraded mode (used when database migration fails)",
+    )
 
     args = parser.parse_args()
 
     # Setup structured logging
     json_logging = os.getenv("JSON_LOGGING", "true").lower() == "true"
     setup_structured_logging(args.log_level, json_format=json_logging)
+
+    # Check if running in read-only mode
+    if args.read_only:
+        logger.warning(
+            "⚠️  Running in READ-ONLY/DEGRADED mode - Database migrations failed. "
+            "Bot functionality may be limited. Please check database connectivity."
+        )
 
     # Setup signal handlers for graceful shutdown
     setup_signal_handlers()
