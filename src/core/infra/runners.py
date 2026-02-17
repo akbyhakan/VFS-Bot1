@@ -299,7 +299,7 @@ async def run_both_mode(config: BotConfigDict) -> None:
 
     # Get and configure BotController singleton
     controller = await BotController.get_instance()
-    await controller.configure(config, db, notifier)
+    await controller.configure(config, db, notifier, bot_factory=VFSBot)
 
     try:
         # Start the bot via controller
