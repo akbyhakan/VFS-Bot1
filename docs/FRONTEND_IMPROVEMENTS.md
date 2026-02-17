@@ -464,7 +464,6 @@ function Dashboard() {
 ### Monitoring
 - Bundle size'ı düzenli olarak kontrol edin
 - E2E testleri her deploy'da çalıştırın
-- Sentry'de error trend'leri takip edin
 - PWA install rate'lerini izleyin
 
 ---

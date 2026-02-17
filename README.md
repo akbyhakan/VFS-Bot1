@@ -558,7 +558,6 @@ VFS-Bot1/
 │   │   │   ├── config_validator.py
 │   │   │   └── env_validator.py   # Environment validation
 │   │   ├── infra/             # Infrastructure modules
-│   │   │   ├── monitoring.py  # Sentry integration
 │   │   │   ├── runners.py     # Application run modes
 │   │   │   ├── shutdown.py    # Graceful shutdown
 │   │   │   ├── startup.py     # Environment & dependency validation
