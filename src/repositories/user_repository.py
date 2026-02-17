@@ -26,7 +26,7 @@ class UserRepository(BaseRepository[User]):
         self._write_repo = UserWriteRepository(database)
 
     # Read operations - delegate to UserReadRepository
-    def _row_to_user(self, row: Any):
+    def _row_to_user(self, row: Any) -> Optional[User]:
         """Convert database row to User entity."""
         return self._read_repo._row_to_user(row)
 

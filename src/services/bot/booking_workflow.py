@@ -405,14 +405,16 @@ class BookingWorkflow:
         """
         if self.config["bot"].get("screenshot_on_error", True):
             try:
-                await self.deps.infra.error_capture.capture(
-                    page,
-                    error,
-                    context={
-                        "step": step,
-                        "user_id": f"user_{user_id}",
-                        "email": masked_email,
-                    },
-                )
+                error_capture = self.deps.infra.error_capture
+                if error_capture is not None:
+                    await error_capture.capture(
+                        page,
+                        error,
+                        context={
+                            "step": step,
+                            "user_id": f"user_{user_id}",
+                            "email": masked_email,
+                        },
+                    )
             except Exception as capture_error:
                 logger.error(f"Failed to capture error: {capture_error}")

@@ -24,6 +24,31 @@ class AccountPoolRepository(BaseRepository):
         """
         super().__init__(database)
 
+    async def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+        """Get account by ID."""
+        return await self.get_account_by_id(id)
+
+    async def get_all(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get all accounts."""
+        return await self.get_available_accounts()
+
+    async def create(self, data: Dict[str, Any]) -> int:
+        """Create a new account."""
+        return await self.create_account(
+            email=data["email"],
+            password=data["password"],
+            phone=data.get("phone", ""),
+        )
+
+    async def update(self, id: int, data: Dict[str, Any]) -> bool:
+        """Update an account."""
+        status = data.get("status", "available")
+        return await self.update_account_status(id, status)
+
+    async def delete(self, id: int) -> bool:
+        """Delete an account (not supported - use update_account_status instead)."""
+        raise NotImplementedError("Account deletion not supported; use update_account_status")
+
     async def get_available_accounts(self) -> List[Dict[str, Any]]:
         """
         Get all available accounts (not in cooldown or quarantine).
@@ -154,7 +179,7 @@ class AccountPoolRepository(BaseRepository):
             """
 
             result = await conn.execute(query, *params)
-            return result == "UPDATE 1"
+            return bool(result == "UPDATE 1")
 
     async def mark_account_in_use(self, account_id: int) -> bool:
         """
@@ -176,7 +201,7 @@ class AccountPoolRepository(BaseRepository):
                 """,
                 account_id,
             )
-            return result == "UPDATE 1"
+            return bool(result == "UPDATE 1")
 
     async def release_account(
         self,
@@ -258,7 +283,7 @@ class AccountPoolRepository(BaseRepository):
             """
 
             result = await conn.execute(query, *params)
-            return result == "UPDATE 1"
+            return bool(result == "UPDATE 1")
 
     async def log_usage(
         self,

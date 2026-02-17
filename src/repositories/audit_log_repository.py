@@ -107,7 +107,7 @@ class AuditLogRepository(BaseRepository[AuditLogEntry]):
 
             return self._row_to_entry(row)
 
-    async def get_all(
+    async def get_all(  # type: ignore[override]
         self,
         limit: int = 100,
         action: Optional[str] = None,
@@ -207,7 +207,7 @@ class AuditLogRepository(BaseRepository[AuditLogEntry]):
                 "DELETE FROM audit_log WHERE id = $1",
                 id,
             )
-            deleted = result != "DELETE 0"
+            deleted: bool = result != "DELETE 0"
 
             if deleted:
                 logger.warning(f"Audit log entry {id} deleted")

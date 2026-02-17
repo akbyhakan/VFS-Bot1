@@ -161,7 +161,7 @@ class LogRepository(BaseRepository[LogEntry]):
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *values)
-            return result != "UPDATE 0"
+            return bool(result != "UPDATE 0")
 
     async def delete(self, id: int) -> bool:
         """
@@ -179,7 +179,7 @@ class LogRepository(BaseRepository[LogEntry]):
                 id,
             )
 
-            deleted = result != "DELETE 0"
+            deleted: bool = result != "DELETE 0"
 
             if deleted:
                 logger.info(f"Deleted log entry {id}")

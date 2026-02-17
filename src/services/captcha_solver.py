@@ -12,7 +12,7 @@ from playwright.async_api import Page
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
 
-    _executor = ThreadPoolExecutor(max_workers=2)
+    _executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(max_workers=2)
 
     def __init__(self, api_key: str):
         """

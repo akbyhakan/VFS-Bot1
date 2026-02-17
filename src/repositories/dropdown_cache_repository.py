@@ -24,6 +24,37 @@ class DropdownCacheRepository(BaseRepository):
         """
         super().__init__(database)
 
+    async def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+        """Get dropdown cache entry by ID (not applicable - use get_dropdown_data)."""
+        return None
+
+    async def get_all(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get all cached countries."""
+        countries = await self.get_all_cached_countries()
+        return [{"country_code": c} for c in countries[:limit]]
+
+    async def create(self, data: Dict[str, Any]) -> int:
+        """Create/upsert dropdown data."""
+        await self.upsert_dropdown_data(
+            country_code=data["country_code"],
+            dropdown_data=data.get("dropdown_data", {}),
+        )
+        return 0
+
+    async def update(self, id: int, data: Dict[str, Any]) -> bool:
+        """Update dropdown data (use upsert_dropdown_data instead)."""
+        if "country_code" in data:
+            await self.upsert_dropdown_data(
+                country_code=data["country_code"],
+                dropdown_data=data.get("dropdown_data", {}),
+            )
+            return True
+        return False
+
+    async def delete(self, id: int) -> bool:
+        """Delete dropdown data (not applicable by ID)."""
+        return False
+
     async def get_dropdown_data(self, country_code: str) -> Optional[Dict[str, Any]]:
         """
         Get cached dropdown data for a country.

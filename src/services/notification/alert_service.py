@@ -200,7 +200,7 @@ class AlertService:
             timestamp = alert_data["timestamp"]
 
             msg = MIMEMultipart()
-            msg["From"] = self.config.email_from
+            msg["From"] = self.config.email_from or ""
             email_to = self.config.email_to or []
             msg["To"] = ", ".join(email_to)
             msg["Subject"] = f"[{severity.upper()}] VFS-Bot Alert"

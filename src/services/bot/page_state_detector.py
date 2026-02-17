@@ -298,7 +298,7 @@ class PageStateDetector:
         results = await asyncio.gather(*check_tasks, return_exceptions=True)
 
         for check_result in results:
-            if isinstance(check_result, Exception) or check_result is None:
+            if isinstance(check_result, BaseException) or check_result is None:
                 continue
             state, confidence, selector = check_result
             current = scores.get(state, 0.0)

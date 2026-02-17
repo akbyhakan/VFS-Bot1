@@ -211,7 +211,7 @@ class ProxyRepository(BaseRepository[Proxy]):
             raise ValueError("server, port, username, and password are required")
 
         # Encrypt password before storing
-        encrypted_password = encrypt_password(password)
+        encrypted_password = encrypt_password(str(password))
 
         async with self.db.get_connection() as conn:
             try:
@@ -295,7 +295,7 @@ class ProxyRepository(BaseRepository[Proxy]):
         async with self.db.get_connection() as conn:
             try:
                 result = await conn.execute(query, *params)
-                updated = result != "UPDATE 0"
+                updated: bool = result != "UPDATE 0"
 
                 if updated:
                     logger.info(f"Proxy {id} updated")
@@ -321,7 +321,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                 "DELETE FROM proxy_endpoints WHERE id = $1",
                 id,
             )
-            deleted = result != "DELETE 0"
+            deleted: bool = result != "DELETE 0"
 
         if deleted:
             logger.info(f"Proxy {id} deleted")
@@ -348,7 +348,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                 """,
                 proxy_id,
             )
-            updated = result != "UPDATE 0"
+            updated: bool = result != "UPDATE 0"
 
             if updated:
                 logger.debug(f"Proxy {proxy_id} marked as failed")
@@ -375,7 +375,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                 """,
                 proxy_id,
             )
-            updated = result != "UPDATE 0"
+            updated: bool = result != "UPDATE 0"
 
             if updated:
                 logger.info(f"Proxy {proxy_id} failures reset")

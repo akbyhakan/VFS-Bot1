@@ -76,7 +76,7 @@ class NotificationService:
             return self._telegram_channel._get_or_create_client()
         return None
 
-    def set_websocket_manager(self, manager) -> None:
+    def set_websocket_manager(self, manager: Any) -> None:
         """
         Set WebSocket manager for fallback notifications.
 

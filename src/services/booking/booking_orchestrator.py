@@ -267,6 +267,7 @@ class BookingOrchestrator:
 
             try:
                 # Unwrap SensitiveDict at point of use only
+                card_details: Optional[Dict[str, Any]] = None
                 if isinstance(card_details_wrapped, SensitiveDict):
                     card_details = card_details_wrapped.to_dict()
                 else:

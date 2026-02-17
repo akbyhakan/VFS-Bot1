@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, HttpUrl, SecretStr, field_validator, mode
 class VFSConfig(BaseModel):
     """VFS-specific configuration."""
 
-    base_url: HttpUrl = Field(default="https://visa.vfsglobal.com")
+    base_url: str = Field(default="https://visa.vfsglobal.com")
     country: str = Field(default="tur", min_length=2, max_length=3)
     mission: str = Field(default="nld", min_length=2, max_length=3)
     centres: List[str] = Field(default_factory=list)
@@ -25,9 +25,9 @@ class VFSConfig(BaseModel):
 
     @field_validator("base_url")
     @classmethod
-    def validate_https(cls, v: HttpUrl) -> HttpUrl:
+    def validate_https(cls, v: str) -> str:
         """Ensure URL is HTTPS."""
-        if not str(v).startswith("https://"):
+        if not v.startswith("https://"):
             raise ValueError("VFS base_url must use HTTPS")
         return v
 

@@ -75,7 +75,7 @@ def load_env_variables() -> None:
         logger.debug(f"Loaded environment variables from {env_path}")
 
 
-def substitute_env_vars(value: Any, _env: str = None, _is_production: bool = None) -> Any:
+def substitute_env_vars(value: Any, _env: Optional[str] = None, _is_production: Optional[bool] = None) -> Any:
     """
     Recursively substitute environment variables in configuration values.
 

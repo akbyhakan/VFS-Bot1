@@ -65,8 +65,8 @@ class SelectorHealthCheck:
                     result["found"] = True
                     logger.debug(f"✓ Selector valid: {selector_path}")
                     return result
-            except Exception as e:
-                logger.warning(f"Primary selector failed: {selector_path} - {e}")
+            except Exception as primary_error:
+                logger.warning(f"Primary selector failed: {selector_path} - {primary_error}")
 
                 # Try fallback selectors
                 fallbacks = self.selector_manager.get_fallbacks(selector_path)
@@ -90,11 +90,11 @@ class SelectorHealthCheck:
                                     "Please update config/selectors.yaml"
                                 )
                                 return result
-                        except Exception as e:
-                            logger.debug(f"Fallback selector {i} failed for {selector_path}: {e}")
+                        except Exception as fallback_error:
+                            logger.debug(f"Fallback selector {i} failed for {selector_path}: {fallback_error}")
                             continue
 
-                result["error"] = f"All selectors failed: {str(e)}"
+                result["error"] = f"All selectors failed: {str(primary_error)}"
                 return result
 
         except Exception as e:
