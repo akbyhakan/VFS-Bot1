@@ -9,7 +9,7 @@ import pytest
 from src.models.database import Database
 from src.repositories.appointment_repository import AppointmentRepository
 from src.repositories.user_repository import UserRepository
-from src.services.appointment_deduplication import AppointmentDeduplicationService
+from src.services.appointment_deduplication import AppointmentDeduplication
 
 logger = logging.getLogger(__name__)
 
