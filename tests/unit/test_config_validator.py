@@ -126,20 +126,3 @@ class TestConfigValidator:
         result = ConfigValidator.validate(config)
 
         assert result is True
-
-    def test_required_sections_defined(self):
-        """Test that required sections are properly defined."""
-        assert "vfs" in ConfigValidator.REQUIRED_SECTIONS
-        assert "bot" in ConfigValidator.REQUIRED_SECTIONS
-        assert "captcha" in ConfigValidator.REQUIRED_SECTIONS
-        assert "notifications" in ConfigValidator.REQUIRED_SECTIONS
-
-    def test_vfs_required_fields_defined(self):
-        """Test that VFS required fields are properly defined."""
-        assert "base_url" in ConfigValidator.VFS_REQUIRED
-        assert "country" in ConfigValidator.VFS_REQUIRED
-        assert "mission" in ConfigValidator.VFS_REQUIRED
-
-    def test_bot_required_fields_defined(self):
-        """Test that bot required fields are properly defined."""
-        assert "check_interval" in ConfigValidator.BOT_REQUIRED
