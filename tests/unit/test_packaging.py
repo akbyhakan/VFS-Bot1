@@ -73,22 +73,33 @@ class TestPackagingMetadata:
 class TestDependencySynchronization:
     """Tests for dependency synchronization between pyproject.toml and requirements.txt."""
 
+    def parse_package_name(self, dep_string):
+        """Extract package name from a dependency string.
+
+        Handles extras like sqlalchemy[asyncio] and inline comments.
+        """
+        # Remove inline comments
+        if "#" in dep_string:
+            dep_string = dep_string.split("#")[0].strip()
+
+        if "[" in dep_string:
+            return dep_string.split("[")[0].lower()
+        else:
+            match = re.match(r"^([a-zA-Z0-9_-]+)", dep_string)
+            if match:
+                return match.group(1).lower()
+        return None
+
     def parse_requirements(self, file_path):
         """Parse requirements from a file."""
         packages = {}
         with open(file_path) as f:
-            lines = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+            lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
         for line in lines:
-            if "[" in line:  # Handle extras like sqlalchemy[asyncio]
-                pkg = line.split("[")[0].lower()
-            else:
-                match = re.match(r"^([a-zA-Z0-9_-]+)", line)
-                if match:
-                    pkg = match.group(1).lower()
-                else:
-                    continue
-            packages[pkg] = line
+            pkg = self.parse_package_name(line)
+            if pkg:
+                packages[pkg] = line
         return packages
 
     def test_pyproject_requirements_sync(self):
@@ -106,15 +117,9 @@ class TestDependencySynchronization:
         pyproject_deps = pyproject_data.get("project", {}).get("dependencies", [])
         pyproject_packages = set()
         for dep in pyproject_deps:
-            if "[" in dep:
-                pkg = dep.split("[")[0].lower()
-            else:
-                match = re.match(r"^([a-zA-Z0-9_-]+)", dep)
-                if match:
-                    pkg = match.group(1).lower()
-                else:
-                    continue
-            pyproject_packages.add(pkg)
+            pkg = self.parse_package_name(dep)
+            if pkg:
+                pyproject_packages.add(pkg)
 
         # Parse requirements.txt
         req_packages = set(self.parse_requirements(req_file).keys())
@@ -145,15 +150,9 @@ class TestDependencySynchronization:
         dev_deps = pyproject_data.get("project", {}).get("optional-dependencies", {}).get("dev", [])
         pyproject_dev_packages = set()
         for dep in dev_deps:
-            if "[" in dep:
-                pkg = dep.split("[")[0].lower()
-            else:
-                match = re.match(r"^([a-zA-Z0-9_-]+)", dep)
-                if match:
-                    pkg = match.group(1).lower()
-                else:
-                    continue
-            pyproject_dev_packages.add(pkg)
+            pkg = self.parse_package_name(dep)
+            if pkg:
+                pyproject_dev_packages.add(pkg)
 
         # Parse requirements-dev.txt
         req_dev_packages = set(self.parse_requirements(req_dev_file).keys())

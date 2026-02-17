@@ -14,7 +14,7 @@ except ImportError:
 def parse_requirements_txt(file_path):
     """Parse requirements from a requirements.txt file."""
     with open(file_path) as f:
-        lines = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+        lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
     packages = {}
     for line in lines:
@@ -34,6 +34,24 @@ def parse_requirements_txt(file_path):
                 continue
         packages[pkg] = constraint.strip()
     return packages
+
+
+def parse_package_name(dep_string):
+    """Extract package name from a dependency string.
+
+    Handles extras like sqlalchemy[asyncio] and inline comments.
+    """
+    # Remove inline comments
+    if "#" in dep_string:
+        dep_string = dep_string.split("#")[0].strip()
+
+    if "[" in dep_string:  # Handle extras
+        return dep_string.split("[")[0].lower()
+    else:
+        match = re.match(r"^([a-zA-Z0-9_-]+)", dep_string)
+        if match:
+            return match.group(1).lower()
+    return None
 
 
 def verify_pyproject_sync():
@@ -58,24 +76,22 @@ def verify_pyproject_sync():
         print("⚠️  No dependencies found in pyproject.toml [project.dependencies]")
         return False
 
-    # Parse dependencies from pyproject.toml
+    # Parse dependencies from pyproject.toml using shared helper
     pyproject_packages = {}
     for dep in pyproject_deps:
-        # Remove inline comments
-        if "#" in dep:
-            dep = dep.split("#")[0].strip()
-
-        if "[" in dep:  # Handle extras
-            pkg = dep.split("[")[0].lower()
-            constraint = dep.split("]")[1] if "]" in dep else ""
-        else:
-            match = re.match(r"^([a-zA-Z0-9_-]+)", dep)
-            if match:
-                pkg = match.group(1).lower()
-                constraint = dep[len(match.group(1)) :]
+        pkg = parse_package_name(dep)
+        if pkg:
+            # Extract constraint for comparison
+            dep_clean = dep.split("#")[0].strip() if "#" in dep else dep
+            if "[" in dep_clean:
+                constraint = dep_clean.split("]")[1] if "]" in dep_clean else ""
             else:
-                continue
-        pyproject_packages[pkg] = constraint.strip()
+                match = re.match(r"^([a-zA-Z0-9_-]+)", dep_clean)
+                if match:
+                    constraint = dep_clean[len(match.group(1)) :]
+                else:
+                    constraint = ""
+            pyproject_packages[pkg] = constraint.strip()
 
     # Parse requirements.txt
     req_packages = parse_requirements_txt(req_file)
