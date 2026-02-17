@@ -145,7 +145,7 @@ jobs:
         if [ -z "$ENCRYPTION_KEY" ]; then
           export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
         fi
-        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
+        pytest tests/
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

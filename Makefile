@@ -50,10 +50,10 @@ format:
 	isort .
 
 test:
-	pytest tests/
+	pytest tests/ --no-cov
 
 test-cov:
-	pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing
+	pytest tests/
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

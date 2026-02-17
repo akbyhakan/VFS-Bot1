@@ -172,20 +172,20 @@ def get_validated_environment() -> str:
 ---
 
 ### 6. ✅ Test Coverage Improvement
-**File**: `pytest.ini`
+**File**: `pyproject.toml`
 
-**Problem**: Current coverage threshold was 70%, below industry best practices.
+**Problem**: Current coverage threshold was 70%, below industry best practices. Configuration was split between `pytest.ini` (68%) and `pyproject.toml` (80%), with `pytest.ini` taking precedence and causing the 80% target to be ignored.
 
 **Solution Implemented**:
-- Increased `--cov-fail-under` from 70 to 80
+- Consolidated all pytest configuration into `pyproject.toml` (`[tool.pytest.ini_options]`)
+- Removed conflicting `pytest.ini` file
+- Increased `--cov-fail-under` from 68 to 80 (now actually enforced)
 - Added `--cov-branch` for branch coverage analysis
 
 **Code Changes**:
-```ini
-addopts = 
-    --verbose
-    --cov-fail-under=80
-    --cov-branch
+```toml
+[tool.pytest.ini_options]
+addopts = "-ra --verbose --strict-markers --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml --cov-fail-under=80 --cov-branch -m \"not integration and not e2e\""
 ```
 
 ---
@@ -361,7 +361,7 @@ Existing (unchanged):
 3. `src/services/bot/auth_service.py` - Password leak prevention
 4. `main.py` - Graceful shutdown timeout
 5. `web/app.py` - Environment validation
-6. `pytest.ini` - Coverage threshold
+6. `pyproject.toml` - Coverage threshold (pytest.ini removed, consolidated)
 7. `src/models/database.py` - Batch operations
 8. `src/core/exceptions.py` - New exception types
 9. `tests/test_p0_p2_fixes.py` - Comprehensive test suite (NEW)
