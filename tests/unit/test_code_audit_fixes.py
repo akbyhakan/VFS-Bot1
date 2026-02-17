@@ -103,7 +103,7 @@ class TestBrowserMemoryLeakPrevention:
 
     @pytest.mark.asyncio
     async def test_browser_manager_should_restart(self):
-        """Test should_restart logic."""
+        """Test should_restart logic based on page count threshold."""
         from src.services.bot.browser_manager import BrowserManager
 
         config = {
@@ -112,12 +112,16 @@ class TestBrowserMemoryLeakPrevention:
         }
         browser_manager = BrowserManager(config)
 
-        # First 2 pages should not trigger restart
-        assert not await browser_manager.should_restart()  # 1
-        assert not await browser_manager.should_restart()  # 2
+        # Simulate page creation (in production, new_page() increments _page_count)
+        browser_manager._page_count = 1
+        assert not await browser_manager.should_restart()
+
+        browser_manager._page_count = 2
+        assert not await browser_manager.should_restart()
 
         # 3rd page should trigger restart
-        assert await browser_manager.should_restart()  # 3
+        browser_manager._page_count = 3
+        assert await browser_manager.should_restart()
 
     @pytest.mark.asyncio
     async def test_browser_manager_default_restart_threshold(self):
@@ -196,6 +200,7 @@ class TestGracefulShutdownNotifications:
             bot = VFSBot.__new__(VFSBot)
             bot.running = True
             bot._stopped = False
+            bot._cleaned_up = False  # YENİ: cleanup idempotent flag
             bot.browser_manager = browser_manager
             bot.notifier = notifier
             bot._active_booking_tasks = []

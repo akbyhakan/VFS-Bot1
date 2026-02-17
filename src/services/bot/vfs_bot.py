@@ -70,6 +70,9 @@ class VFSBot:
 
         # Track if stop() has been called to make it idempotent
         self._stopped: bool = False
+        
+        # Track if cleanup() has been called to make it idempotent
+        self._cleaned_up: bool = False
 
         # Track active booking tasks for graceful shutdown
         self._active_booking_tasks: set = set()
@@ -184,7 +187,11 @@ class VFSBot:
         return False
 
     async def cleanup(self) -> None:
-        """Clean up browser resources."""
+        """Clean up browser resources. Idempotent — safe to call multiple times."""
+        if self._cleaned_up:
+            logger.debug("cleanup() called but already cleaned up")
+            return
+        self._cleaned_up = True
         try:
             await self.browser_manager.close()
             logger.info("Bot cleanup completed")
@@ -195,6 +202,7 @@ class VFSBot:
         """Start the bot."""
         self.running = True
         self._stopped = False  # Reset stopped flag when starting
+        self._cleaned_up = False  # Reset cleaned up flag when starting
         logger.info("Starting VFS-Bot...")
         await self.notifier.notify_bot_started()
 
