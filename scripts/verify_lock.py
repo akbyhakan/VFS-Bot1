@@ -21,7 +21,7 @@ def parse_requirements_txt(file_path):
         # Remove inline comments
         if "#" in line:
             line = line.split("#")[0].strip()
-        
+
         if "[" in line:  # Handle extras like sqlalchemy[asyncio]
             pkg = line.split("[")[0].lower()
             constraint = line.split("]")[1] if "]" in line else ""
@@ -64,7 +64,7 @@ def verify_pyproject_sync():
         # Remove inline comments
         if "#" in dep:
             dep = dep.split("#")[0].strip()
-            
+
         if "[" in dep:  # Handle extras
             pkg = dep.split("[")[0].lower()
             constraint = dep.split("]")[1] if "]" in dep else ""
@@ -86,16 +86,12 @@ def verify_pyproject_sync():
     # Check for packages in pyproject.toml but not in requirements.txt
     for pkg in pyproject_packages:
         if pkg not in req_packages:
-            errors.append(
-                f"❌ {pkg} is in pyproject.toml but missing from requirements.txt"
-            )
+            errors.append(f"❌ {pkg} is in pyproject.toml but missing from requirements.txt")
 
     # Check for packages in requirements.txt but not in pyproject.toml
     for pkg in req_packages:
         if pkg not in pyproject_packages:
-            errors.append(
-                f"❌ {pkg} is in requirements.txt but missing from pyproject.toml"
-            )
+            errors.append(f"❌ {pkg} is in requirements.txt but missing from pyproject.toml")
 
     # Check for version constraint mismatches
     for pkg in pyproject_packages:
@@ -142,9 +138,7 @@ def main():
         return 1
 
     with open(lock_file) as f:
-        lock_lines = [
-            l.strip() for l in f if l.strip() and not l.startswith("#") and "==" in l
-        ]
+        lock_lines = [l.strip() for l in f if l.strip() and not l.startswith("#") and "==" in l]
 
     lock_packages = {}
     for line in lock_lines:
@@ -173,17 +167,13 @@ def main():
         if "==" in constraint:
             expected = constraint.replace("==", "")
             if lock_version != expected:
-                errors.append(
-                    f"❌ {pkg}: expected version {expected}, got {lock_version}"
-                )
+                errors.append(f"❌ {pkg}: expected version {expected}, got {lock_version}")
         elif "~=" in constraint:
             expected_base = constraint.replace("~=", "")
             # Compatible release: should match major.minor
             base_version = expected_base.rsplit(".", 1)[0]
             if not lock_version.startswith(base_version):
-                errors.append(
-                    f"❌ {pkg}: ~={expected_base} not compatible with {lock_version}"
-                )
+                errors.append(f"❌ {pkg}: ~={expected_base} not compatible with {lock_version}")
 
     if errors:
         print("\n🔍 requirements.lock validation issues:")

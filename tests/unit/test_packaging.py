@@ -63,9 +63,7 @@ class TestPackagingMetadata:
             pyproject_data = tomllib.load(f)
 
         project = pyproject_data.get("project", {})
-        assert (
-            "optional-dependencies" in project
-        ), "[project.optional-dependencies] missing"
+        assert "optional-dependencies" in project, "[project.optional-dependencies] missing"
         optional_deps = project["optional-dependencies"]
         assert "dev" in optional_deps, "[project.optional-dependencies.dev] missing"
         assert isinstance(optional_deps["dev"], list), "dev dependencies must be a list"
@@ -144,11 +142,7 @@ class TestDependencySynchronization:
         with open(pyproject_file, "rb") as f:
             pyproject_data = tomllib.load(f)
 
-        dev_deps = (
-            pyproject_data.get("project", {})
-            .get("optional-dependencies", {})
-            .get("dev", [])
-        )
+        dev_deps = pyproject_data.get("project", {}).get("optional-dependencies", {}).get("dev", [])
         pyproject_dev_packages = set()
         for dep in dev_deps:
             if "[" in dep:
@@ -188,6 +182,4 @@ class TestDependencySynchronization:
 
         for field in required_fields:
             assert field in project, f"Required field '{field}' missing from [project]"
-            assert (
-                project[field] and len(str(project[field])) > 0
-            ), f"Field '{field}' is empty"
+            assert project[field] and len(str(project[field])) > 0, f"Field '{field}' is empty"
