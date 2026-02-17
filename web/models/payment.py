@@ -59,8 +59,3 @@ class PaymentCardResponse(BaseModel):
     expiry_year: str
     created_at: str
 
-
-class PaymentInitiateRequest(BaseModel):
-    """Payment initiation request."""
-
-    appointment_id: int

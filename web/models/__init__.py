@@ -10,7 +10,7 @@ from .appointments import (
 from .auth import LoginRequest, TokenResponse
 from .bot import BotCommand, StatusUpdate
 from .common import CountryResponse, WebhookUrlsResponse
-from .payment import PaymentCardRequest, PaymentCardResponse, PaymentInitiateRequest
+from .payment import PaymentCardRequest, PaymentCardResponse
 from .proxy import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest
 from .users import UserCreateRequest, UserModel, UserUpdateRequest
 
@@ -33,7 +33,6 @@ __all__ = [
     # Payment models
     "PaymentCardRequest",
     "PaymentCardResponse",
-    "PaymentInitiateRequest",
     # Proxy models
     "ProxyCreateRequest",
     "ProxyUpdateRequest",

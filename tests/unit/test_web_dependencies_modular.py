@@ -18,7 +18,6 @@ class TestWebDependenciesModularStructure:
             LoginRequest,
             PaymentCardRequest,
             PaymentCardResponse,
-            PaymentInitiateRequest,
             ProxyCreateRequest,
             ProxyResponse,
             ProxyUpdateRequest,
