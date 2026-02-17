@@ -1,4 +1,3 @@
-# NOTE: Run 'make lock' to regenerate with correct versions after this refactor
 # Auto-generated lock file - DO NOT EDIT MANUALLY
 # Generated from pyproject.toml for reproducible builds
 # To regenerate: make lock

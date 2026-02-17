@@ -85,8 +85,7 @@ lock:  ## Regenerate requirements.lock from pyproject.toml in isolated venv
 	python3 -m venv .lock-venv
 	.lock-venv/bin/pip install --upgrade pip
 	.lock-venv/bin/pip install .
-	@echo "# NOTE: Run 'make lock' to regenerate with correct versions after this refactor" > requirements.lock
-	@echo "# Auto-generated lock file - DO NOT EDIT MANUALLY" >> requirements.lock
+	@echo "# Auto-generated lock file - DO NOT EDIT MANUALLY" > requirements.lock
 	@echo "# Generated from pyproject.toml for reproducible builds" >> requirements.lock
 	@echo "# To regenerate: make lock" >> requirements.lock
 	@echo "# To verify: make verify-lock" >> requirements.lock

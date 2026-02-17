@@ -123,7 +123,12 @@ class TestDependencySynchronization:
             lock_packages[pkg.lower()] = version
 
         # Check that key packages from pyproject.toml exist in requirements.lock
-        # We'll check a few critical packages as examples
+        # We test a sampling of critical packages that represent different package types:
+        # - fastapi: web framework (strict pin)
+        # - playwright: browser automation (range pin)
+        # - uvicorn: ASGI server (strict pin)
+        # - pydantic: data validation (strict pin)
+        # These are foundational to the application and unlikely to be removed.
         critical_packages = ["fastapi", "playwright", "uvicorn", "pydantic"]
         for pkg in critical_packages:
             # Normalize package names for comparison
