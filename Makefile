@@ -82,76 +82,18 @@ db-current:
 
 lock:  ## Regenerate requirements.lock from requirements.txt
 	pip install -r requirements.txt
-	pip freeze > requirements.lock
+	@echo "# Auto-generated lock file - DO NOT EDIT MANUALLY" > requirements.lock
+	@echo "# Generated from requirements.txt for reproducible builds" >> requirements.lock
+	@echo "# To regenerate: make lock" >> requirements.lock
+	@echo "# To verify: make verify-lock" >> requirements.lock
+	@echo "" >> requirements.lock
+	@echo "# Core packages from requirements.txt (pinned versions)" >> requirements.lock
+	pip freeze >> requirements.lock
 	@echo "✅ requirements.lock regenerated from requirements.txt"
 
 verify-lock:  ## Verify requirements.lock consistency with requirements.txt
 	@echo "🔍 Verifying requirements.lock against requirements.txt..."
-	@python3 -c "\
-import re; \
-import sys; \
-\
-# Read requirements.txt and extract main packages with their constraints \
-with open('requirements.txt') as f: \
-    req_lines = [l.strip() for l in f if l.strip() and not l.startswith('#')]; \
-\
-# Parse package names and version constraints from requirements.txt \
-req_packages = {}; \
-for line in req_lines: \
-    if '[' in line:  # Handle extras like sqlalchemy[asyncio] \
-        pkg = line.split('[')[0].lower(); \
-        constraint = line.split(']')[1] if ']' in line else ''; \
-    else: \
-        match = re.match(r'^([a-zA-Z0-9_-]+)', line); \
-        if match: \
-            pkg = match.group(1).lower(); \
-            constraint = line[len(match.group(1)):]; \
-        else: \
-            continue; \
-    req_packages[pkg] = constraint.strip(); \
-\
-# Read requirements.lock and extract versions \
-with open('requirements.lock') as f: \
-    lock_lines = [l.strip() for l in f if l.strip() and not l.startswith('#') and '==' in l]; \
-\
-lock_packages = {}; \
-for line in lock_lines: \
-    pkg, version = line.split('=='); \
-    lock_packages[pkg.lower()] = version; \
-\
-# Check critical packages from requirements.txt \
-errors = []; \
-for pkg, constraint in req_packages.items(): \
-    pkg_norm = pkg.replace('_', '-').replace('.', '-'); \
-    lock_pkg = None; \
-    for lpkg in lock_packages: \
-        if lpkg.replace('_', '-').replace('.', '-') == pkg_norm: \
-            lock_pkg = lpkg; \
-            break; \
-    \
-    if not lock_pkg: \
-        errors.append(f'❌ {pkg} missing from requirements.lock'); \
-        continue; \
-    \
-    lock_version = lock_packages[lock_pkg]; \
-    \
-    # Validate version constraints \
-    if '==' in constraint: \
-        expected = constraint.replace('==', ''); \
-        if lock_version != expected: \
-            errors.append(f'❌ {pkg}: expected {expected}, got {lock_version}'); \
-    elif '~=' in constraint: \
-        expected_base = constraint.replace('~=', '').strip(); \
-        # Compatible release: should match major.minor \
-        if not lock_version.startswith(expected_base.rsplit('.', 1)[0]): \
-            errors.append(f'❌ {pkg}: ~={expected_base} not compatible with {lock_version}'); \
-\
-if errors: \
-    print('\\n'.join(errors)); \
-    sys.exit(1); \
-else: \
-    print('✅ All package versions in requirements.lock are consistent with requirements.txt'); \
-"
+	@python3 scripts/verify_lock.py
 
 security:  ## Run security scans (bandit + safety)
 	@echo "🔒 Running security scans..."
