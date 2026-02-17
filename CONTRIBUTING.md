@@ -69,9 +69,15 @@ cd VFS-Bot1
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (Option 1: Using requirements.txt)
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
+
+# Install dependencies (Option 2: Using pyproject.toml - PEP 517/518 compliant)
+pip install -e ".[dev]"
+
+# Alternative: Install without dev dependencies
+pip install -e .
 
 # After adding/changing dependencies in requirements.txt:
 make lock
@@ -88,6 +94,11 @@ pytest tests/
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 ```
+
+**Note:** When adding or changing dependencies:
+- Update both `pyproject.toml` and `requirements.txt` to keep them synchronized
+- Run `make lock` to regenerate `requirements.lock`
+- Run `make verify-lock` to verify consistency
 
 ## Code Style
 

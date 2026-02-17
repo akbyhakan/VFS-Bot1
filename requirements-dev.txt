@@ -1,3 +1,8 @@
+# ⚠️  IMPORTANT: Keep this file in sync with pyproject.toml [project.optional-dependencies.dev]
+# Both files should contain the same development dependencies for consistency.
+# - pyproject.toml is used for PEP 517/518 compliant installation (pip install -e ".[dev]")
+# - requirements-dev.txt is used for Docker builds and CI workflows
+#
 # Testing
 pytest==8.3.4
 pytest-cov==6.0.0

@@ -1,3 +1,8 @@
+# ⚠️  IMPORTANT: Keep this file in sync with pyproject.toml [project.dependencies]
+# Both files should contain the same runtime dependencies for consistency.
+# - pyproject.toml is used for PEP 517/518 compliant installation (pip install .)
+# - requirements.txt is used for Docker builds and CI workflows
+#
 # Dependency Pinning Strategy:
 # - ==  : Strict pin for critical/stable packages
 # - ~=  : Compatible release (allows patch updates within same minor)
