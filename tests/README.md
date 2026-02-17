@@ -265,13 +265,13 @@ pip install -r requirements-dev.txt
 
 ### For Integration Tests
 
-**PostgreSQL 15+:**
+**PostgreSQL 16+:**
 ```bash
 # Using Docker
 docker run -d -p 5432:5432 \
   -e POSTGRES_PASSWORD=test_pass \
   -e POSTGRES_DB=vfs_test \
-  postgres:15
+  postgres:16
 
 # Set environment variable
 export TEST_DATABASE_URL="postgresql://postgres:test_pass@localhost:5432/vfs_test"

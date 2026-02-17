@@ -552,38 +552,63 @@ pytest tests/test_bot.py -v
 ```
 VFS-Bot1/
 ├── src/
-│   ├── core/                 # Core modules
-│   │   ├── config/           # Configuration management
-│   │   │   ├── config_loader.py  # YAML config loader
+│   ├── core/                  # Framework (config, auth, infra, exceptions)
+│   │   ├── config/            # Configuration management
+│   │   │   ├── config_loader.py   # YAML config loader
 │   │   │   ├── config_validator.py
-│   │   │   └── env_validator.py  # Environment validation
-│   │   ├── logger.py         # Structured logging (Loguru)
-│   │   ├── monitoring.py     # Sentry integration
-│   │   └── exceptions.py
-│   ├── models/               # Data models
-│   │   └── database.py       # PostgreSQL operations
-│   ├── services/             # Business logic
-│   │   ├── bot/              # Main bot logic (modular)
-│   │   ├── captcha_solver.py # Captcha solving
-│   │   ├── centre_fetcher.py # Auto-fetch centres
-│   │   └── notification.py   # Telegram & Email
-│   ├── utils/                # Utilities
-│   ├── middleware/           # Middleware components
-│   └── repositories/         # Data repositories
-├── web/                      # Web dashboard
-│   ├── app.py               # FastAPI application
-│   ├── static/              # CSS, JavaScript
-│   └── templates/           # HTML templates
-├── config/                   # Configuration files
-├── tests/                    # Test suite
-├── logs/                     # Log files (gitignored)
-├── screenshots/             # Screenshots (gitignored)
-├── docs/                    # Documentation
-├── scripts/                 # Helper scripts
-├── main.py                  # Entry point
-├── requirements.txt         # Python dependencies
-├── Dockerfile               # Docker configuration
-└── docker-compose.yml       # Docker Compose setup
+│   │   │   └── env_validator.py   # Environment validation
+│   │   ├── infra/             # Infrastructure modules
+│   │   │   ├── monitoring.py  # Sentry integration
+│   │   │   ├── runners.py     # Application run modes
+│   │   │   ├── shutdown.py    # Graceful shutdown
+│   │   │   ├── startup.py     # Environment & dependency validation
+│   │   │   ├── startup_validator.py  # Security warnings
+│   │   │   └── retry.py       # Retry strategies
+│   │   ├── logger.py          # Structured logging (Loguru)
+│   │   ├── auth.py            # JWT authentication
+│   │   ├── security.py        # API key management
+│   │   ├── environment.py     # Environment detection
+│   │   ├── bot_controller.py  # Bot lifecycle control
+│   │   └── exceptions.py      # Custom exception hierarchy
+│   ├── models/                # Database interface & Pydantic schemas
+│   │   └── database.py        # PostgreSQL operations
+│   ├── repositories/          # Data access layer (Repository pattern)
+│   ├── services/              # Business logic
+│   │   ├── bot/               # Main bot logic (modular)
+│   │   ├── booking/           # Booking orchestration
+│   │   ├── session/           # Session management & recovery
+│   │   ├── notification/      # Telegram & Email notifications
+│   │   ├── data_sync/         # Dropdown sync & centre fetcher
+│   │   ├── captcha_solver.py  # Captcha solving
+│   │   └── slot_analyzer.py   # Slot pattern analysis
+│   ├── selector/              # Adaptive CSS/semantic selector system
+│   ├── constants/             # Application constants
+│   ├── middleware/            # Request tracking & correlation
+│   ├── types/                 # TypedDict definitions
+│   └── utils/                 # Utilities (anti-detection, security, helpers)
+├── web/                       # Web dashboard
+│   ├── app.py                 # FastAPI application
+│   ├── routes/                # API route modules
+│   ├── models/                # Web-specific models
+│   ├── state/                 # Bot state management
+│   ├── websocket/             # WebSocket manager
+│   ├── static/                # CSS, JavaScript, frontend build
+│   └── templates/             # HTML templates
+├── frontend/                  # React + TypeScript + Vite SPA
+├── config/                    # Configuration files (YAML, selectors)
+├── tests/                     # Test suite (unit, integration, e2e, load)
+├── alembic/                   # Database migrations
+├── monitoring/                # Prometheus/Grafana configs
+├── docs/                      # Documentation (20+ guides)
+├── scripts/                   # Helper scripts
+├── logs/                      # Log files (gitignored)
+├── screenshots/               # Screenshots (gitignored)
+├── main.py                    # Entry point (4-phase startup)
+├── requirements.txt           # Python dependencies
+├── requirements.lock          # Pinned dependencies for Docker
+├── pyproject.toml             # Project metadata & tool config
+├── Dockerfile                 # Multi-stage Docker build
+└── docker-compose.yml         # Docker Compose setup
 ```
 
 ## 💳 Payment Security (PCI-DSS Compliant)
