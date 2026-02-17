@@ -6,8 +6,8 @@ services:
     container_name: vfs-bot-test
     volumes:
       - .:/app
-      - pip-cache:/root/.cache/pip
-      - playwright-cache:/root/.cache/ms-playwright
+      - pip-cache:/home/vfsbot/.cache/pip
+      - playwright-cache:/home/vfsbot/.cache/ms-playwright
     environment:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - PYTHONUNBUFFERED=1
@@ -20,7 +20,7 @@ services:
     container_name: vfs-bot-lint
     volumes:
       - .:/app
-      - pip-cache:/root/.cache/pip
+      - pip-cache:/home/vfsbot/.cache/pip
     environment:
       - PYTHONUNBUFFERED=1
     command: >

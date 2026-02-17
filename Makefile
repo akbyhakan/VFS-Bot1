@@ -1,11 +1,9 @@
-.PHONY: help install install-editable install-dev install-dev-editable lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock security
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock verify-version security
 
 help:
 	@echo "Available commands:"
-	@echo "  make install             - Install production dependencies from requirements.txt"
-	@echo "  make install-editable    - Install as editable package using pyproject.toml (alternative to 'install')"
-	@echo "  make install-dev         - Install development dependencies from requirements*.txt"
-	@echo "  make install-dev-editable - Install as editable package with dev deps using pyproject.toml (alternative to 'install-dev')"
+	@echo "  make install             - Install production dependencies from pyproject.toml"
+	@echo "  make install-dev         - Install development dependencies from pyproject.toml"
 	@echo "  make lint                - Run linting checks"
 	@echo "  make format              - Format code with black and isort"
 	@echo "  make test                - Run tests"
@@ -20,22 +18,14 @@ help:
 	@echo "  make db-history          - Show migration history"
 	@echo "  make db-current          - Show current migration version"
 	@echo "  make lock                - Generate requirements.lock for reproducible deployments"
-	@echo "  make verify-lock         - Verify requirements.lock is consistent with requirements.txt"
+	@echo "  make verify-lock         - Verify requirements.lock is consistent with pyproject.toml"
+	@echo "  make verify-version      - Verify version sync between pyproject.toml and frontend"
 	@echo "  make security            - Run security scans (bandit + safety)"
 
 install:
-	pip install -r requirements.txt
-
-install-editable:  ## Install as editable package (alternative to 'install')
-	pip install -e .
+	pip install .
 
 install-dev:
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
-	playwright install chromium
-	pre-commit install
-
-install-dev-editable:  ## Install as editable package with dev deps (alternative to 'install-dev')
 	pip install -e ".[dev]"
 	playwright install chromium
 	pre-commit install
@@ -90,20 +80,29 @@ db-history:
 db-current:
 	alembic current
 
-lock:  ## Regenerate requirements.lock from requirements.txt
-	pip install -r requirements.txt
-	@echo "# Auto-generated lock file - DO NOT EDIT MANUALLY" > requirements.lock
-	@echo "# Generated from requirements.txt for reproducible builds" >> requirements.lock
+lock:  ## Regenerate requirements.lock from pyproject.toml in isolated venv
+	@echo "🔒 Creating isolated environment for lock file generation..."
+	python3 -m venv .lock-venv
+	.lock-venv/bin/pip install --upgrade pip
+	.lock-venv/bin/pip install .
+	@echo "# NOTE: Run 'make lock' to regenerate with correct versions after this refactor" > requirements.lock
+	@echo "# Auto-generated lock file - DO NOT EDIT MANUALLY" >> requirements.lock
+	@echo "# Generated from pyproject.toml for reproducible builds" >> requirements.lock
 	@echo "# To regenerate: make lock" >> requirements.lock
 	@echo "# To verify: make verify-lock" >> requirements.lock
 	@echo "" >> requirements.lock
-	@echo "# Core packages from requirements.txt (pinned versions)" >> requirements.lock
-	pip freeze >> requirements.lock
-	@echo "✅ requirements.lock regenerated from requirements.txt"
+	@echo "# Core packages from pyproject.toml (pinned versions)" >> requirements.lock
+	.lock-venv/bin/pip freeze | grep -v "^vfs-bot==" >> requirements.lock
+	rm -rf .lock-venv
+	@echo "✅ requirements.lock regenerated from pyproject.toml"
 
-verify-lock:  ## Verify requirements.lock consistency with requirements.txt
-	@echo "🔍 Verifying requirements.lock against requirements.txt..."
+verify-lock:  ## Verify requirements.lock consistency with pyproject.toml
+	@echo "🔍 Verifying requirements.lock against pyproject.toml..."
 	@python3 scripts/verify_lock.py
+
+verify-version:  ## Verify version sync between pyproject.toml and frontend
+	@echo "🔍 Verifying version synchronization..."
+	@python3 scripts/verify_version_sync.py
 
 security:  ## Run security scans (bandit + safety)
 	@echo "🔒 Running security scans..."
