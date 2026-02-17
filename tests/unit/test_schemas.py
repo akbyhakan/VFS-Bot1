@@ -5,7 +5,12 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from src.core.config.config_models import BotConfig, NotificationConfig
+from src.core.config.config_models import (
+    BotConfig,
+    EmailConfig,
+    NotificationConfig,
+    TelegramConfig,
+)
 from src.core.enums import AppointmentStatus
 from src.models.schemas import (
     AppointmentCreate,
@@ -137,8 +142,8 @@ def test_notification_config_defaults():
     """Test NotificationConfig with default values."""
     config = NotificationConfig()
 
-    assert config.telegram_enabled is False
-    assert config.email_enabled is False
+    assert config.telegram.enabled is False
+    assert config.email.enabled is False
     assert config.webhook_enabled is False
     assert config.webhook_url is None
 
@@ -146,14 +151,14 @@ def test_notification_config_defaults():
 def test_notification_config_custom_values():
     """Test NotificationConfig with custom values."""
     config = NotificationConfig(
-        telegram_enabled=True,
-        email_enabled=True,
+        telegram=TelegramConfig(enabled=True, bot_token="test_token", chat_id="12345"),
+        email=EmailConfig(enabled=True, sender="test@example.com", password="pass", receiver="recv@example.com"),
         webhook_enabled=True,
         webhook_url="https://example.com/webhook",
     )
 
-    assert config.telegram_enabled is True
-    assert config.email_enabled is True
+    assert config.telegram.enabled is True
+    assert config.email.enabled is True
     assert config.webhook_enabled is True
     assert config.webhook_url == "https://example.com/webhook"
 

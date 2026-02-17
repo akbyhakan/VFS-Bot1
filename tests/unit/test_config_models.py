@@ -7,7 +7,9 @@ from src.core.config.config_models import (
     AppConfig,
     BotConfig,
     CaptchaConfig,
+    EmailConfig,
     NotificationConfig,
+    TelegramConfig,
     VFSConfig,
 )
 
@@ -190,21 +192,23 @@ class TestNotificationConfig:
     def test_default_values(self):
         """Test default values."""
         config = NotificationConfig()
-        assert config.telegram_enabled is False
-        assert config.telegram_bot_token.get_secret_value() == ""
-        assert config.telegram_chat_id == ""
-        assert config.email_enabled is False
-        assert config.email_sender == ""
-        assert config.email_password.get_secret_value() == ""
-        assert config.email_receiver == ""
-        assert config.smtp_server == "smtp.gmail.com"
-        assert config.smtp_port == 587
+        assert config.telegram.enabled is False
+        assert config.telegram.bot_token.get_secret_value() == ""
+        assert config.telegram.chat_id == ""
+        assert config.email.enabled is False
+        assert config.email.sender == ""
+        assert config.email.password.get_secret_value() == ""
+        assert config.email.receiver == ""
+        assert config.email.smtp_server == "smtp.gmail.com"
+        assert config.email.smtp_port == 587
+        assert config.webhook_enabled is False
+        assert config.webhook_url is None
 
     def test_from_dict_empty(self):
         """Test from_dict with empty dict."""
         config = NotificationConfig.from_dict({})
-        assert config.telegram_enabled is False
-        assert config.email_enabled is False
+        assert config.telegram.enabled is False
+        assert config.email.enabled is False
 
     def test_from_dict_with_telegram(self):
         """Test from_dict with telegram config."""
@@ -216,10 +220,10 @@ class TestNotificationConfig:
             }
         }
         config = NotificationConfig.from_dict(data)
-        assert config.telegram_enabled is True
-        assert config.telegram_bot_token.get_secret_value() == "test_token"
-        assert config.telegram_chat_id == "123456"
-        assert config.email_enabled is False
+        assert config.telegram.enabled is True
+        assert config.telegram.bot_token.get_secret_value() == "test_token"
+        assert config.telegram.chat_id == "123456"
+        assert config.email.enabled is False
 
     def test_from_dict_with_email(self):
         """Test from_dict with email config."""
@@ -234,12 +238,12 @@ class TestNotificationConfig:
             }
         }
         config = NotificationConfig.from_dict(data)
-        assert config.email_enabled is True
-        assert config.email_sender == "sender@test.com"
-        assert config.email_password.get_secret_value() == "pass123"
-        assert config.email_receiver == "receiver@test.com"
-        assert config.smtp_server == "smtp.test.com"
-        assert config.smtp_port == 465
+        assert config.email.enabled is True
+        assert config.email.sender == "sender@test.com"
+        assert config.email.password.get_secret_value() == "pass123"
+        assert config.email.receiver == "receiver@test.com"
+        assert config.email.smtp_server == "smtp.test.com"
+        assert config.email.smtp_port == 465
 
     def test_from_dict_with_both(self):
         """Test from_dict with both telegram and email."""
@@ -257,10 +261,10 @@ class TestNotificationConfig:
             },
         }
         config = NotificationConfig.from_dict(data)
-        assert config.telegram_enabled is True
-        assert config.email_enabled is True
-        assert config.telegram_bot_token.get_secret_value() == "token"
-        assert config.email_sender == "test@test.com"
+        assert config.telegram.enabled is True
+        assert config.email.enabled is True
+        assert config.telegram.bot_token.get_secret_value() == "token"
+        assert config.email.sender == "test@test.com"
 
 
 class TestAppConfig:
@@ -329,7 +333,9 @@ class TestSecretStrMasking:
 
     def test_notification_config_masks_bot_token(self):
         """Test that repr masks telegram bot token."""
-        config = NotificationConfig(telegram_bot_token="secret_token_123")
+        config = NotificationConfig(
+            telegram=TelegramConfig(bot_token="secret_token_123", chat_id="123")
+        )
         repr_str = repr(config)
 
         assert "secret_token_123" not in repr_str
@@ -337,7 +343,9 @@ class TestSecretStrMasking:
 
     def test_notification_config_masks_email_password(self):
         """Test that repr masks email password."""
-        config = NotificationConfig(email_password="secret_pass_123")
+        config = NotificationConfig(
+            email=EmailConfig(password="secret_pass_123", sender="test@test.com")
+        )
         repr_str = repr(config)
 
         assert "secret_pass_123" not in repr_str
@@ -346,9 +354,8 @@ class TestSecretStrMasking:
     def test_notification_config_does_not_mask_non_sensitive_fields(self):
         """Test that repr does not mask non-sensitive fields."""
         config = NotificationConfig(
-            telegram_chat_id="123456",
-            email_sender="sender@test.com",
-            email_receiver="receiver@test.com",
+            telegram=TelegramConfig(chat_id="123456"),
+            email=EmailConfig(sender="sender@test.com", receiver="receiver@test.com"),
         )
         repr_str = repr(config)
 
