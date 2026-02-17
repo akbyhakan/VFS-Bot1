@@ -1,32 +1,42 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock security
+.PHONY: help install install-editable install-dev install-dev-editable lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock security
 
 help:
 	@echo "Available commands:"
-	@echo "  make install      - Install production dependencies"
-	@echo "  make install-dev  - Install development dependencies"
-	@echo "  make lint         - Run linting checks"
-	@echo "  make format       - Format code with black and isort"
-	@echo "  make test         - Run tests"
-	@echo "  make test-cov     - Run tests with coverage report"
-	@echo "  make clean        - Clean build artifacts and cache"
-	@echo "  make docker-test  - Run tests in Docker"
-	@echo "  make pre-commit   - Run pre-commit hooks"
-	@echo "  make db-init      - Initialize database (first time setup via Alembic)"
-	@echo "  make db-migrate   - Generate new migration (usage: make db-migrate msg='description')"
-	@echo "  make db-upgrade   - Apply pending migrations"
-	@echo "  make db-downgrade - Rollback last migration"
-	@echo "  make db-history   - Show migration history"
-	@echo "  make db-current   - Show current migration version"
-	@echo "  make lock         - Generate requirements.lock for reproducible deployments"
-	@echo "  make verify-lock  - Verify requirements.lock is consistent with requirements.txt"
-	@echo "  make security     - Run security scans (bandit + safety)"
+	@echo "  make install             - Install production dependencies from requirements.txt"
+	@echo "  make install-editable    - Install as editable package using pyproject.toml (alternative to 'install')"
+	@echo "  make install-dev         - Install development dependencies from requirements*.txt"
+	@echo "  make install-dev-editable - Install as editable package with dev deps using pyproject.toml (alternative to 'install-dev')"
+	@echo "  make lint                - Run linting checks"
+	@echo "  make format              - Format code with black and isort"
+	@echo "  make test                - Run tests"
+	@echo "  make test-cov            - Run tests with coverage report"
+	@echo "  make clean               - Clean build artifacts and cache"
+	@echo "  make docker-test         - Run tests in Docker"
+	@echo "  make pre-commit          - Run pre-commit hooks"
+	@echo "  make db-init             - Initialize database (first time setup via Alembic)"
+	@echo "  make db-migrate          - Generate new migration (usage: make db-migrate msg='description')"
+	@echo "  make db-upgrade          - Apply pending migrations"
+	@echo "  make db-downgrade        - Rollback last migration"
+	@echo "  make db-history          - Show migration history"
+	@echo "  make db-current          - Show current migration version"
+	@echo "  make lock                - Generate requirements.lock for reproducible deployments"
+	@echo "  make verify-lock         - Verify requirements.lock is consistent with requirements.txt"
+	@echo "  make security            - Run security scans (bandit + safety)"
 
 install:
 	pip install -r requirements.txt
 
+install-editable:  ## Install as editable package (alternative to 'install')
+	pip install -e .
+
 install-dev:
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
+	playwright install chromium
+	pre-commit install
+
+install-dev-editable:  ## Install as editable package with dev deps (alternative to 'install-dev')
+	pip install -e ".[dev]"
 	playwright install chromium
 	pre-commit install
 
