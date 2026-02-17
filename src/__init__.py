@@ -3,6 +3,10 @@
 import importlib as _importlib
 from typing import TYPE_CHECKING
 
+# Application version (SemVer) - tracks code/feature changes.
+# NOTE: Configuration schema version (CURRENT_CONFIG_VERSION) is maintained
+# separately in src/core/config/config_version_checker.py and is intentionally
+# independent. It only changes when config.yaml schema has breaking changes.
 __version__ = "2.2.0"
 __author__ = "Md. Ariful Islam"
 __license__ = "MIT"
