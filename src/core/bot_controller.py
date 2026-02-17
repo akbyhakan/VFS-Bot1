@@ -195,6 +195,8 @@ class BotController:
 
     async def _run_bot(self) -> None:
         """Internal method to run the bot."""
+        # Capture bot reference early to avoid race with stop_bot()
+        bot = self._bot
         try:
             await self._bot.start()
         except asyncio.CancelledError:
@@ -204,7 +206,6 @@ class BotController:
         finally:
             # Cleanup without lock to prevent deadlock
             # Reference cleanup is handled by stop_bot() or natural exit
-            bot = self._bot
             if bot:
                 try:
                     await bot.cleanup()
