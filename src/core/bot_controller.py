@@ -146,13 +146,15 @@ class BotController:
                 # Create VFSBot instance using factory or fallback to lazy import
                 if self._bot_factory:
                     self._bot = self._bot_factory(
-                        self._config, self._db, self._notifier, self._shutdown_event
+                        self._config, self._db, self._notifier, shutdown_event=self._shutdown_event
                     )
                 else:
                     # Fallback to lazy import for backwards compatibility
                     from src.services.bot.vfs_bot import VFSBot
 
-                    self._bot = VFSBot(self._config, self._db, self._notifier, self._shutdown_event)
+                    self._bot = VFSBot(
+                        self._config, self._db, self._notifier, shutdown_event=self._shutdown_event
+                    )
 
                 # Initialize selector health monitoring if enabled
                 if self._config.get("selector_health_check", {}).get("enabled", True):
@@ -200,14 +202,16 @@ class BotController:
         except Exception as e:
             logger.error(f"Bot error: {e}", exc_info=True)
         finally:
-            async with self._async_lock:
-                if self._bot:
-                    try:
-                        await self._bot.cleanup()
-                    except Exception as e:
-                        logger.error(f"Error during bot cleanup: {e}")
-                self._bot = None
-                self._bot_task = None
+            # Cleanup without lock to prevent deadlock
+            # Reference cleanup is handled by stop_bot() or natural exit
+            bot = self._bot
+            if bot:
+                try:
+                    await bot.cleanup()
+                except Exception as e:
+                    logger.error(f"Error during bot cleanup: {e}")
+            self._bot = None
+            self._bot_task = None
 
     async def stop_bot(self) -> Dict[str, str]:
         """
@@ -216,6 +220,7 @@ class BotController:
         Returns:
             Status dictionary with result
         """
+        bot_task = None
         async with self._async_lock:
             if not self.is_running:
                 logger.warning("Bot is not running")
@@ -232,25 +237,28 @@ class BotController:
                 if self._bot:
                     await self._bot.stop()
 
-                # Cancel the task
-                if self._bot_task and not self._bot_task.done():
-                    self._bot_task.cancel()
-                    try:
-                        await self._bot_task
-                    except asyncio.CancelledError:
-                        pass
+                # Get local reference to the task
+                bot_task = self._bot_task
 
-                # Clean up references
+                # Clean up controller state
                 self._bot = None
                 self._bot_task = None
                 self._shutdown_event = None
 
-                logger.info("Bot stopped successfully via BotController")
-                return {"status": "success", "message": "Bot stopped"}
-
             except Exception as e:
                 logger.error(f"Failed to stop bot: {e}", exc_info=True)
                 return {"status": "error", "message": f"Failed to stop bot: {str(e)}"}
+
+        # Await task completion outside the lock to prevent deadlock
+        if bot_task and not bot_task.done():
+            bot_task.cancel()
+            try:
+                await bot_task
+            except asyncio.CancelledError:
+                pass
+
+        logger.info("Bot stopped successfully via BotController")
+        return {"status": "success", "message": "Bot stopped"}
 
     async def restart_bot(self) -> Dict[str, str]:
         """
