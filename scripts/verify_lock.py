@@ -18,6 +18,10 @@ def parse_requirements_txt(file_path):
 
     packages = {}
     for line in lines:
+        # Remove inline comments
+        if "#" in line:
+            line = line.split("#")[0].strip()
+        
         if "[" in line:  # Handle extras like sqlalchemy[asyncio]
             pkg = line.split("[")[0].lower()
             constraint = line.split("]")[1] if "]" in line else ""
@@ -57,6 +61,10 @@ def verify_pyproject_sync():
     # Parse dependencies from pyproject.toml
     pyproject_packages = {}
     for dep in pyproject_deps:
+        # Remove inline comments
+        if "#" in dep:
+            dep = dep.split("#")[0].strip()
+            
         if "[" in dep:  # Handle extras
             pkg = dep.split("[")[0].lower()
             constraint = dep.split("]")[1] if "]" in dep else ""
