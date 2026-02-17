@@ -8,7 +8,6 @@ import { z } from 'zod';
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url().optional().or(z.literal('')),
   VITE_WS_BASE_URL: z.string().optional(),
-  VITE_SENTRY_DSN: z.string().optional(),
   MODE: z.enum(['development', 'production', 'test']),
 });
 
@@ -20,7 +19,6 @@ const parseEnv = (): EnvType => {
     return envSchema.parse({
       VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
       VITE_WS_BASE_URL: import.meta.env.VITE_WS_BASE_URL,
-      VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
       MODE: import.meta.env.MODE,
     });
   } catch (error) {
@@ -55,7 +53,6 @@ export const getMode = (): string => import.meta.env.MODE;
 export const env = {
   API_BASE_URL: validatedEnv.VITE_API_BASE_URL || '',
   WS_BASE_URL: validatedEnv.VITE_WS_BASE_URL || '',
-  SENTRY_DSN: validatedEnv.VITE_SENTRY_DSN,
   MODE: validatedEnv.MODE,
   IS_DEV: isDev(),
   IS_PROD: isProd(),
