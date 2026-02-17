@@ -1,79 +1,10 @@
 """Configuration schema validation."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from loguru import logger
-from pydantic import BaseModel, Field, HttpUrl, model_validator, validator
 
-
-class VFSConfig(BaseModel):
-    """VFS configuration schema."""
-
-    base_url: HttpUrl = Field(..., description="VFS base URL (must be HTTPS)")
-    country: str = Field(..., min_length=2, max_length=3, description="Country code")
-    mission: str = Field(..., min_length=2, max_length=3, description="Mission code")
-    centres: List[str] = Field(..., description="List of VFS centres")
-
-    @validator("base_url")
-    def validate_https(cls, v):
-        """Ensure URL is HTTPS."""
-        if not str(v).startswith("https://"):
-            raise ValueError("VFS base_url must use HTTPS")
-        return v
-
-    @model_validator(mode="after")
-    def check_centres(self):
-        """Validate that centres list contains at least one centre."""
-        if not self.centres:
-            raise ValueError("List of VFS centres must contain at least one centre")
-        return self
-
-
-class BotConfig(BaseModel):
-    """Bot configuration schema."""
-
-    check_interval: int = Field(..., ge=10, le=3600, description="Check interval (10-3600 seconds)")
-    headless: bool = Field(default=False, description="Run browser in headless mode")
-    screenshot_on_error: bool = Field(default=True, description="Take screenshots on errors")
-    max_retries: int = Field(default=3, ge=1, le=10, description="Maximum retries (1-10)")
-
-
-class NotificationConfig(BaseModel):
-    """Notification configuration schema."""
-
-    telegram: Optional[Dict[str, Any]] = Field(default=None)
-    email: Optional[Dict[str, Any]] = Field(default=None)
-
-
-class CaptchaConfig(BaseModel):
-    """Captcha configuration schema."""
-
-    provider: str = Field(..., description="Captcha provider")
-    api_key: str = Field(default="", description="Captcha API key")
-
-    @validator("provider")
-    def validate_provider(cls, v):
-        """Validate captcha provider."""
-        valid_providers = ["2captcha"]
-        if v not in valid_providers:
-            raise ValueError(f'provider must be: {", ".join(valid_providers)}')
-        return v
-
-
-class AppConfig(BaseModel):
-    """Complete application configuration schema."""
-
-    vfs: VFSConfig
-    bot: BotConfig
-    captcha: CaptchaConfig
-    notifications: NotificationConfig
-    anti_detection: Optional[Dict[str, Any]] = Field(default=None)
-    appointments: Optional[Dict[str, Any]] = Field(default=None)
-
-    class Config:
-        """Pydantic config."""
-
-        extra = "allow"  # Allow extra fields for flexibility
+from .config_models import AppConfig
 
 
 class ConfigValidator:

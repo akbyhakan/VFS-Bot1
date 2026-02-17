@@ -7,7 +7,7 @@ src/types/config.py, src/core/config_models.py, and src/models/schemas.py.
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, Field, HttpUrl, SecretStr, field_validator, model_validator
 
 # VFS Configuration Models
 
@@ -15,13 +15,28 @@ from pydantic import BaseModel, Field, SecretStr, model_validator
 class VFSConfig(BaseModel):
     """VFS-specific configuration."""
 
-    base_url: str = Field(default="https://visa.vfsglobal.com")
-    country: str = Field(default="tur")
-    mission: str = Field(default="nld")
+    base_url: HttpUrl = Field(default="https://visa.vfsglobal.com")
+    country: str = Field(default="tur", min_length=2, max_length=3)
+    mission: str = Field(default="nld", min_length=2, max_length=3)
     centres: List[str] = Field(default_factory=list)
     category: str = Field(default="Schengen Visa")
     subcategory: str = Field(default="Tourism")
     language: Optional[str] = Field(default="tr")
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_https(cls, v: HttpUrl) -> HttpUrl:
+        """Ensure URL is HTTPS."""
+        if not str(v).startswith("https://"):
+            raise ValueError("VFS base_url must use HTTPS")
+        return v
+
+    @model_validator(mode="after")
+    def check_centres(self) -> "VFSConfig":
+        """Validate that centres list contains at least one centre."""
+        if not self.centres:
+            raise ValueError("List of VFS centres must contain at least one centre")
+        return self
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "VFSConfig":
@@ -57,6 +72,15 @@ class CaptchaConfig(BaseModel):
 
     provider: str = Field(default="2captcha")
     api_key: SecretStr = Field(default=SecretStr(""))
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        """Validate captcha provider."""
+        valid_providers = ["2captcha"]
+        if v not in valid_providers:
+            raise ValueError(f'provider must be: {", ".join(valid_providers)}')
+        return v
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CaptchaConfig":
