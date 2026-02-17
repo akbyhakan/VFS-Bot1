@@ -1,12 +1,9 @@
 """Application settings with Pydantic validation."""
 
-from typing import Final, List, Optional
+from typing import List, Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# Current configuration version for schema compatibility
-CURRENT_CONFIG_VERSION: Final[str] = "2.0"
 
 
 class VFSSettings(BaseSettings):

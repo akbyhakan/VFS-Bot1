@@ -1,4 +1,15 @@
-"""Configuration version compatibility checking."""
+"""Configuration version compatibility checking.
+
+The config schema version (CURRENT_CONFIG_VERSION) is independent of the
+application version (__version__ in src/__init__.py). This version only
+changes when the config.yaml structure has breaking changes such as
+renamed or removed keys, or new required sections. Minor application
+releases that do not alter the config schema do NOT bump this version.
+
+Versioning policy:
+    - Config version major bump (1.0 -> 2.0): Breaking config schema changes
+    - Application version (__version__) follows SemVer independently
+"""
 
 from typing import Any, Dict, Final
 
@@ -6,7 +17,9 @@ from loguru import logger
 
 from src.core.exceptions import ConfigurationError
 
-# Current configuration schema version
+# Current configuration schema version — single source of truth.
+# Only bump when config.yaml schema has breaking/structural changes.
+# This is independent of __version__ (app SemVer) in src/__init__.py.
 CURRENT_CONFIG_VERSION: Final[str] = "2.0"
 
 # Supported configuration versions (backward compatibility)

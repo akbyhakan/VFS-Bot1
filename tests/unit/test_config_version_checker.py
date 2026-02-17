@@ -93,3 +93,25 @@ class TestConfigVersionChecker:
     def test_version_constant_is_final(self):
         """Test that version constants are properly typed."""
         assert isinstance(CURRENT_CONFIG_VERSION, str)
+
+    def test_settings_does_not_define_config_version_constant(self):
+        """Verify CURRENT_CONFIG_VERSION is not duplicated in settings module."""
+        import src.core.config.settings as settings_module
+
+        assert not hasattr(settings_module, "CURRENT_CONFIG_VERSION"), (
+            "CURRENT_CONFIG_VERSION should not be defined in settings.py. "
+            "Single source of truth is config_version_checker.py"
+        )
+
+    def test_config_version_independent_of_app_version(self):
+        """Verify config schema version is intentionally separate from app version."""
+        from src import __version__
+        from src.core.config.config_version_checker import CURRENT_CONFIG_VERSION
+
+        # They should be different - config version only bumps on schema changes
+        # This test documents the intentional independence
+        assert isinstance(__version__, str)
+        assert isinstance(CURRENT_CONFIG_VERSION, str)
+        # Config version should be simpler (e.g., "2.0") than app version (e.g., "2.2.0")
+        assert "." in CURRENT_CONFIG_VERSION
+        assert "." in __version__
