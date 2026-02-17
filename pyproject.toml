@@ -113,16 +113,33 @@ skip_gitignore = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=src --cov-report=term-missing"
+addopts = "-ra --verbose --strict-markers --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml --cov-fail-under=80 --cov-branch -m \"not integration and not e2e\""
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 timeout = 60
+console_output_style = "progress"
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests (require PostgreSQL and optionally Redis)",
+    "e2e: marks tests as end-to-end tests (require browser)",
+    "unit: marks tests as unit tests",
+    "security: marks tests as security-related tests",
+]
 filterwarnings = [
+    "error",
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+    "ignore::RuntimeWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::pluggy.PluggyTeardownRaisedWarning",
+    "ignore:coroutine.*was never awaited:RuntimeWarning",
 ]
 
 [tool.coverage.run]
@@ -132,11 +149,11 @@ omit = [
     "*/test_*.py",
     "*/__pycache__/*",
     "*/venv/*",
+    "*/env/*",
 ]
 
 [tool.coverage.report]
-# Minimum coverage threshold - CI will fail if coverage drops below this
-fail_under = 80
+# Minimum coverage threshold is set via --cov-fail-under=80 in addopts to avoid duplication
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",

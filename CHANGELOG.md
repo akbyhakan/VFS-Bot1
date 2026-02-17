@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `src/selector/ai_repair.py` to use new Client-based API pattern
 - Updated all AI repair tests to match new SDK interface
 
+### Fixed
+- Removed `pytest.ini` - consolidated all pytest configuration into `pyproject.toml` (`[tool.pytest.ini_options]`)
+- Coverage threshold standardized to 80% (was conflicting between 68% in pytest.ini and 80% in pyproject.toml)
+
 ## [2.2.0] - 2026-01-24
 
 ### 🚀 NEW FEATURES

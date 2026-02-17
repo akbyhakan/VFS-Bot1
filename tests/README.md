@@ -300,7 +300,7 @@ pip install selenium
 
 ## Configuration Files
 
-- **`pytest.ini`** - Pytest configuration (root directory)
+- **`pyproject.toml`** - Pytest configuration (`[tool.pytest.ini_options]` section)
   - Test discovery patterns
   - Coverage settings
   - Marker definitions
@@ -454,7 +454,7 @@ pytest --cov=src --cov-report=term-missing
 ```
 
 ### Coverage requirements:
-- Minimum coverage: 68% (configured in `pytest.ini`)
+- Minimum coverage: 80% (configured in `pyproject.toml`)
 - Aim for 80%+ on new code
 - Critical paths should have 100% coverage
 
