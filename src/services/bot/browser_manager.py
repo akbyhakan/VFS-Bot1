@@ -181,6 +181,9 @@ class BrowserManager:
                 logger.info("Fingerprint rotation needed - deferring to next restart cycle")
                 self._needs_rotation = True
 
+        # Increment page count when actually creating a page
+        self._page_count += 1
+        
         page = await self.context.new_page()
         
         # Track activity
@@ -249,14 +252,11 @@ class BrowserManager:
         """
         Check if browser should be restarted for memory management.
 
-        Note: This method increments the page count as part of the check.
-        Call this once per page creation to track usage and determine restart needs.
+        Pure check — no side effects. Page count is tracked by new_page().
 
         Returns:
             True if browser should be restarted, False otherwise
         """
-        self._page_count += 1
-        
         # Check if fingerprint rotation is needed
         if self._needs_rotation:
             logger.info("Browser restart triggered by fingerprint rotation flag")
