@@ -7,7 +7,7 @@ the VFSBot instance from web dashboard endpoints.
 
 import asyncio
 import threading
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from loguru import logger
 
@@ -40,6 +40,7 @@ class BotController:
         self._starting = False
         self._configured = False
         self._async_lock = asyncio.Lock()  # Instance-level async lock
+        self._bot_factory: Optional[Callable] = None
 
     @classmethod
     async def get_instance(cls) -> "BotController":
@@ -86,7 +87,11 @@ class BotController:
             cls._instance = None
 
     async def configure(
-        self, config: Dict[str, Any], db: "Database", notifier: "NotificationService"
+        self,
+        config: Dict[str, Any],
+        db: "Database",
+        notifier: "NotificationService",
+        bot_factory: Optional[Callable] = None,
     ) -> None:
         """
         Configure the bot controller with dependencies.
@@ -95,11 +100,13 @@ class BotController:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
+            bot_factory: Optional factory function to create VFSBot instances (avoids circular imports)
         """
         async with self._async_lock:
             self._config = config
             self._db = db
             self._notifier = notifier
+            self._bot_factory = bot_factory
             self._configured = True
             logger.info("BotController configured with dependencies")
 
@@ -133,14 +140,19 @@ class BotController:
                 self._starting = True
                 logger.info("Starting bot via BotController...")
 
-                # Import here to avoid circular dependency
-                from src.services.bot.vfs_bot import VFSBot
-
                 # Create shutdown event
                 self._shutdown_event = asyncio.Event()
 
-                # Create VFSBot instance
-                self._bot = VFSBot(self._config, self._db, self._notifier, self._shutdown_event)
+                # Create VFSBot instance using factory or fallback to lazy import
+                if self._bot_factory:
+                    self._bot = self._bot_factory(
+                        self._config, self._db, self._notifier, self._shutdown_event
+                    )
+                else:
+                    # Fallback to lazy import for backwards compatibility
+                    from src.services.bot.vfs_bot import VFSBot
+
+                    self._bot = VFSBot(self._config, self._db, self._notifier, self._shutdown_event)
 
                 # Initialize selector health monitoring if enabled
                 if self._config.get("selector_health_check", {}).get("enabled", True):

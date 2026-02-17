@@ -99,7 +99,8 @@ async def test_start_bot_success(mock_vfsbot, config, database, notifier):
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    # Test with bot_factory
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     result = await controller.start_bot()
     assert result["status"] == "success"
@@ -123,7 +124,7 @@ async def test_start_bot_already_running(mock_vfsbot, config, database, notifier
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start bot first time
     await controller.start_bot()
@@ -154,7 +155,7 @@ async def test_concurrent_start_guard(mock_vfsbot, config, database, notifier):
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start two concurrent start operations
     task1 = asyncio.create_task(controller.start_bot())
@@ -199,7 +200,7 @@ async def test_stop_bot_success(mock_vfsbot, config, database, notifier):
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start and stop bot
     await controller.start_bot()
@@ -223,7 +224,7 @@ async def test_restart_bot(mock_vfsbot, config, database, notifier):
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start bot
     await controller.start_bot()
@@ -264,7 +265,7 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start bot and trigger check
     await controller.start_bot()
@@ -293,7 +294,7 @@ async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, n
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start bot
     await controller.start_bot()
@@ -321,7 +322,7 @@ async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, n
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start bot - this should handle CancelledError gracefully
     await controller.start_bot()
@@ -359,7 +360,7 @@ async def test_run_bot_cleanup_under_lock(mock_vfsbot, config, database, notifie
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
     # Start and immediately stop to trigger cleanup
     await controller.start_bot()
@@ -388,7 +389,7 @@ async def test_status_transitions(mock_vfsbot, config, database, notifier):
     assert status["status"] == "not_configured"
 
     # After configure: stopped
-    await controller.configure(config, database, notifier)
+    await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
     status = controller.get_status()
     assert status["status"] == "stopped"
 

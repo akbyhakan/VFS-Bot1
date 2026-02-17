@@ -94,7 +94,7 @@ class CaptchaConfig(BaseModel):
 class AntiDetectionConfig(BaseModel):
     """Anti-detection features configuration."""
 
-    enabled: bool = Field(default=False)
+    enabled: bool = Field(default=True)
     tls_bypass: Optional[bool] = Field(default=None)
     fingerprint_bypass: Optional[bool] = Field(default=None)
     human_simulation: Optional[bool] = Field(default=None)
