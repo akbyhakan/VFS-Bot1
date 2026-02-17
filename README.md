@@ -468,7 +468,7 @@ Response:
 {
   "status": "healthy",
   "timestamp": "2026-01-09T15:30:00Z",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "components": {
     "database": true,
     "redis": {"status": "healthy"},
@@ -689,7 +689,7 @@ Metrics are exposed at `http://localhost:8000/metrics/prometheus` when the bot i
 
 ### Password Encryption
 
-VFS-Bot v2.1.0+ uses **Fernet symmetric encryption** for storing VFS account passwords. This is critical because:
+VFS-Bot v2.2.0+ uses **Fernet symmetric encryption** for storing VFS account passwords. This is critical because:
 
 - ❌ **Hashing doesn't work** - The bot needs the actual password to log into VFS
 - ✅ **Encryption is secure** - Passwords are encrypted at rest with AES-128 in CBC mode
@@ -866,7 +866,7 @@ async def test_add_user(test_db):
 
 ## 📊 Monitoring & Metrics
 
-VFS-Bot v2.1.0 includes comprehensive metrics tracking and monitoring.
+VFS-Bot v2.2.0 includes comprehensive metrics tracking and monitoring.
 
 ### Metrics Endpoints
 
@@ -929,7 +929,7 @@ Response:
 {
   "status": "healthy",
   "timestamp": "2025-01-12T02:00:00Z",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "uptime_seconds": 3600.5,
   "components": {
     "database": {"status": "healthy"},

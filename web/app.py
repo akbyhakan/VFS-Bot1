@@ -14,6 +14,7 @@ from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from src import __version__
 from src.core.auth import get_token_blacklist, init_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.infra.startup_validator import log_security_warnings
@@ -25,7 +26,11 @@ from src.services.otp_manager.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
 from web.ip_utils import get_real_client_ip
-from web.middleware import HTTPSRedirectMiddleware, RateLimitHeadersMiddleware, SecurityHeadersMiddleware
+from web.middleware import (
+    HTTPSRedirectMiddleware,
+    RateLimitHeadersMiddleware,
+    SecurityHeadersMiddleware,
+)
 from web.routes import (
     dashboard_router,
     health_router,
@@ -140,7 +145,7 @@ def create_app(run_security_validation: bool = True, env_override: Optional[str]
     # Create FastAPI app with enhanced OpenAPI documentation and lifespan
     app = FastAPI(
         title="VFS-Bot Dashboard API",
-        version="2.0.0",
+        version=__version__,
         lifespan=lifespan,
         docs_url="/docs" if _is_dev else None,
         redoc_url="/redoc" if _is_dev else None,
@@ -244,7 +249,7 @@ API endpoints are rate-limited to prevent abuse:
         log_security_warnings(strict=True)
 
     # Configure middleware (order matters!)
-    
+
     # 0. HTTPS redirect - must be FIRST (before any other middleware)
     # Only active in production environments
     if not _is_dev:

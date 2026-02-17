@@ -11,6 +11,7 @@ import { loginSchema, type LoginFormData } from '@/utils/validators';
 import { ROUTES } from '@/utils/constants';
 import { Activity, Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { APP_VERSION } from '@/version';
 
 export function Login() {
   const navigate = useNavigate();
@@ -137,7 +138,7 @@ export function Login() {
         </form>
 
         <div className="mt-6 text-center text-xs text-dark-500">
-          <p>VFS-Bot v2.0.0</p>
+          <p>VFS-Bot v{APP_VERSION}</p>
         </div>
       </Card>
     </div>

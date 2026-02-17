@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from src import __version__
 from web.app import create_app
 from web.dependencies import bot_state, metrics
 from web.routes.health import check_database_health, increment_metric
@@ -75,7 +76,7 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
 
-        assert data["version"] == "2.1.0"
+        assert data["version"] == __version__
 
     def test_health_endpoint_components(self, client, reset_state):
         """Test health endpoint includes component status."""
@@ -342,17 +343,17 @@ class TestRFC7807ErrorResponses:
         from web.app import create_app
         from fastapi import FastAPI, Request
         from src.middleware.error_handler import ErrorHandlerMiddleware
-        
+
         # Create a simple endpoint that raises ValidationError
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         @app.get("/test/validation-error")
         async def trigger_validation_error():
             raise ValidationError("Invalid field", field="test_field")
-        
+
         client_test = TestClient(app)
         response = client_test.get("/test/validation-error")
-        
+
         assert response.status_code == 400
         assert response.headers["content-type"] == "application/problem+json"
 
@@ -360,24 +361,24 @@ class TestRFC7807ErrorResponses:
         """Test that error responses include all required RFC 7807 fields."""
         from src.core.exceptions import ValidationError
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         @app.get("/test/validation-error")
         async def trigger_validation_error():
             raise ValidationError("Invalid field", field="test_field")
-        
+
         client_test = TestClient(app)
         response = client_test.get("/test/validation-error")
         data = response.json()
-        
+
         # Check required RFC 7807 fields
         assert "type" in data
         assert "title" in data
         assert "status" in data
         assert "detail" in data
         assert "instance" in data
-        
+
         # Verify values
         assert data["type"].startswith("urn:vfsbot:error:")
         assert data["status"] == 400
@@ -387,17 +388,17 @@ class TestRFC7807ErrorResponses:
         """Test that rate limit errors include retry_after extension."""
         from src.core.exceptions import RateLimitError
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         @app.get("/test/rate-limit")
         async def trigger_rate_limit():
             raise RateLimitError("Rate limit exceeded", retry_after=60)
-        
+
         client_test = TestClient(app)
         response = client_test.get("/test/rate-limit")
         data = response.json()
-        
+
         assert response.status_code == 429
         assert data["type"] == "urn:vfsbot:error:rate-limit"
         assert data["title"] == "Rate Limit Error"
@@ -411,17 +412,17 @@ class TestRFC7807ErrorResponses:
         """Test that validation errors include field extension."""
         from src.core.exceptions import ValidationError
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         @app.get("/test/validation-error-field")
         async def trigger_validation_error():
             raise ValidationError("Field is required", field="username")
-        
+
         client_test = TestClient(app)
         response = client_test.get("/test/validation-error-field")
         data = response.json()
-        
+
         assert response.status_code == 400
         assert data["type"] == "urn:vfsbot:error:validation"
         assert "field" in data
@@ -430,17 +431,17 @@ class TestRFC7807ErrorResponses:
     def test_unexpected_error_no_leak(self, client):
         """Test that unexpected errors do not leak internal details."""
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
-        
+
         @app.get("/test/unexpected-error")
         async def trigger_unexpected_error():
             raise RuntimeError("Internal implementation detail that should not leak")
-        
+
         client_test = TestClient(app)
         response = client_test.get("/test/unexpected-error")
         data = response.json()
-        
+
         assert response.status_code == 500
         assert data["type"] == "urn:vfsbot:error:internal-server"
         assert data["title"] == "Internal Server Error"
@@ -457,17 +458,17 @@ class TestHealthEndpointPoolStats:
     async def test_health_includes_pool_stats(self, client):
         """Test that /health endpoint includes database pool stats."""
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
         client_test = TestClient(app)
-        
+
         response = client_test.get("/health")
         data = response.json()
-        
+
         assert "components" in data
         assert "database" in data["components"]
         db_component = data["components"]["database"]
-        
+
         # Check that pool stats are present
         if db_component.get("status") == "healthy":
             assert "pool" in db_component
@@ -476,7 +477,7 @@ class TestHealthEndpointPoolStats:
             assert "idle" in pool_stats
             assert "used" in pool_stats
             assert "utilization" in pool_stats
-            
+
             # Validate types and ranges
             assert isinstance(pool_stats["size"], int)
             assert isinstance(pool_stats["idle"], int)
@@ -488,17 +489,17 @@ class TestHealthEndpointPoolStats:
     async def test_ready_endpoint_includes_pool_stats(self, client):
         """Test that /ready endpoint includes database pool stats."""
         from web.app import create_app
-        
+
         app = create_app(run_security_validation=False, env_override="testing")
         client_test = TestClient(app)
-        
+
         response = client_test.get("/ready")
         data = response.json()
-        
+
         assert "checks" in data
         assert "database" in data["checks"]
         db_check = data["checks"]["database"]
-        
+
         # Check that pool stats are present
         if db_check.get("status") == "healthy":
             assert "pool" in db_check
