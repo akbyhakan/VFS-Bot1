@@ -634,20 +634,6 @@ VFS-Bot1/
 
 ## 📊 Monitoring
 
-### Sentry Setup:
-
-```bash
-# Add to .env
-SENTRY_DSN=https://your-key@sentry.io/project
-SENTRY_TRACES_SAMPLE_RATE=0.1
-```
-
-Features:
-- Automatic error capturing
-- Performance monitoring (10% sample)
-- Sensitive data filtering (CVV, passwords)
-- Screenshot attachments
-
 ### Quick Start: Prometheus + Grafana Monitoring
 
 The bot includes built-in Prometheus metrics and a ready-to-use Grafana dashboard. To start the monitoring stack:

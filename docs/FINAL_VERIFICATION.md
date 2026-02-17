@@ -126,22 +126,7 @@
   # Use _stdlib_logger for tenacity, logger for app logging
   ```
 
-#### 77. ✅ src/core/monitoring.py
-- **Status**: Partial migration (both stdlib + loguru)
-- **Reason**: Sentry's `LoggingIntegration` uses stdlib logging levels
-- **Implementation**:
-  ```python
-  import logging
-  from loguru import logger
-  
-  # Use logging.INFO/ERROR for Sentry, logger for app logging
-  sentry_sdk.init(
-      integrations=[LoggingIntegration(level=logging.INFO, ...)]
-  )
-  logger.info("Sentry initialized")
-  ```
-
-#### 78. ✅ src/core/logger.py
+#### 77. ✅ src/core/logger.py
 - **Status**: No migration needed
 - **Reason**: Legacy backward-compat classes (`CorrelationIdFilter`, `JSONFormatter`)
 - **Implementation**: Kept as-is for backward compatibility

@@ -284,20 +284,7 @@ private startHeartbeat(): void {
 
 ---
 
-### 10. Sentry Error Tracking ✅
-
-**Durum:** Zaten mevcut ve güncel
-**Dosya:** `services/errorTracking.ts`
-
-**Özellikler:**
-- Production'da aktif
-- Browser tracing
-- Session replay
-- Error context desteği
-
----
-
-### 11. Bundle Size Monitoring ✅
+### 10. Bundle Size Monitoring ✅
 
 **Dosyalar:**
 - `package.json` - size-limit konfigürasyonu
