@@ -1,6 +1,6 @@
 """Configuration schema validation."""
 
-from typing import Any, Dict
+from typing import Any
 
 from loguru import logger
 
@@ -11,7 +11,7 @@ class ConfigValidator:
     """Validate configuration schema."""
 
     @classmethod
-    def validate(cls, config: Dict[str, Any]) -> bool:
+    def validate(cls, config: dict[str, Any]) -> bool:
         """
         Validate configuration structure using Pydantic.
 
@@ -39,7 +39,7 @@ class ConfigValidator:
             return False
 
     @classmethod
-    def _diagnostic_validation(cls, config: Dict[str, Any]) -> None:
+    def _diagnostic_validation(cls, config: dict[str, Any]) -> None:
         """
         Run manual validation to provide user-friendly diagnostic messages.
 
