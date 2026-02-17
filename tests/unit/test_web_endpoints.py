@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from src import __version__
 from web.app import create_app
 from web.dependencies import bot_state, metrics
 from web.routes.health import check_database_health, increment_metric
@@ -75,7 +76,7 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
 
-        assert data["version"] == "2.1.0"
+        assert data["version"] == __version__
 
     def test_health_endpoint_components(self, client, reset_state):
         """Test health endpoint includes component status."""

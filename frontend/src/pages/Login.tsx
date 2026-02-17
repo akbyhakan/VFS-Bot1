@@ -137,7 +137,7 @@ export function Login() {
         </form>
 
         <div className="mt-6 text-center text-xs text-dark-500">
-          <p>VFS-Bot v2.0.0</p>
+          <p>VFS-Bot v2.2.0</p>
         </div>
       </Card>
     </div>
