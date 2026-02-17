@@ -33,7 +33,8 @@ class ConfigValidator:
             logger.error(f"❌ Pydantic validation failed: {e}")
 
             # Run manual validation for diagnostic purposes only
-            # This provides more user-friendly error messages but always returns False
+            # This provides more user-friendly error messages
+            # The validate() method returns False after diagnostic validation runs
             cls._diagnostic_validation(config)
             return False
 
