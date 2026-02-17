@@ -148,7 +148,6 @@ const isDev = env.IS_DEV;
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url().optional().or(z.literal('')),
   VITE_WS_BASE_URL: z.string().optional(),
-  VITE_SENTRY_DSN: z.string().optional(),
   MODE: z.enum(['development', 'production', 'test']),
 });
 ```
@@ -284,20 +283,7 @@ private startHeartbeat(): void {
 
 ---
 
-### 10. Sentry Error Tracking ✅
-
-**Durum:** Zaten mevcut ve güncel
-**Dosya:** `services/errorTracking.ts`
-
-**Özellikler:**
-- Production'da aktif
-- Browser tracing
-- Session replay
-- Error context desteği
-
----
-
-### 11. Bundle Size Monitoring ✅
+### 10. Bundle Size Monitoring ✅
 
 **Dosyalar:**
 - `package.json` - size-limit konfigürasyonu
@@ -477,7 +463,6 @@ function Dashboard() {
 ### Monitoring
 - Bundle size'ı düzenli olarak kontrol edin
 - E2E testleri her deploy'da çalıştırın
-- Sentry'de error trend'leri takip edin
 - PWA install rate'lerini izleyin
 
 ---

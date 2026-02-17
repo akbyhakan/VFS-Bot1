@@ -558,7 +558,6 @@ VFS-Bot1/
 │   │   │   ├── config_validator.py
 │   │   │   └── env_validator.py   # Environment validation
 │   │   ├── infra/             # Infrastructure modules
-│   │   │   ├── monitoring.py  # Sentry integration
 │   │   │   ├── runners.py     # Application run modes
 │   │   │   ├── shutdown.py    # Graceful shutdown
 │   │   │   ├── startup.py     # Environment & dependency validation
@@ -633,20 +632,6 @@ VFS-Bot1/
 ---
 
 ## 📊 Monitoring
-
-### Sentry Setup:
-
-```bash
-# Add to .env
-SENTRY_DSN=https://your-key@sentry.io/project
-SENTRY_TRACES_SAMPLE_RATE=0.1
-```
-
-Features:
-- Automatic error capturing
-- Performance monitoring (10% sample)
-- Sensitive data filtering (CVV, passwords)
-- Screenshot attachments
 
 ### Quick Start: Prometheus + Grafana Monitoring
 

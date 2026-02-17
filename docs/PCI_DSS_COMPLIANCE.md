@@ -19,6 +19,6 @@
 - Admin-only payment ops
 
 ## Monitoring
-- Sentry error tracking
-- Sensitive data filtering
 - Audit logging
+- Prometheus metrics
+- Grafana dashboards

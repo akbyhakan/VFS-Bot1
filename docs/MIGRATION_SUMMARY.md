@@ -151,23 +151,7 @@ def get_login_retry():
     )
 ```
 
-### 2. src/core/monitoring.py
-**Reason**: Sentry's `LoggingIntegration` uses stdlib logging constants
-
-**Solution**:
-```python
-import logging
-from loguru import logger
-
-def init_sentry():
-    sentry_sdk.init(
-        integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
-        # ...
-    )
-    logger.info("Sentry initialized")  # Use loguru for app logging
-```
-
-### 3. src/core/logger.py
+### 2. src/core/logger.py
 **Reason**: Legacy backward-compat classes (`CorrelationIdFilter`, `JSONFormatter`)
 
 **Solution**: Keep stdlib logging for backward compatibility

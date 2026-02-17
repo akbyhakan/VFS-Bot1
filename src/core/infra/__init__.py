@@ -1,7 +1,6 @@
 """Infrastructure utilities module."""
 
 from .circuit_breaker import CircuitBreaker
-from .monitoring import filter_sensitive_data, init_sentry
 from .retry import (
     get_captcha_retry,
     get_login_retry,
@@ -41,6 +40,4 @@ __all__ = [
     "graceful_shutdown_with_timeout",
     "safe_shutdown_cleanup",
     "fast_emergency_cleanup",
-    "init_sentry",
-    "filter_sensitive_data",
 ]

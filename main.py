@@ -14,7 +14,6 @@ from loguru import logger
 
 from src.core.config.config_loader import load_config
 from src.core.config.env_validator import EnvValidator
-from src.core.infra.monitoring import init_sentry
 from src.core.infra.runners import run_both_mode, run_bot_mode, run_web_mode
 from src.core.infra.shutdown import setup_signal_handlers
 from src.core.infra.startup import validate_environment, verify_critical_dependencies
@@ -61,18 +60,13 @@ def main() -> None:
         verify_critical_dependencies()
         logger.info("Phase 1 (Pre-flight): Critical dependencies verified")
 
-        # Phase 2: Monitoring - Initialize Sentry (now that env vars are validated)
-        logger.info("Phase 2 (Monitoring): Initializing Sentry monitoring...")
-        init_sentry()
-        logger.info("Phase 2 (Monitoring): Sentry monitoring initialized")
-
-        # Phase 3: Config - Load and validate configuration
-        logger.info("Phase 3 (Config): Loading configuration...")
+        # Phase 2: Config - Load and validate configuration
+        logger.info("Phase 2 (Config): Loading configuration...")
         config = load_config(args.config)
-        logger.info("Phase 3 (Config): Configuration loaded successfully")
+        logger.info("Phase 2 (Config): Configuration loaded successfully")
 
-        # Phase 4: Run - Start application in selected mode
-        logger.info(f"Phase 4 (Run): Starting application in '{args.mode}' mode...")
+        # Phase 3: Run - Start application in selected mode
+        logger.info(f"Phase 3 (Run): Starting application in '{args.mode}' mode...")
         if args.mode == "bot":
             asyncio.run(run_bot_mode(config))
         elif args.mode == "web":

@@ -84,7 +84,6 @@ FULLY_MIGRATED = [
 # Files with special handling
 SPECIAL_CASES = {
     "src/core/retry.py": "stdlib logging for tenacity",
-    "src/core/monitoring.py": "stdlib logging for Sentry",
 }
 
 def check_file(filepath):

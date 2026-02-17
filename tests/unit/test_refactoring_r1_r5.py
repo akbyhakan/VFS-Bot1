@@ -95,7 +95,6 @@ class TestR1LoggerMigration:
 
         special_cases = [
             "src/core/retry.py",
-            "src/core/monitoring.py",
             "src/core/logger.py",
         ]
 
