@@ -44,31 +44,41 @@ class TestCaptchaConfig:
         assert config.provider == "2captcha"
         assert config.api_key.get_secret_value() == "partial_key"
 
+    def test_invalid_provider_raises_validation_error(self):
+        """Test that invalid provider raises validation error."""
+        with pytest.raises(ValidationError, match='provider must be: 2captcha'):
+            CaptchaConfig(provider="invalid_provider")
+
+    def test_manual_provider_raises_validation_error(self):
+        """Test that 'manual' provider raises validation error."""
+        with pytest.raises(ValidationError, match='provider must be: 2captcha'):
+            CaptchaConfig(provider="manual")
+
 
 class TestVFSConfig:
     """Tests for VFSConfig."""
 
     def test_default_values(self):
-        """Test default values."""
-        config = VFSConfig()
-        assert config.base_url == "https://visa.vfsglobal.com"
+        """Test default values with at least one centre."""
+        config = VFSConfig(centres=["Default Centre"])
+        assert str(config.base_url) == "https://visa.vfsglobal.com"
         assert config.country == "tur"
         assert config.language == "tr"
         assert config.mission == "nld"
-        assert config.centres == []
+        assert config.centres == ["Default Centre"]
         assert config.category == "Schengen Visa"
         assert config.subcategory == "Tourism"
 
     def test_explicit_values(self):
         """Test with explicit values."""
-        config = VFSConfig(base_url="https://test.com")
-        assert config.base_url == "https://test.com"
+        config = VFSConfig(base_url="https://test.com", centres=["Test Centre"])
+        assert str(config.base_url) == "https://test.com"
         assert config.country == "tur"
 
     def test_from_dict_minimal(self):
         """Test from_dict with minimal data."""
-        config = VFSConfig.from_dict({})
-        assert config.base_url == "https://visa.vfsglobal.com"
+        config = VFSConfig.from_dict({"centres": ["Minimal Centre"]})
+        assert str(config.base_url) == "https://visa.vfsglobal.com"
         assert config.country == "tur"
 
     def test_from_dict_with_all_values(self):
@@ -83,13 +93,43 @@ class TestVFSConfig:
             "subcategory": "Professional",
         }
         config = VFSConfig.from_dict(data)
-        assert config.base_url == "https://custom.com"
+        assert str(config.base_url) == "https://custom.com"
         assert config.country == "usa"
         assert config.language == "en"
         assert config.mission == "uk"
         assert config.centres == ["Centre1", "Centre2"]
         assert config.category == "Work Visa"
         assert config.subcategory == "Professional"
+
+    def test_empty_centres_raises_validation_error(self):
+        """Test that empty centres list raises validation error."""
+        with pytest.raises(ValidationError, match="List of VFS centres must contain at least one centre"):
+            VFSConfig()
+
+    def test_non_https_url_raises_validation_error(self):
+        """Test that non-HTTPS URL raises validation error."""
+        with pytest.raises(ValidationError, match="VFS base_url must use HTTPS"):
+            VFSConfig(base_url="http://insecure.com", centres=["Centre"])
+
+    def test_country_too_short_raises_validation_error(self):
+        """Test that country code too short raises validation error."""
+        with pytest.raises(ValidationError):
+            VFSConfig(country="a", centres=["Centre"])
+
+    def test_country_too_long_raises_validation_error(self):
+        """Test that country code too long raises validation error."""
+        with pytest.raises(ValidationError):
+            VFSConfig(country="abcd", centres=["Centre"])
+
+    def test_mission_too_short_raises_validation_error(self):
+        """Test that mission code too short raises validation error."""
+        with pytest.raises(ValidationError):
+            VFSConfig(mission="a", centres=["Centre"])
+
+    def test_mission_too_long_raises_validation_error(self):
+        """Test that mission code too long raises validation error."""
+        with pytest.raises(ValidationError):
+            VFSConfig(mission="abcd", centres=["Centre"])
 
 
 class TestBotConfig:
@@ -227,8 +267,8 @@ class TestAppConfig:
     """Tests for AppConfig."""
 
     def test_from_dict_minimal(self):
-        """Test from_dict with minimal data."""
-        config = AppConfig.from_dict({})
+        """Test from_dict with minimal data and required centres."""
+        config = AppConfig.from_dict({"vfs": {"centres": ["Test Centre"]}})
         assert isinstance(config.vfs, VFSConfig)
         assert isinstance(config.bot, BotConfig)
         assert isinstance(config.captcha, CaptchaConfig)
@@ -239,14 +279,15 @@ class TestAppConfig:
         data = {
             "vfs": {
                 "base_url": "https://test.com",
-                "country": "test",
+                "country": "tst",
+                "centres": ["Test Centre"],
             },
             "bot": {
                 "check_interval": 45,
                 "headless": True,
             },
             "captcha": {
-                "provider": "test_provider",
+                "provider": "2captcha",
                 "api_key": "test_key",
             },
             "notifications": {
@@ -257,11 +298,11 @@ class TestAppConfig:
             },
         }
         config = AppConfig.from_dict(data)
-        assert config.vfs.base_url == "https://test.com"
-        assert config.vfs.country == "test"
+        assert str(config.vfs.base_url) == "https://test.com"
+        assert config.vfs.country == "tst"
         assert config.bot.check_interval == 45
         assert config.bot.headless is True
-        assert config.captcha.provider == "test_provider"
+        assert config.captcha.provider == "2captcha"
         assert config.captcha.api_key.get_secret_value() == "test_key"
         assert config.notifications.telegram_enabled is True
 

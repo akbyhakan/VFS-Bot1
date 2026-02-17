@@ -16,7 +16,7 @@ class TestConfigValidator:
                 "centres": ["Istanbul"],
             },
             "bot": {"check_interval": 30},
-            "captcha": {"provider": "manual"},
+            "captcha": {"provider": "2captcha"},
             "notifications": {"telegram": {"enabled": True}},
         }
 
@@ -119,7 +119,7 @@ class TestConfigValidator:
                 "centres": ["Istanbul"],
             },
             "bot": {"check_interval": 10},  # Minimum valid value
-            "captcha": {"provider": "manual"},
+            "captcha": {"provider": "2captcha"},
             "notifications": {},
         }
 
