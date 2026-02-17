@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify requirements.lock is consistent with requirements.txt."""
+"""Verify requirements.lock is consistent with pyproject.toml."""
 
 import re
 import sys
@@ -9,31 +9,6 @@ try:
     import tomllib
 except ImportError:
     import tomli as tomllib
-
-
-def parse_requirements_txt(file_path):
-    """Parse requirements from a requirements.txt file."""
-    with open(file_path) as f:
-        lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-
-    packages = {}
-    for line in lines:
-        # Remove inline comments
-        if "#" in line:
-            line = line.split("#")[0].strip()
-
-        if "[" in line:  # Handle extras like sqlalchemy[asyncio]
-            pkg = line.split("[")[0].lower()
-            constraint = line.split("]")[1] if "]" in line else ""
-        else:
-            match = re.match(r"^([a-zA-Z0-9_-]+)", line)
-            if match:
-                pkg = match.group(1).lower()
-                constraint = line[len(match.group(1)) :]
-            else:
-                continue
-        packages[pkg] = constraint.strip()
-    return packages
 
 
 def parse_package_name(dep_string):
@@ -54,100 +29,52 @@ def parse_package_name(dep_string):
     return None
 
 
-def verify_pyproject_sync():
-    """Verify pyproject.toml dependencies are in sync with requirements.txt."""
+def extract_constraint(dep_string):
+    """Extract version constraint from a dependency string."""
+    # Remove inline comments
+    if "#" in dep_string:
+        dep_string = dep_string.split("#")[0].strip()
+
+    # Handle extras like sqlalchemy[asyncio]~=2.0.37
+    if "[" in dep_string and "]" in dep_string:
+        # Get everything after the closing bracket
+        constraint = dep_string.split("]")[1].strip()
+    else:
+        # Get everything after the package name
+        match = re.match(r"^([a-zA-Z0-9_-]+)", dep_string)
+        if match:
+            constraint = dep_string[len(match.group(1)) :].strip()
+        else:
+            constraint = ""
+
+    return constraint
+
+
+def main():
+    """Verify requirements.lock consistency with pyproject.toml."""
+    # Read pyproject.toml
     pyproject_file = Path("pyproject.toml")
-    req_file = Path("requirements.txt")
-
     if not pyproject_file.exists():
-        print("⚠️  pyproject.toml not found, skipping sync check")
-        return True
+        print("❌ pyproject.toml not found")
+        return 1
 
-    if not req_file.exists():
-        print("❌ requirements.txt not found")
-        return False
-
-    # Parse pyproject.toml
     with open(pyproject_file, "rb") as f:
         pyproject_data = tomllib.load(f)
 
     pyproject_deps = pyproject_data.get("project", {}).get("dependencies", [])
     if not pyproject_deps:
         print("⚠️  No dependencies found in pyproject.toml [project.dependencies]")
-        return False
+        return 1
 
-    # Parse dependencies from pyproject.toml using shared helper
+    # Parse dependencies from pyproject.toml
     pyproject_packages = {}
     for dep in pyproject_deps:
         pkg = parse_package_name(dep)
         if pkg:
-            # Extract constraint for comparison
-            dep_clean = dep.split("#")[0].strip() if "#" in dep else dep
-            if "[" in dep_clean:
-                constraint = dep_clean.split("]")[1] if "]" in dep_clean else ""
-            else:
-                match = re.match(r"^([a-zA-Z0-9_-]+)", dep_clean)
-                if match:
-                    constraint = dep_clean[len(match.group(1)) :]
-                else:
-                    constraint = ""
-            pyproject_packages[pkg] = constraint.strip()
+            constraint = extract_constraint(dep)
+            pyproject_packages[pkg] = constraint
 
-    # Parse requirements.txt
-    req_packages = parse_requirements_txt(req_file)
-
-    # Compare packages
-    errors = []
-
-    # Check for packages in pyproject.toml but not in requirements.txt
-    for pkg in pyproject_packages:
-        if pkg not in req_packages:
-            errors.append(f"❌ {pkg} is in pyproject.toml but missing from requirements.txt")
-
-    # Check for packages in requirements.txt but not in pyproject.toml
-    for pkg in req_packages:
-        if pkg not in pyproject_packages:
-            errors.append(f"❌ {pkg} is in requirements.txt but missing from pyproject.toml")
-
-    # Check for version constraint mismatches
-    for pkg in pyproject_packages:
-        if pkg in req_packages:
-            pyproject_constraint = pyproject_packages[pkg]
-            req_constraint = req_packages[pkg]
-            # Normalize constraints for comparison
-            if pyproject_constraint != req_constraint:
-                errors.append(
-                    f"⚠️  {pkg}: version constraint mismatch - "
-                    f"pyproject.toml has '{pyproject_constraint}', "
-                    f"requirements.txt has '{req_constraint}'"
-                )
-
-    if errors:
-        print("\n🔍 pyproject.toml ↔ requirements.txt synchronization issues:")
-        print("\n".join(errors))
-        print(
-            "\n⚠️  Please ensure both files have the same dependencies with matching version constraints"
-        )
-        return False
-    else:
-        print("✅ pyproject.toml dependencies are in sync with requirements.txt")
-        return True
-
-
-def main():
-    """Verify requirements.lock consistency with requirements.txt."""
-    # First verify pyproject.toml sync
-    pyproject_sync_ok = verify_pyproject_sync()
-
-    # Read requirements.txt and extract main packages with their constraints
-    req_file = Path("requirements.txt")
-    if not req_file.exists():
-        print("❌ requirements.txt not found")
-        return 1
-
-    req_packages = parse_requirements_txt(req_file)
-
-    # Read requirements.lock and extract versions
+    # Read requirements.lock
     lock_file = Path("requirements.lock")
     if not lock_file.exists():
         print("❌ requirements.lock not found")
@@ -163,9 +90,10 @@ def main():
         pkg, version = line.split("==", 1)
         lock_packages[pkg.lower()] = version
 
-    # Check critical packages from requirements.txt
+    # Check critical packages from pyproject.toml
     errors = []
-    for pkg, constraint in req_packages.items():
+    for pkg, constraint in pyproject_packages.items():
+        # Normalize package name (handle different separators)
         pkg_norm = pkg.replace("_", "-").replace(".", "-")
         lock_pkg = None
         for lpkg in lock_packages:
@@ -194,15 +122,11 @@ def main():
     if errors:
         print("\n🔍 requirements.lock validation issues:")
         print("\n".join(errors))
-        print(
-            f"\n⚠️  Found {len(errors)} issue(s). Run 'make lock' to regenerate requirements.lock"
-        )
+        print(f"\n⚠️  Found {len(errors)} issue(s). Run 'make lock' to regenerate requirements.lock")
         return 1
     else:
-        print("✅ All package versions in requirements.lock are consistent with requirements.txt")
-
-    # Return non-zero if pyproject.toml sync failed
-    return 0 if pyproject_sync_ok else 1
+        print("✅ All package versions in requirements.lock are consistent with pyproject.toml")
+        return 0
 
 
 if __name__ == "__main__":

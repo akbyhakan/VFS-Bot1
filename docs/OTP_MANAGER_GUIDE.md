@@ -55,9 +55,9 @@ User Input → OTPManager.manual_otp_input() → SessionRegistry → Bot Session
 
 ### 1. Gerekli Paketler
 
-Tüm gerekli paketler `requirements.txt` dosyasında mevcuttur:
+Tüm gerekli paketler `pyproject.toml` dosyasında mevcuttur:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 2. Çevresel Değişkenler

@@ -27,15 +27,18 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN useradd -m -u 1000 vfsbot
+
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt requirements-dev.txt ./
+# Copy project files for installation
+COPY pyproject.toml README.md ./
+RUN mkdir -p src && touch src/__init__.py
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir ".[dev]"
 
 # Install Playwright browsers
 RUN playwright install chromium --with-deps
@@ -43,10 +46,15 @@ RUN playwright install chromium --with-deps
 # Copy application code
 COPY . .
 
+# Change ownership to non-root user
+RUN chown -R vfsbot:vfsbot /app
+
+# Switch to non-root user
+USER vfsbot
+
 # Set environment variables for testing
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV ENCRYPTION_KEY=""
 
 # Default command
 CMD ["pytest", "tests/", "--cov=src", "--cov-report=term-missing"]

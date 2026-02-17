@@ -52,7 +52,3 @@ logs
 # Tests
 tests
 .pre-commit-config.yaml
-
-# Development files
-requirements-dev.txt
-pyproject.toml

@@ -1,9 +1,9 @@
 # Auto-generated lock file - DO NOT EDIT MANUALLY
-# Generated from requirements.txt for reproducible builds
+# Generated from pyproject.toml for reproducible builds
 # To regenerate: make lock
 # To verify: make verify-lock
 
-# Core packages from requirements.txt (pinned versions)
+# Core packages from pyproject.toml (pinned versions)
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3
 aiosignal==1.4.0

@@ -116,7 +116,7 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 
 **Objective**: Use consistent dependency pinning strategy for reproducible builds.
 
-**File Modified**: `requirements.txt`
+**File Modified**: `pyproject.toml`
 
 **Changes**:
 - Converted `>=` pins to `~=` (compatible release) for most packages
@@ -190,7 +190,7 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 ### Code Files (26)
 - main.py
 - docker-compose.yml
-- requirements.txt
+- pyproject.toml
 - src/core/ (9 files)
 - src/models/ (2 files)
 - src/utils/ (7 files)
