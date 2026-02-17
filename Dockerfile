@@ -114,9 +114,9 @@ USER vfsbot
 # Expose port for web dashboard
 EXPOSE 8000
 
-# Health check using httpx (available in requirements.lock)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5).raise_for_status()"
+# Health check using curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Entrypoint for automatic migrations
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
