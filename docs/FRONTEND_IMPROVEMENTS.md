@@ -148,7 +148,6 @@ const isDev = env.IS_DEV;
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url().optional().or(z.literal('')),
   VITE_WS_BASE_URL: z.string().optional(),
-  VITE_SENTRY_DSN: z.string().optional(),
   MODE: z.enum(['development', 'production', 'test']),
 });
 ```
