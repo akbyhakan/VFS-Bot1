@@ -336,38 +336,41 @@ async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, n
 
 @pytest.mark.asyncio
 @patch("src.core.bot_controller.VFSBot")
-async def test_run_bot_cleanup_under_lock(mock_vfsbot, config, database, notifier):
-    """Test that _run_bot cleanup runs under _async_lock."""
-    # Mock VFSBot
+async def test_run_bot_cleanup_without_deadlock(mock_vfsbot, config, database, notifier):
+    """Test that _run_bot cleanup runs without holding lock to prevent deadlock."""
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
     mock_bot_instance.stop = AsyncMock()
     mock_bot_instance.cleanup = AsyncMock()
-    
-    # Track whether cleanup was called while lock was held
-    lock_held_during_cleanup = False
+
+    cleanup_called = False
     original_cleanup = mock_bot_instance.cleanup
-    
-    async def cleanup_with_lock_check():
-        nonlocal lock_held_during_cleanup
-        # Check if lock is held by trying to acquire it with no wait
+
+    async def cleanup_tracker():
+        nonlocal cleanup_called
         controller = await BotController.get_instance()
-        lock_held_during_cleanup = controller._async_lock.locked()
+        # Lock should NOT be held during cleanup to prevent deadlock
+        assert not controller._async_lock.locked(), (
+            "Lock should not be held during _run_bot cleanup to prevent deadlock"
+        )
+        cleanup_called = True
         await original_cleanup()
-    
-    mock_bot_instance.cleanup = cleanup_with_lock_check
+
+    mock_bot_instance.cleanup = cleanup_tracker
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
     await controller.configure(config, database, notifier, bot_factory=mock_vfsbot)
 
-    # Start and immediately stop to trigger cleanup
     await controller.start_bot()
+
+    # Give bot task time to start
+    await asyncio.sleep(0.1)
+
     await controller.stop_bot()
-    
-    # Verify lock was held during cleanup
-    assert lock_held_during_cleanup
+
+    assert cleanup_called, "Cleanup should have been called"
 
 
 @pytest.mark.asyncio
