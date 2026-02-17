@@ -68,13 +68,13 @@ def main():
 
         # Validate version constraints
         if "==" in constraint:
-            expected = constraint.replace("==", "").strip()
+            expected = constraint.replace("==", "")
             if lock_version != expected:
                 errors.append(
                     f"❌ {pkg}: expected version {expected}, got {lock_version}"
                 )
         elif "~=" in constraint:
-            expected_base = constraint.replace("~=", "").strip()
+            expected_base = constraint.replace("~=", "")
             # Compatible release: should match major.minor
             base_version = expected_base.rsplit(".", 1)[0]
             if not lock_version.startswith(base_version):
