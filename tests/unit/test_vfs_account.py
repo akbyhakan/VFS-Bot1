@@ -82,7 +82,7 @@ class TestVFSAccountManager:
         assert manager.webhook_manager is not None
         assert isinstance(manager.webhook_manager, WebhookTokenManager)
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_register_account(self, mock_encrypt, account_manager, mock_webhook_manager):
         """Test account registration."""
         mock_encrypt.return_value = "encrypted_password"
@@ -109,7 +109,7 @@ class TestVFSAccountManager:
         mock_webhook_manager.generate_token.assert_called_once()
         mock_webhook_manager.register_token.assert_called_once()
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_register_account_duplicate_email_raises_error(self, mock_encrypt, account_manager):
         """Test that duplicate email raises error."""
         mock_encrypt.return_value = "encrypted_password"
@@ -129,7 +129,7 @@ class TestVFSAccountManager:
                 target_email="bot2@example.com",
             )
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_register_account_duplicate_phone_raises_error(self, mock_encrypt, account_manager):
         """Test that duplicate phone raises error."""
         mock_encrypt.return_value = "encrypted_password"
@@ -149,7 +149,7 @@ class TestVFSAccountManager:
                 target_email="bot2@example.com",
             )
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_get_account(self, mock_encrypt, account_manager):
         """Test getting account by ID."""
         mock_encrypt.return_value = "encrypted_password"
@@ -172,7 +172,7 @@ class TestVFSAccountManager:
 
         assert result is None
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_get_account_by_email(self, mock_encrypt, account_manager):
         """Test getting account by email."""
         mock_encrypt.return_value = "encrypted_password"
@@ -189,7 +189,7 @@ class TestVFSAccountManager:
         assert result is not None
         assert result.vfs_email == "user@example.com"
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_get_account_by_token(self, mock_encrypt, account_manager):
         """Test getting account by webhook token."""
         mock_encrypt.return_value = "encrypted_password"
@@ -206,7 +206,7 @@ class TestVFSAccountManager:
         assert result is not None
         assert result.webhook_token == account.webhook_token
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_get_account_by_phone(self, mock_encrypt, account_manager):
         """Test getting account by phone number."""
         mock_encrypt.return_value = "encrypted_password"
@@ -223,7 +223,7 @@ class TestVFSAccountManager:
         assert result is not None
         assert result.phone_number == "+905551234567"
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_update_account(self, mock_encrypt, account_manager):
         """Test updating account fields."""
         mock_encrypt.return_value = "encrypted_password"
@@ -242,7 +242,7 @@ class TestVFSAccountManager:
         assert updated.country == "Germany"
         assert updated.visa_type == "Business"
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_update_account_password(self, mock_encrypt, account_manager):
         """Test updating account password encrypts it."""
         mock_encrypt.return_value = "encrypted_password"
@@ -265,7 +265,7 @@ class TestVFSAccountManager:
         with pytest.raises(ValueError, match="Account not found"):
             account_manager.update_account("non_existent", country="Germany")
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_deactivate_account(self, mock_encrypt, account_manager, mock_webhook_manager):
         """Test deactivating account."""
         mock_encrypt.return_value = "encrypted_password"
@@ -287,7 +287,7 @@ class TestVFSAccountManager:
         with pytest.raises(ValueError, match="Account not found"):
             account_manager.deactivate_account("non_existent")
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_reactivate_account(self, mock_encrypt, account_manager, mock_webhook_manager):
         """Test reactivating account."""
         mock_encrypt.return_value = "encrypted_password"
@@ -310,7 +310,7 @@ class TestVFSAccountManager:
         assert account.is_active is True
         assert mock_token.is_active is True
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_list_accounts(self, mock_encrypt, account_manager):
         """Test listing accounts."""
         mock_encrypt.return_value = "encrypted_password"
@@ -327,7 +327,7 @@ class TestVFSAccountManager:
 
         assert len(accounts) == 3
 
-    @patch("src.models.vfs_account.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
     def test_list_accounts_active_only(self, mock_encrypt, account_manager):
         """Test listing only active accounts."""
         mock_encrypt.return_value = "encrypted_password"
@@ -354,8 +354,8 @@ class TestVFSAccountManager:
         assert len(active_accounts) == 1
         assert len(all_accounts) == 2
 
-    @patch("src.models.vfs_account.encrypt_password")
-    @patch("src.models.vfs_account.decrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.decrypt_password")
     def test_get_decrypted_password(self, mock_decrypt, mock_encrypt, account_manager):
         """Test getting decrypted password."""
         mock_encrypt.return_value = "encrypted_password"
@@ -379,8 +379,8 @@ class TestVFSAccountManager:
 
         assert password is None
 
-    @patch("src.models.vfs_account.encrypt_password")
-    @patch("src.models.vfs_account.decrypt_password")
+    @patch("src.services.account.vfs_account_manager.encrypt_password")
+    @patch("src.services.account.vfs_account_manager.decrypt_password")
     def test_get_decrypted_password_decryption_error(
         self, mock_decrypt, mock_encrypt, account_manager
     ):
