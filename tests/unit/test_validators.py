@@ -118,13 +118,13 @@ def test_get_masked_summary(monkeypatch):
 
     summary = EnvValidator.get_masked_summary()
 
-    # Should mask values
+    # Should mask values - shows first 4 and last 4 characters
     assert summary["VFS_EMAIL"].startswith("user")
-    assert summary["VFS_EMAIL"].endswith(".local")
+    assert summary["VFS_EMAIL"].endswith("ocal")
     assert "..." in summary["VFS_EMAIL"]
 
     assert summary["VFS_PASSWORD"].startswith("very")
-    assert summary["VFS_PASSWORD"].endswith("123")
+    assert summary["VFS_PASSWORD"].endswith("d123")
     assert "..." in summary["VFS_PASSWORD"]
 
 
