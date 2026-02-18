@@ -20,8 +20,7 @@ if TYPE_CHECKING:
 class BookingExecutor:
     """Executes booking flows and confirms appointments."""
 
-    def __init__(
-        self,
+    def __init__(self,
         db: "Database",
         notifier: "NotificationService",
         deps: "BookingDependencies",
@@ -85,8 +84,30 @@ class BookingExecutor:
         )
 
         if success:
-            # Booking confirmed - record and notify
+            # Verify booking confirmation and extract reference number
+            # BookingValidator.verify_booking_confirmation reads the actual
+            # reference from the page (e.g. ABC123456) using multiple selectors.
+            # It is accessed via BookingOrchestrator.validator attribute.
             reference = "CONFIRMED"
+            try:
+                confirmation = await self.deps.workflow.booking_service.validator.verify_booking_confirmation(
+                    page
+                )
+                if confirmation.get("success"):
+                    reference = confirmation.get("reference") or "CONFIRMED"
+                    logger.info(f"Booking confirmation verified, reference: {reference}")
+                else:
+                    logger.warning(
+                        f"Booking confirmation verification returned unsuccessful: "
+                        f"{confirmation.get('error', 'unknown')}. "
+                        f"Using fallback reference: {reference}"
+                    )
+            except Exception as verify_error:
+                logger.warning(
+                    f"Could not verify booking confirmation: {verify_error}. "
+                    f"Using fallback reference: {reference}"
+                )
+
             await self.appointment_repo.create(
                 {
                     "user_id": user["id"],
