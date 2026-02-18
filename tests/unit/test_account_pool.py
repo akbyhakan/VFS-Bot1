@@ -359,3 +359,67 @@ async def test_wait_for_available_account_no_shutdown_event(mock_db, mock_accoun
     
     assert result is True
 
+
+
+# ──────────────────────────────────────────────────────────────
+# Test PooledAccount.from_dict validation (Bug #16)
+# ──────────────────────────────────────────────────────────────
+
+
+def test_pooled_account_from_dict_success(sample_account_dict):
+    """Test that from_dict successfully creates PooledAccount with all required fields."""
+    account = PooledAccount.from_dict(sample_account_dict)
+    
+    assert account.id == sample_account_dict["id"]
+    assert account.email == sample_account_dict["email"]
+    assert account.password == sample_account_dict["password"]
+    assert account.phone == sample_account_dict["phone"]
+    assert account.status == sample_account_dict["status"]
+    assert account.created_at == sample_account_dict["created_at"]
+    assert account.updated_at == sample_account_dict["updated_at"]
+    assert account.consecutive_failures == sample_account_dict["consecutive_failures"]
+    assert account.total_uses == sample_account_dict["total_uses"]
+    assert account.is_active == sample_account_dict["is_active"]
+
+
+def test_pooled_account_from_dict_missing_required_field():
+    """Test that from_dict raises ValueError (not KeyError) for missing required fields."""
+    # Missing 'email' field
+    incomplete_data = {
+        "id": 1,
+        "password": "test_pass",
+        "phone": "+1234567890",
+        "status": "available",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    
+    with pytest.raises(ValueError) as exc_info:
+        PooledAccount.from_dict(incomplete_data)
+    
+    # Verify error message mentions missing field and available keys
+    error_msg = str(exc_info.value)
+    assert "missing required fields" in error_msg
+    assert "email" in error_msg
+    assert "Available keys" in error_msg
+
+
+def test_pooled_account_from_dict_multiple_missing_fields():
+    """Test that from_dict reports all missing required fields."""
+    # Missing multiple fields: email, password, phone
+    incomplete_data = {
+        "id": 1,
+        "status": "available",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    
+    with pytest.raises(ValueError) as exc_info:
+        PooledAccount.from_dict(incomplete_data)
+    
+    error_msg = str(exc_info.value)
+    assert "missing required fields" in error_msg
+    # Verify all missing fields are mentioned
+    assert "email" in error_msg
+    assert "password" in error_msg
+    assert "phone" in error_msg
