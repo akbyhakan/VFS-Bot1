@@ -1,7 +1,7 @@
 # Multi-stage build for smaller image size
 
 # Stage 1: Frontend builder
-FROM node:18-slim as frontend-builder
+FROM node:18-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -18,7 +18,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Python dependencies builder
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
