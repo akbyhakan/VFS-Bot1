@@ -22,6 +22,20 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - 🐳 **Docker Support** - Easy deployment with Docker and Docker Compose
 - ⚙️ **YAML Configuration** - Simple configuration with environment variable support
 - 🔒 **Secure** - Credentials stored in environment variables
+- 🏦 **Account Pool** - Multi-account VFS pool with cooldown/quarantine management
+- 📱 **OTP Manager** - Centralized OTP management (Email IMAP + SMS Webhook support)
+- 📨 **SMS Webhook** - SMS Forwarder app integration for OTP retrieval
+- 📧 **Email OTP** - Microsoft 365 catch-all mailbox for OTP retrieval
+- 🔄 **Dropdown Sync** - Automatic synchronization of VFS dropdown data (weekly)
+- 🛡️ **Appointment Deduplication** - Prevents duplicate appointment bookings
+- 💳 **Payment Service** - Payment processing support (manual mode)
+- ⚙️ **Runtime Config API** - Runtime configuration management API
+- 📋 **Audit Logging** - Detailed audit trail and logging
+- 🌐 **Proxy Management** - Dashboard-based proxy addition and management
+- 🔑 **API Versioning** - Versioned API with `/api/v1/` prefix
+- 📊 **Grafana/Prometheus Monitoring** - Integrated monitoring via `docker-compose.monitoring.yml`
+- 🗄️ **Alembic Migrations** - Database schema migrations
+- 📈 **Slot Pattern Analysis** - Availability pattern analysis
 
 ## 🛡️ Anti-Detection Features
 
@@ -271,31 +285,54 @@ The system learns over time which selectors work best and automatically promotes
 
 ### Environment Variables (.env)
 
+Key variables needed for configuration (see `.env.example` for complete list):
+
 ```env
 # VFS Credentials
 VFS_EMAIL=your_email@example.com
 VFS_PASSWORD=your_password
+VFS_PASSWORD_ENCRYPTED=false  # Set to true if password is Fernet-encrypted
 
-# Password Encryption Key (CRITICAL)
+# Encryption Keys (CRITICAL)
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ENCRYPTION_KEY=your-base64-encoded-encryption-key-here
+# Backup encryption key (uses ENCRYPTION_KEY if not set)
+BACKUP_ENCRYPTION_KEY=your-backup-encryption-key
 
 # VFS API Encryption Key (CRITICAL)
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 VFS_ENCRYPTION_KEY=your-32-byte-encryption-key-here
+
+# VFS API URLs (REQUIRED)
+VFS_API_BASE=https://your-vfs-api-base-url
+VFS_ASSETS_BASE=https://your-vfs-assets-base-url
+CONTENTFUL_BASE=https://your-contentful-base-url
 
 # Database Configuration
 # PostgreSQL connection URL
 # ⚠️ CRITICAL: Replace CHANGE_ME_TO_SECURE_PASSWORD with a secure password!
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(24))"
 DATABASE_URL=postgresql://vfs_bot:CHANGE_ME_TO_SECURE_PASSWORD@localhost:5432/vfs_bot
-# PostgreSQL password (used by Docker Compose)
-# ⚠️ CRITICAL: Must match the password in DATABASE_URL above!
 POSTGRES_PASSWORD=CHANGE_ME_TO_SECURE_PASSWORD
 DB_POOL_SIZE=10
+DB_CONNECTION_TIMEOUT=30.0
+# Multi-worker configuration
+DB_MAX_CONNECTIONS=100
+DB_WORKER_COUNT=4
+
+# Backup Configuration
+BACKUP_INTERVAL_HOURS=6
+BACKUP_RETENTION_DAYS=7
 
 # Token Management
 TOKEN_REFRESH_BUFFER_MINUTES=5
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FORMAT=text  # text or json
+
+# Environment
+ENV=production  # production or development
 
 # Telegram Notifications (optional)
 TELEGRAM_BOT_TOKEN=your_bot_token
@@ -308,6 +345,73 @@ EMAIL_RECEIVER=receiver@example.com
 
 # Captcha Service (optional)
 CAPTCHA_API_KEY=your_captcha_api_key
+
+# SMS OTP Webhook
+SMS_WEBHOOK_SECRET=your-webhook-secret
+OTP_TIMEOUT_SECONDS=300
+
+# Microsoft 365 Email OTP
+M365_EMAIL=admin@yourdomain.com
+M365_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
+
+# OTP Manager (Centralized)
+OTP_MANAGER_EMAIL=your-catchall-email@yourdomain.com
+OTP_MANAGER_APP_PASSWORD=your-app-specific-password
+OTP_MANAGER_TIMEOUT=120
+OTP_MANAGER_SESSION_TIMEOUT=600
+
+# SMS Webhook Token
+WEBHOOK_BASE_URL=https://your-api-domain.example.com
+WEBHOOK_TOKEN_PREFIX=tk_
+WEBHOOK_RATE_LIMIT=60
+WEBHOOK_SIGNATURE_SECRET=
+
+# Dashboard Security
+DASHBOARD_API_KEY=your-secure-api-key-here
+ADMIN_SECRET=one-time-secret-for-key-generation
+
+# API Authentication (JWT)
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
+API_SECRET_KEY=your-secret-key-here-must-be-at-least-64-characters-long
+JWT_ALGORITHM=HS384
+JWT_EXPIRY_HOURS=24
+
+# Admin Credentials
+ADMIN_USERNAME=your_unique_admin_name
+ADMIN_PASSWORD=YOUR_SECURE_HASHED_PASSWORD_HERE
+
+# API Key Auth (alternative to JWT)
+API_KEY=your-api-key-here
+API_KEY_SALT=your-32-character-minimum-salt-here
+API_KEY_VERSION=1
+
+# Trusted Proxies
+TRUSTED_PROXIES=
+
+# Health Check
+BOT_HEALTH_THRESHOLD=50.0
+
+# Cache Configuration
+USERS_CACHE_TTL=300
+CACHE_TTL_SECONDS=3600
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS=60
+RATE_LIMIT_WINDOW=60
+AUTH_RATE_LIMIT_ATTEMPTS=5
+AUTH_RATE_LIMIT_WINDOW=60
+
+# Redis (for distributed rate limiting)
+REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=CHANGE_ME_generate_secure_password_here
+
+# Monitoring (Grafana/Prometheus)
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=CHANGE_ME_generate_secure_grafana_password
+
+# AI-Powered Selector Auto-Repair (optional)
+# Get API key from: https://ai.google.dev/
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ### Configuration File (config/config.yaml)
@@ -434,25 +538,243 @@ python main.py --config /path/to/config.yaml
 
 ### Using the API
 
-The web dashboard exposes a REST API:
+The web dashboard exposes a REST API with versioned endpoints:
 
-- `GET /api/status` - Get current bot status
-- `POST /api/bot/start` - Start the bot
-- `POST /api/bot/stop` - Stop the bot
-- `GET /api/logs` - Get recent logs
-- `WebSocket /ws` - Real-time updates
+#### Versioned Endpoints (`/api/v1/`)
 
-Example:
+**Authentication:**
+- `POST /api/v1/auth/login` - User login (creates HttpOnly cookie)
+- `POST /api/v1/auth/logout` - User logout (clears HttpOnly cookie)
+- `POST /api/v1/auth/generate-key` - Generate API key (one-time use)
+
+**User Management:**
+- `GET /api/v1/users` - List all users
+- `POST /api/v1/users` - Create new user
+- `PUT /api/v1/users/{id}` - Update user
+- `DELETE /api/v1/users/{id}` - Delete user
+- `POST /api/v1/users/upload-csv` - Bulk upload users from CSV
+
+**Bot Control:**
+- `POST /api/v1/bot/start` - Start the bot
+- `POST /api/v1/bot/stop` - Stop the bot
+- `POST /api/v1/bot/restart` - Restart the bot
+- `POST /api/v1/bot/check-now` - Trigger manual check
+- `GET /api/v1/bot/logs` - Fetch bot logs
+- `GET /api/v1/bot/settings` - Get bot settings
+- `PUT /api/v1/bot/settings` - Update bot settings
+
+**Appointments:**
+- `GET /api/v1/appointments` - List appointments
+
+**Audit:**
+- `GET /api/v1/audit/logs` - Get audit logs
+- `GET /api/v1/audit/stats` - Get audit statistics
+
+**Payment:**
+- `POST /api/v1/payment/payment-card` - Save payment card
+- `GET /api/v1/payment/payment-card` - Get payment card
+- `DELETE /api/v1/payment/payment-card` - Delete payment card
+
+**Proxy Management:**
+- `POST /api/v1/proxy/add` - Add proxy
+- `GET /api/v1/proxy/list` - List proxies
+- `POST /api/v1/proxy/upload` - Upload proxy file
+
+**Runtime Configuration:**
+- `GET /api/v1/config/runtime` - Get runtime configuration
+- `PUT /api/v1/config/runtime` - Update runtime configuration
+
+**Dropdown Sync:**
+- `POST /api/v1/dropdown-sync/trigger` - Trigger dropdown synchronization
+
+#### Non-Versioned Endpoints
+
+**Health & Status:**
+- `GET /health` - Health check
+- `GET /api/status` - Bot status
+- `GET /api/metrics` - Prometheus metrics
+
+**WebSocket:**
+- `WS /ws` - Real-time updates (logs, status, stats)
+
+**OTP Webhooks:**
+- `POST /api/webhook/users/{user_id}/create` - Create webhook for user
+- `GET /api/webhook/users/{user_id}` - Get webhook info
+- `POST /webhook/sms/{token}` - SMS OTP receiver endpoint
+
+#### Example Usage
+
 ```bash
-# Get status
-curl http://localhost:8000/api/status
+# Login and get session cookie
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' \
+  -c cookies.txt
 
-# Start bot
-curl -X POST http://localhost:8000/api/bot/start
+# Get bot status (non-versioned endpoint)
+curl http://localhost:8000/api/status -b cookies.txt
 
-# Stop bot
-curl -X POST http://localhost:8000/api/bot/stop
+# Start bot (versioned endpoint)
+curl -X POST http://localhost:8000/api/v1/bot/start -b cookies.txt
+
+# Stop bot (versioned endpoint)
+curl -X POST http://localhost:8000/api/v1/bot/stop -b cookies.txt
+
+# Get logs (versioned endpoint)
+curl http://localhost:8000/api/v1/bot/logs -b cookies.txt
 ```
+
+## 📁 Project Structure
+
+```
+VFS-Bot1/
+├── main.py                          # Main entry point (3-phase startup)
+├── pyproject.toml                   # Project configuration and dependencies
+├── Dockerfile / Dockerfile.dev      # Docker configurations
+├── docker-compose.yml               # Production compose
+├── docker-compose.dev.yml           # Development compose
+├── docker-compose.monitoring.yml    # Monitoring (Grafana/Prometheus)
+├── Makefile                         # Shortcut commands
+├── alembic.ini                      # Database migration configuration
+├── alembic/                         # Migration files
+├── config/
+│   ├── config.example.yaml          # Example configuration
+│   └── selectors.yaml               # Element selector configuration
+├── src/
+│   ├── __init__.py                  # Lazy-loading module structure
+│   ├── constants.py                 # Constants
+│   ├── core/                        # Core infrastructure
+│   │   ├── auth/                    # JWT token, encryption
+│   │   ├── config/                  # Configuration loading, validation
+│   │   ├── infra/                   # Startup, shutdown, retry logic
+│   │   ├── bot_controller.py        # Bot lifecycle management
+│   │   ├── exceptions.py            # Custom exception classes
+│   │   ├── environment.py           # Environment detection
+│   │   ├── logger.py                # Loguru configuration
+│   │   └── security.py              # API key management
+│   ├── models/                      # Database models
+│   │   ├── database.py              # PostgreSQL connection management
+│   │   └── db_factory.py            # Database factory pattern
+│   ├── repositories/                # Repository pattern
+│   │   ├── base.py                  # Base CRUD operations
+│   │   ├── user_repository.py       # User operations
+│   │   ├── account_pool_repository.py  # Account pool
+│   │   ├── appointment_repository.py   # Appointment operations
+│   │   ├── audit_log_repository.py  # Audit logs
+│   │   ├── payment_repository.py    # Payment card management
+│   │   ├── proxy_repository.py      # Proxy management
+│   │   └── webhook_repository.py    # Webhook management
+│   ├── selector/                    # Adaptive selector system
+│   ├── services/
+│   │   ├── bot/                     # VFS bot core logic
+│   │   ├── notification/            # Telegram/Email notifications
+│   │   ├── data_sync/               # Dropdown synchronization
+│   │   ├── otp_manager/             # OTP management (Email/SMS)
+│   │   ├── captcha_solver.py        # 2Captcha integration
+│   │   ├── payment_service.py       # Payment processing
+│   │   ├── slot_analyzer.py         # Slot pattern analysis
+│   │   └── appointment_deduplication.py  # Duplicate prevention
+│   └── utils/                       # Utility modules
+│       ├── anti_detection/          # TLS, fingerprint, human simulation
+│       ├── security/                # Rate limiting, session, proxy
+│       ├── encryption.py            # Fernet encryption
+│       └── validators.py            # Input validation
+├── web/                             # FastAPI web application
+│   ├── app.py                       # FastAPI application factory
+│   ├── api_versioning.py            # /api/v1 versioning
+│   ├── routes/                      # API endpoints
+│   │   ├── auth.py                  # Authentication
+│   │   ├── users.py                 # User management
+│   │   ├── bot.py                   # Bot control
+│   │   ├── appointments.py          # Appointments
+│   │   ├── audit.py                 # Audit logs
+│   │   ├── payment.py               # Payment card
+│   │   ├── proxy.py                 # Proxy management
+│   │   ├── config.py                # Runtime configuration
+│   │   ├── dropdown_sync.py         # Dropdown synchronization
+│   │   ├── health.py                # Health check
+│   │   ├── webhook.py               # OTP webhooks
+│   │   └── sms_webhook.py           # SMS webhooks
+│   ├── middleware/                  # Security, CORS, error handling
+│   ├── models/                      # Pydantic models
+│   ├── state/                       # Thread-safe bot state
+│   ├── websocket/                   # WebSocket handler
+│   └── templates/                   # HTML templates
+├── frontend/                        # React + TypeScript dashboard
+├── tests/                           # Test suite (unit, integration, e2e, load)
+├── docs/                            # Additional documentation (23+ files)
+│   ├── ACCOUNT_POOL_MIGRATION.md
+│   ├── API_AUTHENTICATION.md
+│   ├── AUTOMATION_FEATURES.md
+│   ├── COUNTRY_SELECTOR_SYSTEM.md
+│   ├── EMAIL_OTP_SETUP.md
+│   ├── OTP_MANAGER_GUIDE.md
+│   ├── SECURITY.md
+│   ├── SMS_WEBHOOK_SETUP.md
+│   └── ... (and more)
+├── monitoring/                      # Grafana/Prometheus configuration
+├── scripts/                         # Helper scripts
+└── screenshots/                     # Screenshots
+```
+
+## 🔧 CLI Parameters
+
+The bot supports various command-line options:
+
+```bash
+# Run modes
+python main.py --mode both      # Run both bot and web dashboard (default)
+python main.py --mode web       # Run web dashboard only
+python main.py --mode bot       # Run bot automation only
+
+# Read-only mode (degraded mode when database migration fails)
+python main.py --mode both --read-only
+
+# Custom configuration file
+python main.py --config /path/to/config.yaml
+
+# Logging level
+python main.py --log-level DEBUG
+```
+
+### 3-Phase Startup Process
+
+The bot uses a 3-phase startup process:
+
+1. **Pre-flight Checks** - Validates critical dependencies and environment
+2. **Config Loading** - Loads and validates configuration
+3. **Run Mode** - Starts bot/web/both based on `--mode` flag
+
+The `--read-only` flag enables degraded operation when database migrations fail, allowing limited functionality without full database access.
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### Setup & Configuration
+- [Environment Setup](docs/ENVIRONMENT_SETUP.md) - Environment configuration guide
+- [API Authentication](docs/API_AUTHENTICATION.md) - API authentication details
+- [Security Guide](docs/SECURITY.md) - Security policies and best practices
+
+### OTP & Webhooks
+- [OTP Manager Guide](docs/OTP_MANAGER_GUIDE.md) - Centralized OTP management
+- [Email OTP Setup](docs/EMAIL_OTP_SETUP.md) - Microsoft 365 email OTP configuration
+- [SMS Webhook Setup](docs/SMS_WEBHOOK_SETUP.md) - SMS webhook integration
+
+### Advanced Features
+- [Account Pool Migration](docs/ACCOUNT_POOL_MIGRATION.md) - Multi-account pool setup
+- [Automation Features](docs/AUTOMATION_FEATURES.md) - Automation capabilities
+- [Country Selector System](docs/COUNTRY_SELECTOR_SYSTEM.md) - Adaptive selector system
+- [VFS Dropdown Sync](docs/VFS_DROPDOWN_SYNC.md) - Dropdown data synchronization
+- [Waitlist Implementation](docs/WAITLIST_IMPLEMENTATION.md) - Waitlist features
+- [Token Sync Implementation](docs/TOKEN_SYNC_IMPLEMENTATION.md) - Token synchronization
+
+### Architecture & Development
+- [Modular Architecture](docs/MODULAR_ARCHITECTURE.md) - System architecture overview
+- [Middleware](docs/MIDDLEWARE.md) - Middleware structure and usage
+- [Frontend UI Guide](docs/FRONTEND_UI_GUIDE.md) - Frontend development guide
+- [PCI-DSS Compliance](docs/PCI_DSS_COMPLIANCE.md) - Payment card security compliance
+
 
 ## 🏥 Health & Monitoring
 
