@@ -222,6 +222,16 @@ class BookingOrchestrator:
             logger.info("STARTING APPOINTMENT BOOKING FLOW")
             logger.info("=" * 50)
 
+            # Early validation: Ensure PaymentService is available before starting expensive flow
+            if self.payment_service is None:
+                logger.error(
+                    "PaymentService is required for payment processing. "
+                    "Failing early to avoid wasting resources on booking steps."
+                )
+                raise ValueError(
+                    "PaymentService is required - legacy payment mode removed for PCI-DSS compliance"
+                )
+
             # Step 1: Double match check (capacity + date)
             match_result = await self.validator.check_double_match(page, reservation)
             if not match_result["match"]:
@@ -252,15 +262,6 @@ class BookingOrchestrator:
             await self.handle_review_and_pay(page)
 
             # Step 6: Process payment with PaymentService (PCI-DSS compliant)
-            if self.payment_service is None:
-                logger.error(
-                    "PaymentService is required for payment processing. "
-                    "Legacy inline payment mode has been removed for security (PCI-DSS compliance)."
-                )
-                raise ValueError(
-                    "PaymentService is required - legacy payment mode removed for PCI-DSS compliance"
-                )
-
             # Use PaymentService for secure payment processing
             user_id = reservation.get("user_id", 0)
             card_details_wrapped = reservation.get("payment_card")

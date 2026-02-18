@@ -33,6 +33,13 @@ class PooledAccount:
     @classmethod
     def from_dict(cls, data: dict) -> "PooledAccount":
         """Create PooledAccount from dictionary."""
+        required_fields = ("id", "email", "password", "phone", "status", "created_at", "updated_at")
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            raise ValueError(
+                f"PooledAccount.from_dict: missing required fields: {missing}. "
+                f"Available keys: {list(data.keys())}"
+            )
         return cls(
             id=data["id"],
             email=data["email"],
@@ -48,6 +55,7 @@ class PooledAccount:
             created_at=data["created_at"],
             updated_at=data["updated_at"],
         )
+
 
 
 class AccountPool:
