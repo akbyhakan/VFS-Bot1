@@ -25,8 +25,8 @@ class DropdownCacheRepository(BaseRepository):
         super().__init__(database)
 
     async def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
-        """Get dropdown cache entry by ID (not applicable - use get_dropdown_data)."""
-        return None
+        """Get by ID not supported - use get_dropdown_data(country_code) instead."""
+        raise NotImplementedError("Use get_dropdown_data(country_code) instead")
 
     async def get_all(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get all cached countries."""
@@ -80,13 +80,19 @@ class DropdownCacheRepository(BaseRepository):
 
             return {
                 "dropdown_data": row["dropdown_data"],
-                "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                "last_synced_at": (
+                    row["last_synced_at"].isoformat() if row["last_synced_at"] else None
+                ),
                 "sync_status": row["sync_status"],
                 "error_message": row["error_message"],
             }
 
     async def upsert_dropdown_data(
-        self, country_code: str, dropdown_data: Dict[str, Any], sync_status: str = "completed", error_message: Optional[str] = None
+        self,
+        country_code: str,
+        dropdown_data: Dict[str, Any],
+        sync_status: str = "completed",
+        error_message: Optional[str] = None,
     ) -> bool:
         """
         Insert or update dropdown data for a country.
@@ -121,7 +127,9 @@ class DropdownCacheRepository(BaseRepository):
                     error_message,
                     datetime.now(timezone.utc),
                 )
-            logger.info(f"Upserted dropdown data for country: {country_code} with status: {sync_status}")
+            logger.info(
+                f"Upserted dropdown data for country: {country_code} with status: {sync_status}"
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to upsert dropdown data for {country_code}: {e}")
@@ -287,7 +295,9 @@ class DropdownCacheRepository(BaseRepository):
             return {
                 "country_code": country_code,
                 "sync_status": row["sync_status"],
-                "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                "last_synced_at": (
+                    row["last_synced_at"].isoformat() if row["last_synced_at"] else None
+                ),
                 "error_message": row["error_message"],
             }
 
@@ -348,7 +358,9 @@ class DropdownCacheRepository(BaseRepository):
                 {
                     "country_code": row["country_code"],
                     "sync_status": row["sync_status"],
-                    "last_synced_at": row["last_synced_at"].isoformat() if row["last_synced_at"] else None,
+                    "last_synced_at": (
+                        row["last_synced_at"].isoformat() if row["last_synced_at"] else None
+                    ),
                     "error_message": row["error_message"],
                 }
                 for row in rows

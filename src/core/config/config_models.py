@@ -26,9 +26,15 @@ class VFSConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_https(cls, v: str) -> str:
-        """Ensure URL is HTTPS."""
+        """Ensure URL is HTTPS and has valid structure."""
         if not v.startswith("https://"):
             raise ValueError("VFS base_url must use HTTPS")
+        # Basic URL structure check: must have a valid domain
+        from urllib.parse import urlparse
+
+        parsed = urlparse(v)
+        if not parsed.netloc:
+            raise ValueError("VFS base_url must have a valid domain")
         return v
 
     @model_validator(mode="after")
@@ -137,7 +143,7 @@ class NotificationConfig(BaseModel):
         # Handle nested structure - data should contain telegram and email as dicts
         telegram_data = data.get("telegram", {})
         email_data = data.get("email", {})
-        
+
         return cls(
             telegram=TelegramConfig(**telegram_data) if telegram_data else TelegramConfig(),
             email=EmailConfig(**email_data) if email_data else EmailConfig(),
@@ -235,14 +241,15 @@ class SecurityConfig(BaseModel):
     encryption_key: Optional[SecretStr] = Field(default=None)
     jwt_algorithm: str = Field(default="HS384")
 
-    @model_validator(mode='after')
-    def validate_security_keys(self) -> 'SecurityConfig':
+    @model_validator(mode="after")
+    def validate_security_keys(self) -> "SecurityConfig":
         """Warn if security keys are empty (actual enforcement is in VFSSettings)."""
         import os
+
         env = os.getenv("ENV", "production").lower()
         if env not in ("testing", "test", "development", "dev"):
             missing = []
-            for field_name in ('api_secret_key', 'api_key_salt', 'encryption_key'):
+            for field_name in ("api_secret_key", "api_key_salt", "encryption_key"):
                 value = getattr(self, field_name)
                 if value is None:
                     missing.append(field_name)
@@ -250,6 +257,7 @@ class SecurityConfig(BaseModel):
                     missing.append(field_name)
             if missing:
                 import warnings
+
                 warnings.warn(
                     f"SecurityConfig: Empty security keys detected: {missing}. "
                     "This is insecure for production use.",
