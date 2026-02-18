@@ -68,77 +68,82 @@ class BrowserManager:
             logger.warning("Browser already started")
             return
 
-        # Start Playwright
-        self.playwright = await async_playwright().start()
+        try:
+            # Start Playwright
+            self.playwright = await async_playwright().start()
 
-        # Get proxy configuration if enabled
-        proxy_config = None
-        if self._anti_detection_enabled and self.proxy_manager and self.proxy_manager.enabled:
-            # Use sequential allocation for deterministic proxy assignment
-            allocated_proxy = self.proxy_manager.allocate_next()
-            if allocated_proxy:
-                proxy_config = self.proxy_manager.get_playwright_proxy(proxy=allocated_proxy)
-                if proxy_config:
-                    logger.info(f"Using proxy: {proxy_config['server']}")
-            else:
-                logger.warning("No proxy allocated, continuing without proxy")
+            # Get proxy configuration if enabled
+            proxy_config = None
+            if self._anti_detection_enabled and self.proxy_manager and self.proxy_manager.enabled:
+                # Use sequential allocation for deterministic proxy assignment
+                allocated_proxy = self.proxy_manager.allocate_next()
+                if allocated_proxy:
+                    proxy_config = self.proxy_manager.get_playwright_proxy(proxy=allocated_proxy)
+                    if proxy_config:
+                        logger.info(f"Using proxy: {proxy_config['server']}")
+                else:
+                    logger.warning("No proxy allocated, continuing without proxy")
 
-        # Get User-Agent from fingerprint rotator or header manager or use default
-        user_agent = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/135.0.0.0 Safari/537.36"
-        )
-        
-        if self._anti_detection_enabled and self._fingerprint_rotator:
-            # Use user agent from current fingerprint profile
-            profile = self._fingerprint_rotator.get_current_profile()
-            user_agent = profile.user_agent
-        elif self._anti_detection_enabled and self.header_manager:
-            user_agent = self.header_manager.get_user_agent()
+            # Get User-Agent from fingerprint rotator or header manager or use default
+            user_agent = (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/135.0.0.0 Safari/537.36"
+            )
+            
+            if self._anti_detection_enabled and self._fingerprint_rotator:
+                # Use user agent from current fingerprint profile
+                profile = self._fingerprint_rotator.get_current_profile()
+                user_agent = profile.user_agent
+            elif self._anti_detection_enabled and self.header_manager:
+                user_agent = self.header_manager.get_user_agent()
 
-        # Launch browser with anti-automation flags
-        launch_options = {
-            "headless": self.config["bot"].get("headless", False),
-            "args": ["--disable-blink-features=AutomationControlled"],
-        }
-
-        self.browser = await self.playwright.chromium.launch(**launch_options)
-
-        # Create context with stealth settings
-        context_options: Dict[str, Any] = {
-            "viewport": {"width": 1920, "height": 1080},
-            "user_agent": user_agent,
-        }
-        
-        # Use viewport from fingerprint profile if available
-        if self._anti_detection_enabled and self._fingerprint_rotator:
-            profile = self._fingerprint_rotator.get_current_profile()
-            context_options["viewport"] = {
-                "width": profile.viewport_width,
-                "height": profile.viewport_height,
+            # Launch browser with anti-automation flags
+            launch_options = {
+                "headless": self.config["bot"].get("headless", False),
+                "args": ["--disable-blink-features=AutomationControlled"],
             }
 
-        if proxy_config:
-            context_options["proxy"] = proxy_config
+            self.browser = await self.playwright.chromium.launch(**launch_options)
 
-        self.context = await self.browser.new_context(**context_options)
+            # Create context with stealth settings
+            context_options: Dict[str, Any] = {
+                "viewport": {"width": 1920, "height": 1080},
+                "user_agent": user_agent,
+            }
+            
+            # Use viewport from fingerprint profile if available
+            if self._anti_detection_enabled and self._fingerprint_rotator:
+                profile = self._fingerprint_rotator.get_current_profile()
+                context_options["viewport"] = {
+                    "width": profile.viewport_width,
+                    "height": profile.viewport_height,
+                }
 
-        # Apply stealth configuration if enabled
-        if self._anti_detection_enabled and self.config.get("anti_detection", {}).get(
-            "stealth_mode", True
-        ):
-            # Stealth will be applied per-page via StealthConfig
-            pass
-        else:
-            # Add basic stealth script for backwards compatibility
-            await self.context.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-            """)
+            if proxy_config:
+                context_options["proxy"] = proxy_config
 
-        logger.info("Browser started successfully")
+            self.context = await self.browser.new_context(**context_options)
+
+            # Apply stealth configuration if enabled
+            if self._anti_detection_enabled and self.config.get("anti_detection", {}).get(
+                "stealth_mode", True
+            ):
+                # Stealth will be applied per-page via StealthConfig
+                pass
+            else:
+                # Add basic stealth script for backwards compatibility
+                await self.context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                """)
+
+            logger.info("Browser started successfully")
+        except Exception:
+            # Clean up partial resources on error
+            await self.close()
+            raise
 
     async def close(self) -> None:
         """Clean up browser resources."""

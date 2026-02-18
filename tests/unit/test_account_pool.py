@@ -290,3 +290,72 @@ async def test_acquire_release_thread_safety(account_pool, mock_account_pool_rep
     # Verify all operations completed without errors
     # Lock should have prevented race conditions
     assert mock_account_pool_repo.mark_account_in_use.call_count == 5
+
+
+@pytest.mark.asyncio
+async def test_wait_for_available_account_with_shutdown(mock_db, mock_account_pool_repo):
+    """Test wait_for_available_account respects shutdown event."""
+    shutdown_event = asyncio.Event()
+    
+    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+        pool = AccountPool(
+            db=mock_db,
+            cooldown_seconds=60,
+            shutdown_event=shutdown_event,
+        )
+        pool.repo = mock_account_pool_repo
+    
+    # No accounts available
+    mock_account_pool_repo.get_available_accounts.return_value = []
+    mock_account_pool_repo.get_next_available_cooldown_time.return_value = None
+    
+    # Set shutdown event after a short delay
+    async def trigger_shutdown():
+        await asyncio.sleep(0.5)
+        shutdown_event.set()
+    
+    shutdown_task = asyncio.create_task(trigger_shutdown())
+    
+    # wait_for_available_account should return False when shutdown is triggered
+    result = await pool.wait_for_available_account(timeout=None)
+    
+    assert result is False
+    await shutdown_task
+
+
+@pytest.mark.asyncio
+async def test_wait_for_available_account_no_shutdown_event(mock_db, mock_account_pool_repo):
+    """Test wait_for_available_account works without shutdown event."""
+    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+        pool = AccountPool(
+            db=mock_db,
+            cooldown_seconds=60,
+            shutdown_event=None,  # No shutdown event
+        )
+        pool.repo = mock_account_pool_repo
+    
+    now = datetime.now(timezone.utc)
+    sample_account = {
+        "id": 1,
+        "email": "test@example.com",
+        "password": "pass",
+        "phone": "+1234567890",
+        "status": "available",
+        "last_used_at": now,
+        "cooldown_until": None,
+        "quarantine_until": None,
+        "consecutive_failures": 0,
+        "total_uses": 0,
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    # Account becomes available immediately
+    mock_account_pool_repo.get_available_accounts.return_value = [sample_account]
+    
+    # Should return True immediately
+    result = await pool.wait_for_available_account(timeout=5.0)
+    
+    assert result is True
+
