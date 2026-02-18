@@ -352,7 +352,7 @@ API endpoints are rate-limited to prevent abuse:
 if __name__ == "__main__":
     import uvicorn
 
-    from src.core.runners import parse_safe_port
+    from src.core.infra.runners import parse_safe_port
 
     # Security: Default to localhost only. Set UVICORN_HOST=0.0.0.0 to bind to all interfaces.
     # Note: This is more secure by default. For production, use a proper WSGI server.
