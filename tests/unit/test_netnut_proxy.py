@@ -223,12 +223,10 @@ gw.netnut.net:5959:username2:password2"""
         """Test loading proxies from actual CSV file."""
         # Create temporary CSV file
         csv_file = tmp_path / "test_proxies.csv"
-        csv_file.write_text(
-            """endpoint
+        csv_file.write_text("""endpoint
 gw.netnut.net:5959:user1:pass1
 gw.netnut.net:5959:user2:pass2
-"""
-        )
+""")
 
         count = proxy_manager.load_from_csv(csv_file)
 

@@ -60,7 +60,8 @@ class SessionRecovery:
         if not encryption_key:
             if self._require_encryption:
                 raise ConfigurationError(
-                    "ENCRYPTION_KEY environment variable is required for secure checkpoint storage. "
+                    "ENCRYPTION_KEY environment variable is required "
+                    "for secure checkpoint storage. "
                     "Please set ENCRYPTION_KEY in your environment configuration."
                 )
             else:

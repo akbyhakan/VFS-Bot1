@@ -7,7 +7,7 @@ from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
 
-from .base import (
+from .base import (  # noqa: F401
     NotificationChannel,
     NotificationConfig,
     NotificationPriority,
@@ -25,7 +25,8 @@ class NotificationService:
         Initialize notification service.
 
         Args:
-            config: Notification configuration (NotificationConfig or dict for backward compatibility)
+            config: Notification configuration (NotificationConfig or dict
+                for backward compatibility)
         """
         # Convert dict to NotificationConfig for backward compatibility
         if isinstance(config, dict):

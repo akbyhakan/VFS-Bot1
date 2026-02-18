@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Response
-from loguru import logger
 
 from web.dependencies import bot_state
 

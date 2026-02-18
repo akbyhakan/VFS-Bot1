@@ -20,7 +20,8 @@ class PaymentHandler:
 
         Args:
             config: Bot configuration
-            payment_service: Optional PaymentService instance for PCI-DSS compliant payment processing
+            payment_service: Optional PaymentService instance for PCI-DSS
+                compliant payment processing
         """
         self.config = config
         self.payment_service = payment_service

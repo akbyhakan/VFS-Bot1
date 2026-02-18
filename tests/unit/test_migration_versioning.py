@@ -57,7 +57,8 @@ async def test_migrated_columns_exist(unique_encryption_key):
     async with db.pool.acquire() as conn:
         # Check appointment_requests columns (added by Alembic migration 004)
         columns = await conn.fetch(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='appointment_requests'"
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='appointment_requests'"
         )
         column_names = [col["column_name"] for col in columns]
 
@@ -66,7 +67,8 @@ async def test_migrated_columns_exist(unique_encryption_key):
 
         # Check appointment_persons columns (added by Alembic migration 005)
         person_columns = await conn.fetch(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='appointment_persons'"
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='appointment_persons'"
         )
         person_column_names = [col["column_name"] for col in person_columns]
 

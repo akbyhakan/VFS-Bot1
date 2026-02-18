@@ -1,7 +1,6 @@
 """Dropdown sync routes for VFS-Bot web application."""
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from loguru import logger

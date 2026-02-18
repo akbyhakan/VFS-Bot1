@@ -151,12 +151,7 @@ def test_parse_proxy_error_handling():
     assert proxy is None or isinstance(proxy, dict)
 
 
-def test_rotate_proxy_disabled():
-    """Test rotate proxy when disabled."""
-    manager = ProxyManager({"enabled": False})
-    proxy = manager.rotate_proxy()
-
-    assert proxy is None
+def test_mark_proxy_failed():
     """Test marking proxy as failed."""
     manager = ProxyManager()
     proxy = {

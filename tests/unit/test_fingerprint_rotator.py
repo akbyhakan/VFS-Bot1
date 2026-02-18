@@ -136,7 +136,6 @@ class TestFingerprintRotator:
         rotator = FingerprintRotator(max_history=5)
 
         # Generate profiles without forcing index
-        used_indices = set()
         for _ in range(5):
             rotator._generate_profile()
 
@@ -144,7 +143,7 @@ class TestFingerprintRotator:
         initial_history = rotator._profile_history.copy()
 
         # Next profile should avoid recent ones if possible
-        new_profile = rotator._generate_profile()
+        _ = rotator._generate_profile()
 
         # If pool is larger than history, new profile should be different
         if len(rotator.PROFILE_POOL) > len(initial_history):

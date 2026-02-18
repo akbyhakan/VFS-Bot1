@@ -100,7 +100,8 @@ class BotController:
             config: Bot configuration dictionary
             db: Database instance
             notifier: Notification service instance
-            bot_factory: Optional factory function to create VFSBot instances (avoids circular imports)
+            bot_factory: Optional factory function to create VFSBot instances
+                (avoids circular imports)
         """
         async with self._async_lock:
             self._config = config

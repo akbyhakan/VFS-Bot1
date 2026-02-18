@@ -7,7 +7,7 @@ src/types/config.py, src/core/config_models.py, and src/models/schemas.py.
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 # VFS Configuration Models
 

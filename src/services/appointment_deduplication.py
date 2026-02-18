@@ -277,7 +277,7 @@ class AppointmentDeduplication:
                 client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
-                logger.info(f"AppointmentDeduplication using Redis backend")
+                logger.info("AppointmentDeduplication using Redis backend")
                 return RedisDeduplicationBackend(client)
             except Exception as e:
                 logger.warning(

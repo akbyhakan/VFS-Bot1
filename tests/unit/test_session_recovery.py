@@ -318,7 +318,8 @@ class TestSessionRecovery:
         assert checkpoint["step"] == "logged_in"
 
     def test_backward_compat_unencrypted_to_encrypted(self, temp_checkpoint_file, monkeypatch):
-        """Test backward compatibility: reading old unencrypted checkpoint migrates to encrypted format."""
+        """Test backward compatibility: reading old unencrypted checkpoint migrates to
+        encrypted format."""
         # First create a plaintext checkpoint file manually (simulating legacy data)
         legacy_checkpoint = {
             "step": "logged_in",

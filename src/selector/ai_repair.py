@@ -166,13 +166,15 @@ class AISelectorRepair:
         sensitive_patterns = ["token", "csrf", "session", "nonce", "secret", "key"]
         for pattern in sensitive_patterns:
             html_content = re.sub(
-                rf'<input[^>]*type\s*=\s*["\']hidden["\'][^>]*name\s*=\s*["\'][^"\']*{pattern}[^"\']*["\'][^>]*>',
+                rf'<input[^>]*type\s*=\s*["\']hidden["\'][^>]*name\s*=\s*'
+                rf'["\'][^"\']*{pattern}[^"\']*["\'][^>]*>',
                 "",
                 html_content,
                 flags=re.IGNORECASE | re.DOTALL,
             )
             html_content = re.sub(
-                rf'<input[^>]*name\s*=\s*["\'][^"\']*{pattern}[^"\']*["\'][^>]*type\s*=\s*["\']hidden["\'][^>]*>',
+                rf'<input[^>]*name\s*=\s*["\'][^"\']*{pattern}[^"\']*["\'][^>]*'
+                rf'type\s*=\s*["\']hidden["\'][^>]*>',
                 "",
                 html_content,
                 flags=re.IGNORECASE | re.DOTALL,

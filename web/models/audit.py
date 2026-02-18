@@ -1,6 +1,6 @@
 """Audit log models for VFS-Bot web application."""
 
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 

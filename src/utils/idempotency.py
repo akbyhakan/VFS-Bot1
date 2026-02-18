@@ -216,7 +216,7 @@ class IdempotencyStore:
                 client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
                 # Test connection
                 client.ping()
-                logger.info(f"IdempotencyStore using Redis backend")
+                logger.info("IdempotencyStore using Redis backend")
                 return RedisIdempotencyBackend(client)
             except Exception as e:
                 logger.warning(

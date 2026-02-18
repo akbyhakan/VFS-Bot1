@@ -54,7 +54,8 @@ class BrowserManager:
                 rotation_interval_minutes=rotation_minutes,
             )
             logger.info(
-                f"FingerprintRotator enabled (rotation: {rotation_pages} pages or {rotation_minutes} minutes)"
+                f"FingerprintRotator enabled (rotation: {rotation_pages} "
+                f"pages or {rotation_minutes} minutes)"
             )
 
         # Optional session ID for browser pool support
@@ -135,13 +136,11 @@ class BrowserManager:
                 pass
             else:
                 # Add basic stealth script for backwards compatibility
-                await self.context.add_init_script(
-                    """
+                await self.context.add_init_script("""
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => undefined
                     });
-                """
-                )
+                """)
 
             logger.info("Browser started successfully")
         except Exception:
@@ -234,14 +233,12 @@ class BrowserManager:
             # Clear storage for all pages
             for page in self.context.pages:
                 try:
-                    await page.evaluate(
-                        """
+                    await page.evaluate("""
                         () => {
                             localStorage.clear();
                             sessionStorage.clear();
                         }
-                    """
-                    )
+                    """)
                 except Exception:
                     pass
 

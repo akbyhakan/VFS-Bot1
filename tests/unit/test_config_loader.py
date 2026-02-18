@@ -34,8 +34,6 @@ class TestLoadEnvVariables:
 
     def test_load_env_variables_path_resolves_to_project_root(self):
         """Test that .env path resolves to project root, not src/ directory."""
-        from pathlib import Path
-
         import src.core.config.config_loader as config_loader_module
 
         # Get the actual location of config_loader.py

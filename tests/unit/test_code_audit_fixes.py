@@ -388,7 +388,8 @@ class TestGrafanaPasswordNotHardcoded:
     """Test that Grafana password is not hardcoded in monitoring compose."""
 
     def test_monitoring_compose_uses_env_var(self):
-        """Test that docker-compose.monitoring.yml uses environment variable for Grafana password."""
+        """Test that docker-compose.monitoring.yml uses environment variable for
+        Grafana password."""
         compose_path = Path("docker-compose.monitoring.yml")
         if not compose_path.exists():
             pytest.skip("docker-compose.monitoring.yml not found")
@@ -980,7 +981,7 @@ class TestSecurityConfigValidation:
         with patch.dict(os.environ, {"ENV": "production"}):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                config = SecurityConfig()
+                _ = SecurityConfig()
 
                 # Should have warning about security keys
                 security_warnings = [
@@ -999,7 +1000,7 @@ class TestSecurityConfigValidation:
         with patch.dict(os.environ, {"ENV": "testing"}):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                config = SecurityConfig()
+                _ = SecurityConfig()
 
                 # Should not have warning about security keys
                 security_warnings = [
@@ -1019,7 +1020,7 @@ class TestSecurityConfigValidation:
         with patch.dict(os.environ, {"ENV": "production"}):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                config = SecurityConfig(
+                _ = SecurityConfig(
                     api_secret_key=SecretStr("very-secure-key-here"),
                     api_key_salt=SecretStr("secure-salt"),
                     encryption_key=SecretStr("encryption-key-32-chars-long"),

@@ -170,8 +170,7 @@ class CentreFetcher:
                 )
 
             # Extract centre options
-            centres_result = await page.evaluate(
-                """
+            centres_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#centres');
                     if (!select) return [];
@@ -179,8 +178,7 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Centre');
                 }
-            """
-            )
+            """)
 
             centres: List[str] = centres_result if isinstance(centres_result, list) else []
 
@@ -222,8 +220,7 @@ class CentreFetcher:
             )
 
             # Extract category options
-            categories_result = await page.evaluate(
-                """
+            categories_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#categories');
                     if (!select) return [];
@@ -231,8 +228,7 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Category');
                 }
-            """
-            )
+            """)
 
             categories: List[str] = categories_result if isinstance(categories_result, list) else []
 
@@ -282,8 +278,7 @@ class CentreFetcher:
             )
 
             # Extract subcategory options
-            subcategories_result = await page.evaluate(
-                """
+            subcategories_result = await page.evaluate("""
                 () => {
                     const select = document.querySelector('select#subcategories');
                     if (!select) return [];
@@ -291,8 +286,7 @@ class CentreFetcher:
                         .map(opt => opt.text.trim())
                         .filter(text => text && text !== 'Select Subcategory');
                 }
-            """
-            )
+            """)
 
             subcategories: List[str] = (
                 subcategories_result if isinstance(subcategories_result, list) else []

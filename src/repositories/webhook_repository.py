@@ -154,7 +154,7 @@ class WebhookRepository(BaseRepository[Webhook]):
         token = secrets.token_urlsafe(32)
 
         async with self.db.get_connection() as conn:
-            webhook_id = await conn.fetchval(
+            _ = await conn.fetchval(
                 """
                 INSERT INTO user_webhooks (user_id, webhook_token, is_active)
                 VALUES ($1, $2, true)

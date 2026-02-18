@@ -173,8 +173,6 @@ class AlertService:
             return False
 
         try:
-            import aiohttp
-
             async with aiohttp.ClientSession() as session:
                 timeout = aiohttp.ClientTimeout(total=10)
                 async with session.post(

@@ -1,7 +1,7 @@
 """Booking validation utilities for VFS booking system."""
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from loguru import logger
 from playwright.async_api import Page

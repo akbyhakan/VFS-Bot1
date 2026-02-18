@@ -38,7 +38,7 @@ class CaptchaSolver:
     def __repr__(self) -> str:
         """Return repr with masked API key."""
         # Use fixed mask to avoid exposing any part of the key
-        return f"CaptchaSolver(api_key='***')"
+        return "CaptchaSolver(api_key='***')"
 
     def __str__(self) -> str:
         """Return string representation with masked API key."""

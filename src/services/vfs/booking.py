@@ -100,7 +100,7 @@ class VFSBooking:
             # Explicit Read & Pass: body'yi güvenli şekilde bir kere oku
             try:
                 data = await response.json()
-            except (aiohttp.ContentTypeError, ValueError) as e:
+            except (aiohttp.ContentTypeError, ValueError):
                 # Sunucu JSON yerine HTML/text dönerse (bakım sayfası, hata sayfası vb.)
                 error_text = await response.text()
                 logger.error(

@@ -314,7 +314,7 @@ async def test_vfs_bot_deep_copy_config():
 
         # Verify BrowserManager was called with a deep-copied config
         # Get the config passed to BrowserManager
-        browser_config_call = mock_browser_manager.call_args[0][0]
+        _ = mock_browser_manager.call_args[0][0]
 
         # Modify original config's nested dict
         original_config["bot"]["setting1"] = "MODIFIED"

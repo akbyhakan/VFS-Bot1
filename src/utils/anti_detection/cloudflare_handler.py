@@ -6,8 +6,6 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import Delays
-
 
 class CloudflareHandler:
     """Handle Cloudflare challenge detection and bypass."""

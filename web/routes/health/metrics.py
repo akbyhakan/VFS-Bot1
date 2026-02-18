@@ -7,7 +7,6 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
-from loguru import logger
 
 from web.dependencies import bot_state, metrics
 

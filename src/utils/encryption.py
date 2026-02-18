@@ -151,7 +151,8 @@ class PasswordEncryption:
             ValueError: If migration fails
         """
         try:
-            # MultiFernet.rotate() automatically decrypts with any key and re-encrypts with the first (new) key
+            # MultiFernet.rotate() automatically decrypts with any key and
+            # re-encrypts with the first (new) key
             rotated = self.cipher.rotate(encrypted_data.encode())
             return rotated.decode()
         except Exception as e:

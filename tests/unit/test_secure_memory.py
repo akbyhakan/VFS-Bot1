@@ -144,14 +144,14 @@ def test_secure_key_context_zeroes_on_exit():
 def test_secure_key_context_none_raises():
     """Test SecureKeyContext raises ValueError for None input."""
     with pytest.raises(ValueError, match="Key string is None or empty"):
-        with SecureKeyContext(None) as key_bytes:
+        with SecureKeyContext(None):
             pass
 
 
 def test_secure_key_context_empty_raises():
     """Test SecureKeyContext raises ValueError for empty string input."""
     with pytest.raises(ValueError, match="Key string is None or empty"):
-        with SecureKeyContext("") as key_bytes:
+        with SecureKeyContext(""):
             pass
 
 

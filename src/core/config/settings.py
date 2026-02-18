@@ -144,7 +144,9 @@ class VFSSettings(BaseSettings):
         if len(decoded) != 32:
             raise ValueError(
                 f"ENCRYPTION_KEY must decode to exactly 32 bytes, got {len(decoded)}. "
-                'Generate a valid key with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+                "Generate a valid key with: "
+                'python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"'
             )
 
         return v

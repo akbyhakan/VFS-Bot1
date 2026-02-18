@@ -148,7 +148,8 @@ class IMAPListener:
                     except Exception as e:
                         self._consecutive_poll_errors += 1
                         logger.error(
-                            f"Error polling emails (consecutive: {self._consecutive_poll_errors}): {e}"
+                            f"Error polling emails "
+                            f"(consecutive: {self._consecutive_poll_errors}): {e}"
                         )
 
                         # Break after 5 consecutive errors
@@ -174,7 +175,8 @@ class IMAPListener:
             # Wait before reconnecting
             if self._running:
                 logger.info(
-                    f"Reconnecting in {reconnect_delay}s... (total reconnects: {self._total_reconnects})"
+                    f"Reconnecting in {reconnect_delay}s... "
+                    f"(total reconnects: {self._total_reconnects})"
                 )
                 time.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)

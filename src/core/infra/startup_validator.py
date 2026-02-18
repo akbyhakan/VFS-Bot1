@@ -31,7 +31,7 @@ def validate_production_security() -> List[str]:
     Returns:
         List of warning messages for insecure configurations
     """
-    env = Environment.current()
+    Environment.current()
     warnings: List[str] = []
 
     if not Environment.is_production_or_staging():
@@ -81,7 +81,8 @@ def validate_production_security() -> List[str]:
     ):
         warnings.append(
             "DATABASE_URL contains a default/placeholder password. "
-            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
+            "Generate a secure password with: "
+            'python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check POSTGRES_PASSWORD
@@ -91,7 +92,8 @@ def validate_production_security() -> List[str]:
     ):
         warnings.append(
             "POSTGRES_PASSWORD contains a default/placeholder value. "
-            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
+            "Generate a secure password with: "
+            'python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check REDIS_PASSWORD
@@ -101,7 +103,8 @@ def validate_production_security() -> List[str]:
     ):
         warnings.append(
             "REDIS_PASSWORD contains a default/placeholder value. "
-            'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(24))"'
+            "Generate a secure password with: "
+            'python -c "import secrets; print(secrets.token_urlsafe(24))"'
         )
 
     # Check GRAFANA_ADMIN_PASSWORD
@@ -111,13 +114,15 @@ def validate_production_security() -> List[str]:
         if grafana_password in ("vfsbot_grafana", "admin", "password", "grafana"):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD is set to a common default password. "
-                'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(16))"'
+                "Generate a secure password with: "
+                'python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
         # Substring match for placeholder patterns
         elif any(pattern in grafana_password for pattern in ("CHANGE_ME", "change_me", "changeme")):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD contains a default/placeholder value. "
-                'Generate a secure password with: python -c "import secrets; print(secrets.token_urlsafe(16))"'
+                "Generate a secure password with: "
+                'python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
 
     return warnings
@@ -136,7 +141,7 @@ def log_security_warnings(strict: bool = False) -> bool:
     Raises:
         SystemExit: If strict=True and warnings exist in production/staging
     """
-    env = Environment.current()
+    Environment.current()
     warnings = validate_production_security()
 
     if not warnings:

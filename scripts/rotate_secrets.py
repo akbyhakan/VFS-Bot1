@@ -8,7 +8,6 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,9 +15,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from loguru import logger
-
-from src.core.security import APIKeyManager
+from src.core.security import APIKeyManager  # noqa: E402
 
 # Configuration constants
 ROTATION_WARNING_THRESHOLD_DAYS = 60
@@ -117,7 +114,7 @@ def main():
 Examples:
   # Check API key ages and rotation status
   python scripts/rotate_secrets.py --check
-  
+
   # Clean up expired API keys
   python scripts/rotate_secrets.py --cleanup-expired-keys
         """,

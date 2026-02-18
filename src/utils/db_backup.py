@@ -6,7 +6,6 @@ using pg_dump and pg_restore for online (hot) backups.
 
 import asyncio
 import os
-import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -79,7 +78,8 @@ class DatabaseBackup:
         key = os.getenv("BACKUP_ENCRYPTION_KEY") or os.getenv("ENCRYPTION_KEY")
         if not key:
             raise ValueError(
-                "Backup encryption requires BACKUP_ENCRYPTION_KEY or ENCRYPTION_KEY environment variable. "
+                "Backup encryption requires BACKUP_ENCRYPTION_KEY or "
+                "ENCRYPTION_KEY environment variable. "
                 'Generate one with: python -c "from cryptography.fernet import Fernet; '
                 'print(Fernet.generate_key().decode())"'
             )
@@ -136,7 +136,7 @@ class DatabaseBackup:
             # Build key list for MultiFernet (new key first, then old key if available)
             key = self._get_encryption_key()
             fernet_keys = [Fernet(key)]
-            
+
             # Check for old backup encryption key
             old_key = os.getenv("BACKUP_ENCRYPTION_KEY_OLD") or os.getenv("ENCRYPTION_KEY_OLD")
             if old_key:
@@ -146,7 +146,7 @@ class DatabaseBackup:
                     logger.debug("Old backup encryption key loaded for decryption")
                 except Exception as e:
                     logger.warning(f"Failed to load old backup encryption key: {e}")
-            
+
             cipher = MultiFernet(fernet_keys)
 
             # Read encrypted file
@@ -323,7 +323,8 @@ class DatabaseBackup:
 
                     if mtime < cutoff_time:
                         logger.info(
-                            f"Deleting old backup: {backup_file} (age: {datetime.now(timezone.utc) - mtime})"
+                            f"Deleting old backup: {backup_file} "
+                            f"(age: {datetime.now(timezone.utc) - mtime})"
                         )
                         backup_file.unlink()
                         deleted_count += 1
@@ -496,7 +497,7 @@ class DatabaseBackup:
                 f"psql restore failed with return code {process.returncode}: {error_msg}"
             )
 
-        logger.debug(f"Restored backup to database")
+        logger.debug("Restored backup to database")
 
     async def list_backups(self) -> List[Dict[str, Any]]:
         """

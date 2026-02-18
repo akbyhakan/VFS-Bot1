@@ -1,4 +1,4 @@
-"""Detailed health checks for database, Redis, encryption, notifications, proxies, and external services."""
+"""Detailed health checks for database, Redis, encryption, notifications, proxies, and external services."""  # noqa: E501
 
 import os
 import time

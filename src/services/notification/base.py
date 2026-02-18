@@ -21,7 +21,10 @@ class TelegramConfig:
             masked_token = "'***'"
         else:
             masked_token = "None"
-        return f"TelegramConfig(enabled={self.enabled}, bot_token={masked_token}, chat_id='{self.chat_id}')"
+        return (
+            f"TelegramConfig(enabled={self.enabled}, bot_token={masked_token}, "
+            f"chat_id='{self.chat_id}')"
+        )
 
 
 @dataclass

@@ -10,7 +10,7 @@ fetched from VFS website to improve performance and reduce VFS site load.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -23,8 +23,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create vfs_dropdown_cache table."""
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS vfs_dropdown_cache (
             id SERIAL PRIMARY KEY,
             country_code VARCHAR(3) NOT NULL,
@@ -36,26 +35,23 @@ def upgrade() -> None:
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             UNIQUE(country_code)
         );
-        
+
         -- Create index on country_code for faster lookups
-        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_country 
+        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_country
             ON vfs_dropdown_cache(country_code);
-        
+
         -- Create index on last_synced_at for finding stale data
-        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_synced 
+        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_synced
             ON vfs_dropdown_cache(last_synced_at);
-        
+
         -- Create index on sync_status for filtering
         CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_status
             ON vfs_dropdown_cache(sync_status);
-    """
-    )
+    """)
 
 
 def downgrade() -> None:
     """Drop vfs_dropdown_cache table."""
-    op.execute(
-        """
+    op.execute("""
         DROP TABLE IF EXISTS vfs_dropdown_cache CASCADE;
-    """
-    )
+    """)

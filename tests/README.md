@@ -362,10 +362,10 @@ pytest -v -m e2e tests/e2e/
    def test_example():
        # Arrange: Set up test data
        user = create_test_user()
-       
+
        # Act: Execute the code being tested
        result = authenticate_user(user.username, "wrong_password")
-       
+
        # Assert: Verify the outcome
        assert result is None
    ```
@@ -375,7 +375,7 @@ pytest -v -m e2e tests/e2e/
    @pytest.fixture
    def test_user():
        return User(username="test", email="test@example.com")
-   
+
    def test_user_creation(test_user):
        assert test_user.username == "test"
    ```

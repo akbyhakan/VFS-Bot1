@@ -2,7 +2,6 @@
 
 import logging as stdlib_logging
 
-from loguru import logger
 from tenacity import (
     before_sleep_log,
     retry,

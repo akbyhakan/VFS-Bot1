@@ -9,7 +9,7 @@ from playwright.async_api import Page
 from src.constants import TURKISH_MONTHS, Delays
 from src.utils.page_helpers import wait_for_overlay_hidden
 
-from .selector_utils import get_selector, resolve_selector, try_selectors
+from .selector_utils import get_selector, resolve_selector
 
 
 class SlotSelector:
@@ -226,14 +226,12 @@ class SlotSelector:
 
             if self.captcha_solver:
                 # Extract sitekey and solve
-                sitekey = await page.evaluate(
-                    """
+                sitekey = await page.evaluate("""
                     () => {
                         const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
                         return widget ? widget.getAttribute('data-sitekey') : null;
                     }
-                """
-                )
+                """)
 
                 if sitekey:
                     token = await self.captcha_solver.solve_turnstile(page.url, sitekey)

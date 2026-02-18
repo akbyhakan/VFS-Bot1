@@ -10,7 +10,7 @@ This ensures one-time use enforcement works correctly in multi-worker deployment
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -23,15 +23,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create admin_secret_usage table for multi-worker safe tracking."""
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS admin_secret_usage (
             id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
             consumed BOOLEAN NOT NULL DEFAULT false,
             consumed_at TIMESTAMPTZ
         )
-    """
-    )
+    """)
 
 
 def downgrade() -> None:

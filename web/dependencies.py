@@ -12,7 +12,7 @@ import os
 from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from loguru import logger
 
 from src.core.auth import verify_token

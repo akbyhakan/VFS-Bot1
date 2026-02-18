@@ -357,7 +357,8 @@ class TestR5SignalHandlerSimplification:
 
     @pytest.mark.asyncio
     async def test_fast_emergency_cleanup_runs_without_loop(self):
-        """Test that fast_emergency_cleanup can be invoked via asyncio.run() when no loop is running."""
+        """Test that fast_emergency_cleanup can be invoked via asyncio.run() when
+        no loop is running."""
         from src.core.infra.shutdown import fast_emergency_cleanup
 
         # This test verifies that the function can be called with asyncio.run()
@@ -417,7 +418,8 @@ class TestR5SignalHandlerSimplification:
 
 
 class TestR6RuntimeSafetyFixes:
-    """Tests for R6: Runtime safety fixes (port parsing, DB pool size, bot failure handling, markdown injection)."""
+    """Tests for R6: Runtime safety fixes (port parsing, DB pool size, bot failure
+    handling, markdown injection)."""
 
     def test_parse_safe_port_function_exists(self):
         """Test that parse_safe_port helper function was added."""
@@ -543,8 +545,9 @@ class TestR6RuntimeSafetyFixes:
                 func_lines = content.split("\n")[node.lineno - 1 : node.end_lineno]
                 func_str = "\n".join(func_lines)
 
-                # Check that RuntimeError is not raised between bot failure check and web start
-                # The old code raised RuntimeError immediately on bot failure, preventing web from starting
+                # Check that RuntimeError is not raised between bot failure check
+                # and web start. The old code raised RuntimeError immediately on bot
+                # failure, preventing web from starting
                 if (
                     'if start_result["status"] != "success"' in func_str
                     and "run_web_mode" in func_str
@@ -556,9 +559,10 @@ class TestR6RuntimeSafetyFixes:
                         web_parts = after_check.split("run_web_mode")
                         if len(web_parts) > 0:
                             section_before_web = web_parts[0]
-                            assert (
-                                "raise RuntimeError" not in section_before_web
-                            ), "run_both_mode should not raise RuntimeError when bot fails before starting web"
+                            assert "raise RuntimeError" not in section_before_web, (
+                                "run_both_mode should not raise RuntimeError when "
+                                "bot fails before starting web"
+                            )
 
                 # Should start web_task regardless of bot status
                 assert "run_web_mode" in func_str, "run_both_mode should call run_web_mode"

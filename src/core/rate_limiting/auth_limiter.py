@@ -65,8 +65,10 @@ class AuthRateLimiter:
                 return RedisBackend(client)
             except Exception as e:
                 logger.critical(
-                    f"🚨 REDIS FALLBACK: Failed to connect to Redis ({mask_database_url(redis_url)}), "
-                    f"falling back to in-memory backend. Rate limiting will NOT be shared across workers! Error: {e}"
+                    f"🚨 REDIS FALLBACK: Failed to connect to Redis "
+                    f"({mask_database_url(redis_url)}), "
+                    f"falling back to in-memory backend. Rate limiting will NOT be "
+                    f"shared across workers! Error: {e}"
                 )
                 # Attempt to send notification alert
                 self._notify_redis_fallback(redis_url, str(e))
@@ -84,7 +86,9 @@ class AuthRateLimiter:
             error: Error message
         """
         try:
-            from src.services.notification.notification import NotificationService
+            from src.services.notification.notification import (  # noqa: F401
+                NotificationService,
+            )
 
             # Create notification message
             message = (
@@ -226,9 +230,11 @@ def get_auth_rate_limiter() -> AuthRateLimiter:
                     worker_count = int(workers)
                     if worker_count > 1 and not _auth_rate_limiter.is_distributed:
                         logger.critical(
-                            f"🚨 SECURITY RISK: Auth rate limiter running with {worker_count} workers "
-                            "but using in-memory backend. Rate limiting is NOT shared across workers. "
-                            "Set REDIS_URL environment variable to enable distributed rate limiting."
+                            f"🚨 SECURITY RISK: Auth rate limiter running with "
+                            f"{worker_count} workers but using in-memory backend. "
+                            "Rate limiting is NOT shared across workers. "
+                            "Set REDIS_URL environment variable to enable "
+                            "distributed rate limiting."
                         )
                 except (ValueError, TypeError):
                     # Invalid worker count - log debug message but don't fail

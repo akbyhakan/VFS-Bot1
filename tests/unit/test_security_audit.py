@@ -44,13 +44,11 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
 
     # Get table schema from PostgreSQL information_schema
     async with db.get_connection() as conn:
-        columns_info = await conn.fetch(
-            """
-            SELECT column_name 
-            FROM information_schema.columns 
+        columns_info = await conn.fetch("""
+            SELECT column_name
+            FROM information_schema.columns
             WHERE table_name = 'payment_card'
-        """
-        )
+        """)
 
     # Extract column names
     columns = [col["column_name"] for col in columns_info]

@@ -23,7 +23,8 @@ class TestUserAppointmentFlow:
         self, test_db: Database, user_repo: UserRepository, appointment_repo: AppointmentRepository
     ):
         """
-        Test complete user flow: Create user → Add personal details → Create appointment → Verify decrypted password.
+        Test complete user flow: Create user → Add personal details → Create
+        appointment → Verify decrypted password.
 
         This validates:
         - User creation with encrypted password

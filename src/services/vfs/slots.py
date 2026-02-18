@@ -1,6 +1,6 @@
 """VFS Slots Module - Handles centres, categories, and slot availability checking."""
 
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Optional
 
 import aiohttp
 from loguru import logger
@@ -89,7 +89,7 @@ class VFSSlots:
             # Explicit Read & Pass: body'yi güvenli şekilde bir kere oku
             try:
                 data = await response.json()
-            except (aiohttp.ContentTypeError, ValueError) as e:
+            except (aiohttp.ContentTypeError, ValueError):
                 # Sunucu JSON yerine HTML/text dönerse (bakım sayfası, hata sayfası vb.)
                 error_text = await response.text()
                 logger.error(
@@ -142,7 +142,7 @@ class VFSSlots:
             # Explicit Read & Pass: body'yi güvenli şekilde bir kere oku
             try:
                 data = await response.json()
-            except (aiohttp.ContentTypeError, ValueError) as e:
+            except (aiohttp.ContentTypeError, ValueError):
                 # Sunucu JSON yerine HTML/text dönerse (bakım sayfası, hata sayfası vb.)
                 error_text = await response.text()
                 logger.error(
@@ -199,7 +199,7 @@ class VFSSlots:
             # Explicit Read & Pass: body'yi güvenli şekilde bir kere oku
             try:
                 data = await response.json()
-            except (aiohttp.ContentTypeError, ValueError) as e:
+            except (aiohttp.ContentTypeError, ValueError):
                 # Sunucu JSON yerine HTML/text dönerse (bakım sayfası, hata sayfası vb.)
                 error_text = await response.text()
                 logger.error(
@@ -268,7 +268,7 @@ class VFSSlots:
             # Explicit Read & Pass: body'yi güvenli şekilde bir kere oku
             try:
                 data = await response.json()
-            except (aiohttp.ContentTypeError, ValueError) as e:
+            except (aiohttp.ContentTypeError, ValueError):
                 # Sunucu JSON yerine HTML/text dönerse (bakım sayfası, hata sayfası vb.)
                 error_text = await response.text()
                 logger.error(

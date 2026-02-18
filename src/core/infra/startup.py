@@ -14,7 +14,7 @@ from src.core.exceptions import ConfigurationError
 
 def validate_environment():
     """Validate all required environment variables at startup."""
-    env = Environment.current()
+    Environment.current()
 
     # Always required
     required_vars = ["ENCRYPTION_KEY"]

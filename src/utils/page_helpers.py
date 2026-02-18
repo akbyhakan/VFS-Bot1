@@ -1,7 +1,6 @@
 """Shared page interaction helpers for Playwright-based operations."""
 
-import asyncio
-from typing import List, Optional
+from typing import List
 
 from loguru import logger
 from playwright.async_api import Page
