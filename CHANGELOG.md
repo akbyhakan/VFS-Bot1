@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **FastAPI Upgrade**: Updated FastAPI from `0.128.7` to `0.129.0`
+  - Updated `pyproject.toml` FastAPI dependency to `0.129.0`
+  - Updated `requirements.lock` with new FastAPI version
+  - Verified compatibility with Starlette `0.52.1` (FastAPI 0.129.0 requires `>=0.40.0,<1.0.0`)
+  - No breaking changes affecting the codebase (FastAPI 0.129.0 only requires Python 3.10+, project uses 3.12)
+  - All middleware, routes, and tests remain fully compatible
 - **Dependency Management**: Consolidated to single source of truth (`pyproject.toml`)
   - Removed `requirements.txt` and `requirements-dev.txt` (now redundant)
   - Updated all CI/CD workflows to use `pip install -e ".[dev]"`
