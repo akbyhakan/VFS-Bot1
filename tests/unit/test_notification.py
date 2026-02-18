@@ -359,7 +359,6 @@ async def test_get_notification_stats():
     """Test get_notification_stats method."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
 
     notifier = NotificationService(config)
@@ -367,7 +366,6 @@ async def test_get_notification_stats():
     stats = notifier.get_notification_stats()
 
     assert stats["telegram_enabled"] is True
-    assert stats["email_enabled"] is False
     assert stats["websocket_available"] is False
     assert stats["failed_high_priority_notifications"] == 0
 
