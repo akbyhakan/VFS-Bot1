@@ -54,10 +54,7 @@ class AlertService:
 
         # Cache Telegram client instance if enabled
         self._telegram_client = None
-        if (
-            AlertChannel.TELEGRAM in self.enabled_channels
-            and config.telegram_bot_token
-        ):
+        if AlertChannel.TELEGRAM in self.enabled_channels and config.telegram_bot_token:
             try:
                 self._telegram_client = TelegramClient(bot_token=config.telegram_bot_token)
             except ImportError:
@@ -149,7 +146,9 @@ class AlertService:
             emoji = emoji_map.get(severity, "📢")
             # Escape markdown to prevent injection
             escaped_message = TelegramClient.escape_markdown(message)
-            text = f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
+            text = (
+                f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
+            )
 
             # Send message (client handles splitting automatically)
             success = await self._telegram_client.send_message(
@@ -207,10 +206,10 @@ async def send_alert_safe(
 ) -> None:
     """
     Send alert through alert service, silently failing on errors.
-    
+
     This is a safe wrapper around AlertService.send_alert() that handles
     cases where alert_service is None or when sending fails.
-    
+
     Args:
         alert_service: AlertService instance (can be None)
         message: Alert message to send

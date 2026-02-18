@@ -19,8 +19,9 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from .pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
 from src.utils.singleton import get_or_create_sync
+
+from .pattern_matcher import HTMLTextExtractor, OTPPatternMatcher
 
 
 @dataclass

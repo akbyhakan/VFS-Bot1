@@ -38,12 +38,17 @@ def _get_trusted_proxies() -> frozenset[str]:
     now = time.monotonic()
 
     # Return cached proxies if still valid
-    if _trusted_proxies_cache is not None and (now - _trusted_proxies_cache_time) < _TRUSTED_PROXIES_TTL:
+    if (
+        _trusted_proxies_cache is not None
+        and (now - _trusted_proxies_cache_time) < _TRUSTED_PROXIES_TTL
+    ):
         return _trusted_proxies_cache
 
     # Load fresh proxies from environment
     trusted_proxies_str = os.getenv("TRUSTED_PROXIES", "")
-    _trusted_proxies_cache = frozenset(p.strip() for p in trusted_proxies_str.split(",") if p.strip())
+    _trusted_proxies_cache = frozenset(
+        p.strip() for p in trusted_proxies_str.split(",") if p.strip()
+    )
     _trusted_proxies_cache_time = now
 
     return _trusted_proxies_cache

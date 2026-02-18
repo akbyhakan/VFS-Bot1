@@ -1,7 +1,7 @@
 """VFS-Bot - Automated VFS appointment booking bot."""
 
 import importlib as _importlib
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # Application version (SemVer) - tracks code/feature changes.
 # NOTE: Configuration schema version (CURRENT_CONFIG_VERSION) is maintained

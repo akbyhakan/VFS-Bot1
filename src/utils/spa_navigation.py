@@ -22,52 +22,52 @@ async def navigate_to_appointment_page(
 ) -> bool:
     """
     Navigate to appointment page using SPA-safe DOM clicks.
-    
+
     NEVER uses page.goto() — always clicks navigation elements within the SPA.
-    
+
     Args:
         page: Playwright page object
         page_state_detector: PageStateDetector instance
         human_sim: Optional HumanSimulator for realistic clicks
         max_wait: Maximum wait time for state stabilization
-        
+
     Returns:
         True if successfully on appointment page
-        
+
     Raises:
         VFSBotError: If navigation fails and recovery is needed
     """
     from ..core.exceptions import VFSBotError
     from ..services.bot.page_state_detector import PageState
-    
+
     # Step 1: Detect current state
     state = await page_state_detector.detect(page)
-    
+
     # Step 2: Already on appointment page
     if state.is_on_appointment_page and state.confidence >= 0.70:
         logger.debug("SPA nav: already on appointment page")
         return True
-    
+
     # Step 3: Recovery needed — don't try to navigate, let caller re-login
     if state.needs_recovery:
         raise VFSBotError(
             f"Page recovery needed: {state.state.name}",
             recoverable=True,
         )
-    
+
     # Step 4: On dashboard — click appointment link
     if state.state == PageState.DASHBOARD:
         logger.info("SPA nav: navigating from dashboard to appointment page via click")
-        
+
         # Try multiple selectors for appointment navigation
         nav_selectors = [
             'a[href*="appointment"]',
             'a[routerlink*="appointment"]',
-            'text=/Randevu|Appointment/i',
-            'mat-list-item >> text=/Randevu|Appointment/i',
-            '.sidebar a >> text=/Randevu|Appointment/i',
+            "text=/Randevu|Appointment/i",
+            "mat-list-item >> text=/Randevu|Appointment/i",
+            ".sidebar a >> text=/Randevu|Appointment/i",
         ]
-        
+
         clicked = False
         for selector in nav_selectors:
             try:
@@ -82,20 +82,20 @@ async def navigate_to_appointment_page(
                     break
             except Exception:
                 continue
-        
+
         if not clicked:
             raise VFSBotError(
                 "Could not find appointment navigation link on dashboard",
                 recoverable=True,
             )
-        
+
         # Wait for appointment page to load
         result = await page_state_detector.wait_for_stable_state(
             page,
             expected_states=frozenset({PageState.APPOINTMENT_PAGE}),
             max_wait=max_wait,
         )
-        
+
         if result.is_on_appointment_page:
             logger.info("SPA nav: successfully navigated to appointment page")
             return True
@@ -104,7 +104,7 @@ async def navigate_to_appointment_page(
                 f"Failed to navigate to appointment page, got: {result.state.name}",
                 recoverable=True,
             )
-    
+
     # Step 5: Unknown or other state — can't navigate safely
     raise VFSBotError(
         f"Cannot navigate to appointment page from state: {state.state.name} "

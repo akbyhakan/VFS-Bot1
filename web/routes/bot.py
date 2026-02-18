@@ -91,7 +91,9 @@ async def start_bot(
                 "data": {"running": True, "status": "running", "message": result["message"]},
             }
         )
-        logger.info(f"Bot started via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
+        logger.info(
+            f"Bot started via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+        )
     else:
         await broadcast_message(
             {
@@ -105,7 +107,9 @@ async def start_bot(
 
 @router.post("/stop")
 @limiter.limit("5/minute")
-async def stop_bot(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
+async def stop_bot(
+    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+) -> Dict[str, str]:
     """
     Stop the bot - requires authentication.
 
@@ -135,7 +139,9 @@ async def stop_bot(request: Request, auth_data: dict = Depends(verify_hybrid_aut
                 "data": {"running": False, "status": "stopped", "message": result["message"]},
             }
         )
-        logger.info(f"Bot stopped via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
+        logger.info(
+            f"Bot stopped via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+        )
     else:
         await broadcast_message(
             {
@@ -149,7 +155,9 @@ async def stop_bot(request: Request, auth_data: dict = Depends(verify_hybrid_aut
 
 @router.post("/restart")
 @limiter.limit("5/minute")
-async def restart_bot(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
+async def restart_bot(
+    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+) -> Dict[str, str]:
     """
     Restart the bot - requires authentication.
 
@@ -187,7 +195,9 @@ async def restart_bot(request: Request, auth_data: dict = Depends(verify_hybrid_
                 "data": {"running": True, "status": "running", "message": result["message"]},
             }
         )
-        logger.info(f"Bot restarted via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
+        logger.info(
+            f"Bot restarted via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+        )
     else:
         await broadcast_message(
             {
@@ -201,7 +211,9 @@ async def restart_bot(request: Request, auth_data: dict = Depends(verify_hybrid_
 
 @router.post("/check-now")
 @limiter.limit("10/minute")
-async def check_now(request: Request, auth_data: dict = Depends(verify_hybrid_auth)) -> Dict[str, str]:
+async def check_now(
+    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+) -> Dict[str, str]:
     """
     Trigger a manual slot check - requires authentication.
 
@@ -231,7 +243,9 @@ async def check_now(request: Request, auth_data: dict = Depends(verify_hybrid_au
             }
         )
 
-        logger.info(f"Manual check triggered via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}")
+        logger.info(
+            f"Manual check triggered via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+        )
 
     return result
 
@@ -383,7 +397,9 @@ async def get_error_html_snapshot(request: Request, error_id: str):
 
 
 @router.get("/settings")
-async def get_bot_settings(auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)) -> BotSettingsResponse:
+async def get_bot_settings(
+    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)
+) -> BotSettingsResponse:
     """
     Get bot settings - requires authentication.
 
@@ -398,10 +414,12 @@ async def get_bot_settings(auth_data: Dict[str, Any] = Depends(verify_hybrid_aut
     except HTTPException:
         # If bot controller not configured, return defaults
         from src.constants import AccountPoolConfig
-        
+
         return BotSettingsResponse(
             cooldown_seconds=AccountPoolConfig.COOLDOWN_SECONDS,
-            cooldown_minutes=round(AccountPoolConfig.COOLDOWN_SECONDS / 60),  # Round to nearest minute
+            cooldown_minutes=round(
+                AccountPoolConfig.COOLDOWN_SECONDS / 60
+            ),  # Round to nearest minute
             quarantine_minutes=AccountPoolConfig.QUARANTINE_SECONDS // 60,
             max_failures=AccountPoolConfig.MAX_FAILURES,
         )

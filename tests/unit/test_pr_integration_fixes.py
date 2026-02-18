@@ -1,7 +1,8 @@
 """Tests for PR integration fixes: encapsulation, rotation, and PageStateDetector."""
 
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
 
 
 class TestBrowserManagerEncapsulation:
@@ -90,8 +91,8 @@ class TestPageStateDetectorIntegration:
 
     def test_page_state_detector_in_workflow_context(self):
         """Test that PageStateDetector is included in WorkflowServicesContext."""
-        from src.services.bot.service_context import WorkflowServicesContext
         from src.services.bot.page_state_detector import PageStateDetector
+        from src.services.bot.service_context import WorkflowServicesContext
 
         # Create mock services
         mock_auth = Mock()
@@ -159,6 +160,7 @@ class TestImportOrder:
     def test_booking_workflow_imports_structure(self):
         """Test that booking_workflow.py has proper import structure."""
         import inspect
+
         from src.services.bot import booking_workflow
 
         # Get source code

@@ -9,6 +9,7 @@ from playwright.async_api import Browser, Page
 from src.constants.countries import SUPPORTED_COUNTRIES
 from src.models.database import Database
 from src.repositories.dropdown_cache_repository import DropdownCacheRepository
+
 from .centre_fetcher import CentreFetcher
 
 
@@ -52,9 +53,9 @@ class DropdownSyncService:
         """
         try:
             logger.info(f"Syncing dropdown data for {country_code}...")
-            
+
             # Update status to 'syncing'
-            await self.dropdown_cache_repo.update_sync_status(country_code, 'syncing')
+            await self.dropdown_cache_repo.update_sync_status(country_code, "syncing")
 
             # Initialize CentreFetcher for this country
             fetcher = CentreFetcher(
@@ -71,13 +72,13 @@ class DropdownSyncService:
             if not dropdown_data:
                 logger.warning(f"No dropdown data fetched for {country_code}")
                 await self.dropdown_cache_repo.update_sync_status(
-                    country_code, 'failed', 'No dropdown data returned from VFS website'
+                    country_code, "failed", "No dropdown data returned from VFS website"
                 )
                 return None
 
             # Store in database with 'completed' status
             success = await self.dropdown_cache_repo.upsert_dropdown_data(
-                country_code, dropdown_data, 'completed', None
+                country_code, dropdown_data, "completed", None
             )
 
             if success:
@@ -89,14 +90,14 @@ class DropdownSyncService:
             else:
                 logger.error(f"Failed to store dropdown data for {country_code}")
                 await self.dropdown_cache_repo.update_sync_status(
-                    country_code, 'failed', 'Failed to store data in database'
+                    country_code, "failed", "Failed to store data in database"
                 )
                 return None
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Error syncing dropdown data for {country_code}: {error_msg}")
-            await self.dropdown_cache_repo.update_sync_status(country_code, 'failed', error_msg)
+            await self.dropdown_cache_repo.update_sync_status(country_code, "failed", error_msg)
             return None
 
     async def sync_all_countries(
@@ -154,7 +155,7 @@ class DropdownSyncService:
                         f"{self.base_url}/online-services/appointment?"
                         f"country={self.source_country}&language={self.language}&mission={country_code}"
                     )
-                    
+
                     # Use Angular-safe navigation (wait for route change, not page reload)
                     await page.evaluate(
                         f"window.location.hash = '#/appointment?country={self.source_country}&language={self.language}&mission={country_code}'"
@@ -178,9 +179,7 @@ class DropdownSyncService:
                 results[country_code] = False
 
         success_count = sum(1 for success in results.values() if success)
-        logger.info(
-            f"Sync completed: {success_count}/{len(results)} countries synced successfully"
-        )
+        logger.info(f"Sync completed: {success_count}/{len(results)} countries synced successfully")
 
         return results
 
@@ -196,9 +195,7 @@ class DropdownSyncService:
         """
         return await self.dropdown_cache_repo.get_centres(country_code)
 
-    async def get_cached_categories(
-        self, country_code: str, centre_name: str
-    ) -> List[str]:
+    async def get_cached_categories(self, country_code: str, centre_name: str) -> List[str]:
         """
         Get cached categories for a centre.
 

@@ -149,12 +149,13 @@ class TestRFC7807Compliance:
         """Test validation error returns RFC 7807 format."""
         error = ValidationError("Invalid input", field="username")
         response = middleware._handle_validation_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         # Parse response body
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"] == "urn:vfsbot:error:validation"
         assert body["title"] == "Validation Error"
         assert body["status"] == 400
@@ -166,11 +167,12 @@ class TestRFC7807Compliance:
         """Test rate limit error returns RFC 7807 format."""
         error = RateLimitError("Too many requests", retry_after=60)
         response = middleware._handle_rate_limit_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"] == "urn:vfsbot:error:rate-limit"
         assert body["title"] == "Rate Limit Error"
         assert body["status"] == 429
@@ -182,11 +184,12 @@ class TestRFC7807Compliance:
         """Test authentication error returns RFC 7807 format."""
         error = AuthenticationError("Invalid credentials")
         response = middleware._handle_auth_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"] == "urn:vfsbot:error:authentication"
         assert body["title"] == "Authentication Error"
         assert body["status"] == 401
@@ -197,11 +200,12 @@ class TestRFC7807Compliance:
         """Test database error returns RFC 7807 format."""
         error = DatabaseError("Connection failed", recoverable=True)
         response = middleware._handle_database_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"] == "urn:vfsbot:error:database"
         assert body["title"] == "Database Error"
         assert body["status"] == 500
@@ -213,11 +217,12 @@ class TestRFC7807Compliance:
         """Test unexpected error returns RFC 7807 format without leaking details."""
         error = RuntimeError("Internal implementation detail")
         response = middleware._handle_unexpected_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"] == "urn:vfsbot:error:internal-server"
         assert body["title"] == "Internal Server Error"
         assert body["status"] == 500
@@ -230,11 +235,12 @@ class TestRFC7807Compliance:
         """Test generic VFSBot error returns RFC 7807 format."""
         error = VFSBotError("Generic error", recoverable=True)
         response = middleware._handle_vfsbot_error(error, mock_request)
-        
+
         assert response.media_type == "application/problem+json"
         import json
+
         body = json.loads(response.body)
-        
+
         assert body["type"].startswith("urn:vfsbot:error:")
         assert "title" in body
         assert "status" in body

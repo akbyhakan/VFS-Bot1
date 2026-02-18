@@ -66,7 +66,9 @@ class AuthService:
         mission = self.config["vfs"]["mission"]
         return await self.login_for_mission(page, email, password, mission)
 
-    async def login_for_mission(self, page: Page, email: str, password: str, mission_code: str) -> bool:
+    async def login_for_mission(
+        self, page: Page, email: str, password: str, mission_code: str
+    ) -> bool:
         """
         Login to VFS website for a specific mission/country portal.
 
@@ -114,7 +116,7 @@ class AuthService:
 
                 # Create sanitized exception for error capture
                 sanitized_exception = LoginError(f"Login form error: {safe_error}")
-                
+
                 # Capture error with sanitized exception
                 await self.error_capture.capture(
                     page,
@@ -149,10 +151,12 @@ class AuthService:
 
             # Check if login successful
             # SPA NOTE: URL is not reliable in SPA — check DOM elements instead
-            login_still_visible = await page.locator('input[name="email"], input[name="password"]').count()
+            login_still_visible = await page.locator(
+                'input[name="email"], input[name="password"]'
+            ).count()
             dashboard_indicators = await page.locator(
                 'mat-sidenav, .dashboard-container, a[href*="appointment"], '
-                'text=/dashboard|hoş geldiniz|welcome/i'
+                "text=/dashboard|hoş geldiniz|welcome/i"
             ).count()
 
             if dashboard_indicators > 0 and login_still_visible == 0:

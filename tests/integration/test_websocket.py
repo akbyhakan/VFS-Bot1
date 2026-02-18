@@ -79,7 +79,7 @@ class TestWebSocketEndpoint:
         """
         # Set cookie in the test client
         test_app.cookies.set("access_token", valid_token)
-        
+
         with test_app.websocket_connect("/ws") as websocket:
             # No need to send token message - cookie handles auth
             # Should receive initial status message immediately

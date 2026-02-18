@@ -62,7 +62,9 @@ def main():
         print("\n⚠️  Please ensure both files have the same version")
         return 1
 
-    print(f"✅ Version {pyproject_version} is in sync across pyproject.toml and frontend/package.json")
+    print(
+        f"✅ Version {pyproject_version} is in sync across pyproject.toml and frontend/package.json"
+    )
     return 0
 
 

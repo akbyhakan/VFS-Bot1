@@ -86,17 +86,19 @@ SPECIAL_CASES = {
     "src/core/retry.py": "stdlib logging for tenacity",
 }
 
+
 def check_file(filepath):
     """Check if a file is properly migrated."""
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         content = f.read()
-    
-    has_loguru = 'from loguru import logger' in content
+
+    has_loguru = "from loguru import logger" in content
     # Match both 'import logging' and 'import logging as ...'
-    has_stdlib_import = re.search(r'^import logging(\s|$)', content, re.MULTILINE)
-    has_getlogger = 'logging.getLogger' in content
-    
+    has_stdlib_import = re.search(r"^import logging(\s|$)", content, re.MULTILINE)
+    has_getlogger = "logging.getLogger" in content
+
     return has_loguru, has_stdlib_import, has_getlogger
+
 
 print("=" * 70)
 print("LOGGING MIGRATION VERIFICATION")
@@ -111,12 +113,12 @@ for filepath in FULLY_MIGRATED:
         print(f"❌ {filepath} - FILE NOT FOUND")
         issues.append(filepath)
         continue
-    
+
     has_loguru, has_stdlib, has_getlogger = check_file(filepath)
-    
+
     status = "✅"
     msg = "OK"
-    
+
     if not has_loguru:
         status = "❌"
         msg = "Missing loguru import"
@@ -129,7 +131,7 @@ for filepath in FULLY_MIGRATED:
         status = "❌"
         msg = "Still has getLogger calls"
         issues.append(f"{filepath}: {msg}")
-    
+
     print(f"{status} {filepath:60} {msg}")
 
 print("\n📋 SPECIAL CASE FILES (partial migration):")
@@ -140,9 +142,9 @@ for filepath, reason in SPECIAL_CASES.items():
         print(f"❌ {filepath} - FILE NOT FOUND")
         issues.append(filepath)
         continue
-    
+
     has_loguru, has_stdlib, has_getlogger = check_file(filepath)
-    
+
     # Special cases should have BOTH loguru and stdlib
     if has_loguru and has_stdlib:
         status = "✅"
@@ -151,7 +153,7 @@ for filepath, reason in SPECIAL_CASES.items():
         status = "❌"
         msg = f"Missing loguru or stdlib ({reason})"
         issues.append(f"{filepath}: {msg}")
-    
+
     print(f"{status} {filepath:60} {msg}")
 
 print("\n" + "=" * 70)

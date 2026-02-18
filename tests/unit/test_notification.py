@@ -293,9 +293,7 @@ async def test_send_notification_high_priority_websocket_fallback():
 @pytest.mark.asyncio
 async def test_send_notification_high_priority_no_websocket():
     """Test high-priority notification without WebSocket manager."""
-    config = {
-        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
-    }
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
     with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
@@ -346,9 +344,7 @@ async def test_send_notification_websocket_parallel_channel():
 @pytest.mark.asyncio
 async def test_send_notification_websocket_and_telegram_both_called():
     """Test that both WebSocket and Telegram are called in parallel."""
-    config = {
-        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
-    }
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
     with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
@@ -374,9 +370,7 @@ async def test_send_notification_websocket_and_telegram_both_called():
 @pytest.mark.asyncio
 async def test_send_notification_websocket_success_telegram_fail():
     """Test that notification succeeds if WebSocket succeeds even when Telegram fails."""
-    config = {
-        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
-    }
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
     with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
@@ -471,9 +465,7 @@ def test_split_message_splits_at_space():
 @pytest.mark.asyncio
 async def test_send_telegram_long_message_splits():
     """Test send_telegram splits long messages into multiple sends."""
-    config = {
-        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}
-    }
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
 
     # Create a very long message (more than 4096 characters)
     long_message = "A" * 5000

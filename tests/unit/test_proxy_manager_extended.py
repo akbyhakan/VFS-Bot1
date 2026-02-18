@@ -556,7 +556,7 @@ def test_allocate_next_all_failed_resets():
     ]
 
     proxy = manager.allocate_next()
-    
+
     # Should reset failed list and return a proxy
     assert proxy is not None
     assert len(manager.failed_proxies) == 0

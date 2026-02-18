@@ -59,7 +59,7 @@ class PasswordEncryption:
             self._key_hash = hashlib.sha256(self._key.encode()).hexdigest()[:16]
             # Create cipher with normalized key
             cipher_key = key.encode() if isinstance(key, str) else key
-            
+
             # Build key list: new key first, then old key (if available)
             fernet_keys = [Fernet(cipher_key)]
             old_key = os.getenv("ENCRYPTION_KEY_OLD")
@@ -70,7 +70,7 @@ class PasswordEncryption:
                     logger.info("Old encryption key loaded for key rotation support")
                 except Exception as e:
                     logger.warning(f"Failed to load old encryption key: {e}")
-            
+
             self.cipher = MultiFernet(fernet_keys)
 
             # Only log key hash in non-production environments
@@ -208,7 +208,7 @@ class PasswordEncryption:
     def decrypt_password(self, encrypted_password: str) -> str:
         """
         Decrypt an encrypted password with key rotation support.
-        
+
         MultiFernet automatically tries all keys in the list, so no manual fallback needed.
 
         Args:

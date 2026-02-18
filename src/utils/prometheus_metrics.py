@@ -79,9 +79,7 @@ DB_QUERY_DURATION = Histogram(
 )
 
 # Database pool metrics
-DB_POOL_SIZE = Gauge(
-    "vfs_db_pool_size", "Maximum database connection pool size", registry=REGISTRY
-)
+DB_POOL_SIZE = Gauge("vfs_db_pool_size", "Maximum database connection pool size", registry=REGISTRY)
 DB_POOL_IDLE = Gauge(
     "vfs_db_pool_idle_connections", "Number of idle connections in pool", registry=REGISTRY
 )

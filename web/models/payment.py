@@ -58,4 +58,3 @@ class PaymentCardResponse(BaseModel):
     expiry_month: str
     expiry_year: str
     created_at: str
-

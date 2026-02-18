@@ -1,13 +1,14 @@
 """Security utilities."""
 
 import importlib as _importlib
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .header_manager import HeaderManager as HeaderManager
-    from .proxy_manager import ProxyManager as ProxyManager
     from src.core.rate_limiting import RateLimiter as RateLimiter
     from src.core.rate_limiting import get_rate_limiter as get_rate_limiter
+
+    from .header_manager import HeaderManager as HeaderManager
+    from .proxy_manager import ProxyManager as ProxyManager
     from .session_manager import SessionManager as SessionManager
 
 _LAZY_MODULE_MAP = {

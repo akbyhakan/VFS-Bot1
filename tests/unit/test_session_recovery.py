@@ -352,10 +352,12 @@ class TestSessionRecovery:
 
         # Verify the file is now encrypted (re-encrypted on load)
         raw_data_after = temp_checkpoint_file.read_bytes()
-        
+
         # Verify it's encrypted by checking that plaintext is NOT visible
-        assert b"legacy_abc123" not in raw_data_after, "Plaintext should not be visible in encrypted file"
-        
+        assert (
+            b"legacy_abc123" not in raw_data_after
+        ), "Plaintext should not be visible in encrypted file"
+
         # Also verify it's not the same as the original plaintext JSON
         assert raw_data_after != raw_data_before, "File should be different after re-encryption"
 

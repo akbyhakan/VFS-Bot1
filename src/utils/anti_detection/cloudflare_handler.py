@@ -18,7 +18,7 @@ class CloudflareHandler:
         "browser_check": "Browser Check",
         "blocked": "Blocked",
     }
-    
+
     # Cloudflare Turnstile iframe selectors
     # Detection uses broader selector, handling uses primary selector
     TURNSTILE_IFRAME_SELECTOR = 'iframe[src*="challenges.cloudflare.com"]'
@@ -136,7 +136,7 @@ class CloudflareHandler:
                 # Wait for manual solving
                 logger.info(f"Waiting for manual Turnstile solve ({self.max_wait_time}s)")
                 await asyncio.sleep(self.max_wait_time)
-                
+
                 # Verify challenge was actually solved
                 turnstile_count = await page.locator(self.TURNSTILE_IFRAME_SELECTOR).count()
                 if turnstile_count == 0:
@@ -148,7 +148,7 @@ class CloudflareHandler:
             else:
                 # Use event-driven approach: wait for iframe to disappear
                 logger.info("Waiting for Turnstile auto-solve (event-driven)")
-                
+
                 try:
                     # Wait for the iframe to be detached (removed from DOM)
                     await asyncio.wait_for(

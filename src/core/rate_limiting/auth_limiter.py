@@ -10,7 +10,7 @@ from loguru import logger
 from src.constants import RateLimits
 from src.utils.masking import mask_database_url
 
-from .backends import RateLimiterBackend, InMemoryBackend, RedisBackend
+from .backends import InMemoryBackend, RateLimiterBackend, RedisBackend
 
 
 class AuthRateLimiter:

@@ -67,7 +67,7 @@ def setup_test_environment(monkeypatch):
     # Generate fresh keys per test for true isolation
     test_encryption_key = Fernet.generate_key().decode()
     test_api_secret_key = secrets.token_urlsafe(48)
-    
+
     # Set all environment variables using monkeypatch for proper isolation
     monkeypatch.setenv("ENCRYPTION_KEY", test_encryption_key)
     monkeypatch.setenv("API_SECRET_KEY", test_api_secret_key)
@@ -78,17 +78,18 @@ def setup_test_environment(monkeypatch):
     monkeypatch.setenv("VFS_ASSETS_BASE", "https://test-assets.vfsglobal.com")
     monkeypatch.setenv("CONTENTFUL_BASE", "https://test-contentful.cloudfront.net")
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
-    
+
     # Reset settings singleton so each test gets fresh settings
     from src.core.config.settings import reset_settings
+
     reset_settings()
-    
+
     # Suppress async-related warnings during tests
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         warnings.filterwarnings("ignore", message=".*was never awaited.*")
         yield
-    
+
     # Cleanup: reset settings singleton after test
     reset_settings()
 

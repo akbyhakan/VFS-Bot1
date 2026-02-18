@@ -410,16 +410,16 @@ def test_thread_safe_bot_state_logs_deque():
 async def test_thread_safe_bot_state_async_uses_same_lock():
     """Test that async methods use the same threading.Lock as sync methods."""
     state = ThreadSafeBotState()
-    
+
     # Set value using sync method
     state.set_running(True)
     state.set_status("running")
-    
+
     # Get values using async method
     state_dict = await state.async_to_dict()
     assert state_dict["running"] is True
     assert state_dict["status"] == "running"
-    
+
     # Verify sync and async methods see same values
     assert state.get_running() is True
     assert state.get_status() == "running"
@@ -429,10 +429,10 @@ async def test_thread_safe_bot_state_async_uses_same_lock():
 def test_thread_safe_bot_state_no_async_lock_attribute():
     """Test that ThreadSafeBotState no longer has _async_lock attribute."""
     state = ThreadSafeBotState()
-    
+
     # Verify _async_lock attribute does not exist
     assert not hasattr(state, "_async_lock")
-    
+
     # Verify _lock attribute exists (threading.Lock)
     assert hasattr(state, "_lock")
     # Verify it's a lock object (type varies by implementation)
@@ -443,12 +443,12 @@ def test_thread_safe_bot_state_no_async_lock_attribute():
 def test_thread_safe_metrics_no_async_lock_attribute():
     """Test that ThreadSafeMetrics no longer has _async_lock attribute."""
     from web.state.metrics import ThreadSafeMetrics
-    
+
     metrics = ThreadSafeMetrics()
-    
+
     # Verify _async_lock attribute does not exist
     assert not hasattr(metrics, "_async_lock")
-    
+
     # Verify _lock attribute exists (threading.Lock)
     assert hasattr(metrics, "_lock")
     # Verify it's a lock object (type varies by implementation)
@@ -460,19 +460,19 @@ def test_thread_safe_metrics_no_async_lock_attribute():
 async def test_thread_safe_metrics_async_uses_same_lock():
     """Test that async methods in ThreadSafeMetrics use unified threading.Lock."""
     from web.state.metrics import ThreadSafeMetrics
-    
+
     metrics = ThreadSafeMetrics()
-    
+
     # Set value using sync method
     metrics.set("test_metric", 100)
-    
+
     # Get value using async method
     async_value = await metrics.async_get("test_metric")
     assert async_value == 100
-    
+
     # Increment using async method
     await metrics.async_increment("test_metric", 50)
-    
+
     # Get value using sync method
     sync_value = metrics.get("test_metric")
     assert sync_value == 150

@@ -81,7 +81,7 @@ async def get_countries():
 @router.get("/countries/{country_code}/centres")
 async def get_country_centres(
     country_code: str,
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """
     Get list of centres for a specific country.
@@ -101,15 +101,13 @@ async def get_country_centres(
         # Try to get centres from cache
         dropdown_cache_repo = DropdownCacheRepository(db)
         centres = await dropdown_cache_repo.get_centres(country_code)
-        
+
         if centres:
             logger.debug(f"Returning {len(centres)} cached centres for {country_code}")
             return centres
-        
+
         # Fallback to hardcoded centres if cache is empty
-        logger.warning(
-            f"No cached centres for {country_code}, returning fallback centres"
-        )
+        logger.warning(f"No cached centres for {country_code}, returning fallback centres")
         centres = ["Istanbul", "Ankara", "Izmir", "Antalya", "Bursa"]
         return centres
     except Exception as e:
@@ -122,7 +120,7 @@ async def get_country_centres(
 async def get_centre_categories(
     country_code: str,
     centre_name: str,
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """
     Get list of visa categories for a specific centre.
@@ -138,26 +136,24 @@ async def get_centre_categories(
     try:
         dropdown_cache_repo = DropdownCacheRepository(db)
         categories = await dropdown_cache_repo.get_categories(country_code, centre_name)
-        
+
         if not categories:
-            logger.warning(
-                f"No cached categories for {country_code}/{centre_name}"
-            )
-        
+            logger.warning(f"No cached categories for {country_code}/{centre_name}")
+
         return categories
     except Exception as e:
-        logger.error(
-            f"Error fetching categories for {country_code}/{centre_name}: {e}"
-        )
+        logger.error(f"Error fetching categories for {country_code}/{centre_name}: {e}")
         return []
 
 
-@router.get("/countries/{country_code}/centres/{centre_name}/categories/{category_name}/subcategories")
+@router.get(
+    "/countries/{country_code}/centres/{centre_name}/categories/{category_name}/subcategories"
+)
 async def get_category_subcategories(
     country_code: str,
     centre_name: str,
     category_name: str,
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """
     Get list of visa subcategories for a specific centre and category.
@@ -176,12 +172,12 @@ async def get_category_subcategories(
         subcategories = await dropdown_cache_repo.get_subcategories(
             country_code, centre_name, category_name
         )
-        
+
         if not subcategories:
             logger.warning(
                 f"No cached subcategories for {country_code}/{centre_name}/{category_name}"
             )
-        
+
         return subcategories
     except Exception as e:
         logger.error(

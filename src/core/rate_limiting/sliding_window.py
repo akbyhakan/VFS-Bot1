@@ -16,7 +16,7 @@ class RateLimiter:
     Token bucket rate limiter for API calls.
 
     NOTE: This rate limiter is designed for single-process VFS API call throttling.
-    For distributed/multi-worker deployments, see src/core/rate_limiting/auth_limiter.py 
+    For distributed/multi-worker deployments, see src/core/rate_limiting/auth_limiter.py
     which provides Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend.
     """
 

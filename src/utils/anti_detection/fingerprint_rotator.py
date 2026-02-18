@@ -168,7 +168,9 @@ class FingerprintRotator:
         """
         # Select profile from pool, avoiding recent ones
         available_indices = [
-            i for i in range(len(self.PROFILE_POOL)) if i not in self._profile_history[-self.max_history :]
+            i
+            for i in range(len(self.PROFILE_POOL))
+            if i not in self._profile_history[-self.max_history :]
         ]
 
         if not available_indices:
@@ -187,7 +189,9 @@ class FingerprintRotator:
             self._profile_history.pop(0)
 
         # Get profile components
-        user_agent, platform, timezone, webgl_vendor, webgl_renderer = self.PROFILE_POOL[profile_idx]
+        user_agent, platform, timezone, webgl_vendor, webgl_renderer = self.PROFILE_POOL[
+            profile_idx
+        ]
 
         # Select consistent viewport
         viewport_width, viewport_height = random.choice(self.VIEWPORTS)
@@ -273,9 +277,7 @@ class FingerprintRotator:
         elapsed_minutes = elapsed.total_seconds() / 60
 
         if elapsed_minutes >= self.rotation_interval_minutes:
-            logger.info(
-                f"Fingerprint rotation triggered by time ({elapsed_minutes:.1f} minutes)"
-            )
+            logger.info(f"Fingerprint rotation triggered by time ({elapsed_minutes:.1f} minutes)")
             return True
 
         return False

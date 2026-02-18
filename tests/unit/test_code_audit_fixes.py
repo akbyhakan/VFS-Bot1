@@ -148,7 +148,7 @@ class TestBrowserMemoryLeakPrevention:
             browser_manager._page_count = 5
             browser_manager._max_pages_before_restart = 10
             browser_manager.should_restart = AsyncMock(return_value=False)
-            
+
             # Mock page that raises exception on close
             mock_page = MagicMock()
             mock_page.close = AsyncMock(side_effect=Exception("Failed to close page"))
@@ -170,7 +170,7 @@ class TestBrowserMemoryLeakPrevention:
 
             # Call _process_user_with_semaphore with a test user
             user = {"id": 1, "email": "test@example.com"}
-            
+
             # The method should not raise, but should log the error
             await bot._process_user_with_semaphore(user)
 
@@ -258,7 +258,7 @@ class TestGracefulShutdownNotifications:
     async def test_stop_saves_checkpoint_on_timeout(self, mock_vfs_bot):
         """Test that stop() saves checkpoint when timeout occurs."""
         from src.constants import Timeouts
-        
+
         bot = mock_vfs_bot
 
         # Create a long-running task that will timeout
@@ -275,13 +275,13 @@ class TestGracefulShutdownNotifications:
         # Verify checkpoint was saved
         assert bot.services.workflow.error_handler.save_checkpoint.called
         call_args = bot.services.workflow.error_handler.save_checkpoint.call_args[0][0]
-        
+
         # Verify checkpoint contains expected data
         assert call_args["event"] == "forced_shutdown"
         assert call_args["cancelled_task_count"] == 1
         assert "test_booking_task" in call_args["cancelled_tasks"]
         assert call_args["reason"] == "grace_period_timeout"
-        
+
         # Verify alert was sent with task info
         assert bot.services.workflow.alert_service.send_alert.called
         alert_call = bot.services.workflow.alert_service.send_alert.call_args[1]
@@ -933,6 +933,7 @@ class TestTokenRefreshBufferSafeParsing:
     def test_get_token_refresh_buffer_valid(self):
         """Test _get_token_refresh_buffer with valid integer."""
         from unittest.mock import patch
+
         from src.services.vfs.auth import _get_token_refresh_buffer
 
         with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "10"}):
@@ -941,6 +942,7 @@ class TestTokenRefreshBufferSafeParsing:
     def test_get_token_refresh_buffer_invalid(self):
         """Test _get_token_refresh_buffer with invalid value returns default."""
         from unittest.mock import patch
+
         from src.services.vfs.auth import _get_token_refresh_buffer
 
         with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "invalid"}):
@@ -949,6 +951,7 @@ class TestTokenRefreshBufferSafeParsing:
     def test_get_token_refresh_buffer_negative(self):
         """Test _get_token_refresh_buffer with negative value returns default."""
         from unittest.mock import patch
+
         from src.services.vfs.auth import _get_token_refresh_buffer
 
         with patch.dict(os.environ, {"TOKEN_REFRESH_BUFFER_MINUTES": "-5"}):
@@ -957,6 +960,7 @@ class TestTokenRefreshBufferSafeParsing:
     def test_get_token_refresh_buffer_not_set(self):
         """Test _get_token_refresh_buffer when env var not set returns default."""
         from unittest.mock import patch
+
         from src.services.vfs.auth import _get_token_refresh_buffer
 
         with patch.dict(os.environ, {}, clear=True):
@@ -970,15 +974,18 @@ class TestSecurityConfigValidation:
         """Test that SecurityConfig warns about empty keys in production."""
         import warnings
         from unittest.mock import patch
+
         from src.core.config.config_models import SecurityConfig
 
         with patch.dict(os.environ, {"ENV": "production"}):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 config = SecurityConfig()
-                
+
                 # Should have warning about security keys
-                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                security_warnings = [
+                    warn for warn in w if "Empty security keys detected" in str(warn.message)
+                ]
                 assert len(security_warnings) > 0
                 assert "Empty security keys detected" in str(security_warnings[0].message)
 
@@ -986,22 +993,27 @@ class TestSecurityConfigValidation:
         """Test that SecurityConfig doesn't warn in testing environment."""
         import warnings
         from unittest.mock import patch
+
         from src.core.config.config_models import SecurityConfig
 
         with patch.dict(os.environ, {"ENV": "testing"}):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 config = SecurityConfig()
-                
+
                 # Should not have warning about security keys
-                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                security_warnings = [
+                    warn for warn in w if "Empty security keys detected" in str(warn.message)
+                ]
                 assert len(security_warnings) == 0
 
     def test_security_config_with_keys_no_warning(self):
         """Test that SecurityConfig with proper keys doesn't warn."""
         import warnings
         from unittest.mock import patch
+
         from pydantic import SecretStr
+
         from src.core.config.config_models import SecurityConfig
 
         with patch.dict(os.environ, {"ENV": "production"}):
@@ -1012,9 +1024,11 @@ class TestSecurityConfigValidation:
                     api_key_salt=SecretStr("secure-salt"),
                     encryption_key=SecretStr("encryption-key-32-chars-long"),
                 )
-                
+
                 # Should not have warning
-                security_warnings = [warn for warn in w if "Empty security keys detected" in str(warn.message)]
+                security_warnings = [
+                    warn for warn in w if "Empty security keys detected" in str(warn.message)
+                ]
                 assert len(security_warnings) == 0
 
 
@@ -1025,8 +1039,9 @@ class TestPasswordLeakPrevention:
     async def test_error_capture_receives_sanitized_exception(self):
         """Test that error_capture receives sanitized exception, not raw."""
         from unittest.mock import AsyncMock, MagicMock, patch
-        from src.services.bot.auth_service import AuthService
+
         from src.core.exceptions import LoginError
+        from src.services.bot.auth_service import AuthService
 
         # Create mocks
         config = {
@@ -1057,11 +1072,14 @@ class TestPasswordLeakPrevention:
         mock_page.goto = AsyncMock()
         mock_page.wait_for_load_state = AsyncMock()
         mock_page.locator = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=0)))
-        
+
         # Mock smart_fill to raise exception with password in message
         password = "secretpassword123"
-        with patch('src.services.bot.auth_service.safe_navigate', return_value=True):
-            with patch('src.services.bot.auth_service.smart_fill', side_effect=Exception(f"Error with {password}")):
+        with patch("src.services.bot.auth_service.safe_navigate", return_value=True):
+            with patch(
+                "src.services.bot.auth_service.smart_fill",
+                side_effect=Exception(f"Error with {password}"),
+            ):
                 try:
                     await auth_service.login(mock_page, "test@example.com", password)
                 except LoginError:
@@ -1069,11 +1087,11 @@ class TestPasswordLeakPrevention:
 
         # Verify error_capture was called
         assert mock_error_capture.capture.called
-        
+
         # Get the exception passed to error_capture
         call_args = mock_error_capture.capture.call_args
         captured_exception = call_args[0][1]  # Second positional arg
-        
+
         # Verify it's a LoginError (sanitized) and doesn't contain password
         assert isinstance(captured_exception, LoginError)
         assert password not in str(captured_exception)
@@ -1083,6 +1101,7 @@ class TestPasswordLeakPrevention:
     async def test_outer_except_sanitizes_password_in_logs(self):
         """Test that outer except block sanitizes password before logging."""
         from unittest.mock import AsyncMock, MagicMock, patch
+
         from src.services.bot.auth_service import AuthService
 
         config = {
@@ -1109,20 +1128,23 @@ class TestPasswordLeakPrevention:
 
         mock_page = AsyncMock()
         password = "secretpassword456"
-        
+
         # Mock safe_navigate to raise exception with password
-        with patch('src.services.bot.auth_service.safe_navigate', side_effect=Exception(f"Network error with {password}")):
+        with patch(
+            "src.services.bot.auth_service.safe_navigate",
+            side_effect=Exception(f"Network error with {password}"),
+        ):
             # Capture logger calls
-            with patch('src.services.bot.auth_service.logger') as mock_logger:
+            with patch("src.services.bot.auth_service.logger") as mock_logger:
                 result = await auth_service.login(mock_page, "test@example.com", password)
-                
+
                 # Should return False
                 assert result is False
-                
+
                 # Verify logger.error was called with sanitized message
                 assert mock_logger.error.called
                 error_message = mock_logger.error.call_args[0][0]
-                
+
                 # Password should be redacted in log
                 assert password not in error_message
                 assert "[REDACTED]" in error_message

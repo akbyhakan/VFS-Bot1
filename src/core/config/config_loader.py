@@ -11,8 +11,9 @@ import yaml
 from dotenv import load_dotenv
 from loguru import logger
 
-from .config_version_checker import check_config_version
 from src.core.environment import Environment
+
+from .config_version_checker import check_config_version
 
 # Critical environment variables that must be set in production
 CRITICAL_ENV_VARS: frozenset[str] = frozenset(
@@ -75,7 +76,9 @@ def load_env_variables() -> None:
         logger.debug(f"Loaded environment variables from {env_path}")
 
 
-def substitute_env_vars(value: Any, _env: Optional[str] = None, _is_production: Optional[bool] = None) -> Any:
+def substitute_env_vars(
+    value: Any, _env: Optional[str] = None, _is_production: Optional[bool] = None
+) -> Any:
     """
     Recursively substitute environment variables in configuration values.
 
@@ -235,8 +238,8 @@ def load_config(config_path: str = "config/config.yaml") -> Dict[str, Any]:
     check_config_version(config)
 
     # Validate config with Pydantic schema
-    from .config_validator import ConfigValidator
     from ..exceptions import ConfigurationError
+    from .config_validator import ConfigValidator
 
     if not ConfigValidator.validate(config):
         raise ConfigurationError("Configuration validation failed. Check logs for details.")

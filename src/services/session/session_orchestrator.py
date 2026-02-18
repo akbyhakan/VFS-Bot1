@@ -11,6 +11,7 @@ from src.constants import AccountPoolConfig
 from src.models.database import Database
 from src.repositories.account_pool_repository import AccountPoolRepository
 from src.repositories.appointment_request_repository import AppointmentRequestRepository
+
 from .account_pool import AccountPool, PooledAccount
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 class SessionOrchestrator:
     """
     Orchestrates booking sessions across missions using pooled accounts.
-    
+
     Each session:
     1. Gets active pending missions (grouped by country_code)
     2. For each mission, acquires account from pool
@@ -53,10 +54,10 @@ class SessionOrchestrator:
         self.booking_workflow = booking_workflow
         self.browser_manager = browser_manager
         self.max_concurrent_missions = max_concurrent_missions
-        
+
         self.appointment_request_repo = AppointmentRequestRepository(db)
         self.account_pool_repo = AccountPoolRepository(db)
-        
+
         self.session_number = 0
         self._semaphore = asyncio.Semaphore(max_concurrent_missions)
 
@@ -67,7 +68,7 @@ class SessionOrchestrator:
     async def get_active_missions(self) -> Dict[str, List[Any]]:
         """
         Get active pending appointment requests grouped by mission (country_code).
-        
+
         Returns:
             Dictionary mapping country_code to list of appointment requests
             Example: {"fr": [request1, request2], "be": [request3]}
@@ -92,7 +93,7 @@ class SessionOrchestrator:
     async def run_session(self) -> Dict[str, Any]:
         """
         Run one complete session cycle.
-        
+
         Process:
         1. Get active missions
         2. For each mission, acquire account and process
@@ -104,7 +105,7 @@ class SessionOrchestrator:
         """
         self.session_number += 1
         session_start = datetime.now(timezone.utc)
-        
+
         logger.info(f"========== SESSION {self.session_number} START ==========")
 
         # Get active missions
@@ -188,7 +189,7 @@ class SessionOrchestrator:
     ) -> Dict[str, Any]:
         """
         Process a single mission (country).
-        
+
         1. Acquire account from pool
         2. Create isolated browser instance for this mission
         3. Open browser page
@@ -237,16 +238,16 @@ class SessionOrchestrator:
             # - Fingerprint (from fingerprint rotator)
             # Note: Import here to avoid circular dependency (vfs_bot.py -> session_orchestrator.py)
             from src.services.bot.browser_manager import BrowserManager
-            
+
             mission_browser = BrowserManager(
                 config=self.browser_manager.config,
                 header_manager=self.browser_manager.header_manager,
                 proxy_manager=self.browser_manager.proxy_manager,
             )
-            
+
             logger.info(f"Starting isolated browser instance for mission {mission_code.upper()}")
             await mission_browser.start()
-            
+
             # Open browser page in the mission-specific browser
             page = await mission_browser.new_page()
 
@@ -258,9 +259,7 @@ class SessionOrchestrator:
                 appointment_requests=requests,
             )
 
-            logger.info(
-                f"Mission {mission_code.upper()} completed with result: {result}"
-            )
+            logger.info(f"Mission {mission_code.upper()} completed with result: {result}")
 
             return {
                 "status": "completed",
@@ -277,7 +276,7 @@ class SessionOrchestrator:
             )
             error_message = str(e)
             result = "error"
-            
+
             return {
                 "status": "error",
                 "mission_code": mission_code,
@@ -294,26 +293,28 @@ class SessionOrchestrator:
                     logger.debug(f"Closed page for mission {mission_code.upper()}")
                 except Exception as close_error:
                     logger.error(f"Failed to close page for mission {mission_code}: {close_error}")
-            
+
             # Always close mission-specific browser to prevent orphan processes
             if mission_browser:
                 try:
                     await mission_browser.close()
                     logger.info(f"Closed browser instance for mission {mission_code.upper()}")
                 except Exception as browser_close_error:
-                    logger.error(f"Failed to close browser for mission {mission_code}: {browser_close_error}")
+                    logger.error(
+                        f"Failed to close browser for mission {mission_code}: {browser_close_error}"
+                    )
 
             # Always release account
             if account:
                 completed_at = datetime.now(timezone.utc)
-                
+
                 # Log usage
                 try:
                     # Log primary usage record with first request (for foreign key constraint)
                     # Include all request IDs in metadata for complete audit trail
                     request_ids = [req.id for req in requests] if requests else []
                     primary_request_id = request_ids[0] if request_ids else None
-                    
+
                     await self.account_pool_repo.log_usage(
                         account_id=account.id,
                         mission_code=mission_code,
@@ -321,7 +322,11 @@ class SessionOrchestrator:
                         result=result,
                         started_at=started_at,
                         request_id=primary_request_id,
-                        error_message=f"Requests: {request_ids}; Error: {error_message}" if error_message else f"Requests: {request_ids}",
+                        error_message=(
+                            f"Requests: {request_ids}; Error: {error_message}"
+                            if error_message
+                            else f"Requests: {request_ids}"
+                        ),
                         completed_at=completed_at,
                     )
                 except Exception as log_error:

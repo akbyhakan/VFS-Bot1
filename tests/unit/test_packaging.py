@@ -134,10 +134,14 @@ class TestDependencySynchronization:
             # Normalize package names for comparison
             found = False
             for lock_pkg in lock_packages:
-                if lock_pkg.replace("_", "-").replace(".", "-") == pkg.replace("_", "-").replace(".", "-"):
+                if lock_pkg.replace("_", "-").replace(".", "-") == pkg.replace("_", "-").replace(
+                    ".", "-"
+                ):
                     found = True
                     # Verify it has a pinned version
-                    assert len(lock_packages[lock_pkg]) > 0, f"Package {pkg} has empty version in lock file"
+                    assert (
+                        len(lock_packages[lock_pkg]) > 0
+                    ), f"Package {pkg} has empty version in lock file"
                     break
             assert found, f"Critical package {pkg} not found in requirements.lock"
 

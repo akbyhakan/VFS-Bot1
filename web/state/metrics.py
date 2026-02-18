@@ -8,10 +8,10 @@ from typing import Any, Dict
 
 class ThreadSafeMetrics:
     """Thread-safe metrics storage with unified lock for sync and async methods.
-    
+
     Uses a single threading.Lock for all operations (both sync and async methods).
     This ensures thread-safety across all contexts without race conditions.
-    
+
     The threading.Lock works correctly in async contexts as metrics operations are
     microsecond-level (dict get/set), so event loop blocking is negligible.
     """

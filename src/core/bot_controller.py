@@ -157,12 +157,16 @@ class BotController:
                     assert self._notifier is not None
                     self._bot = VFSBot(
                         self._config,  # type: ignore[arg-type]
-                        self._db, self._notifier, shutdown_event=self._shutdown_event
+                        self._db,
+                        self._notifier,
+                        shutdown_event=self._shutdown_event,
                     )
 
                 # Initialize selector health monitoring if enabled
                 assert self._bot is not None
-                if self._config and self._config.get("selector_health_check", {}).get("enabled", True):
+                if self._config and self._config.get("selector_health_check", {}).get(
+                    "enabled", True
+                ):
                     try:
                         from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 

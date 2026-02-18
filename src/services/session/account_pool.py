@@ -57,11 +57,10 @@ class PooledAccount:
         )
 
 
-
 class AccountPool:
     """
     Manages VFS account pool with LRU + cooldown hybrid allocation strategy.
-    
+
     Thread-safe account acquisition and release with:
     - Cooldown period after each use
     - Quarantine on repeated failures
@@ -124,7 +123,7 @@ class AccountPool:
     async def load_accounts(self) -> int:
         """
         Load and validate accounts from database.
-        
+
         This is mainly for initialization and monitoring purposes.
         The actual account selection happens in acquire_account().
 
@@ -138,14 +137,14 @@ class AccountPool:
     async def acquire_account(self) -> Optional[PooledAccount]:
         """
         Acquire an account from the pool using LRU + cooldown strategy.
-        
+
         Algorithm:
         1. Filter accounts where status = 'available' AND cooldown_until < NOW()
         2. Exclude quarantined accounts (quarantine_until > NOW())
         3. Sort remaining by last_used_at ASC (LRU first)
         4. Select and mark first account as 'in_use'
         5. Return None if no accounts available
-        
+
         Thread-safe using asyncio.Lock.
 
         Returns:
@@ -184,7 +183,7 @@ class AccountPool:
     ) -> bool:
         """
         Release account back to pool with appropriate state transition.
-        
+
         State transitions based on result:
         - 'success' or 'no_slot': → cooldown (reset failures)
         - 'login_fail' or 'error': → increment failures; quarantine if >= max_failures
@@ -256,9 +255,7 @@ class AccountPool:
                     result_status=result,
                     quarantine_until=quarantine_until,
                 )
-                logger.error(
-                    f"Account {account_id} BANNED - quarantined until {quarantine_until}"
-                )
+                logger.error(f"Account {account_id} BANNED - quarantined until {quarantine_until}")
                 return success
 
             else:
@@ -268,7 +265,7 @@ class AccountPool:
     async def get_wait_time(self) -> float:
         """
         Calculate time until next account becomes available.
-        
+
         Returns the time in seconds until the earliest cooldown expires.
         If no accounts are in cooldown, returns 0.
 
@@ -308,7 +305,7 @@ class AccountPool:
     async def wait_for_available_account(self, timeout: Optional[float] = None) -> bool:
         """
         Wait for an account to become available.
-        
+
         Polls for available accounts, waiting for cooldowns to expire if needed.
 
         Args:
@@ -342,8 +339,10 @@ class AccountPool:
             if wait_time <= 0:
                 # No cooldowns but still no available accounts
                 # This could happen if all accounts are quarantined
-                logger.warning("No available accounts and no cooldowns - all accounts may be quarantined")
-                
+                logger.warning(
+                    "No available accounts and no cooldowns - all accounts may be quarantined"
+                )
+
                 # Sleep with shutdown event check
                 if await self._sleep_with_shutdown_check(10.0):
                     logger.info("Shutdown event detected during sleep")
@@ -353,7 +352,7 @@ class AccountPool:
             # Wait until next cooldown expires (capped at 60s for responsiveness)
             sleep_time = min(wait_time, 60.0)
             logger.info(f"Waiting {sleep_time:.1f}s for account cooldown to expire...")
-            
+
             # Sleep with shutdown event check
             if await self._sleep_with_shutdown_check(sleep_time):
                 logger.info("Shutdown event detected during cooldown wait")

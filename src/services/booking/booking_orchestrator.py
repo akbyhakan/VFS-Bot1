@@ -144,7 +144,9 @@ class BookingOrchestrator:
 
             is_visible = await otp_generate_button.is_visible()
             if not is_visible:
-                logger.debug("Booking OTP screen not present - skipping (country doesn't require it)")
+                logger.debug(
+                    "Booking OTP screen not present - skipping (country doesn't require it)"
+                )
                 return True
 
             logger.info("Booking OTP screen detected - starting OTP flow")

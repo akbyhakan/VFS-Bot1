@@ -33,10 +33,7 @@ class NotificationConfig:
 
     def __repr__(self) -> str:
         """Return repr with masked sensitive fields in nested configs."""
-        return (
-            f"NotificationConfig(telegram={repr(self.telegram)}, "
-            f"timezone='{self.timezone}')"
-        )
+        return f"NotificationConfig(telegram={repr(self.telegram)}, " f"timezone='{self.timezone}')"
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "NotificationConfig":

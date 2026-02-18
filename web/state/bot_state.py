@@ -9,13 +9,13 @@ from typing import Any, Dict, Optional
 @dataclass
 class ThreadSafeBotState:
     """Thread-safe wrapper for bot state using typed dataclass fields.
-    
+
     Uses a single threading.Lock for all operations (both sync and async methods).
     This ensures thread-safety across all contexts without race conditions.
-    
+
     The threading.Lock works correctly in async contexts as state operations are
     microsecond-level, so event loop blocking is negligible.
-    
+
     All dict-style access has been removed in favor of typed getters/setters.
     """
 

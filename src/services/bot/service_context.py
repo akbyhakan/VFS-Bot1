@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from src.core.rate_limiting import get_rate_limiter
 from src.selector import SelectorSelfHealing
 
 from ...constants import RateLimits
@@ -19,18 +20,17 @@ from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.security.header_manager import HeaderManager
 from ...utils.security.proxy_manager import ProxyManager
-from src.core.rate_limiting import get_rate_limiter
 from ...utils.security.session_manager import SessionManager
-from ..scheduling.adaptive_scheduler import AdaptiveScheduler
-from ..notification.alert_service import AlertChannel, AlertConfig, AlertService
+from ..account.token_sync_service import TokenSyncService
 from ..booking import BookingOrchestrator
 from ..captcha_solver import CaptchaSolver
 from ..data_sync.centre_fetcher import CentreFetcher
 from ..data_sync.country_profile_loader import CountryProfileLoader
+from ..notification.alert_service import AlertChannel, AlertConfig, AlertService
 from ..otp_manager.otp_webhook import get_otp_service
+from ..scheduling.adaptive_scheduler import AdaptiveScheduler
 from ..session.session_recovery import SessionRecovery
 from ..slot_analyzer import SlotPatternAnalyzer
-from ..account.token_sync_service import TokenSyncService
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .page_state_detector import PageStateDetector

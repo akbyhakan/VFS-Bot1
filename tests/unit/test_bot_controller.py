@@ -290,7 +290,9 @@ async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, n
     mock_bot_instance.stop = AsyncMock()
     mock_bot_instance.cleanup = AsyncMock()
     # Mock trigger_immediate_check to raise AttributeError (simulating race condition)
-    mock_bot_instance.trigger_immediate_check = MagicMock(side_effect=AttributeError("Bot reference lost"))
+    mock_bot_instance.trigger_immediate_check = MagicMock(
+        side_effect=AttributeError("Bot reference lost")
+    )
     mock_vfsbot.return_value = mock_bot_instance
 
     controller = await BotController.get_instance()
@@ -298,7 +300,7 @@ async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, n
 
     # Start bot
     await controller.start_bot()
-    
+
     # Trigger check - should handle AttributeError gracefully
     result = await controller.trigger_check_now()
 
@@ -326,10 +328,10 @@ async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, n
 
     # Start bot - this should handle CancelledError gracefully
     await controller.start_bot()
-    
+
     # Give the task a moment to run
     await asyncio.sleep(0.1)
-    
+
     # Verify cleanup was called
     mock_bot_instance.cleanup.assert_called_once()
 
@@ -351,9 +353,9 @@ async def test_run_bot_cleanup_without_deadlock(mock_vfsbot, config, database, n
         nonlocal cleanup_called
         controller = await BotController.get_instance()
         # Lock should NOT be held during cleanup to prevent deadlock
-        assert not controller._async_lock.locked(), (
-            "Lock should not be held during _run_bot cleanup to prevent deadlock"
-        )
+        assert (
+            not controller._async_lock.locked()
+        ), "Lock should not be held during _run_bot cleanup to prevent deadlock"
         cleanup_called = True
         await original_cleanup()
 

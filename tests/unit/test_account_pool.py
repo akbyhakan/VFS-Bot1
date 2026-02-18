@@ -26,7 +26,10 @@ def mock_account_pool_repo():
 @pytest.fixture
 def account_pool(mock_db, mock_account_pool_repo):
     """Create AccountPool instance with mocked dependencies."""
-    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+    with patch(
+        "src.services.session.account_pool.AccountPoolRepository",
+        return_value=mock_account_pool_repo,
+    ):
         pool = AccountPool(
             db=mock_db,
             cooldown_seconds=60,
@@ -97,7 +100,7 @@ async def test_acquire_account_no_available(account_pool, mock_account_pool_repo
 async def test_acquire_account_lru_ordering(account_pool, mock_account_pool_repo):
     """Test that LRU account is selected (least recently used first)."""
     now = datetime.now(timezone.utc)
-    
+
     # Create accounts with different last_used_at times
     account1 = {
         "id": 1,
@@ -114,7 +117,7 @@ async def test_acquire_account_lru_ordering(account_pool, mock_account_pool_repo
         "created_at": now - timedelta(days=1),
         "updated_at": now,
     }
-    
+
     account2 = {
         "id": 2,
         "email": "recent@example.com",
@@ -270,7 +273,9 @@ async def test_get_pool_status(account_pool, mock_account_pool_repo):
 
 
 @pytest.mark.asyncio
-async def test_acquire_release_thread_safety(account_pool, mock_account_pool_repo, sample_account_dict):
+async def test_acquire_release_thread_safety(
+    account_pool, mock_account_pool_repo, sample_account_dict
+):
     """Test thread safety of acquire and release operations."""
     # Simulate concurrent acquire/release
     mock_account_pool_repo.get_available_accounts.return_value = [sample_account_dict]
@@ -296,29 +301,32 @@ async def test_acquire_release_thread_safety(account_pool, mock_account_pool_rep
 async def test_wait_for_available_account_with_shutdown(mock_db, mock_account_pool_repo):
     """Test wait_for_available_account respects shutdown event."""
     shutdown_event = asyncio.Event()
-    
-    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+
+    with patch(
+        "src.services.session.account_pool.AccountPoolRepository",
+        return_value=mock_account_pool_repo,
+    ):
         pool = AccountPool(
             db=mock_db,
             cooldown_seconds=60,
             shutdown_event=shutdown_event,
         )
         pool.repo = mock_account_pool_repo
-    
+
     # No accounts available
     mock_account_pool_repo.get_available_accounts.return_value = []
     mock_account_pool_repo.get_next_available_cooldown_time.return_value = None
-    
+
     # Set shutdown event after a short delay
     async def trigger_shutdown():
         await asyncio.sleep(0.5)
         shutdown_event.set()
-    
+
     shutdown_task = asyncio.create_task(trigger_shutdown())
-    
+
     # wait_for_available_account should return False when shutdown is triggered
     result = await pool.wait_for_available_account(timeout=None)
-    
+
     assert result is False
     await shutdown_task
 
@@ -326,14 +334,17 @@ async def test_wait_for_available_account_with_shutdown(mock_db, mock_account_po
 @pytest.mark.asyncio
 async def test_wait_for_available_account_no_shutdown_event(mock_db, mock_account_pool_repo):
     """Test wait_for_available_account works without shutdown event."""
-    with patch("src.services.session.account_pool.AccountPoolRepository", return_value=mock_account_pool_repo):
+    with patch(
+        "src.services.session.account_pool.AccountPoolRepository",
+        return_value=mock_account_pool_repo,
+    ):
         pool = AccountPool(
             db=mock_db,
             cooldown_seconds=60,
             shutdown_event=None,  # No shutdown event
         )
         pool.repo = mock_account_pool_repo
-    
+
     now = datetime.now(timezone.utc)
     sample_account = {
         "id": 1,
@@ -350,15 +361,14 @@ async def test_wait_for_available_account_no_shutdown_event(mock_db, mock_accoun
         "created_at": now,
         "updated_at": now,
     }
-    
+
     # Account becomes available immediately
     mock_account_pool_repo.get_available_accounts.return_value = [sample_account]
-    
+
     # Should return True immediately
     result = await pool.wait_for_available_account(timeout=5.0)
-    
-    assert result is True
 
+    assert result is True
 
 
 # ──────────────────────────────────────────────────────────────
@@ -369,7 +379,7 @@ async def test_wait_for_available_account_no_shutdown_event(mock_db, mock_accoun
 def test_pooled_account_from_dict_success(sample_account_dict):
     """Test that from_dict successfully creates PooledAccount with all required fields."""
     account = PooledAccount.from_dict(sample_account_dict)
-    
+
     assert account.id == sample_account_dict["id"]
     assert account.email == sample_account_dict["email"]
     assert account.password == sample_account_dict["password"]
@@ -393,10 +403,10 @@ def test_pooled_account_from_dict_missing_required_field():
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
-    
+
     with pytest.raises(ValueError) as exc_info:
         PooledAccount.from_dict(incomplete_data)
-    
+
     # Verify error message mentions missing field and available keys
     error_msg = str(exc_info.value)
     assert "missing required fields" in error_msg
@@ -413,10 +423,10 @@ def test_pooled_account_from_dict_multiple_missing_fields():
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     }
-    
+
     with pytest.raises(ValueError) as exc_info:
         PooledAccount.from_dict(incomplete_data)
-    
+
     error_msg = str(exc_info.value)
     assert "missing required fields" in error_msg
     # Verify all missing fields are mentioned

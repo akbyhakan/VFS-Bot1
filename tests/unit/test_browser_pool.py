@@ -98,7 +98,7 @@ class TestBrowserPool:
             browser2 = await pool.acquire("session2")
 
             assert len(pool._browsers) == 2
-            
+
             # Verify stats show no available slots
             stats = pool.get_stats()
             assert stats["available_slots"] == 0
@@ -231,10 +231,7 @@ class TestBrowserPool:
             mock_create.side_effect = create_browser_side_effect
 
             # Acquire 3 browsers concurrently
-            tasks = [
-                pool.acquire(f"session{i+1}")
-                for i in range(3)
-            ]
+            tasks = [pool.acquire(f"session{i+1}") for i in range(3)]
             browsers = await asyncio.gather(*tasks)
 
             assert len(browsers) == 3

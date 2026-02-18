@@ -44,11 +44,13 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
 
     # Get table schema from PostgreSQL information_schema
     async with db.get_connection() as conn:
-        columns_info = await conn.fetch("""
+        columns_info = await conn.fetch(
+            """
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name = 'payment_card'
-        """)
+        """
+        )
 
     # Extract column names
     columns = [col["column_name"] for col in columns_info]
@@ -177,59 +179,63 @@ async def test_password_encryption_in_database(database):
 @pytest.mark.asyncio
 async def test_login_timing_attack_protection():
     """Test: Login endpoint uses constant-time password verification."""
-    from unittest.mock import patch, MagicMock
-    from web.routes.auth import login, _DUMMY_BCRYPT_HASH
-    from web.models.auth import LoginRequest
-    from fastapi import Response, Request
-    
     # Mock environment variables
     import os
+    from unittest.mock import MagicMock, patch
+
+    from fastapi import Request, Response
+
+    from web.models.auth import LoginRequest
+    from web.routes.auth import _DUMMY_BCRYPT_HASH, login
+
     original_username = os.environ.get("ADMIN_USERNAME")
     original_password = os.environ.get("ADMIN_PASSWORD")
-    
+
     try:
         # Set test credentials
         os.environ["ADMIN_USERNAME"] = "admin"
-        os.environ["ADMIN_PASSWORD"] = "$2b$12$LJ3m4ys3Lg7E16OlByBg6eKDoYkBWKJkG1VyNlITNYDR8xPz.k9hK"
-        
+        os.environ["ADMIN_PASSWORD"] = (
+            "$2b$12$LJ3m4ys3Lg7E16OlByBg6eKDoYkBWKJkG1VyNlITNYDR8xPz.k9hK"
+        )
+
         # Mock verify_password to track calls
         with patch("web.routes.auth.verify_password") as mock_verify:
             mock_verify.return_value = False
-            
+
             # Create mock request and response
             mock_request = MagicMock(spec=Request)
             mock_response = MagicMock(spec=Response)
-            
+
             # Test with wrong username
             credentials_wrong_user = LoginRequest(username="wronguser", password="testpass")
-            
+
             try:
                 await login(mock_request, mock_response, credentials_wrong_user)
             except Exception:
                 pass  # Expected to raise HTTPException
-            
+
             # Verify that verify_password was called even with wrong username
             # This ensures constant-time behavior
             assert mock_verify.call_count == 1
             # Verify dummy hash was used
             call_args = mock_verify.call_args
             assert call_args[0][1] == _DUMMY_BCRYPT_HASH
-            
+
             mock_verify.reset_mock()
-            
+
             # Test with correct username but wrong password
             credentials_wrong_pass = LoginRequest(username="admin", password="wrongpass")
-            
+
             try:
                 await login(mock_request, mock_response, credentials_wrong_pass)
             except Exception:
                 pass  # Expected to raise HTTPException
-            
+
             # Verify that verify_password was called with real hash
             assert mock_verify.call_count == 1
             call_args = mock_verify.call_args
             assert call_args[0][1] == os.environ["ADMIN_PASSWORD"]
-            
+
     finally:
         # Restore original values
         if original_username:

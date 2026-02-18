@@ -10,9 +10,9 @@ from src.core.exceptions import (
     VFSRateLimitError,
     VFSSessionExpiredError,
 )
+from src.core.rate_limiting import EndpointRateLimiter
 from src.services.vfs import VFSAuth, VFSBooking, VFSSlots
 from src.services.vfs.models import VFSSession
-from src.core.rate_limiting import EndpointRateLimiter
 
 
 class TestVFSAuth:

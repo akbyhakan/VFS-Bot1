@@ -207,9 +207,7 @@ class CircuitBreaker:
             self._failure_count = state_data.get("failure_count", 0)
 
             if state_data.get("last_failure_time"):
-                self._last_failure_time = datetime.fromisoformat(
-                    state_data["last_failure_time"]
-                )
+                self._last_failure_time = datetime.fromisoformat(state_data["last_failure_time"])
 
             # Restore error timestamps
             if state_data.get("error_timestamps"):

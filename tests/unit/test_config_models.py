@@ -47,12 +47,12 @@ class TestCaptchaConfig:
 
     def test_invalid_provider_raises_validation_error(self):
         """Test that invalid provider raises validation error."""
-        with pytest.raises(ValidationError, match='provider must be: 2captcha'):
+        with pytest.raises(ValidationError, match="provider must be: 2captcha"):
             CaptchaConfig(provider="invalid_provider")
 
     def test_manual_provider_raises_validation_error(self):
         """Test that 'manual' provider raises validation error."""
-        with pytest.raises(ValidationError, match='provider must be: 2captcha'):
+        with pytest.raises(ValidationError, match="provider must be: 2captcha"):
             CaptchaConfig(provider="manual")
 
 
@@ -104,7 +104,9 @@ class TestVFSConfig:
 
     def test_empty_centres_raises_validation_error(self):
         """Test that empty centres list raises validation error."""
-        with pytest.raises(ValidationError, match="List of VFS centres must contain at least one centre"):
+        with pytest.raises(
+            ValidationError, match="List of VFS centres must contain at least one centre"
+        ):
             VFSConfig()
 
     def test_non_https_url_raises_validation_error(self):

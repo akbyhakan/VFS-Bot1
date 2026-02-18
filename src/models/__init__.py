@@ -1,7 +1,7 @@
 """Database models module."""
 
 import importlib as _importlib
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .database import Database as Database

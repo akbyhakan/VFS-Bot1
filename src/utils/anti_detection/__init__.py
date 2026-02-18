@@ -1,7 +1,7 @@
 """Anti-detection utilities."""
 
 import importlib as _importlib
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .cloudflare_handler import CloudflareHandler as CloudflareHandler

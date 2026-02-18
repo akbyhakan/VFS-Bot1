@@ -4,6 +4,14 @@ This module has been refactored into a modular package structure for better
 maintainability and separation of concerns.
 """
 
+from src.core.rate_limiting import (
+    AuthRateLimiter,
+    InMemoryBackend,
+    RateLimiterBackend,
+    RedisBackend,
+    get_auth_rate_limiter,
+)
+
 from .jwt_tokens import (
     SUPPORTED_JWT_ALGORITHMS,
     JWTSettings,
@@ -25,13 +33,6 @@ from .password import (
     validate_password_complexity,
     validate_password_length,
     verify_password,
-)
-from src.core.rate_limiting import (
-    AuthRateLimiter,
-    InMemoryBackend,
-    RateLimiterBackend,
-    RedisBackend,
-    get_auth_rate_limiter,
 )
 from .token_blacklist import (
     PersistentTokenBlacklist,

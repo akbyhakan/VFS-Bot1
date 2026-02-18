@@ -52,7 +52,9 @@ class FingerprintBypass:
 
     @staticmethod
     async def _inject_canvas_noise(
-        page: Page, config: Optional[CanvasNoiseConfig] = None, profile: Optional["FingerprintProfile"] = None
+        page: Page,
+        config: Optional[CanvasNoiseConfig] = None,
+        profile: Optional["FingerprintProfile"] = None,
     ) -> None:
         """
         Inject noise into Canvas to randomize fingerprint.
@@ -83,7 +85,8 @@ class FingerprintBypass:
         assert config.RGB_SHIFT_MIN <= b_shift <= config.RGB_SHIFT_MAX
         assert config.ALPHA_SHIFT_MIN <= a_shift <= config.ALPHA_SHIFT_MAX
 
-        await page.add_init_script(f"""
+        await page.add_init_script(
+            f"""
             const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
             const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
             const originalToBlob = HTMLCanvasElement.prototype.toBlob;
@@ -128,7 +131,8 @@ class FingerprintBypass:
                 }}
                 return originalToBlob.apply(this, arguments);
             }};
-        """)
+        """
+        )
 
     @staticmethod
     async def _spoof_webgl(page: Page, profile: Optional["FingerprintProfile"] = None) -> None:
@@ -154,11 +158,15 @@ class FingerprintBypass:
                     "Google Inc. (NVIDIA)",
                     "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)",
                 ),
-                ("Google Inc. (AMD)", "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)"),
+                (
+                    "Google Inc. (AMD)",
+                    "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)",
+                ),
             ]
             vendor, renderer = random.choice(vendors)
 
-        await page.add_init_script(f"""
+        await page.add_init_script(
+            f"""
             const getParameter = WebGLRenderingContext.prototype.getParameter;
             WebGLRenderingContext.prototype.getParameter = function(parameter) {{
                 if (parameter === 37445) {{
@@ -180,7 +188,8 @@ class FingerprintBypass:
                 }}
                 return getParameter2.apply(this, arguments);
             }};
-        """)
+        """
+        )
 
     @staticmethod
     async def _randomize_audio_context(page: Page) -> None:
@@ -188,7 +197,8 @@ class FingerprintBypass:
         # Generate random offset for audio timing
         offset = random.uniform(0.0001, 0.001)
 
-        await page.add_init_script(f"""
+        await page.add_init_script(
+            f"""
             const audioOffset = {offset};
 
             const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
@@ -223,4 +233,5 @@ class FingerprintBypass:
                     window.webkitAudioContext = AudioContextProxy;
                 }}
             }}
-        """)
+        """
+        )

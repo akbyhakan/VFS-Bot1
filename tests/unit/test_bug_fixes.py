@@ -7,8 +7,8 @@ import pytest
 from cryptography.fernet import Fernet
 from pydantic import ValidationError
 
-from src.core.security import APIKeyManager
 from src.core.config.settings import VFSSettings, reset_settings
+from src.core.security import APIKeyManager
 
 
 @pytest.fixture(autouse=True)
@@ -52,7 +52,6 @@ class TestBug1EnvironmentImport:
             # This should raise ValueError about missing salt, not NameError about Environment
             with pytest.raises(ValueError, match="API_KEY_SALT environment variable MUST be set"):
                 manager.get_salt()
-
 
 
 class TestBug2EncryptionKeyLength:
@@ -160,6 +159,3 @@ class TestBug3DoubleEncode:
         encrypted = cipher.encrypt(test_data)
         decrypted = cipher.decrypt(encrypted)
         assert decrypted == test_data
-
-
-

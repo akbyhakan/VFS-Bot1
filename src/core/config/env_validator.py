@@ -11,25 +11,27 @@ from loguru import logger
 BCRYPT_PREFIXES = ("$2b$", "$2a$", "$2y$")
 
 # Known placeholder/example values that should never be used in production
-DANGEROUS_PLACEHOLDERS = frozenset({
-    "change_me_to_secure_password",
-    "your-secret-key-here",
-    "your_bot_token",
-    "your-bot-token-here",
-    "your-telegram-token",
-    "your-api-key",
-    "your-api-key-here",
-    "replace-me",
-    "changeme",
-    "change-me",
-    "example-key",
-    "test-key",
-    "your-encryption-key",
-    "your-password-here",
-    "your_email@example.com",
-    "your-email@example.com",
-    "example@example.com",
-})
+DANGEROUS_PLACEHOLDERS = frozenset(
+    {
+        "change_me_to_secure_password",
+        "your-secret-key-here",
+        "your_bot_token",
+        "your-bot-token-here",
+        "your-telegram-token",
+        "your-api-key",
+        "your-api-key-here",
+        "replace-me",
+        "changeme",
+        "change-me",
+        "example-key",
+        "test-key",
+        "your-encryption-key",
+        "your-password-here",
+        "your_email@example.com",
+        "your-email@example.com",
+        "example@example.com",
+    }
+)
 
 
 class EnvValidator:
@@ -194,11 +196,11 @@ class EnvValidator:
         """
         # Convert to lowercase once for all checks
         value_lower = value.lower()
-        
+
         # Check exact matches (case-insensitive)
         if value_lower in DANGEROUS_PLACEHOLDERS:
             return True
-        
+
         # Check common patterns
         placeholder_patterns = [
             "change",
@@ -210,7 +212,7 @@ class EnvValidator:
             "test-key",
             "dummy",
         ]
-        
+
         return any(pattern in value_lower for pattern in placeholder_patterns)
 
     @staticmethod

@@ -91,7 +91,9 @@ class SelectorHealthCheck:
                                 )
                                 return result
                         except Exception as fallback_error:
-                            logger.debug(f"Fallback selector {i} failed for {selector_path}: {fallback_error}")
+                            logger.debug(
+                                f"Fallback selector {i} failed for {selector_path}: {fallback_error}"
+                            )
                             continue
 
                 result["error"] = f"All selectors failed: {str(primary_error)}"

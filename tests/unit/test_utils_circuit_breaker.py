@@ -236,9 +236,9 @@ async def test_circuit_breaker_loads_persisted_state():
 @pytest.mark.asyncio
 async def test_circuit_breaker_persistence_on_reset():
     """Test circuit breaker persists state after manual reset."""
+    import json
     import tempfile
     from pathlib import Path
-    import json
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
         state_file = f.name
