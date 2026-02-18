@@ -65,6 +65,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vfs_test
+          POSTGRES_PASSWORD: test_password_123
+          POSTGRES_DB: vfs_bot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -135,13 +150,15 @@ jobs:
     
     - name: Run tests with coverage
       env:
-        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || '' }}
+        ENV: testing
+        DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
+        TEST_DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
         API_SECRET_KEY: "ci-test-secret-key-for-testing-minimum-64-characters-long-value-here"
       run: |
-        # Generate test key if secret not set
-        if [ -z "$ENCRYPTION_KEY" ]; then
-          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-        fi
+        # Generate valid test encryption key if not provided
+        # This ensures tests never get an invalid key from CI secrets
+        python -c "from cryptography.fernet import Fernet; import os; os.environ['ENCRYPTION_KEY'] = Fernet.generate_key().decode(); print('Generated valid test encryption key')"
+        export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
         pytest tests/
     
     - name: Verify version sync

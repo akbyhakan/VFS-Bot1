@@ -28,7 +28,7 @@ class TestR1LoggerMigration:
         "src/core/security.py",
         "src/utils/helpers.py",
         "src/utils/error_capture.py",
-        "src/utils/selector_learning.py",
+        # "src/utils/selector_learning.py",  # File was deleted during refactoring
         "src/services/booking/selector_utils.py",
         "src/services/bot/error_handler.py",
         "src/repositories/log_repository.py",

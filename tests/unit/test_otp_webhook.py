@@ -17,7 +17,10 @@ class TestOTPPatternMatcher:
         assert matcher.extract_otp("Your code is 123456") == "123456"
 
     def test_extract_4_digit_otp(self):
-        matcher = OTPPatternMatcher()
+        """Test extracting 4-digit OTP using SMS patterns (EMAIL patterns require 6 digits)."""
+        from src.services.otp_manager.pattern_matcher import SMS_OTP_PATTERNS
+
+        matcher = OTPPatternMatcher(custom_patterns=SMS_OTP_PATTERNS)
         assert matcher.extract_otp("OTP: 1234") == "1234"
 
     def test_extract_turkish_otp(self):
@@ -37,7 +40,10 @@ class TestOTPPatternMatcher:
         assert matcher.extract_otp("Your verification code: 888999") == "888999"
 
     def test_extract_5_digit_otp(self):
-        matcher = OTPPatternMatcher()
+        """Test extracting 5-digit OTP using SMS patterns (EMAIL patterns require 6 digits)."""
+        from src.services.otp_manager.pattern_matcher import SMS_OTP_PATTERNS
+
+        matcher = OTPPatternMatcher(custom_patterns=SMS_OTP_PATTERNS)
         assert matcher.extract_otp("Code 12345 expires soon") == "12345"
 
 
