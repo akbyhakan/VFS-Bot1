@@ -6,7 +6,6 @@ def test_new_modular_imports():
     from src.services.bot import (
         AuthService,
         BrowserManager,
-        CircuitBreakerService,
         ErrorHandler,
         SlotChecker,
         SlotInfo,
@@ -17,7 +16,6 @@ def test_new_modular_imports():
     assert BrowserManager is not None
     assert AuthService is not None
     assert SlotChecker is not None
-    assert CircuitBreakerService is not None
     assert ErrorHandler is not None
     assert SlotInfo is not None
 
@@ -26,14 +24,12 @@ def test_individual_component_imports():
     """Test that individual components can be imported."""
     from src.services.bot.auth_service import AuthService
     from src.services.bot.browser_manager import BrowserManager
-    from src.services.bot.circuit_breaker_service import CircuitBreakerService
     from src.services.bot.error_handler import ErrorHandler
     from src.services.bot.slot_checker import SlotChecker
 
     assert BrowserManager is not None
     assert AuthService is not None
     assert SlotChecker is not None
-    assert CircuitBreakerService is not None
     assert ErrorHandler is not None
 
 
@@ -48,17 +44,10 @@ def test_slot_info_type():
     assert slot["time"] == "10:00"
 
 
-def test_circuit_breaker_stats_type():
-    """Test CircuitBreakerStats TypedDict."""
-    from src.services.bot import CircuitBreakerStats
+def test_circuit_breaker_imports():
+    """Test that CircuitBreaker can be imported from core infrastructure."""
+    from src.core.infra.circuit_breaker import CircuitBreaker, CircuitBreakerError, CircuitState
 
-    # Create a valid CircuitBreakerStats instance
-    stats: CircuitBreakerStats = {
-        "consecutive_errors": 0,
-        "total_errors_in_window": 0,
-        "is_open": False,
-        "open_time": None,
-    }
-
-    assert stats["consecutive_errors"] == 0
-    assert stats["is_open"] is False
+    assert CircuitBreaker is not None
+    assert CircuitBreakerError is not None
+    assert CircuitState is not None
