@@ -78,6 +78,7 @@ def setup_test_environment(monkeypatch):
     monkeypatch.setenv("VFS_ASSETS_BASE", "https://test-assets.vfsglobal.com")
     monkeypatch.setenv("CONTENTFUL_BASE", "https://test-contentful.cloudfront.net")
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost:5432/vfs_bot_test")
+    monkeypatch.setenv("WEBHOOK_BASE_URL", "https://test-webhook.example.com")
 
     # Reset settings singleton so each test gets fresh settings
     from src.core.config.settings import reset_settings
