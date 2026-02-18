@@ -49,7 +49,9 @@ class BrowserManager:
         # Initialize fingerprint rotator
         self._fingerprint_rotator: Optional[FingerprintRotator] = None
         if self._anti_detection_enabled:
-            rotation_pages = self.config.get("anti_detection", {}).get("fingerprint_rotation_pages", 50)
+            rotation_pages = self.config.get("anti_detection", {}).get(
+                "fingerprint_rotation_pages", 50
+            )
             rotation_minutes = self.config.get("anti_detection", {}).get(
                 "fingerprint_rotation_minutes", 30
             )
