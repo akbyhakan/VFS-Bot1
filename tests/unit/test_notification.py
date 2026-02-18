@@ -245,24 +245,12 @@ async def test_send_notification_all_channels_fail():
     """Test send_notification returns False when all channels fail."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-        },
     }
 
-    with patch("telegram.Bot") as MockBot, patch(
-        "src.services.notification.channels.email.aiosmtplib.SMTP"
-    ) as MockSMTP:
+    with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
         mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
-
-        mock_smtp = AsyncMock()
-        MockSMTP.return_value.__aenter__.return_value = mock_smtp
-        mock_smtp.starttls = AsyncMock(side_effect=Exception("SMTP error"))
 
         notifier = NotificationService(config)
 

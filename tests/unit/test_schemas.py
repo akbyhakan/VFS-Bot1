@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from src.core.config.config_models import (
     BotConfig,
-    EmailConfig,
     NotificationConfig,
     TelegramConfig,
 )
@@ -152,13 +151,11 @@ def test_notification_config_custom_values():
     """Test NotificationConfig with custom values."""
     config = NotificationConfig(
         telegram=TelegramConfig(enabled=True, bot_token="test_token", chat_id="12345"),
-        email=EmailConfig(enabled=True, sender="test@example.com", password="pass", receiver="recv@example.com"),
         webhook_enabled=True,
         webhook_url="https://example.com/webhook",
     )
 
     assert config.telegram.enabled is True
-    assert config.email.enabled is True
     assert config.webhook_enabled is True
     assert config.webhook_url == "https://example.com/webhook"
 
