@@ -160,9 +160,27 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `POST /api/v1/bot/restart` - Restart bot
 - `POST /api/v1/bot/check-now` - Manual check trigger
 - `GET /api/v1/bot/logs` - Fetch logs
+- `GET /api/v1/bot/settings` - Get bot settings
+- `PUT /api/v1/bot/settings` - Update bot settings
 - `GET /api/metrics` - Bot metrics (non-versioned health endpoint)
 - `GET /health` - Health check (non-versioned)
 - `GET /api/v1/users` - User management
+- `POST /api/v1/users` - Create user
+- `PUT /api/v1/users/{id}` - Update user
+- `DELETE /api/v1/users/{id}` - Delete user
+- `POST /api/v1/users/upload-csv` - CSV bulk upload
+- `GET /api/v1/appointments` - List appointments
+- `GET /api/v1/audit/logs` - Audit logs
+- `GET /api/v1/audit/stats` - Audit statistics
+- `POST /api/v1/payment/payment-card` - Save payment card
+- `GET /api/v1/payment/payment-card` - Get payment card
+- `DELETE /api/v1/payment/payment-card` - Delete payment card
+- `POST /api/v1/proxy/add` - Add proxy
+- `GET /api/v1/proxy/list` - List proxies
+- `POST /api/v1/proxy/upload` - Upload proxy file
+- `GET /api/v1/config/runtime` - Get runtime configuration
+- `PUT /api/v1/config/runtime` - Update runtime configuration
+- `POST /api/v1/dropdown-sync/trigger` - Trigger dropdown synchronization
 - `WS /ws` - WebSocket for real-time updates
 
 ### WebSocket Messages
