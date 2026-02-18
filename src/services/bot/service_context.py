@@ -333,10 +333,6 @@ class BotServiceFactory:
                 enabled_channels=enabled_channels,
                 telegram_bot_token=alert_config_dict.get("telegram_bot_token"),
                 telegram_chat_id=alert_config_dict.get("telegram_chat_id"),
-                email_from=alert_config_dict.get("email_from"),
-                email_to=alert_config_dict.get("email_to"),
-                smtp_host=alert_config_dict.get("smtp_host"),
-                smtp_port=alert_config_dict.get("smtp_port"),
                 webhook_url=alert_config_dict.get("webhook_url"),
             )
             alert_service = AlertService(alert_config)

@@ -1,16 +1,14 @@
-"""Notification subsystem - Telegram, Email, and alert services.
+"""Notification subsystem - Telegram and alert services.
 
 This module provides notification and alerting capabilities for VFS-Bot,
-including Telegram messaging, email notifications, and multi-channel alerts.
+including Telegram messaging and multi-channel alerts.
 
 Public API:
 - NotificationService: Multi-channel notification service
 - NotificationConfig: Notification service configuration
 - TelegramConfig: Telegram channel configuration
-- EmailConfig: Email channel configuration
 - NotificationChannel: Abstract base class for notification channels
 - TelegramChannel: Telegram notification channel
-- EmailChannel: Email notification channel
 - WebSocketChannel: WebSocket notification channel
 - TelegramClient: Unified Telegram client wrapper
 - AlertService: Multi-channel alert service
@@ -34,12 +32,10 @@ from .alert_service import (
     send_critical_alert,
 )
 from .base import (
-    EmailConfig,
     NotificationChannel,
     NotificationConfig,
     TelegramConfig,
 )
-from .channels.email import EmailChannel
 from .channels.telegram import TelegramChannel
 from .channels.websocket import WebSocketChannel
 from .service import NotificationService
@@ -49,10 +45,8 @@ __all__ = [
     "NotificationService",
     "NotificationConfig",
     "TelegramConfig",
-    "EmailConfig",
     "NotificationChannel",
     "TelegramChannel",
-    "EmailChannel",
     "WebSocketChannel",
     "TelegramClient",
     "AlertService",

@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.services.notification.notification import (
-    EmailConfig,
     NotificationConfig,
     NotificationService,
     TelegramConfig,
@@ -16,12 +15,10 @@ def test_notification_service_initialization():
     """Test notification service initialization."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test", "chat_id": "123"},
-        "email": {"enabled": False},
     }
 
     notifier = NotificationService(config)
     assert notifier.telegram_enabled is True
-    assert notifier.email_enabled is False
 
 
 def test_telegram_config_repr_masks_bot_token():
@@ -33,44 +30,22 @@ def test_telegram_config_repr_masks_bot_token():
     assert "123456" in repr_str
 
 
-def test_email_config_repr_masks_password():
-    """Test that EmailConfig.__repr__ masks password."""
-    config = EmailConfig(
-        enabled=True,
-        sender="test@example.com",
-        password="super_secret_password",
-        receiver="receiver@example.com",
-    )
-    repr_str = repr(config)
-    assert "super_secret_password" not in repr_str
-    assert "***" in repr_str
-    assert "test@example.com" in repr_str
-
-
 def test_notification_config_repr_masks_nested_secrets():
     """Test that NotificationConfig.__repr__ masks nested secrets."""
     config = NotificationConfig(
         telegram=TelegramConfig(enabled=True, bot_token="secret_token", chat_id="123"),
-        email=EmailConfig(
-            enabled=True,
-            sender=None,  # Explicitly set optional fields
-            password="secret_password",
-            receiver=None,
-        ),
     )
     repr_str = repr(config)
     assert "secret_token" not in repr_str
-    assert "secret_password" not in repr_str
     assert "***" in repr_str
 
 
 def test_notification_service_disabled():
     """Test notification service with all channels disabled."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
 
     notifier = NotificationService(config)
     assert notifier.telegram_enabled is False
-    assert notifier.email_enabled is False
 
 
 def test_notification_service_empty_config():
@@ -78,13 +53,12 @@ def test_notification_service_empty_config():
     config = {}
     notifier = NotificationService(config)
     assert notifier.telegram_enabled is False
-    assert notifier.email_enabled is False
 
 
 @pytest.mark.asyncio
 async def test_notification_with_no_channels():
     """Test sending notification with no channels enabled."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
 
     notifier = NotificationService(config)
     # Should not raise an exception
@@ -141,45 +115,6 @@ async def test_send_telegram_exception():
 
 
 @pytest.mark.asyncio
-async def test_send_email_missing_credentials():
-    """Test email notification with missing credentials."""
-    config = {"email": {"enabled": True, "sender": None, "password": None, "receiver": None}}
-
-    notifier = NotificationService(config)
-    result = await notifier.send_email("Test Subject", "Test Body")
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_send_email_exception():
-    """Test email notification exception handling with retry."""
-    config = {
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-            "smtp_server": "smtp.gmail.com",
-            "smtp_port": 587,
-        }
-    }
-
-    notifier = NotificationService(config)
-
-    with patch("src.services.notification.channels.email.aiosmtplib.SMTP") as MockSMTP:
-        # Make SMTP raise exception on all attempts
-        mock_smtp_instance = AsyncMock()
-        MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
-        mock_smtp_instance.starttls = AsyncMock(side_effect=Exception("SMTP error"))
-
-        result = await notifier.send_email("Test", "Message")
-        assert result is False
-
-        # Verify retry happened (1 initial + 2 retries = 3 total attempts)
-        assert mock_smtp_instance.starttls.call_count == 3
-
-
-@pytest.mark.asyncio
 async def test_send_telegram_retry_then_success():
     """Test Telegram notification succeeds after retry."""
     config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"}}
@@ -204,43 +139,9 @@ async def test_send_telegram_retry_then_success():
 
 
 @pytest.mark.asyncio
-async def test_send_email_retry_then_success():
-    """Test email notification succeeds after retry."""
-    config = {
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-            "smtp_server": "smtp.gmail.com",
-            "smtp_port": 587,
-        }
-    }
-
-    notifier = NotificationService(config)
-
-    with patch("src.services.notification.channels.email.aiosmtplib.SMTP") as MockSMTP:
-        mock_smtp_instance = AsyncMock()
-        MockSMTP.return_value.__aenter__.return_value = mock_smtp_instance
-
-        # First call fails, second succeeds
-        mock_smtp_instance.starttls = AsyncMock(
-            side_effect=[Exception("Transient error"), None]  # Success
-        )
-        mock_smtp_instance.login = AsyncMock()
-        mock_smtp_instance.send_message = AsyncMock()
-
-        result = await notifier.send_email("Test", "Message")
-        assert result is True
-
-        # Verify retry happened (2 calls: 1 failure + 1 success)
-        assert mock_smtp_instance.starttls.call_count == 2
-
-
-@pytest.mark.asyncio
 async def test_notify_slot_found():
     """Test slot found notification."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception
@@ -250,7 +151,7 @@ async def test_notify_slot_found():
 @pytest.mark.asyncio
 async def test_notify_booking_success():
     """Test booking success notification."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception
@@ -260,7 +161,7 @@ async def test_notify_booking_success():
 @pytest.mark.asyncio
 async def test_notify_error():
     """Test error notification."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception
@@ -270,7 +171,7 @@ async def test_notify_error():
 @pytest.mark.asyncio
 async def test_notify_bot_started():
     """Test bot started notification."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception
@@ -280,7 +181,7 @@ async def test_notify_bot_started():
 @pytest.mark.asyncio
 async def test_notify_bot_stopped():
     """Test bot stopped notification."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception
@@ -292,7 +193,6 @@ async def test_send_notification_with_telegram_enabled():
     """Test send_notification with Telegram enabled."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
 
     notifier = NotificationService(config)
@@ -304,56 +204,9 @@ async def test_send_notification_with_telegram_enabled():
 
 
 @pytest.mark.asyncio
-async def test_send_notification_with_email_enabled():
-    """Test send_notification with email enabled."""
-    config = {
-        "telegram": {"enabled": False},
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-        },
-    }
-
-    notifier = NotificationService(config)
-
-    with patch.object(notifier, "send_email", new_callable=AsyncMock) as mock_email:
-        mock_email.return_value = True
-        await notifier.send_notification("Test", "Message")
-        mock_email.assert_called_once_with("Test", "Message")
-
-
-@pytest.mark.asyncio
-async def test_send_notification_with_both_channels():
-    """Test send_notification with both channels enabled."""
-    config = {
-        "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-        },
-    }
-
-    notifier = NotificationService(config)
-
-    with (
-        patch.object(notifier, "send_telegram", new_callable=AsyncMock) as mock_telegram,
-        patch.object(notifier, "send_email", new_callable=AsyncMock) as mock_email,
-    ):
-        mock_telegram.return_value = True
-        mock_email.return_value = True
-        await notifier.send_notification("Test", "Message")
-        mock_telegram.assert_called_once()
-        mock_email.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_send_notification_priority():
     """Test send_notification with priority parameter."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception with different priority levels
@@ -392,24 +245,12 @@ async def test_send_notification_all_channels_fail():
     """Test send_notification returns False when all channels fail."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {
-            "enabled": True,
-            "sender": "sender@example.com",
-            "password": "password",
-            "receiver": "receiver@example.com",
-        },
     }
 
-    with patch("telegram.Bot") as MockBot, patch(
-        "src.services.notification.channels.email.aiosmtplib.SMTP"
-    ) as MockSMTP:
+    with patch("telegram.Bot") as MockBot:
         mock_bot = AsyncMock()
         MockBot.return_value = mock_bot
         mock_bot.send_message = AsyncMock(side_effect=Exception("Telegram error"))
-
-        mock_smtp = AsyncMock()
-        MockSMTP.return_value.__aenter__.return_value = mock_smtp
-        mock_smtp.starttls = AsyncMock(side_effect=Exception("SMTP error"))
 
         notifier = NotificationService(config)
 
@@ -518,7 +359,6 @@ async def test_get_notification_stats():
     """Test get_notification_stats method."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
 
     notifier = NotificationService(config)
@@ -526,7 +366,6 @@ async def test_get_notification_stats():
     stats = notifier.get_notification_stats()
 
     assert stats["telegram_enabled"] is True
-    assert stats["email_enabled"] is False
     assert stats["websocket_available"] is False
     assert stats["failed_high_priority_notifications"] == 0
 

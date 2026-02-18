@@ -31,13 +31,6 @@ notifications:
     enabled: true
     bot_token: "${TELEGRAM_BOT_TOKEN}"
     chat_id: "${TELEGRAM_CHAT_ID}"
-  email:
-    enabled: false
-    smtp_server: "smtp.gmail.com"
-    smtp_port: 587
-    sender: "${EMAIL_SENDER}"
-    password: "${EMAIL_PASSWORD}"
-    receiver: "${EMAIL_RECEIVER}"
 
 captcha:
   provider: "2captcha"  # Only 2captcha is supported

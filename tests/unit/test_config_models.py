@@ -7,7 +7,6 @@ from src.core.config.config_models import (
     AppConfig,
     BotConfig,
     CaptchaConfig,
-    EmailConfig,
     NotificationConfig,
     TelegramConfig,
     VFSConfig,
@@ -341,24 +340,11 @@ class TestSecretStrMasking:
         assert "secret_token_123" not in repr_str
         assert "**********" in repr_str or "SecretStr" in repr_str
 
-    def test_notification_config_masks_email_password(self):
-        """Test that repr masks email password."""
-        config = NotificationConfig(
-            email=EmailConfig(password="secret_pass_123", sender="test@test.com")
-        )
-        repr_str = repr(config)
-
-        assert "secret_pass_123" not in repr_str
-        assert "**********" in repr_str or "SecretStr" in repr_str
-
     def test_notification_config_does_not_mask_non_sensitive_fields(self):
         """Test that repr does not mask non-sensitive fields."""
         config = NotificationConfig(
             telegram=TelegramConfig(chat_id="123456"),
-            email=EmailConfig(sender="sender@test.com", receiver="receiver@test.com"),
         )
         repr_str = repr(config)
 
         assert "123456" in repr_str
-        assert "sender@test.com" in repr_str
-        assert "receiver@test.com" in repr_str

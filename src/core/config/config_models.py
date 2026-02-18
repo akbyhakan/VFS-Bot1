@@ -118,35 +118,21 @@ class TelegramConfig(BaseModel):
     chat_id: str = Field(default="")
 
 
-class EmailConfig(BaseModel):
-    """Email notification configuration."""
-
-    enabled: bool = Field(default=False)
-    smtp_server: str = Field(default="smtp.gmail.com")
-    smtp_port: int = Field(default=587)
-    sender: str = Field(default="")
-    password: SecretStr = Field(default=SecretStr(""))
-    receiver: str = Field(default="")
-
-
 class NotificationConfig(BaseModel):
     """Notification services configuration."""
 
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
-    email: EmailConfig = Field(default_factory=EmailConfig)
     webhook_enabled: bool = Field(default=False)
     webhook_url: Optional[str] = Field(default=None)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NotificationConfig":
-        """Create from dictionary with nested telegram/email support."""
-        # Handle nested structure - data should contain telegram and email as dicts
+        """Create from dictionary with nested telegram support."""
+        # Handle nested structure - data should contain telegram as dict
         telegram_data = data.get("telegram", {})
-        email_data = data.get("email", {})
 
         return cls(
             telegram=TelegramConfig(**telegram_data) if telegram_data else TelegramConfig(),
-            email=EmailConfig(**email_data) if email_data else EmailConfig(),
             webhook_enabled=data.get("webhook_enabled", False),
             webhook_url=data.get("webhook_url"),
         )

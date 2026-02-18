@@ -125,7 +125,6 @@ async def check_notification_health() -> Dict[str, Any]:
         return {
             "status": "healthy",
             "telegram_configured": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
-            "email_configured": bool(os.getenv("SMTP_SERVER")),
         }
     except Exception as e:
         logger.error(f"Notification health check failed: {e}")
