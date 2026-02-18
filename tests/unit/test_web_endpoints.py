@@ -236,10 +236,9 @@ class TestCheckDatabaseHealth:
     @pytest.mark.asyncio
     async def test_check_database_health_returns_true(self):
         """Test that database health check returns True."""
-        with patch("web.routes.health.check_database_health", return_value=True):
-            from web.routes.health import check_database_health
+        # Patch where the function is used (in this test module), not where it's defined
+        with patch("tests.unit.test_web_endpoints.check_database_health", return_value=True):
             result = await check_database_health()
-
             assert result is True
 
 

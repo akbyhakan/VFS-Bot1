@@ -29,7 +29,10 @@ from cryptography.fernet import Fernet
 
 # Bootstrap ENCRYPTION_KEY for initial imports (before fixtures can run)
 # Actual test isolation is provided by the setup_test_environment fixture
-# ALWAYS set a valid Fernet key for tests - override any invalid CI environment value
+# ALWAYS force-set a valid Fernet key for tests - override any invalid CI environment value
+# This is intentional: CI environment may have an invalid key (wrong byte length) that would
+# cause all tests to fail during module imports. The setup_test_environment fixture provides
+# proper per-test isolation with fresh keys.
 os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
 # Add parent directory to path for imports
