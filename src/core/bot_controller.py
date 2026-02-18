@@ -213,14 +213,13 @@ class BotController:
             logger.error(f"Bot error: {e}", exc_info=True)
         finally:
             # Cleanup without lock to prevent deadlock
-            # Reference cleanup is handled by stop_bot() or natural exit
+            # Reference cleanup is handled by stop_bot() under lock
+            # Only cleanup bot resources here, don't modify controller state
             if bot:
                 try:
                     await bot.cleanup()
                 except Exception as e:
                     logger.error(f"Error during bot cleanup: {e}")
-            self._bot = None
-            self._bot_task = None
 
     async def stop_bot(self) -> Dict[str, str]:
         """

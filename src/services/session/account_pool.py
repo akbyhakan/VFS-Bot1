@@ -66,6 +66,7 @@ class AccountPool:
         cooldown_seconds: int = AccountPoolConfig.COOLDOWN_SECONDS,
         quarantine_seconds: int = AccountPoolConfig.QUARANTINE_SECONDS,
         max_failures: int = AccountPoolConfig.MAX_FAILURES,
+        shutdown_event: Optional[asyncio.Event] = None,
     ):
         """
         Initialize account pool.
@@ -75,18 +76,42 @@ class AccountPool:
             cooldown_seconds: Cooldown duration after each use (default: 600s / 10 min)
             quarantine_seconds: Quarantine duration on max failures (default: 1800s / 30 min)
             max_failures: Maximum consecutive failures before quarantine (default: 3)
+            shutdown_event: Optional shutdown event for graceful termination
         """
         self.db = db
         self.repo = AccountPoolRepository(db)
         self.cooldown_seconds = cooldown_seconds
         self.quarantine_seconds = quarantine_seconds
         self.max_failures = max_failures
+        self._shutdown_event = shutdown_event
         self._lock = asyncio.Lock()  # Thread safety for acquire/release operations
 
         logger.info(
             f"AccountPool initialized (cooldown={cooldown_seconds}s, "
             f"quarantine={quarantine_seconds}s, max_failures={max_failures})"
         )
+
+    async def _sleep_with_shutdown_check(self, sleep_time: float) -> bool:
+        """
+        Sleep for the specified time while checking for shutdown event.
+
+        Args:
+            sleep_time: Time to sleep in seconds
+
+        Returns:
+            True if shutdown was signaled during sleep, False if sleep completed normally
+        """
+        if self._shutdown_event is not None:
+            try:
+                await asyncio.wait_for(self._shutdown_event.wait(), timeout=sleep_time)
+                # If we get here, shutdown was signaled
+                return True
+            except asyncio.TimeoutError:
+                # Sleep completed normally
+                return False
+        else:
+            await asyncio.sleep(sleep_time)
+            return False
 
     async def load_accounts(self) -> int:
         """
@@ -282,11 +307,16 @@ class AccountPool:
             timeout: Maximum time to wait in seconds (None = wait indefinitely)
 
         Returns:
-            True if account became available, False if timeout
+            True if account became available, False if timeout or shutdown requested
         """
         start_time = datetime.now(timezone.utc)
 
         while True:
+            # Check for shutdown event
+            if self._shutdown_event is not None and self._shutdown_event.is_set():
+                logger.info("Shutdown event detected, stopping wait for account")
+                return False
+
             # Check if account available now
             available = await self.repo.get_available_accounts()
             if available:
@@ -305,10 +335,18 @@ class AccountPool:
                 # No cooldowns but still no available accounts
                 # This could happen if all accounts are quarantined
                 logger.warning("No available accounts and no cooldowns - all accounts may be quarantined")
-                await asyncio.sleep(10)  # Check again in 10 seconds
+                
+                # Sleep with shutdown event check
+                if await self._sleep_with_shutdown_check(10.0):
+                    logger.info("Shutdown event detected during sleep")
+                    return False
                 continue
 
             # Wait until next cooldown expires (capped at 60s for responsiveness)
             sleep_time = min(wait_time, 60.0)
             logger.info(f"Waiting {sleep_time:.1f}s for account cooldown to expire...")
-            await asyncio.sleep(sleep_time)
+            
+            # Sleep with shutdown event check
+            if await self._sleep_with_shutdown_check(sleep_time):
+                logger.info("Shutdown event detected during cooldown wait")
+                return False

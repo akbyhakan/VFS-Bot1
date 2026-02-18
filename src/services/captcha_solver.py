@@ -44,6 +44,28 @@ class CaptchaSolver:
         """Return string representation with masked API key."""
         return self.__repr__()
 
+    def _get_executor(self) -> Optional[ThreadPoolExecutor]:
+        """
+        Get executor if available and not shutdown.
+        
+        Returns:
+            ThreadPoolExecutor if valid, None otherwise (will use asyncio default executor)
+        """
+        executor = self._executor
+        if executor is None:
+            return None
+        
+        # Check if executor is shutdown by attempting to access _shutdown attribute
+        try:
+            # If _shutdown is True, the executor has been shut down
+            if hasattr(executor, '_shutdown') and executor._shutdown:
+                return None
+        except Exception:
+            # If we can't check, assume it's not usable
+            return None
+        
+        return executor
+
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
         Solve reCAPTCHA v2/v3 using 2Captcha.
@@ -81,9 +103,11 @@ class CaptchaSolver:
             solver = TwoCaptcha(self.api_key)
 
             # Run in thread pool to avoid blocking
+            # Use safe executor check to avoid RuntimeError if executor was shutdown
             loop = asyncio.get_running_loop()
+            executor = self._get_executor()
             result: Any = await loop.run_in_executor(
-                self._executor, lambda: solver.recaptcha(sitekey=site_key, url=url)
+                executor, lambda: solver.recaptcha(sitekey=site_key, url=url)
             )
 
             # Safe key access - KeyError fix
@@ -122,15 +146,25 @@ class CaptchaSolver:
 
             logger.info(f"Solving Turnstile captcha for {page_url}")
 
-            # Run in thread pool to avoid blocking
+            # Run in thread pool to avoid blocking with timeout
+            # Use safe executor check to avoid RuntimeError if executor was shutdown
             loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(
-                self._executor,
-                lambda: solver.turnstile(
-                    sitekey=site_key,
-                    url=page_url,
-                ),
-            )
+            executor = self._get_executor()
+            
+            try:
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        executor,
+                        lambda: solver.turnstile(
+                            sitekey=site_key,
+                            url=page_url,
+                        ),
+                    ),
+                    timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Turnstile solving timeout after {timeout}s")
+                return None
 
             # Safe key access - consistent with _solve_with_2captcha
             if result and isinstance(result, dict) and "code" in result:

@@ -135,7 +135,7 @@ class VFSBot:
         )
 
         # Initialize account pool and session orchestrator
-        self.account_pool = AccountPool(db=self.db)
+        self.account_pool = AccountPool(db=self.db, shutdown_event=self.shutdown_event)
         self.session_orchestrator = SessionOrchestrator(
             db=self.db,
             account_pool=self.account_pool,
