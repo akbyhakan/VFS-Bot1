@@ -1,7 +1,5 @@
 """Dropdown sync scheduler for periodic updates."""
 
-import asyncio
-from datetime import datetime, time, timedelta, timezone
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

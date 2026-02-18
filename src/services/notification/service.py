@@ -7,7 +7,7 @@ from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
 
-from .base import (
+from .base import (  # noqa: F401
     NotificationChannel,
     NotificationConfig,
     NotificationPriority,

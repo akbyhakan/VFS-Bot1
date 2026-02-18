@@ -4,8 +4,6 @@ import logging as _stdlib_logging
 import re
 from typing import Any, Dict, List, Pattern
 
-from loguru import logger
-
 
 class SafeException:
     """Utility class for safely logging exceptions without exposing sensitive data."""

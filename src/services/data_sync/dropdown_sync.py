@@ -152,7 +152,7 @@ class DropdownSyncService:
                     await page.wait_for_load_state("networkidle", timeout=30000)
 
                     # Navigate to appointment page
-                    appointment_url = (
+                    _ = (
                         f"{self.base_url}/online-services/appointment?"
                         f"country={self.source_country}&language={self.language}"
                         f"&mission={country_code}"

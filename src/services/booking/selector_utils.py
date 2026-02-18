@@ -2,10 +2,9 @@
 
 from typing import List
 
-from loguru import logger
 from playwright.async_api import Page
 
-from src.constants import DOUBLE_MATCH_PATTERNS, TURKISH_MONTHS
+from src.constants import DOUBLE_MATCH_PATTERNS, TURKISH_MONTHS  # noqa: F401
 from src.selector import get_selector_manager
 
 from ...core.exceptions import SelectorNotFoundError

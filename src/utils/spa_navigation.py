@@ -7,8 +7,7 @@ RULE: page.goto() is ONLY allowed for the initial login page load.
 All other navigation MUST use DOM element clicks + PageStateDetector.
 """
 
-import asyncio
-from typing import Any, FrozenSet, Optional
+from typing import Any, Optional
 
 from loguru import logger
 from playwright.async_api import Page

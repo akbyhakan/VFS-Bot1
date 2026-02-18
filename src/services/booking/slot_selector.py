@@ -9,7 +9,7 @@ from playwright.async_api import Page
 from src.constants import TURKISH_MONTHS, Delays
 from src.utils.page_helpers import wait_for_overlay_hidden
 
-from .selector_utils import get_selector, resolve_selector, try_selectors
+from .selector_utils import get_selector, resolve_selector
 
 
 class SlotSelector:

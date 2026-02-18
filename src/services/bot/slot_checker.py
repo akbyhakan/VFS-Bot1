@@ -9,7 +9,7 @@ from playwright.async_api import Page
 
 from src.core.rate_limiting import RateLimiter
 
-from ...constants import Delays, Timeouts
+from ...constants import Delays
 from ...core.exceptions import VFSBotError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
@@ -18,7 +18,7 @@ from ...utils.helpers import smart_click
 from ...utils.spa_navigation import navigate_to_appointment_page
 
 if TYPE_CHECKING:
-    from ...core.infra.runners import BotConfigDict
+    from ...core.infra.runners import BotConfigDict  # noqa: F401
 
 
 class SlotInfo(TypedDict, total=False):

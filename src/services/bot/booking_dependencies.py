@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ...utils.security.proxy_manager import ProxyManager
     from ..booking import BookingOrchestrator
     from ..notification.alert_service import AlertService
-    from ..notification.notification import NotificationService
+    from ..notification.notification import NotificationService  # noqa: F401
     from ..session.session_recovery import SessionRecovery
     from ..slot_analyzer import SlotPatternAnalyzer
     from .auth_service import AuthService
