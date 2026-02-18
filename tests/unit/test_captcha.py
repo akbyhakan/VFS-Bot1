@@ -85,10 +85,6 @@ async def test_solve_turnstile_custom_timeout():
     solver = CaptchaSolver(api_key="test_api_key")
 
     # Mock slow solving that exceeds timeout
-    async def slow_solve():
-        await asyncio.sleep(2)  # Takes 2 seconds
-        return {"code": "token"}
-    
     mock_solver_instance = MagicMock()
     # Make the synchronous call slow
     def blocking_slow_solve(*args, **kwargs):
