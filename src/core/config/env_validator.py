@@ -95,7 +95,8 @@ class EnvValidator:
                         # Validate Fernet token format (base64-encoded, longer string)
                         if not cls._validate_fernet_token(value):
                             validation_errors.append(
-                                f"{var}: Invalid encrypted password format (should be Fernet-encrypted)"
+                                f"{var}: Invalid encrypted password format "
+                                "(should be Fernet-encrypted)"
                             )
                     else:
                         # Plain text password validation

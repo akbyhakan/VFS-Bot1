@@ -1,10 +1,8 @@
 """Advanced logging with Loguru."""
 
 import contextvars
-import json
 import logging
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from types import FrameType
 from typing import Any, Dict, Optional
@@ -99,7 +97,8 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
         rotation="10 MB",
         retention="90 days",  # Keep errors longer
         backtrace=True,  # Include full traceback
-        diagnose=is_dev,  # Only include variable values in development (security risk in production)
+        # Only include variable values in development (security risk in production)
+        diagnose=is_dev,
     )
 
     logger.info(f"Logging initialized (level={level}, json={json_format})")

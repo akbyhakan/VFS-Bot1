@@ -1,6 +1,6 @@
 """Sensitive data wrappers to prevent exposure in logs and stack traces."""
 
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, Optional
 
 
 class SensitiveDict:

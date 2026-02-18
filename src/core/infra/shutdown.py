@@ -7,7 +7,6 @@ Handles graceful shutdown, signal handling, and resource cleanup.
 import asyncio
 import os
 import signal
-import sys
 import threading
 from typing import Any, Optional
 
@@ -148,7 +147,9 @@ async def graceful_shutdown(
     logger.info("Graceful shutdown complete")
 
 
-async def force_cleanup_critical_resources(db: Optional["Database"] = None) -> None:  # type: ignore  # noqa: F821
+async def force_cleanup_critical_resources(
+    db: Optional["Database"] = None  # type: ignore  # noqa: F821
+) -> None:
     """
     Force cleanup of critical resources during shutdown timeout.
 

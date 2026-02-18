@@ -8,11 +8,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
-from loguru import logger
-
-from src.constants import RateLimits
-from src.utils.masking import mask_database_url
-
 # Lua script for atomic rate limiting (check + record in one operation)
 # KEYS[1] = rate limit key
 # ARGV[1] = max_attempts
