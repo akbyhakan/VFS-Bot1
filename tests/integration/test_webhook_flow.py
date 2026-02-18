@@ -292,9 +292,7 @@ class TestWebhookSecurity:
                 # May return 200 (success), 404 (token not found), or 500 (other errors)
                 assert response.status_code in [200, 404, 500]
 
-    def test_per_user_otp_webhook_rejects_without_secret_in_production(
-        self, client
-    ):
+    def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
         """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET
         is not configured in production."""
         import os

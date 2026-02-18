@@ -400,7 +400,7 @@ async def get_error_html_snapshot(request: Request, error_id: str):
 
 @router.get("/settings")
 async def get_bot_settings(
-    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)
+    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth),
 ) -> BotSettingsResponse:
     """
     Get bot settings - requires authentication.

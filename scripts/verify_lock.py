@@ -82,9 +82,7 @@ def main():
 
     with open(lock_file) as f:
         lock_lines = [
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#") and "==" in line
+            line.strip() for line in f if line.strip() and not line.startswith("#") and "==" in line
         ]
 
     lock_packages = {}

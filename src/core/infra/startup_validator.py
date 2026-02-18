@@ -118,10 +118,7 @@ def validate_production_security() -> List[str]:
                 'python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
         # Substring match for placeholder patterns
-        elif any(
-            pattern in grafana_password
-            for pattern in ("CHANGE_ME", "change_me", "changeme")
-        ):
+        elif any(pattern in grafana_password for pattern in ("CHANGE_ME", "change_me", "changeme")):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD contains a default/placeholder value. "
                 "Generate a secure password with: "

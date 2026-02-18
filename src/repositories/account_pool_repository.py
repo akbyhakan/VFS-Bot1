@@ -65,8 +65,7 @@ class AccountPoolRepository(BaseRepository):
             List of account dictionaries with decrypted passwords
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT id, email, password, phone, status,
                        last_used_at, cooldown_until, quarantine_until,
                        consecutive_failures, total_uses, is_active,
@@ -77,8 +76,7 @@ class AccountPoolRepository(BaseRepository):
                   AND (cooldown_until IS NULL OR cooldown_until <= NOW())
                   AND (quarantine_until IS NULL OR quarantine_until <= NOW())
                 ORDER BY last_used_at ASC NULLS FIRST
-                """
-            )
+                """)
 
             accounts = []
             for row in rows:
@@ -343,15 +341,13 @@ class AccountPoolRepository(BaseRepository):
             Earliest cooldown_until timestamp, or None if no accounts in cooldown
         """
         async with self.db.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT MIN(cooldown_until) as earliest_cooldown
                 FROM vfs_account_pool
                 WHERE is_active = TRUE
                   AND status = 'cooldown'
                   AND cooldown_until > NOW()
-                """
-            )
+                """)
             return row["earliest_cooldown"] if row and row["earliest_cooldown"] else None
 
     async def get_pool_stats(self) -> Dict[str, Any]:
@@ -362,8 +358,7 @@ class AccountPoolRepository(BaseRepository):
             Dictionary with pool statistics
         """
         async with self.db.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT
                     COUNT(*) FILTER (WHERE is_active = TRUE) as total_active,
                     COUNT(*) FILTER (
@@ -379,8 +374,7 @@ class AccountPoolRepository(BaseRepository):
                     AVG(total_uses) FILTER (WHERE is_active = TRUE) as avg_uses,
                     MAX(total_uses) FILTER (WHERE is_active = TRUE) as max_uses
                 FROM vfs_account_pool
-                """
-            )
+                """)
 
             return {
                 "total_active": row["total_active"] or 0,

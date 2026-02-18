@@ -63,9 +63,7 @@ async def test_migrated_columns_exist(unique_encryption_key):
         column_names = [col["column_name"] for col in columns]
 
         assert "visa_category" in column_names, "visa_category column should exist"
-        assert (
-            "visa_subcategory" in column_names
-        ), "visa_subcategory column should exist"
+        assert "visa_subcategory" in column_names, "visa_subcategory column should exist"
 
         # Check appointment_persons columns (added by Alembic migration 005)
         person_columns = await conn.fetch(

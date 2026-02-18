@@ -559,9 +559,7 @@ class TestR6RuntimeSafetyFixes:
                         web_parts = after_check.split("run_web_mode")
                         if len(web_parts) > 0:
                             section_before_web = web_parts[0]
-                            assert (
-                                "raise RuntimeError" not in section_before_web
-                            ), (
+                            assert "raise RuntimeError" not in section_before_web, (
                                 "run_both_mode should not raise RuntimeError when "
                                 "bot fails before starting web"
                             )

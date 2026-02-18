@@ -148,7 +148,7 @@ async def graceful_shutdown(
 
 
 async def force_cleanup_critical_resources(
-    db: Optional["Database"] = None  # type: ignore  # noqa: F821
+    db: Optional["Database"] = None,  # type: ignore  # noqa: F821
 ) -> None:
     """
     Force cleanup of critical resources during shutdown timeout.

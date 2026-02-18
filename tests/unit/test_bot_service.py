@@ -331,9 +331,7 @@ def test_bot_with_custom_session_config(mock_db, mock_notifier):
 
 
 @pytest.mark.asyncio
-async def test_bot_get_users_with_fallback_uses_cache_when_ttl_valid(
-    bot_config, mock_notifier
-):
+async def test_bot_get_users_with_fallback_uses_cache_when_ttl_valid(bot_config, mock_notifier):
     """Test that _get_users_with_fallback returns cached users without DB query
     when TTL is valid."""
     import time
@@ -627,9 +625,7 @@ async def test_trigger_immediate_check_sets_event(bot_config, mock_db, mock_noti
 
 
 @pytest.mark.asyncio
-async def test_trigger_immediate_check_can_be_cleared(
-    bot_config, mock_db, mock_notifier
-):
+async def test_trigger_immediate_check_can_be_cleared(bot_config, mock_db, mock_notifier):
     """Test that after calling trigger_immediate_check(), the event is set and can
     be cleared by _wait_or_shutdown()."""
     bot = VFSBot(bot_config, mock_db, mock_notifier)
