@@ -8,13 +8,11 @@ from loguru import logger
 from src.services.notification.telegram_client import TelegramClient
 
 from .base import (
-    EmailConfig,
     NotificationChannel,
     NotificationConfig,
     NotificationPriority,
     TelegramConfig,
 )
-from .channels.email import EmailChannel
 from .channels.telegram import TelegramChannel
 from .channels.websocket import WebSocketChannel
 
@@ -35,24 +33,17 @@ class NotificationService:
 
         self.config = config
         self.telegram_enabled = config.telegram.enabled
-        self.email_enabled = config.email.enabled
         self._failed_high_priority_count = 0
 
         # Initialize channels using Strategy Pattern
         self._channels: List[NotificationChannel] = []
         self._telegram_channel: Optional[TelegramChannel] = None
-        self._email_channel: Optional[EmailChannel] = None
         self._websocket_channel = WebSocketChannel()
 
         # Create Telegram channel if enabled
         if config.telegram.enabled:
             self._telegram_channel = TelegramChannel(config.telegram)
             self._channels.append(self._telegram_channel)
-
-        # Create Email channel if enabled
-        if config.email.enabled:
-            self._email_channel = EmailChannel(config.email)
-            self._channels.append(self._email_channel)
 
         # Legacy compatibility - keep these for backward compatibility
         self._websocket_manager = None
@@ -61,8 +52,7 @@ class NotificationService:
         )
 
         logger.info(
-            f"NotificationService initialized "
-            f"(Telegram: {self.telegram_enabled}, Email: {self.email_enabled})"
+            f"NotificationService initialized (Telegram: {self.telegram_enabled})"
         )
 
     def _get_or_create_telegram_client(self) -> Optional[TelegramClient]:
@@ -109,7 +99,6 @@ class NotificationService:
         """
         return {
             "telegram_enabled": self.telegram_enabled,
-            "email_enabled": self.email_enabled,
             "websocket_available": self._websocket_manager is not None,
             "failed_high_priority_notifications": self._failed_high_priority_count,
         }
@@ -151,10 +140,6 @@ class NotificationService:
         if self.telegram_enabled:
             tasks.append(self.send_telegram(title, message))
             channel_names.append("telegram")
-
-        if self.email_enabled:
-            tasks.append(self.send_email(title, message))
-            channel_names.append("email")
 
         if not tasks:
             logger.warning("No notification channels enabled")
@@ -207,21 +192,6 @@ class NotificationService:
         """
         if self._telegram_channel:
             return await self._telegram_channel.send(title, message)
-        return False
-
-    async def send_email(self, subject: str, body: str) -> bool:
-        """
-        Send email notification.
-
-        Args:
-            subject: Email subject
-            body: Email body
-
-        Returns:
-            True if successful
-        """
-        if self._email_channel:
-            return await self._email_channel.send(subject, body)
         return False
 
     async def notify_slot_found(self, centre: str, date: str, time: str) -> None:

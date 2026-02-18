@@ -25,42 +25,17 @@ class TelegramConfig:
 
 
 @dataclass
-class EmailConfig:
-    """Email notification configuration."""
-
-    enabled: bool = False
-    sender: Optional[str] = None
-    password: Optional[str] = None
-    receiver: Optional[str] = None
-    smtp_server: str = "smtp.gmail.com"
-    smtp_port: int = 587
-
-    def __repr__(self) -> str:
-        """Return repr with masked password."""
-        if self.password:
-            masked_password = "'***'"
-        else:
-            masked_password = "None"
-        return (
-            f"EmailConfig(enabled={self.enabled}, sender={repr(self.sender)}, "
-            f"password={masked_password}, receiver={repr(self.receiver)}, "
-            f"smtp_server={repr(self.smtp_server)}, smtp_port={self.smtp_port})"
-        )
-
-
-@dataclass
 class NotificationConfig:
     """Notification service configuration."""
 
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
-    email: EmailConfig = field(default_factory=EmailConfig)
     timezone: str = "Europe/Istanbul"
 
     def __repr__(self) -> str:
         """Return repr with masked sensitive fields in nested configs."""
         return (
             f"NotificationConfig(telegram={repr(self.telegram)}, "
-            f"email={repr(self.email)}, timezone='{self.timezone}')"
+            f"timezone='{self.timezone}')"
         )
 
     @classmethod
@@ -81,19 +56,8 @@ class NotificationConfig:
             chat_id=telegram_data.get("chat_id"),
         )
 
-        email_data = config_dict.get("email", {})
-        email_config = EmailConfig(
-            enabled=email_data.get("enabled", False),
-            sender=email_data.get("sender"),
-            password=email_data.get("password"),
-            receiver=email_data.get("receiver"),
-            smtp_server=email_data.get("smtp_server", "smtp.gmail.com"),
-            smtp_port=email_data.get("smtp_port", 587),
-        )
-
         return cls(
             telegram=telegram_config,
-            email=email_config,
             timezone=config_dict.get("timezone", "Europe/Istanbul"),
         )
 
