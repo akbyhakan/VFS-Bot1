@@ -314,74 +314,85 @@ export default function AuditLogs() {
         </CardHeader>
         <CardContent>
           {filteredLogs && filteredLogs.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <thead>
-                  <tr>
-                    <th className="text-left">Durum</th>
-                    <th className="text-left">Eylem</th>
-                    <th className="text-left">Kullanıcı</th>
-                    <th className="text-left">IP Adresi</th>
-                    <th className="text-left">Zaman</th>
-                    <th className="text-left">Kaynak</th>
-                    <th className="text-right">İşlemler</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-dark-800/50 transition-colors">
-                      <td>
-                        {log.success ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-red-500" />
+            <Table
+              data={filteredLogs}
+              columns={[
+                {
+                  key: 'success',
+                  header: 'Durum',
+                  render: (log) => 
+                    log.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    ),
+                },
+                {
+                  key: 'action',
+                  header: 'Eylem',
+                  render: (log) => <span className="font-mono text-sm">{log.action}</span>,
+                },
+                {
+                  key: 'username',
+                  header: 'Kullanıcı',
+                  render: (log) => (
+                    <div className="flex flex-col">
+                      <span className="text-dark-100">{log.username || 'N/A'}</span>
+                      {log.user_id && (
+                        <span className="text-xs text-dark-500">ID: {log.user_id}</span>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'ip_address',
+                  header: 'IP Adresi',
+                  render: (log) => (
+                    <span className="font-mono text-sm text-dark-300">
+                      {log.ip_address || 'N/A'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'timestamp',
+                  header: 'Zaman',
+                  render: (log) => (
+                    <span className="text-sm text-dark-300">{formatDate(log.timestamp)}</span>
+                  ),
+                },
+                {
+                  key: 'resource_type',
+                  header: 'Kaynak',
+                  render: (log) => 
+                    log.resource_type ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-dark-300">{log.resource_type}</span>
+                        {log.resource_id && (
+                          <span className="text-xs text-dark-500">{log.resource_id}</span>
                         )}
-                      </td>
-                      <td>
-                        <span className="font-mono text-sm">{log.action}</span>
-                      </td>
-                      <td>
-                        <div className="flex flex-col">
-                          <span className="text-dark-100">{log.username || 'N/A'}</span>
-                          {log.user_id && (
-                            <span className="text-xs text-dark-500">ID: {log.user_id}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="font-mono text-sm text-dark-300">
-                          {log.ip_address || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-sm text-dark-300">{formatDate(log.timestamp)}</span>
-                      </td>
-                      <td>
-                        {log.resource_type ? (
-                          <div className="flex flex-col">
-                            <span className="text-sm text-dark-300">{log.resource_type}</span>
-                            {log.resource_id && (
-                              <span className="text-xs text-dark-500">{log.resource_id}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-dark-500">-</span>
-                        )}
-                      </td>
-                      <td className="text-right">
-                        <Button
-                          onClick={() => handleViewDetail(log)}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
+                      </div>
+                    ) : (
+                      <span className="text-dark-500">-</span>
+                    ),
+                },
+                {
+                  key: 'actions',
+                  header: 'İşlemler',
+                  className: 'text-right',
+                  render: (log) => (
+                    <Button
+                      onClick={() => handleViewDetail(log)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  ),
+                },
+              ]}
+              keyExtractor={(log) => log.id}
+              emptyMessage="Gösterilecek denetim kaydı bulunamadı"
+            />
           ) : (
             <div className="text-center py-12">
               <Shield className="w-12 h-12 mx-auto text-dark-600 mb-3" />

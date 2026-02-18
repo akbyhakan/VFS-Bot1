@@ -111,7 +111,7 @@ export function isStatsData(data: unknown): data is {
 export function isApiError(error: unknown): error is {
   response?: {
     status?: number;
-    data?: unknown;
+    data?: { detail?: unknown; [key: string]: unknown } | null;
   };
 } {
   if (!error || typeof error !== 'object') {

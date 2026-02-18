@@ -48,6 +48,7 @@ export interface AppointmentRequestResponse {
   status: AppointmentRequestStatus;
   created_at: string;
   completed_at?: string;
+  booked_date?: string;
   persons: AppointmentPersonResponse[];
 }
 
