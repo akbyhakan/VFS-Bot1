@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import aiosmtplib
 from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
@@ -27,7 +26,6 @@ class AlertChannel(Enum):
 
     LOG = "log"
     TELEGRAM = "telegram"
-    EMAIL = "email"
     WEBHOOK = "webhook"
 
 
@@ -38,10 +36,6 @@ class AlertConfig:
     enabled_channels: List[AlertChannel]
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
-    email_from: Optional[str] = None
-    email_to: Optional[List[str]] = None
-    smtp_host: Optional[str] = None
-    smtp_port: Optional[int] = None
     webhook_url: Optional[str] = None
 
 
@@ -105,9 +99,6 @@ class AlertService:
 
         if AlertChannel.TELEGRAM in self.enabled_channels:
             tasks.append(self._send_telegram(alert_data))
-
-        if AlertChannel.EMAIL in self.enabled_channels:
-            tasks.append(self._send_email(alert_data))
 
         if AlertChannel.WEBHOOK in self.enabled_channels:
             tasks.append(self._send_webhook(alert_data))
@@ -174,64 +165,6 @@ class AlertService:
             return False
         except Exception as e:
             logger.error(f"Failed to send Telegram alert: {e}")
-            return False
-
-    async def _send_email(self, alert_data: Dict[str, Any]) -> bool:
-        """Send alert via email."""
-        if not all(
-            [
-                self.config.email_from,
-                self.config.email_to,
-                self.config.smtp_host,
-                self.config.smtp_port,
-            ]
-        ):
-            logger.debug("Email not configured, skipping")
-            return False
-
-        try:
-            from email.mime.multipart import MIMEMultipart
-            from email.mime.text import MIMEText
-
-            import aiosmtplib
-
-            severity = alert_data["severity"]
-            message = alert_data["message"]
-            timestamp = alert_data["timestamp"]
-
-            msg = MIMEMultipart()
-            msg["From"] = self.config.email_from or ""
-            email_to = self.config.email_to or []
-            msg["To"] = ", ".join(email_to)
-            msg["Subject"] = f"[{severity.upper()}] VFS-Bot Alert"
-
-            body = f"""
-Alert Severity: {severity.upper()}
-Time: {timestamp}
-
-Message:
-{message}
-
----
-This is an automated alert from VFS-Bot Alert Service.
-"""
-            msg.attach(MIMEText(body, "plain"))
-
-            await aiosmtplib.send(
-                msg, hostname=self.config.smtp_host, port=self.config.smtp_port, timeout=10
-            )
-
-            logger.debug("Alert sent via email")
-            return True
-
-        except aiosmtplib.SMTPException as e:
-            logger.error(f"SMTP error sending email alert: {e}")
-            return False
-        except ConnectionError as e:
-            logger.error(f"Connection error sending email alert: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to send email alert: {e}")
             return False
 
     async def _send_webhook(self, alert_data: Dict[str, Any]) -> bool:
