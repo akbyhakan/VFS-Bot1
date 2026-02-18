@@ -644,41 +644,32 @@ class TestR6RuntimeSafetyFixes:
                 break
 
     def test_send_telegram_with_photo_uses_escape_markdown(self):
-        """Test that TelegramClient.send_photo uses escape_markdown for caption."""
+        """Test that TelegramClient.send_photo exists and handles captions."""
         telegram_client_file = Path(__file__).parent.parent.parent / "src/services/notification/telegram_client.py"
 
         with open(telegram_client_file, "r") as f:
             content = f.read()
 
         tree = ast.parse(content)
-        found_send_photo = False
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "TelegramClient":
                 # Find send_photo method
                 for method in node.body:
                     if isinstance(method, ast.FunctionDef) and method.name == "send_photo":
-                        found_send_photo = True
                         method_lines = content.split("\n")[method.lineno - 1 : method.end_lineno]
                         method_str = "\n".join(method_lines)
 
-                        # Note: send_photo receives caption as a parameter.
-                        # The escape_markdown would typically be called by the caller
-                        # (e.g., in TelegramChannel or NotificationService) before passing caption.
-                        # This test verifies that send_photo exists and handles captions properly.
-                        
-                        # Should accept caption parameter
+                        # Verify send_photo accepts and handles caption parameter
                         assert (
                             "caption" in method_str
                         ), "TelegramClient.send_photo should accept caption parameter"
                         
-                        # Should handle caption in send_photo call
                         assert (
                             "caption=" in method_str
                         ), "TelegramClient.send_photo should pass caption to bot.send_photo"
-                        break
-                break
-        
-        assert found_send_photo, "TelegramClient.send_photo method should exist"
+                        return
+                
+        pytest.fail("TelegramClient.send_photo method not found")
 
 
 class TestDocumentationUpdates:
