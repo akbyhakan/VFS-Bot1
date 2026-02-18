@@ -30,17 +30,20 @@ class StealthConfig:
     @staticmethod
     async def _override_webdriver(page: Page) -> None:
         """Override navigator.webdriver flag."""
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined,
                 configurable: true
             });
-        """)
+        """
+        )
 
     @staticmethod
     async def _spoof_plugins(page: Page) -> None:
         """Spoof navigator.plugins to appear as a real browser."""
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             Object.defineProperty(navigator, 'plugins', {
                 get: () => [
                     {
@@ -84,7 +87,8 @@ class StealthConfig:
                 ],
                 configurable: true
             });
-        """)
+        """
+        )
 
     @staticmethod
     async def _spoof_languages(page: Page, languages: list | None = None) -> None:
@@ -112,33 +116,39 @@ class StealthConfig:
                 )
 
         languages_js = ", ".join(f"'{lang}'" for lang in languages)
-        await page.add_init_script(f"""
+        await page.add_init_script(
+            f"""
             Object.defineProperty(navigator, 'languages', {{
                 get: () => [{languages_js}],
                 configurable: true
             }});
-        """)
+        """
+        )
 
     @staticmethod
     async def _add_chrome_runtime(page: Page) -> None:
         """Add chrome runtime object."""
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             window.chrome = {
                 runtime: {},
                 loadTimes: function() {},
                 csi: function() {},
                 app: {}
             };
-        """)
+        """
+        )
 
     @staticmethod
     async def _override_permissions(page: Page) -> None:
         """Override permissions query."""
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             const originalQuery = window.navigator.permissions.query;
             window.navigator.permissions.query = (parameters) => (
                 parameters.name === 'notifications' ?
                     Promise.resolve({ state: Notification.permission }) :
                     originalQuery(parameters)
             );
-        """)
+        """
+        )

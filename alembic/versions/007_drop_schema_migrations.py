@@ -27,10 +27,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Recreate schema_migrations table for rollback."""
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version INTEGER PRIMARY KEY,
             description TEXT NOT NULL,
             applied_at TIMESTAMPTZ DEFAULT NOW()
         )
-    """)
+    """
+    )

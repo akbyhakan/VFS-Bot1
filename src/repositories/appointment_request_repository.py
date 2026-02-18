@@ -273,13 +273,15 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             Set of user IDs with pending appointment requests
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT DISTINCT u.id
                 FROM users u
                 JOIN appointment_persons ap ON ap.email = u.email
                 JOIN appointment_requests ar ON ar.id = ap.request_id
                 WHERE ar.status = 'pending' AND u.active = true
-                """)
+                """
+            )
             return {row["id"] for row in rows}
 
     async def create(self, data: Dict[str, Any]) -> int:
