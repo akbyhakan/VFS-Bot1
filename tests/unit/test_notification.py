@@ -206,7 +206,7 @@ async def test_send_notification_with_telegram_enabled():
 @pytest.mark.asyncio
 async def test_send_notification_priority():
     """Test send_notification with priority parameter."""
-    config = {"telegram": {"enabled": False}, "email": {"enabled": False}}
+    config = {"telegram": {"enabled": False}}
     notifier = NotificationService(config)
 
     # Should not raise exception with different priority levels
