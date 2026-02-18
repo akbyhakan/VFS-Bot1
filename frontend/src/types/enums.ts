@@ -10,6 +10,8 @@ export enum AppointmentRequestStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
+  BOOKED = 'booked',
+  CHECKING = 'checking',
 }
 
 export enum AppointmentStatus {

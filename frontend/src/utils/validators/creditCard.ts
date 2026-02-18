@@ -131,6 +131,7 @@ export interface CardValidationResult {
     cardholderName?: string;
     expiryMonth?: string;
     expiryYear?: string;
+    cvv?: string;
   };
 }
 
@@ -139,6 +140,7 @@ export function validateCardForm(data: {
   card_number: string;
   expiry_month: string;
   expiry_year: string;
+  cvv?: string;
 }): CardValidationResult {
   const errors: CardValidationResult['errors'] = {};
   
@@ -154,6 +156,10 @@ export function validateCardForm(data: {
     errors.expiryMonth = 'Son kullanma tarihi gerekli';
   } else if (!validateExpiryDate(data.expiry_month, data.expiry_year)) {
     errors.expiryMonth = 'Geçersiz veya süresi dolmuş tarih';
+  }
+  
+  if (data.cvv && !validateCVV(data.cvv)) {
+    errors.cvv = 'Geçersiz CVV';
   }
   
   return {
