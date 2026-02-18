@@ -789,85 +789,33 @@ class TestOpenAPISecurityConfig:
         """Test that OpenAPI docs are disabled in production environment."""
         from unittest.mock import patch
 
-        old_env = os.getenv("ENV")
-        old_cors = os.getenv("CORS_ALLOWED_ORIGINS")
+        # Use the factory pattern to create app with production environment
+        from web.app import create_app
 
-        try:
-            # Set production environment with valid CORS
-            os.environ["ENV"] = "production"
-            os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        with patch.dict(os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}):
+            # Create app with production environment override
+            app = create_app(run_security_validation=False, env_override="production")
 
-            # Need to reload the app module to pick up new environment
-            with patch.dict(
-                os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}
-            ):
-                # Import after setting environment
-                import importlib
-
-                import web.app
-
-                importlib.reload(web.app)
-
-                # Check that docs URLs are None in production
-                assert web.app.app.docs_url is None
-                assert web.app.app.redoc_url is None
-                assert web.app.app.openapi_url is None
-
-        finally:
-            # Restore original environment
-            if old_env:
-                os.environ["ENV"] = old_env
-            elif "ENV" in os.environ:
-                del os.environ["ENV"]
-
-            if old_cors:
-                os.environ["CORS_ALLOWED_ORIGINS"] = old_cors
-            elif "CORS_ALLOWED_ORIGINS" in os.environ:
-                del os.environ["CORS_ALLOWED_ORIGINS"]
-
-            # Reload app to restore original state
-            import importlib
-
-            import web.app
-
-            importlib.reload(web.app)
+            # Check that docs URLs are None in production
+            assert app.docs_url is None
+            assert app.redoc_url is None
+            assert app.openapi_url is None
 
     def test_openapi_enabled_in_development(self):
         """Test that OpenAPI docs are enabled in development environment."""
         from unittest.mock import patch
 
-        old_env = os.getenv("ENV")
+        # Use the factory pattern to create app with development environment
+        from web.app import create_app
 
-        try:
-            # Set development environment
-            os.environ["ENV"] = "development"
+        with patch.dict(os.environ, {"ENV": "development"}):
+            # Create app with development environment override
+            app = create_app(run_security_validation=False, env_override="development")
 
-            with patch.dict(os.environ, {"ENV": "development"}):
-                # Import after setting environment
-                import importlib
-
-                import web.app
-
-                importlib.reload(web.app)
-
-                # Check that docs URLs are set in development
-                assert web.app.app.docs_url == "/docs"
-                assert web.app.app.redoc_url == "/redoc"
-                assert web.app.app.openapi_url == "/openapi.json"
-
-        finally:
-            # Restore original environment
-            if old_env:
-                os.environ["ENV"] = old_env
-            elif "ENV" in os.environ:
-                del os.environ["ENV"]
-
-            # Reload app to restore original state
-            import importlib
-
-            import web.app
-
-            importlib.reload(web.app)
+            # Check that docs URLs are set in development
+            assert app.docs_url == "/docs"
+            assert app.redoc_url == "/redoc"
+            assert app.openapi_url == "/openapi.json"
 
 
 class TestEncryptionHotpathOptimization:
