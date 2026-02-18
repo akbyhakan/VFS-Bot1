@@ -25,7 +25,8 @@ def upgrade() -> None:
     """Create account pool tables."""
 
     # Create vfs_account_pool table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS vfs_account_pool (
             id BIGSERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -44,10 +45,12 @@ def upgrade() -> None:
                 status IN ('available', 'in_use', 'cooldown', 'quarantine')
             )
         )
-    """)
+    """
+    )
 
     # Create account_usage_log table
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS account_usage_log (
             id BIGSERIAL PRIMARY KEY,
             account_id BIGINT NOT NULL REFERENCES vfs_account_pool(id) ON DELETE CASCADE,
@@ -63,50 +66,66 @@ def upgrade() -> None:
                 result IN ('success', 'no_slot', 'login_fail', 'error', 'banned')
             )
         )
-    """)
+    """
+    )
 
     # Create indexes for performance
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_vfs_account_pool_status
         ON vfs_account_pool(status)
         WHERE is_active = TRUE
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_vfs_account_pool_cooldown
         ON vfs_account_pool(cooldown_until)
         WHERE is_active = TRUE AND status = 'cooldown'
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_vfs_account_pool_quarantine
         ON vfs_account_pool(quarantine_until)
         WHERE is_active = TRUE AND status = 'quarantine'
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_vfs_account_pool_last_used
         ON vfs_account_pool(last_used_at)
         WHERE is_active = TRUE
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_account_usage_log_account_id
         ON account_usage_log(account_id)
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_account_usage_log_session
         ON account_usage_log(session_number, started_at)
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_account_usage_log_result
         ON account_usage_log(result, created_at)
-    """)
+    """
+    )
 
     # Add trigger to update updated_at timestamp
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION update_vfs_account_pool_updated_at()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -114,14 +133,17 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE TRIGGER trigger_update_vfs_account_pool_updated_at
         BEFORE UPDATE ON vfs_account_pool
         FOR EACH ROW
         EXECUTE FUNCTION update_vfs_account_pool_updated_at()
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

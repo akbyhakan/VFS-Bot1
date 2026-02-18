@@ -23,7 +23,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create vfs_dropdown_cache table."""
-    op.execute("""
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS vfs_dropdown_cache (
             id SERIAL PRIMARY KEY,
             country_code VARCHAR(3) NOT NULL,
@@ -47,11 +48,14 @@ def upgrade() -> None:
         -- Create index on sync_status for filtering
         CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_status
             ON vfs_dropdown_cache(sync_status);
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
     """Drop vfs_dropdown_cache table."""
-    op.execute("""
+    op.execute(
+        """
         DROP TABLE IF EXISTS vfs_dropdown_cache CASCADE;
-    """)
+    """
+    )

@@ -124,10 +124,7 @@ def main():
     if errors:
         print("\n🔍 requirements.lock validation issues:")
         print("\n".join(errors))
-        print(
-            f"\n⚠️  Found {len(errors)} issue(s). "
-            "Run 'make lock' to regenerate requirements.lock"
-        )
+        print(f"\n⚠️  Found {len(errors)} issue(s). " "Run 'make lock' to regenerate the lockfile")
         return 1
     else:
         print("✅ All package versions in requirements.lock are consistent with pyproject.toml")

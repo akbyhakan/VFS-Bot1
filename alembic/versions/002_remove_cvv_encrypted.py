@@ -24,7 +24,8 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Remove cvv_encrypted column from payment_card table."""
     # Check if column exists before dropping (for idempotency)
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF EXISTS (
@@ -34,13 +35,15 @@ def upgrade() -> None:
                 ALTER TABLE payment_card DROP COLUMN cvv_encrypted;
             END IF;
         END $$;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
     """Add back cvv_encrypted column (NOT RECOMMENDED - violates PCI-DSS)."""
     # Only add if it doesn't exist
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -50,4 +53,5 @@ def downgrade() -> None:
                 ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT;
             END IF;
         END $$;
-    """)
+    """
+    )

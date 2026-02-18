@@ -25,7 +25,8 @@ def upgrade() -> None:
     """Encrypt card holder name and expiry fields."""
 
     # Step 1: Add new encrypted columns
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             -- Add card_holder_name_encrypted if it doesn't exist
@@ -52,39 +53,49 @@ def upgrade() -> None:
                 ALTER TABLE payment_card ADD COLUMN expiry_year_encrypted TEXT;
             END IF;
         END $$;
-    """)
+    """
+    )
 
     # Step 2: Migrate existing plaintext data to encrypted columns
     # IMPORTANT: This copies plaintext data to *_encrypted columns as-is.
     # The application code will re-encrypt this data on the next write operation.
     # For immediate encryption, run a data migration script after applying this schema migration.
     # This approach prevents coupling database migrations with application encryption logic.
-    op.execute("""
+    op.execute(
+        """
         UPDATE payment_card
         SET card_holder_name_encrypted = card_holder_name,
             expiry_month_encrypted = expiry_month,
             expiry_year_encrypted = expiry_year
         WHERE card_holder_name_encrypted IS NULL;
-    """)
+    """
+    )
 
     # Step 3: Make new columns NOT NULL
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE payment_card
         ALTER COLUMN card_holder_name_encrypted SET NOT NULL;
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE payment_card
         ALTER COLUMN expiry_month_encrypted SET NOT NULL;
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE payment_card
         ALTER COLUMN expiry_year_encrypted SET NOT NULL;
-    """)
+    """
+    )
 
     # Step 4: Drop old plaintext columns
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF EXISTS (
@@ -108,7 +119,8 @@ def upgrade() -> None:
                 ALTER TABLE payment_card DROP COLUMN expiry_year;
             END IF;
         END $$;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
@@ -135,7 +147,8 @@ def downgrade() -> None:
             )
 
     # Step 1: Add back plaintext columns
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -159,28 +172,34 @@ def downgrade() -> None:
                 ALTER TABLE payment_card ADD COLUMN expiry_year TEXT;
             END IF;
         END $$;
-    """)
+    """
+    )
 
     # Step 2: Copy data back (WARNING: Will contain encrypted data if it was encrypted)
     # This is intentionally NOT decrypting to avoid coupling with application code
-    op.execute("""
+    op.execute(
+        """
         UPDATE payment_card
         SET card_holder_name = card_holder_name_encrypted,
             expiry_month = expiry_month_encrypted,
             expiry_year = expiry_year_encrypted
         WHERE card_holder_name IS NULL;
-    """)
+    """
+    )
 
     # Step 3: Make columns NOT NULL
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE payment_card
         ALTER COLUMN card_holder_name SET NOT NULL,
         ALTER COLUMN expiry_month SET NOT NULL,
         ALTER COLUMN expiry_year SET NOT NULL;
-    """)
+    """
+    )
 
     # Step 4: Drop encrypted columns
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF EXISTS (
@@ -204,4 +223,5 @@ def downgrade() -> None:
                 ALTER TABLE payment_card DROP COLUMN expiry_year_encrypted;
             END IF;
         END $$;
-    """)
+    """
+    )
