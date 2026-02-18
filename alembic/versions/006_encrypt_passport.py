@@ -10,7 +10,7 @@ Migrates existing unencrypted passport numbers to encrypted storage.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -26,10 +26,10 @@ def upgrade() -> None:
     # Add passport_number_encrypted column if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'personal_details' AND column_name = 'passport_number_encrypted'
             ) THEN
                 ALTER TABLE personal_details ADD COLUMN passport_number_encrypted TEXT;
@@ -47,10 +47,10 @@ def downgrade() -> None:
     # WARNING: This will result in data loss of encrypted passport numbers
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'personal_details' AND column_name = 'passport_number_encrypted'
             ) THEN
                 ALTER TABLE personal_details DROP COLUMN passport_number_encrypted;

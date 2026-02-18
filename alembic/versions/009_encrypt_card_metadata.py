@@ -10,7 +10,7 @@ This migration renames columns to indicate encryption and migrates existing data
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -27,27 +27,27 @@ def upgrade() -> None:
     # Step 1: Add new encrypted columns
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             -- Add card_holder_name_encrypted if it doesn't exist
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'card_holder_name_encrypted'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN card_holder_name_encrypted TEXT;
             END IF;
-            
+
             -- Add expiry_month_encrypted if it doesn't exist
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_month_encrypted'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN expiry_month_encrypted TEXT;
             END IF;
-            
+
             -- Add expiry_year_encrypted if it doesn't exist
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_year_encrypted'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN expiry_year_encrypted TEXT;
@@ -74,21 +74,21 @@ def upgrade() -> None:
     # Step 3: Make new columns NOT NULL
     op.execute(
         """
-        ALTER TABLE payment_card 
+        ALTER TABLE payment_card
         ALTER COLUMN card_holder_name_encrypted SET NOT NULL;
     """
     )
 
     op.execute(
         """
-        ALTER TABLE payment_card 
+        ALTER TABLE payment_card
         ALTER COLUMN expiry_month_encrypted SET NOT NULL;
     """
     )
 
     op.execute(
         """
-        ALTER TABLE payment_card 
+        ALTER TABLE payment_card
         ALTER COLUMN expiry_year_encrypted SET NOT NULL;
     """
     )
@@ -96,24 +96,24 @@ def upgrade() -> None:
     # Step 4: Drop old plaintext columns
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'card_holder_name'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN card_holder_name;
             END IF;
-            
+
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_month'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN expiry_month;
             END IF;
-            
+
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_year'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN expiry_year;
@@ -149,24 +149,24 @@ def downgrade() -> None:
     # Step 1: Add back plaintext columns
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'card_holder_name'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN card_holder_name TEXT;
             END IF;
-            
+
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_month'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN expiry_month TEXT;
             END IF;
-            
+
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_year'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN expiry_year TEXT;
@@ -190,7 +190,7 @@ def downgrade() -> None:
     # Step 3: Make columns NOT NULL
     op.execute(
         """
-        ALTER TABLE payment_card 
+        ALTER TABLE payment_card
         ALTER COLUMN card_holder_name SET NOT NULL,
         ALTER COLUMN expiry_month SET NOT NULL,
         ALTER COLUMN expiry_year SET NOT NULL;
@@ -200,24 +200,24 @@ def downgrade() -> None:
     # Step 4: Drop encrypted columns
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'card_holder_name_encrypted'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN card_holder_name_encrypted;
             END IF;
-            
+
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_month_encrypted'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN expiry_month_encrypted;
             END IF;
-            
+
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'expiry_year_encrypted'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN expiry_year_encrypted;

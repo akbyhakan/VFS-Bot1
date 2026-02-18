@@ -1,7 +1,7 @@
 """Baseline migration - existing schema
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2026-02-08 14:22:00.000000
 
 This migration creates the complete initial database schema.
@@ -10,7 +10,7 @@ All tables, indexes, triggers, and functions are defined here.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -260,7 +260,8 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)")
     op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status ON appointment_history(user_id, status)"
+        "CREATE INDEX IF NOT EXISTS idx_appointment_history_user_status "
+        "ON appointment_history(user_id, status)"
     )
     op.execute("CREATE INDEX IF NOT EXISTS idx_user_webhooks_token ON user_webhooks(webhook_token)")
     op.execute(

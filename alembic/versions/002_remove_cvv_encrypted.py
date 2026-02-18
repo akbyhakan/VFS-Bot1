@@ -10,7 +10,7 @@ This migration removes the cvv_encrypted column from the payment_card table.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -26,10 +26,10 @@ def upgrade() -> None:
     # Check if column exists before dropping (for idempotency)
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'cvv_encrypted'
             ) THEN
                 ALTER TABLE payment_card DROP COLUMN cvv_encrypted;
@@ -44,10 +44,10 @@ def downgrade() -> None:
     # Only add if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'payment_card' AND column_name = 'cvv_encrypted'
             ) THEN
                 ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT;

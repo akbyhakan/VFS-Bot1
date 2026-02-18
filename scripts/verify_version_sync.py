@@ -56,7 +56,7 @@ def main():
         return 1
 
     if pyproject_version != frontend_version:
-        print(f"❌ Version mismatch detected:")
+        print("❌ Version mismatch detected:")
         print(f"   pyproject.toml:          {pyproject_version}")
         print(f"   frontend/package.json:   {frontend_version}")
         print("\n⚠️  Please ensure both files have the same version")

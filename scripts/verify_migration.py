@@ -3,7 +3,6 @@
 
 import os
 import re
-from pathlib import Path
 
 # Files that should be fully migrated
 FULLY_MIGRATED = [

@@ -67,7 +67,7 @@ class AccountPoolRepository(BaseRepository):
         async with self.db.get_connection() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, email, password, phone, status, 
+                SELECT id, email, password, phone, status,
                        last_used_at, cooldown_until, quarantine_until,
                        consecutive_failures, total_uses, is_active,
                        created_at, updated_at
@@ -317,8 +317,8 @@ class AccountPoolRepository(BaseRepository):
         async with self.db.get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO account_usage_log 
-                (account_id, mission_code, session_number, request_id, result, 
+                INSERT INTO account_usage_log
+                (account_id, mission_code, session_number, request_id, result,
                  error_message, started_at, completed_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING id
@@ -363,9 +363,9 @@ class AccountPoolRepository(BaseRepository):
         async with self.db.get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT 
+                SELECT
                     COUNT(*) FILTER (WHERE is_active = TRUE) as total_active,
-                    COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'available' 
+                    COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'available'
                                       AND (cooldown_until IS NULL OR cooldown_until <= NOW())
                                       AND (quarantine_until IS NULL OR quarantine_until <= NOW())) as available,
                     COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'in_use') as in_use,

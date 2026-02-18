@@ -10,7 +10,7 @@ to support multi-country visa appointment tracking.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -26,10 +26,10 @@ def upgrade() -> None:
     # Add visa_category column if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_requests' AND column_name = 'visa_category'
             ) THEN
                 ALTER TABLE appointment_requests ADD COLUMN visa_category TEXT;
@@ -44,10 +44,10 @@ def upgrade() -> None:
     # Add visa_subcategory column if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_requests' AND column_name = 'visa_subcategory'
             ) THEN
                 ALTER TABLE appointment_requests ADD COLUMN visa_subcategory TEXT;
@@ -67,10 +67,10 @@ def downgrade() -> None:
     # Drop visa_subcategory column if it exists
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_requests' AND column_name = 'visa_subcategory'
             ) THEN
                 ALTER TABLE appointment_requests DROP COLUMN visa_subcategory;
@@ -82,10 +82,10 @@ def downgrade() -> None:
     # Drop visa_category column if it exists
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_requests' AND column_name = 'visa_category'
             ) THEN
                 ALTER TABLE appointment_requests DROP COLUMN visa_category;

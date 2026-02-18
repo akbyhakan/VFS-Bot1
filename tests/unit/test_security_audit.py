@@ -46,8 +46,8 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
     async with db.get_connection() as conn:
         columns_info = await conn.fetch(
             """
-            SELECT column_name 
-            FROM information_schema.columns 
+            SELECT column_name
+            FROM information_schema.columns
             WHERE table_name = 'payment_card'
         """
         )

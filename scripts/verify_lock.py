@@ -81,7 +81,11 @@ def main():
         return 1
 
     with open(lock_file) as f:
-        lock_lines = [l.strip() for l in f if l.strip() and not l.startswith("#") and "==" in l]
+        lock_lines = [
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#") and "==" in line
+        ]
 
     lock_packages = {}
     for line in lock_lines:
@@ -122,7 +126,10 @@ def main():
     if errors:
         print("\n🔍 requirements.lock validation issues:")
         print("\n".join(errors))
-        print(f"\n⚠️  Found {len(errors)} issue(s). Run 'make lock' to regenerate requirements.lock")
+        print(
+            f"\n⚠️  Found {len(errors)} issue(s). "
+            "Run 'make lock' to regenerate requirements.lock"
+        )
         return 1
     else:
         print("✅ All package versions in requirements.lock are consistent with pyproject.toml")

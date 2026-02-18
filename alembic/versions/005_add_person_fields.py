@@ -10,7 +10,7 @@ to support child appointments and gender-specific requirements.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
@@ -26,10 +26,10 @@ def upgrade() -> None:
     # Add gender column if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_persons' AND column_name = 'gender'
             ) THEN
                 ALTER TABLE appointment_persons ADD COLUMN gender TEXT;
@@ -44,10 +44,10 @@ def upgrade() -> None:
     # Add is_child_with_parent column if it doesn't exist
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_persons' AND column_name = 'is_child_with_parent'
             ) THEN
                 ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN;
@@ -58,7 +58,8 @@ def upgrade() -> None:
 
     # Set default value for existing records
     op.execute(
-        "UPDATE appointment_persons SET is_child_with_parent = FALSE WHERE is_child_with_parent IS NULL"
+        "UPDATE appointment_persons SET is_child_with_parent = FALSE "
+        "WHERE is_child_with_parent IS NULL"
     )
 
 
@@ -67,10 +68,10 @@ def downgrade() -> None:
     # Drop is_child_with_parent column if it exists
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_persons' AND column_name = 'is_child_with_parent'
             ) THEN
                 ALTER TABLE appointment_persons DROP COLUMN is_child_with_parent;
@@ -82,10 +83,10 @@ def downgrade() -> None:
     # Drop gender column if it exists
     op.execute(
         """
-        DO $$ 
+        DO $$
         BEGIN
             IF EXISTS (
-                SELECT 1 FROM information_schema.columns 
+                SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'appointment_persons' AND column_name = 'gender'
             ) THEN
                 ALTER TABLE appointment_persons DROP COLUMN gender;

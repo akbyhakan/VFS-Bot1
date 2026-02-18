@@ -10,7 +10,7 @@ This ensures one-time use enforcement works correctly in multi-worker deployment
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 

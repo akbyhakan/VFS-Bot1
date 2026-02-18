@@ -136,7 +136,7 @@ class DatabaseBackup:
             # Build key list for MultiFernet (new key first, then old key if available)
             key = self._get_encryption_key()
             fernet_keys = [Fernet(key)]
-            
+
             # Check for old backup encryption key
             old_key = os.getenv("BACKUP_ENCRYPTION_KEY_OLD") or os.getenv("ENCRYPTION_KEY_OLD")
             if old_key:
@@ -146,7 +146,7 @@ class DatabaseBackup:
                     logger.debug("Old backup encryption key loaded for decryption")
                 except Exception as e:
                     logger.warning(f"Failed to load old backup encryption key: {e}")
-            
+
             cipher = MultiFernet(fernet_keys)
 
             # Read encrypted file

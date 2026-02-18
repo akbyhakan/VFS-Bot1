@@ -275,7 +275,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         async with self.db.get_connection() as conn:
             rows = await conn.fetch(
                 """
-                SELECT DISTINCT u.id 
+                SELECT DISTINCT u.id
                 FROM users u
                 JOIN appointment_persons ap ON ap.email = u.email
                 JOIN appointment_requests ar ON ar.id = ap.request_id

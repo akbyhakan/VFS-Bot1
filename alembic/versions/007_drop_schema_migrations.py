@@ -10,7 +10,7 @@ migration system. All schema management is now handled exclusively by Alembic.
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
+import sqlalchemy as sa  # noqa: F401
 
 from alembic import op
 
