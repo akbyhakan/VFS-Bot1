@@ -84,7 +84,10 @@ class SlotSelector:
         await self.wait_for_overlay(page)
 
         # Check for Captcha
-        await self.handle_captcha_if_present(page)
+        captcha_handled = await self.handle_captcha_if_present(page)
+        if not captcha_handled:
+            logger.error("Captcha could not be solved, aborting slot selection")
+            return False
 
         # Get preferred dates from reservation
         preferred_dates = reservation.get("preferred_dates", [])

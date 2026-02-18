@@ -171,3 +171,66 @@ async def test_run_booking_flow_includes_otp_step(orchestrator, mock_page):
     # Verify OTP handling was called
     mock_otp.assert_called_once_with(mock_page)
     assert result is True
+
+
+# ──────────────────────────────────────────────────────────────
+# Test select_appointment_slot captcha handling
+# ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_select_appointment_slot_captcha_not_handled(orchestrator, mock_page):
+    """Test that select_appointment_slot returns False when captcha cannot be solved."""
+    reservation = {"preferred_dates": ["23/01/2026"]}
+
+    # Mock handle_captcha_if_present to return False (captcha failed)
+    with patch.object(
+        orchestrator.slot_selector,
+        "handle_captcha_if_present",
+        new=AsyncMock(return_value=False)
+    ) as mock_captcha:
+        with patch.object(orchestrator.slot_selector, "wait_for_overlay", new=AsyncMock()):
+            result = await orchestrator.slot_selector.select_appointment_slot(
+                mock_page, reservation
+            )
+
+    # Should return False when captcha handling fails
+    assert result is False
+    mock_captcha.assert_called_once_with(mock_page)
+
+
+@pytest.mark.asyncio
+async def test_select_appointment_slot_captcha_handled(orchestrator, mock_page):
+    """Test that select_appointment_slot continues normally when captcha is handled."""
+    reservation = {"preferred_dates": ["23/01/2026"]}
+
+    # Mock date element with matching aria-label
+    mock_date_elem = AsyncMock()
+    mock_date_elem.get_attribute = AsyncMock(return_value="23 Ocak 2026")
+    mock_date_elem.click = AsyncMock()
+
+    # Mock page.locator to return the date element
+    mock_locator = AsyncMock()
+    mock_locator.all = AsyncMock(return_value=[mock_date_elem])
+    mock_page.locator.return_value = mock_locator
+    mock_page.click = AsyncMock()
+
+    # Mock handle_captcha_if_present to return True (captcha handled or not present)
+    with patch.object(
+        orchestrator.slot_selector,
+        "handle_captcha_if_present",
+        new=AsyncMock(return_value=True)
+    ) as mock_captcha:
+        with patch.object(orchestrator.slot_selector, "wait_for_overlay", new=AsyncMock()):
+            with patch.object(
+                orchestrator.slot_selector,
+                "select_preferred_time",
+                new=AsyncMock(return_value=True)
+            ):
+                result = await orchestrator.slot_selector.select_appointment_slot(
+                    mock_page, reservation
+                )
+
+    # Should return True when captcha is handled and slot is selected
+    assert result is True
+    mock_captcha.assert_called_once_with(mock_page)
