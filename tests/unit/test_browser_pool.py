@@ -94,8 +94,8 @@ class TestBrowserPool:
             mock_create.side_effect = mock_browsers
 
             # Acquire 2 browsers (max)
-            browser1 = await pool.acquire("session1")
-            browser2 = await pool.acquire("session2")
+            _ = await pool.acquire("session1")
+            _ = await pool.acquire("session2")
 
             assert len(pool._browsers) == 2
 

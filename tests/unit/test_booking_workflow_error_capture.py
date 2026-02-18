@@ -72,8 +72,8 @@ class TestBookingWorkflowErrorCapture:
     def mock_repositories(self):
         """Automatically patch repository classes for all tests."""
         with (
-            patch("src.services.bot.booking_workflow.AppointmentRepository") as mock_appt_repo,
-            patch("src.services.bot.booking_workflow.UserRepository") as mock_user_repo,
+            patch("src.services.bot.booking_workflow.AppointmentRepository"),
+            patch("src.services.bot.booking_workflow.UserRepository"),
             patch(
                 "src.services.bot.booking_workflow.AppointmentRequestRepository"
             ) as mock_req_repo,

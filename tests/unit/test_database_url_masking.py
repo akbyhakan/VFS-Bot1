@@ -120,7 +120,10 @@ class TestDatabaseURLMasking:
 
     def test_mask_url_with_multiple_sensitive_query_params(self):
         """Test URL with multiple sensitive query parameters."""
-        url = "postgresql://user:pass@localhost:5432/mydb?password=secret&sslpassword=xxx&sslmode=require"
+        url = (
+            "postgresql://user:pass@localhost:5432/mydb"
+            "?password=secret&sslpassword=xxx&sslmode=require"
+        )
         masked = mask_database_url(url)
 
         # Main credentials should be masked

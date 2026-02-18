@@ -283,9 +283,9 @@ class TestSlotRetention:
 
         # First 10 oldest should be removed
         remaining_centres = [slot["centre"] for slot in analyzer._patterns["slots"]]
-        assert f"Centre_0" not in remaining_centres
-        assert f"Centre_9" not in remaining_centres
-        assert f"Centre_10" in remaining_centres
+        assert "Centre_0" not in remaining_centres
+        assert "Centre_9" not in remaining_centres
+        assert "Centre_10" in remaining_centres
         assert f"Centre_{_MAX_SLOT_RECORDS + 9}" in remaining_centres
 
     def test_retention_on_load(self, temp_data_file):

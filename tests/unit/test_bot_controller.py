@@ -435,7 +435,7 @@ async def test_is_running_property(config, database, notifier):
     assert controller.is_running is False
 
     # After failed start attempt
-    result = await controller.start_bot()
+    _ = await controller.start_bot()
     # Will fail because we haven't mocked VFSBot, but that's ok
     assert controller.is_running is False
 

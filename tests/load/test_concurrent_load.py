@@ -252,7 +252,7 @@ class TestConcurrentLoad:
             async def perform_operation(op_id: int) -> bool:
                 """Perform a database operation."""
                 async with db.get_connection(timeout=10.0) as conn:
-                    result = await conn.fetchval("SELECT 1")
+                    _ = await conn.fetchval("SELECT 1")
                 return True
 
             start_time = time.time()

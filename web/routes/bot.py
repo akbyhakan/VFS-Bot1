@@ -196,7 +196,8 @@ async def restart_bot(
             }
         )
         logger.info(
-            f"Bot restarted via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+            f"Bot restarted via dashboard by "
+            f"{auth_data.get('name', auth_data.get('sub', 'unknown'))}"
         )
     else:
         await broadcast_message(
@@ -244,7 +245,8 @@ async def check_now(
         )
 
         logger.info(
-            f"Manual check triggered via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
+            f"Manual check triggered via dashboard by "
+            f"{auth_data.get('name', auth_data.get('sub', 'unknown'))}"
         )
 
     return result

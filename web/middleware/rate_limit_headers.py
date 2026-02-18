@@ -1,6 +1,6 @@
 """Rate limiting headers middleware for API responses."""
 
-from typing import Callable, Optional
+from typing import Callable
 
 from fastapi import Request, Response
 from loguru import logger

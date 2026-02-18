@@ -141,7 +141,7 @@ class TestBackupEncryption:
             mock_restore.return_value = None
             mock_create.return_value = None
 
-            result = await backup_service.restore_from_backup(str(encrypted_path))
+            _ = await backup_service.restore_from_backup(str(encrypted_path))
 
             # Verify restore was called
             assert mock_restore.called

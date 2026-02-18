@@ -25,8 +25,8 @@ from .probes import get_version
 router = APIRouter()
 
 # Import sub-routers
-from . import metrics as _metrics_module
-from . import probes as _probes_module
+from . import metrics as _metrics_module  # noqa: E402
+from . import probes as _probes_module  # noqa: E402
 
 router.include_router(_probes_module.router)
 router.include_router(_metrics_module.router)

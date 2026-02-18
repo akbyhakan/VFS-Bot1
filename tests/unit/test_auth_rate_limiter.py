@@ -185,7 +185,6 @@ class TestAuthRateLimiter:
     def test_backend_auto_detection_fallback(self):
         """Test that backend gracefully falls back to InMemoryBackend on Redis failure."""
         import os
-        from unittest.mock import patch
 
         # Mock REDIS_URL to an invalid URL
         with patch.dict(os.environ, {"REDIS_URL": "redis://invalid-host:9999/0"}):

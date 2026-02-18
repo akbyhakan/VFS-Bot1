@@ -113,7 +113,11 @@ class TestDependencySynchronization:
 
         # Parse requirements.lock
         with open(lock_file) as f:
-            lock_lines = [l.strip() for l in f if l.strip() and not l.startswith("#") and "==" in l]
+            lock_lines = [
+                line.strip()
+                for line in f
+                if line.strip() and not line.startswith("#") and "==" in line
+            ]
 
         lock_packages = {}
         for line in lock_lines:

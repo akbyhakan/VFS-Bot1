@@ -112,8 +112,9 @@ async def test_reconnect_skips_migration_check():
 
         # Mock asyncpg.create_pool in the correct module
         with patch(
-            "src.models.db_connection.asyncpg.create_pool", new=AsyncMock(return_value=mock_pool)
-        ) as mock_create:
+            "src.models.db_connection.asyncpg.create_pool",
+            new=AsyncMock(return_value=mock_pool),
+        ):
             # First connect - should check migrations
             await db.connect()
 

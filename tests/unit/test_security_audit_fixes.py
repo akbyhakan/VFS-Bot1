@@ -50,7 +50,7 @@ class TestPaymentCardLoggingSecurity:
         # which has circular import issues in test environment
 
         # Simulate the error handling pattern that should be in place
-        sensitive_error = ValueError("Card number 4111111111111111 failed Luhn check")
+        _ = ValueError("Card number 4111111111111111 failed Luhn check")
         user_id = "test_user"
 
         # The implementation should:

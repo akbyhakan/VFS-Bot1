@@ -95,7 +95,7 @@ async def save_payment_card(
             "card_id": card_id,
             "message": "Payment card saved successfully",
         }
-    except ValueError as e:
+    except ValueError:
         logger.warning(
             "Payment card validation failed for user %s", token_data.get("sub", "unknown")
         )

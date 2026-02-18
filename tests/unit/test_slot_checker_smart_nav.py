@@ -66,7 +66,7 @@ class TestSlotCheckerSPANavigation:
             mock_page.select_option = AsyncMock()
             mock_page.locator.return_value.count = AsyncMock(return_value=0)
 
-            result = await slot_checker.check_slots(
+            _ = await slot_checker.check_slots(
                 mock_page, "Centre Name", "Visa Category", "Subcategory"
             )
 

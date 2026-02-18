@@ -83,7 +83,10 @@ async def create_api_key_endpoint(
         logger.warning(f"Attempt to reuse consumed admin secret from {client_ip}")
         raise HTTPException(
             status_code=403,
-            detail="Admin secret already used. Set a new ADMIN_SECRET in .env and restart the application to generate another key.",
+            detail=(
+                "Admin secret already used. Set a new ADMIN_SECRET in .env and "
+                "restart the application to generate another key."
+            ),
         )
 
     admin_secret = os.getenv("ADMIN_SECRET")
@@ -102,7 +105,10 @@ async def create_api_key_endpoint(
 
     return {
         "api_key": new_key,
-        "note": "Save this key securely! It will not be shown again. The admin secret is now invalidated and cannot be used again.",
+        "note": (
+            "Save this key securely! It will not be shown again. "
+            "The admin secret is now invalidated and cannot be used again."
+        ),
     }
 
 
@@ -219,8 +225,8 @@ async def logout(
             # Log the specific error but continue with logout
             # Cookie is still cleared even if token revocation fails
             logger.error(
-                f"Failed to revoke token during logout for user {token_data.get('sub', 'unknown')}: "
-                f"{e.detail}"
+                f"Failed to revoke token during logout for user "
+                f"{token_data.get('sub', 'unknown')}: {e.detail}"
             )
 
     # Clear the access_token cookie

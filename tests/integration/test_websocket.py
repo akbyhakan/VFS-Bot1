@@ -221,7 +221,7 @@ class TestWebSocketEndpoint:
         - Connection is closed if no auth message is sent within timeout
         - Appropriate close code is used
         """
-        with test_app.websocket_connect("/ws") as websocket:
+        with test_app.websocket_connect("/ws") as _:
             # Don't send anything and wait for timeout
             # The endpoint has a 10 second timeout, but TestClient times out first
             # So we just verify the connection is waiting
@@ -294,7 +294,7 @@ class TestWebSocketEndpoint:
             for ws in connections:
                 try:
                     ws.close()
-                except:
+                except Exception:
                     pass
 
     def test_websocket_invalid_json_auth(self, test_app: TestClient):
