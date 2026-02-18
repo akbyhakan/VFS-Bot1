@@ -29,7 +29,7 @@ class DatabaseBackup:
 
     def __init__(
         self,
-        database_url: str = None,
+        database_url: Optional[str] = None,
         backup_dir: str = "data/backups",
         retention_days: int = 7,
         interval_hours: int = 6,
@@ -45,9 +45,8 @@ class DatabaseBackup:
             interval_hours: Hours between scheduled backups (default: 6)
             max_backups: Maximum number of backups to retain (if set, overrides retention_days)
         """
-        self._database_url = database_url or os.getenv(
-            "DATABASE_URL", "postgresql://localhost:5432/vfs_bot"
-        )
+        self._database_url: str = database_url or os.getenv(
+            "DATABASE_URL") or "postgresql://localhost:5432/vfs_bot"
         self._backup_dir = Path(backup_dir)
         self._retention_days = retention_days
         self._interval_hours = interval_hours
@@ -297,7 +296,7 @@ class DatabaseBackup:
 
         try:
             # Collect both encrypted and legacy backups
-            all_backups = []
+            all_backups: list[Path] = []
             for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
                 all_backups.extend(self._backup_dir.glob(pattern))
 
@@ -508,14 +507,14 @@ class DatabaseBackup:
         Returns:
             List of backup info dictionaries
         """
-        backups = []
+        backups: list[dict[str, Any]] = []
 
         if not self._backup_dir.exists():
             return backups
 
         try:
             # Collect both encrypted and legacy backups
-            all_backups = []
+            all_backups: list[Path] = []
             for pattern in ["vfs_bot_backup_*.sql.enc", "vfs_bot_backup_*.sql"]:
                 all_backups.extend(self._backup_dir.glob(pattern))
 
@@ -599,7 +598,7 @@ _backup_service: Optional[DatabaseBackup] = None
 
 
 def get_backup_service(
-    database_url: str = None,
+    database_url: Optional[str] = None,
     backup_dir: str = "data/backups",
     retention_days: int = 7,
     interval_hours: int = 6,

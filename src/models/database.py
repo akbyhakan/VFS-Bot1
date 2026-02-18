@@ -54,7 +54,7 @@ class Database:
     @property
     def database_url(self) -> str:
         """Get the database URL from the connection manager."""
-        return self._connection_manager.database_url
+        return self._connection_manager.database_url or ""
 
     @property
     def _require_migrations(self) -> bool:

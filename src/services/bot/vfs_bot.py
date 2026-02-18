@@ -59,7 +59,7 @@ class VFSBot:
         self.db = db
         self.notifier = notifier
         self.running = False
-        self.health_checker = None  # Will be set by main.py if enabled
+        self.health_checker: Any = None  # Will be set by main.py if enabled
         self.shutdown_event = shutdown_event or asyncio.Event()
 
         # Trigger event for immediate slot checks
@@ -79,12 +79,12 @@ class VFSBot:
 
         # Initialize services context
         if services is None:
-            services = BotServiceFactory.create(config, db, notifier)
+            services = BotServiceFactory.create(dict(config))
         self.services = services
 
         # Initialize browser manager (needs anti-detection services)
         self.browser_manager = BrowserManager(
-            self.config,
+            dict(self.config),
             self.services.anti_detection.header_manager,
             self.services.anti_detection.proxy_manager,
         )
