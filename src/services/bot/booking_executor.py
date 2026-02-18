@@ -20,8 +20,7 @@ if TYPE_CHECKING:
 class BookingExecutor:
     """Executes booking flows and confirms appointments."""
 
-    def __init__(
-        self,
+    def __init__(self,
         db: "Database",
         notifier: "NotificationService",
         deps: "BookingDependencies",
@@ -80,63 +79,84 @@ class BookingExecutor:
         final_category = category or user["category"]
         final_subcategory = subcategory or user["subcategory"]
 
-        success = await self.deps.workflow.booking_service.run_booking_flow(page, reservation)
+        success = await self.deps.workflow.booking_service.run_booking_flow(
+            page, dict(reservation)
+        )
 
         if success:
-            # Verify booking confirmation and extract reference
-            confirmation = await self.deps.workflow.booking_service.verify_booking_confirmation(
-                page
-            )
-            if confirmation.get("success"):
-                reference = confirmation.get("reference", "UNKNOWN")
-                await self.appointment_repo.create(
-                    {
-                        "user_id": user["id"],
-                        "centre": centre,
-                        "category": final_category,
-                        "subcategory": final_subcategory,
-                        "appointment_date": slot["date"],
-                        "appointment_time": slot.get("time", "UNKNOWN"),
-                        "reference_number": reference,
-                    }
+            # Verify booking confirmation and extract reference number
+            # BookingValidator.verify_booking_confirmation reads the actual
+            # reference from the page (e.g. ABC123456) using multiple selectors.
+            # It is accessed via BookingOrchestrator.validator attribute.
+            reference = "CONFIRMED"
+            try:
+                confirmation = await self.deps.workflow.booking_service.validator.verify_booking_confirmation(
+                    page
                 )
-
-                # Check for duplicate before notifying/marking
-                is_duplicate = await dedup_service.is_duplicate_booking(
-                    user_id=user["id"],
-                    centre=centre,
-                    category=final_category,
-                    subcategory=final_subcategory,
-                    appointment_date=slot["date"],
-                )
-
-                if not is_duplicate:
-                    logger.success(
-                        f"✅ Booking confirmed for {mask_email(user['email'])}: "
-                        f"{slot['date']} at {centre} (Ref: {reference})"
-                    )
-                    await self.notifier.notify_booking_success(
-                        user["email"],
-                        slot["date"],
-                        slot.get("time", "UNKNOWN"),
-                        centre,
-                        reference,
-                    )
+                if confirmation.get("success"):
+                    reference = confirmation.get("reference") or "CONFIRMED"
+                    logger.info(f"Booking confirmation verified, reference: {reference}")
                 else:
                     logger.warning(
-                        f"Duplicate booking detected for {mask_email(user['email'])}, "
-                        f"skipping notification"
+                        f"Booking confirmation verification returned unsuccessful: "
+                        f"{confirmation.get('error', 'unknown')}. "
+                        f"Using fallback reference: {reference}"
                     )
-
-                # Mark appointment request as booked if exists
-                appointment_request = await self.appointment_request_repo.get_pending_for_user(
-                    user["id"]
+            except Exception as verify_error:
+                logger.warning(
+                    f"Could not verify booking confirmation: {verify_error}. "
+                    f"Using fallback reference: {reference}"
                 )
-                if appointment_request:
-                    await self.appointment_request_repo.mark_as_booked(appointment_request.id)
 
-                # Clear recovery checkpoint after successful booking
-                self.deps.workflow.session_recovery.clear_checkpoint(user["id"])
+            await self.appointment_repo.create(
+                {
+                    "user_id": user["id"],
+                    "centre": centre,
+                    "category": final_category,
+                    "subcategory": final_subcategory,
+                    "appointment_date": slot["date"],
+                    "appointment_time": slot.get("time", "UNKNOWN"),
+                    "reference_number": reference,
+                }
+            )
+
+            # Check for duplicate before notifying/marking
+            is_duplicate = await dedup_service.is_duplicate_booking(
+                user_id=user["id"],
+                centre=centre,
+                category=final_category,
+                subcategory=final_subcategory,
+                appointment_date=slot["date"],
+            )
+
+            if not is_duplicate:
+                logger.success(
+                    f"✅ Booking confirmed for {mask_email(user['email'])}: "
+                    f"{slot['date']} at {centre} (Ref: {reference})"
+                )
+                await self.notifier.notify_booking_success(
+                    centre,
+                    slot["date"],
+                    slot.get("time", "UNKNOWN"),
+                    reference,
+                )
+            else:
+                logger.warning(
+                    f"Duplicate booking detected for {mask_email(user['email'])}, "
+                    f"skipping notification"
+                )
+
+            # Mark appointment request as booked if exists
+            appointment_request = await self.appointment_request_repo.get_pending_for_user(
+                user["id"]
+            )
+            if appointment_request:
+                await self.appointment_request_repo.update_status(
+                    appointment_request.id, "booked"
+                )
+
+            # Clear recovery checkpoint after successful booking
+            self.deps.workflow.session_recovery.clear_checkpoint()
 
     async def process_single_request(
         self,

@@ -4,7 +4,7 @@ import asyncio
 import random
 import re
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from zoneinfo import ZoneInfo
 
 from loguru import logger
@@ -51,9 +51,9 @@ async def smart_fill(
     page: Page,
     selector: str,
     text: str,
-    human_sim: Optional[object] = None,
+    human_sim: Any = None,
     delay: Optional[float] = None,
-    self_healing: Optional[object] = None,
+    self_healing: Any = None,
     selector_path: Optional[str] = None,
     element_description: Optional[str] = None,
 ) -> None:
@@ -109,9 +109,9 @@ async def smart_fill(
 async def smart_click(
     page: Page,
     selector: str,
-    human_sim: Optional[object] = None,
+    human_sim: Any = None,
     delay: Optional[float] = None,
-    self_healing: Optional[object] = None,
+    self_healing: Any = None,
     selector_path: Optional[str] = None,
     element_description: Optional[str] = None,
 ) -> None:

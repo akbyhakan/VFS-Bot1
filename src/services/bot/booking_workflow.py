@@ -1,7 +1,7 @@
 """Booking workflow orchestration - handles user booking flows."""
 
 import asyncio
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from loguru import logger
 from playwright.async_api import Page
@@ -258,7 +258,7 @@ class BookingWorkflow:
                 # - category/subcategory: fallback if not in request (should be in request)
                 # - email: for logging only
                 # In pool mode, we provide minimal dict since requests have all needed fields
-                minimal_user = {
+                minimal_user: Any = {
                     "id": request.id,  # Use appointment request ID for unique dedup key
                     "email": account.email,  # For logging
                     "category": request.visa_category,  # From request
@@ -327,7 +327,9 @@ class BookingWorkflow:
             reservation = self.reservation_builder.build_reservation(
                 user, {"date": "", "time": ""}, details
             )
-            await self.deps.workflow.booking_service.fill_all_applicants(page, reservation)
+            await self.deps.workflow.booking_service.form_filler.fill_all_applicants(
+                page, dict(reservation)
+            )
             logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
 
             # Step 2: Accept all checkboxes on Review and Pay screen
@@ -405,14 +407,16 @@ class BookingWorkflow:
         """
         if self.config["bot"].get("screenshot_on_error", True):
             try:
-                await self.deps.infra.error_capture.capture(
-                    page,
-                    error,
-                    context={
-                        "step": step,
-                        "user_id": f"user_{user_id}",
-                        "email": masked_email,
-                    },
-                )
+                error_capture = self.deps.infra.error_capture
+                if error_capture is not None:
+                    await error_capture.capture(
+                        page,
+                        error,
+                        context={
+                            "step": step,
+                            "user_id": f"user_{user_id}",
+                            "email": masked_email,
+                        },
+                    )
             except Exception as capture_error:
                 logger.error(f"Failed to capture error: {capture_error}")

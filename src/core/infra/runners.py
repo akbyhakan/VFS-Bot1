@@ -34,6 +34,7 @@ class BotConfigDict(TypedDict, total=False):
     anti_detection: Dict[str, Any]
     appointments: Dict[str, Any]
     selector_health_check: Dict[str, Any]
+    payment: Dict[str, Any]
     mode: str
 
 
@@ -117,6 +118,7 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
         notifier = NotificationService(config.get("notifications", {}))
 
         # Initialize and start bot with shutdown event
+        assert db is not None, "Database must be initialized before bot"
         bot = VFSBot(config, db, notifier, shutdown_event=shutdown_event)
 
         # Initialize selector health monitoring (if enabled)
@@ -210,6 +212,7 @@ async def run_web_mode(
 
     cleanup_service = None  # Initialize to None
     cleanup_task = None
+    assert db is not None, "Database must be initialized"
     try:
         # Start cleanup service in background (only if requested)
         if start_cleanup:
@@ -299,7 +302,7 @@ async def run_both_mode(config: BotConfigDict) -> None:
 
     # Get and configure BotController singleton
     controller = await BotController.get_instance()
-    await controller.configure(config, db, notifier, bot_factory=VFSBot)
+    await controller.configure(dict(config), db, notifier, bot_factory=VFSBot)
 
     try:
         # Start the bot via controller

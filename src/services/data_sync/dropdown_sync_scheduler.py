@@ -102,7 +102,7 @@ class DropdownSyncScheduler:
         except Exception as e:
             logger.error(f"Error in scheduled dropdown sync: {e}", exc_info=True)
 
-    async def trigger_manual_sync(self, country_code: Optional[str] = None):
+    async def trigger_manual_sync(self, country_code: Optional[str] = None) -> None:
         """
         Manually trigger sync for one or all countries.
 

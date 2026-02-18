@@ -1,5 +1,6 @@
 """Browser lifecycle and context management for VFS automation."""
 
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -56,7 +57,7 @@ class BrowserManager:
         
         # Optional session ID for browser pool support
         self.session_id: Optional[str] = None
-        self._last_activity = None
+        self._last_activity: Optional[datetime] = None
         
         # Deferred rotation flag to prevent state loss during new_page()
         self._needs_rotation: bool = False
@@ -77,7 +78,8 @@ class BrowserManager:
             allocated_proxy = self.proxy_manager.allocate_next()
             if allocated_proxy:
                 proxy_config = self.proxy_manager.get_playwright_proxy(proxy=allocated_proxy)
-                logger.info(f"Using proxy: {proxy_config['server']}")
+                if proxy_config:
+                    logger.info(f"Using proxy: {proxy_config['server']}")
             else:
                 logger.warning("No proxy allocated, continuing without proxy")
 
@@ -187,7 +189,7 @@ class BrowserManager:
         page = await self.context.new_page()
         
         # Track activity
-        from datetime import datetime, timezone
+        from datetime import timezone
         self._last_activity = datetime.now(timezone.utc)
 
         # Apply anti-detection features if enabled

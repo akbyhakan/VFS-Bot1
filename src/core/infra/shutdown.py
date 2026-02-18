@@ -9,7 +9,7 @@ import os
 import signal
 import sys
 import threading
-from typing import Optional
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -212,8 +212,8 @@ async def graceful_shutdown_with_timeout(
 async def safe_shutdown_cleanup(
     db: Optional["Database"] = None,  # type: ignore  # noqa: F821
     db_owned: bool = False,
-    cleanup_service=None,
-    cleanup_task=None,
+    cleanup_service: Any = None,
+    cleanup_task: Any = None,
     shutdown_event: Optional[asyncio.Event] = None,
 ) -> None:
     """

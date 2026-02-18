@@ -340,7 +340,10 @@ class NetNutProxyManager:
             Number of proxies loaded
         """
         try:
-            proxies = await db.get_active_proxies()
+            from src.repositories.proxy_repository import ProxyRepository
+
+            proxy_repo = ProxyRepository(db)
+            proxies = await proxy_repo.get_active()
             loaded_count = 0
 
             for proxy in proxies:

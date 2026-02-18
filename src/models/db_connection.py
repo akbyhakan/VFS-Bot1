@@ -165,7 +165,7 @@ class DatabaseConnectionManager:
 
                 logger.info(
                     f"Database connected with pool size {min_pool}-{self.pool_size}: "
-                    f"{mask_database_url(self.database_url)}"
+                    f"{mask_database_url(self.database_url or '')}"
                 )
 
                 # Record pool size metric

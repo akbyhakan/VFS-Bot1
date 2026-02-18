@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from src.repositories.appointment_request_repository import AppointmentRequestRepository
+
 if TYPE_CHECKING:
     from src.models.database import Database
 
@@ -49,7 +51,8 @@ class CleanupService:
             Number of requests deleted
         """
         try:
-            deleted_count = await self.db.cleanup_completed_requests(self.cleanup_days)
+            repo = AppointmentRequestRepository(self.db)
+            deleted_count = await repo.cleanup_completed(self.cleanup_days)
             return deleted_count
         except Exception as e:
             logger.error(f"Error during cleanup: {e}", exc_info=True)

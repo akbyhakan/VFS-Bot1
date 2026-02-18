@@ -120,7 +120,7 @@ class SessionRecovery:
             if self._fernet:
                 try:
                     decrypted = self._fernet.decrypt(raw_data)
-                    checkpoint = json.loads(decrypted.decode("utf-8"))
+                    checkpoint: Dict[str, Any] = json.loads(decrypted.decode("utf-8"))
                     logger.debug("Checkpoint loaded (encrypted)")
                 except InvalidToken:
                     # Backward compatibility: migrate legacy plaintext to encrypted format

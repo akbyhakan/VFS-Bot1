@@ -206,22 +206,28 @@ class EmailOTPHandler:
 
                 if content_type == "text/plain":
                     try:
-                        body = part.get_payload(decode=True).decode(errors="ignore")
+                        payload = part.get_payload(decode=True)
+                        if isinstance(payload, bytes):
+                            body = payload.decode(errors="ignore")
                         break
                     except Exception as e:
                         logger.warning(f"Failed to decode plain text: {e}")
 
                 elif content_type == "text/html" and not body:
                     try:
-                        html = part.get_payload(decode=True).decode(errors="ignore")
-                        body = self._extract_text_from_html(html)
+                        payload = part.get_payload(decode=True)
+                        if isinstance(payload, bytes):
+                            html = payload.decode(errors="ignore")
+                            body = self._extract_text_from_html(html)
                     except Exception as e:
                         logger.warning(f"Failed to decode HTML: {e}")
         else:
             try:
-                body = msg.get_payload(decode=True).decode(errors="ignore")
-                if msg.get_content_type() == "text/html":
-                    body = self._extract_text_from_html(body)
+                payload = msg.get_payload(decode=True)
+                if isinstance(payload, bytes):
+                    body = payload.decode(errors="ignore")
+                    if msg.get_content_type() == "text/html":
+                        body = self._extract_text_from_html(body)
             except Exception as e:
                 logger.warning(f"Failed to decode message body: {e}")
 
@@ -428,7 +434,7 @@ def get_email_otp_handler(
         ValueError: If email/password not provided on first initialization
     """
 
-    def factory():
+    def factory() -> EmailOTPHandler:
         if not email or not app_password:
             raise ValueError("Email and app_password required on first call")
         return EmailOTPHandler(email, app_password, **kwargs)

@@ -1,7 +1,7 @@
 """VFS-Bot - Automated VFS appointment booking bot."""
 
 import importlib as _importlib
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 # Application version (SemVer) - tracks code/feature changes.
 # NOTE: Configuration schema version (CURRENT_CONFIG_VERSION) is maintained
@@ -69,7 +69,7 @@ _LAZY_MODULE_MAP = {
 __all__ = list(_LAZY_MODULE_MAP.keys())
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import with explicit mapping - importlib based."""
     if name in _LAZY_MODULE_MAP:
         module_path, attr_name = _LAZY_MODULE_MAP[name]

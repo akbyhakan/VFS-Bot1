@@ -152,12 +152,17 @@ class BotController:
                     # Fallback to lazy import for backwards compatibility
                     from src.services.bot.vfs_bot import VFSBot
 
+                    assert self._config is not None
+                    assert self._db is not None
+                    assert self._notifier is not None
                     self._bot = VFSBot(
-                        self._config, self._db, self._notifier, shutdown_event=self._shutdown_event
+                        self._config,  # type: ignore[arg-type]
+                        self._db, self._notifier, shutdown_event=self._shutdown_event
                     )
 
                 # Initialize selector health monitoring if enabled
-                if self._config.get("selector_health_check", {}).get("enabled", True):
+                assert self._bot is not None
+                if self._config and self._config.get("selector_health_check", {}).get("enabled", True):
                     try:
                         from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
 
@@ -197,8 +202,11 @@ class BotController:
         """Internal method to run the bot."""
         # Capture bot reference early to avoid race with stop_bot()
         bot = self._bot
+        if bot is None:
+            logger.error("Bot not initialized")
+            return
         try:
-            await self._bot.start()
+            await bot.start()
         except asyncio.CancelledError:
             logger.info("Bot task was cancelled")
         except Exception as e:
@@ -298,7 +306,8 @@ class BotController:
                 return {"status": "error", "message": "Bot is not running"}
 
             try:
-                self._bot.trigger_immediate_check()
+                if self._bot is not None:
+                    self._bot.trigger_immediate_check()
                 logger.info("Manual check triggered via BotController - bot will check immediately")
                 return {"status": "success", "message": "Manual check triggered"}
             except AttributeError:

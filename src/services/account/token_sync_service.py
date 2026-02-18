@@ -112,7 +112,7 @@ class TokenSyncService:
             time_until_expiry_seconds = time_until_expiry.total_seconds()
             buffer_seconds = self.token_refresh_buffer_minutes * 60
 
-            should_refresh = time_until_expiry_seconds <= buffer_seconds
+            should_refresh: bool = time_until_expiry_seconds <= buffer_seconds
 
             if should_refresh:
                 logger.info(

@@ -157,7 +157,7 @@ class UserWriteRepository(BaseRepository[User]):
             query = f"UPDATE users SET {', '.join(updates)} WHERE id = ${param_num}"
             result = await conn.execute(query, *params)
 
-            success = result != "UPDATE 0"
+            success: bool = result != "UPDATE 0"
             if success:
                 logger.info(f"Updated user {id}")
 
@@ -316,7 +316,7 @@ class UserWriteRepository(BaseRepository[User]):
             query = f"UPDATE personal_details SET {', '.join(updates)} WHERE user_id = ${param_num}"
             result = await conn.execute(query, *params)
 
-            success = result != "UPDATE 0"
+            success: bool = result != "UPDATE 0"
             if success:
                 logger.info(f"Personal details updated for user {user_id}")
 

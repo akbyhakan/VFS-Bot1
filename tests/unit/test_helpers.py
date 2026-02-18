@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 
 from src.utils.helpers import (
-    mask_password,
+    mask_sensitive_data,
     random_delay,
     safe_navigate,
     safe_screenshot,
@@ -222,24 +222,26 @@ async def test_safe_screenshot_failure(mock_page, tmp_path):
     assert result is False
 
 
-def test_mask_password_empty():
-    """Test mask_password with empty password."""
-    assert mask_password("") == "********"
+def test_mask_sensitive_data_email():
+    """Test mask_sensitive_data masks email addresses."""
+    result = mask_sensitive_data("user test@example.com logged in")
+    assert "test@example.com" not in result
 
 
-def test_mask_password_short():
-    """Test mask_password with short password (<=4 chars)."""
-    assert mask_password("abc") == "********"
-    assert mask_password("abcd") == "********"
+def test_mask_sensitive_data_token():
+    """Test mask_sensitive_data masks long tokens."""
+    token = "a" * 32
+    result = mask_sensitive_data(f"Token: {token}")
+    assert token not in result
+    assert "***REDACTED***" in result
 
 
-def test_mask_password_medium():
-    """Test mask_password with medium password (5-8 chars)."""
-    assert mask_password("pass1") == "********"
-    assert mask_password("password") == "********"
+def test_mask_sensitive_data_no_sensitive():
+    """Test mask_sensitive_data with no sensitive data."""
+    text = "Normal log message"
+    assert mask_sensitive_data(text) == text
 
 
-def test_mask_password_long():
-    """Test mask_password with long password (>8 chars)."""
-    assert mask_password("mypassword123") == "********"
-    assert mask_password("verylongpassword") == "********"
+def test_mask_sensitive_data_empty():
+    """Test mask_sensitive_data with empty string."""
+    assert mask_sensitive_data("") == ""

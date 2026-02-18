@@ -475,7 +475,7 @@ def get_otp_manager(
         ValueError: If email/password not provided on first initialization
     """
 
-    def factory():
+    def factory() -> OTPManager:
         if not email or not app_password:
             raise ValueError("Email and app_password required on first call")
         return OTPManager(email, app_password, **kwargs)

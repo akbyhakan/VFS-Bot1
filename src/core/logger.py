@@ -45,7 +45,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
     logger.remove()
 
     # Configure logger to use correlation_id patcher
-    logger.configure(patcher=_correlation_patcher)
+    logger.configure(patcher=_correlation_patcher)  # type: ignore[arg-type]
 
     logs_dir = Path("logs")
     logs_dir.mkdir(parents=True, exist_ok=True)

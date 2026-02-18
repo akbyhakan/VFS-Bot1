@@ -132,7 +132,7 @@ class WebhookRepository(BaseRepository[Webhook]):
 
             return [self._row_to_webhook(row) for row in rows]
 
-    async def create(self, user_id: int) -> str:
+    async def create(self, user_id: int) -> str:  # type: ignore[override]
         """
         Create a unique webhook token for a user.
 
@@ -203,7 +203,7 @@ class WebhookRepository(BaseRepository[Webhook]):
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *params)
-            updated = result != "UPDATE 0"
+            updated: bool = result != "UPDATE 0"
 
             if updated:
                 logger.info(f"Webhook {id} updated")
@@ -225,7 +225,7 @@ class WebhookRepository(BaseRepository[Webhook]):
                 "DELETE FROM user_webhooks WHERE id = $1",
                 id,
             )
-            deleted = result != "DELETE 0"
+            deleted: bool = result != "DELETE 0"
 
             if deleted:
                 logger.info(f"Webhook {id} deleted")
@@ -249,7 +249,7 @@ class WebhookRepository(BaseRepository[Webhook]):
                 """,
                 user_id,
             )
-            deleted = result != "DELETE 0"
+            deleted: bool = result != "DELETE 0"
 
         if deleted:
             logger.info(f"Webhook deleted for user {user_id}")

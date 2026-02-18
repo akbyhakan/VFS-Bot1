@@ -81,7 +81,7 @@ class SlotChecker:
         Returns:
             Selector string
         """
-        return self._selector_manager.get(selector_path, fallback)
+        return str(self._selector_manager.get(selector_path, fallback))
 
     def _normalize_date(self, date_str: str) -> str:
         """

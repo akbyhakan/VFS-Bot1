@@ -56,10 +56,14 @@ class EmailChannel(NotificationChannel):
                 logger.error("Email credentials missing")
                 return False
 
+            sender = self._config.sender or ""
+            password = self._config.password or ""
+            receiver = self._config.receiver or ""
+
             # Create message
             message = MIMEMultipart()
-            message["From"] = self._config.sender
-            message["To"] = self._config.receiver
+            message["From"] = sender
+            message["To"] = receiver
             message["Subject"] = f"VFS-Bot: {subject}"
 
             # Add body with XSS protection
@@ -82,7 +86,7 @@ class EmailChannel(NotificationChannel):
                 hostname=self._config.smtp_server, port=self._config.smtp_port
             ) as smtp:
                 await smtp.starttls()
-                await smtp.login(self._config.sender, self._config.password)
+                await smtp.login(sender, password)
                 await smtp.send_message(message)
 
             logger.info("Email notification sent successfully")

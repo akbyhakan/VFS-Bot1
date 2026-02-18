@@ -6,7 +6,7 @@ to eliminate boilerplate code across the codebase.
 
 import asyncio
 import threading
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
 from loguru import logger
 
@@ -42,7 +42,7 @@ def get_or_create_sync(
     """
     # Fast path: instance already exists
     if key in _instances:
-        return _instances[key]
+        return cast(T, _instances[key])
 
     # Ensure lock exists for this key
     with _registry_lock:
@@ -56,7 +56,7 @@ def get_or_create_sync(
             instance = factory(*args, **kwargs)
             _instances[key] = instance
             logger.debug(f"Created singleton instance: {key}")
-        return _instances[key]
+        return cast(T, _instances[key])
 
 
 async def get_or_create_async(
@@ -82,7 +82,7 @@ async def get_or_create_async(
     """
     # Fast path: instance already exists
     if key in _instances:
-        return _instances[key]
+        return cast(T, _instances[key])
 
     # Ensure lock exists for this key
     # Use threading lock for the lock creation to avoid async issues
@@ -101,7 +101,7 @@ async def get_or_create_async(
                 instance = factory(*args, **kwargs)
             _instances[key] = instance
             logger.debug(f"Created async singleton instance: {key}")
-        return _instances[key]
+        return cast(T, _instances[key])
 
 
 def reset(key: Optional[str] = None) -> None:

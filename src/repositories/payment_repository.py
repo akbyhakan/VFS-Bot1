@@ -244,7 +244,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         """
         return await self._upsert(data)
 
-    async def update(self, data: Dict[str, Any]) -> int:
+    async def update(self, data: Dict[str, Any]) -> int:  # type: ignore[override]
         """
         Update payment card (alias for create - maintains backward compatibility).
 

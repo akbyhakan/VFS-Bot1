@@ -1,6 +1,7 @@
 """WebSocket notification channel."""
 
 import asyncio
+from typing import Any
 
 from loguru import logger
 
@@ -29,7 +30,7 @@ class WebSocketChannel(NotificationChannel):
         """Check if channel is enabled."""
         return self._manager is not None
 
-    def set_manager(self, manager) -> None:
+    def set_manager(self, manager: Any) -> None:
         """
         Set WebSocket manager.
 

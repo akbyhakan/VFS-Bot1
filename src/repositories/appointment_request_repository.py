@@ -393,7 +393,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
 
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *values)
-            return result != "UPDATE 0"
+            return bool(result != "UPDATE 0")
 
     async def update_status(self, id: int, status: str, completed_at: Any = None) -> bool:
         """

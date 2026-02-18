@@ -55,7 +55,7 @@ class TelegramClient:
         return text
 
     @staticmethod
-    def split_message(text: str, max_length: int = None) -> list:
+    def split_message(text: str, max_length: Optional[int] = None) -> list:
         """
         Split a message into chunks that fit within the max_length limit.
 

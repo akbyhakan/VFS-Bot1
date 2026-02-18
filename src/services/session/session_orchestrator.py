@@ -134,9 +134,9 @@ class SessionOrchestrator:
         session_end = datetime.now(timezone.utc)
         duration = (session_end - session_start).total_seconds()
 
-        mission_results = {}
+        mission_results: dict[str, Any] = {}
         for mission_code, result in zip(missions.keys(), results):
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 mission_results[mission_code] = {
                     "status": "error",
                     "error": str(result),

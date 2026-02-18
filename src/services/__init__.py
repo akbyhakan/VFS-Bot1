@@ -1,7 +1,7 @@
 """Business logic services module."""
 
 import importlib as _importlib
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .bot.vfs_bot import VFSBot as VFSBot
@@ -19,7 +19,7 @@ _LAZY_MODULE_MAP = {
 __all__ = list(_LAZY_MODULE_MAP.keys())
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import with explicit mapping - importlib based."""
     if name in _LAZY_MODULE_MAP:
         module_path, attr_name = _LAZY_MODULE_MAP[name]
