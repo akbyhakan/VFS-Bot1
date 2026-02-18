@@ -217,7 +217,8 @@ class AccountPoolRepository(BaseRepository):
 
         Args:
             account_id: Account ID
-            result_status: Result of the usage ('success', 'no_slot', 'login_fail', 'error', 'banned')
+            result_status: Result of the usage
+                ('success', 'no_slot', 'login_fail', 'error', 'banned')
             cooldown_until: Optional cooldown expiration timestamp
             quarantine_until: Optional quarantine expiration timestamp
 
@@ -365,12 +366,16 @@ class AccountPoolRepository(BaseRepository):
                 """
                 SELECT
                     COUNT(*) FILTER (WHERE is_active = TRUE) as total_active,
-                    COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'available'
-                                      AND (cooldown_until IS NULL OR cooldown_until <= NOW())
-                                      AND (quarantine_until IS NULL OR quarantine_until <= NOW())) as available,
+                    COUNT(*) FILTER (
+                        WHERE is_active = TRUE AND status = 'available'
+                        AND (cooldown_until IS NULL OR cooldown_until <= NOW())
+                        AND (quarantine_until IS NULL OR quarantine_until <= NOW())
+                    ) as available,
                     COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'in_use') as in_use,
                     COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'cooldown') as in_cooldown,
-                    COUNT(*) FILTER (WHERE is_active = TRUE AND status = 'quarantine') as quarantined,
+                    COUNT(*) FILTER (
+                        WHERE is_active = TRUE AND status = 'quarantine'
+                    ) as quarantined,
                     AVG(total_uses) FILTER (WHERE is_active = TRUE) as avg_uses,
                     MAX(total_uses) FILTER (WHERE is_active = TRUE) as max_uses
                 FROM vfs_account_pool

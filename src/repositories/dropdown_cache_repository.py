@@ -110,7 +110,10 @@ class DropdownCacheRepository(BaseRepository):
             async with self.db.get_connection() as conn:
                 await conn.execute(
                     """
-                    INSERT INTO vfs_dropdown_cache (country_code, dropdown_data, sync_status, last_synced_at, error_message, updated_at)
+                    INSERT INTO vfs_dropdown_cache (
+                        country_code, dropdown_data, sync_status,
+                        last_synced_at, error_message, updated_at
+                    )
                     VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (country_code)
                     DO UPDATE SET
@@ -319,7 +322,9 @@ class DropdownCacheRepository(BaseRepository):
             async with self.db.get_connection() as conn:
                 await conn.execute(
                     """
-                    INSERT INTO vfs_dropdown_cache (country_code, sync_status, error_message, updated_at)
+                    INSERT INTO vfs_dropdown_cache (
+                        country_code, sync_status, error_message, updated_at
+                    )
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (country_code)
                     DO UPDATE SET

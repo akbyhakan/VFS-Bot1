@@ -39,7 +39,8 @@ class BookingOrchestrator:
             config: Bot configuration dictionary
             captcha_solver: Optional captcha solver instance
             human_sim: Optional human simulator for realistic interactions
-            payment_service: Optional PaymentService instance for PCI-DSS compliant payment processing
+            payment_service: Optional PaymentService instance for PCI-DSS
+                compliant payment processing
 
         Example:
             >>> config = {'vfs': {'form_wait_seconds': 21}}
@@ -231,7 +232,8 @@ class BookingOrchestrator:
                     "Failing early to avoid wasting resources on booking steps."
                 )
                 raise ValueError(
-                    "PaymentService is required - legacy payment mode removed for PCI-DSS compliance"
+                    "PaymentService is required - legacy payment mode "
+                    "removed for PCI-DSS compliance"
                 )
 
             # Step 1: Double match check (capacity + date)

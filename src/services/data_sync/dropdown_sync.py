@@ -133,7 +133,8 @@ class DropdownSyncService:
                     # Navigate to VFS login page for this country
                     login_url = (
                         f"{self.base_url}/online-services/login?"
-                        f"country={self.source_country}&language={self.language}&mission={country_code}"
+                        f"country={self.source_country}&language={self.language}"
+                        f"&mission={country_code}"
                     )
                     await page.goto(login_url)
 
@@ -153,12 +154,15 @@ class DropdownSyncService:
                     # Navigate to appointment page
                     appointment_url = (
                         f"{self.base_url}/online-services/appointment?"
-                        f"country={self.source_country}&language={self.language}&mission={country_code}"
+                        f"country={self.source_country}&language={self.language}"
+                        f"&mission={country_code}"
                     )
 
                     # Use Angular-safe navigation (wait for route change, not page reload)
                     await page.evaluate(
-                        f"window.location.hash = '#/appointment?country={self.source_country}&language={self.language}&mission={country_code}'"
+                        f"window.location.hash = '#/appointment?"
+                        f"country={self.source_country}&language={self.language}"
+                        f"&mission={country_code}'"
                     )
                     await page.wait_for_load_state("networkidle")
                     await page.wait_for_selector("select#centres", timeout=10000)

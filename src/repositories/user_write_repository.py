@@ -200,10 +200,12 @@ class UserWriteRepository(BaseRepository[User]):
             personal_id = await conn.fetchval(
                 """
                 INSERT INTO personal_details
-                (user_id, first_name, last_name, passport_number, passport_number_encrypted, passport_expiry,
-                 gender, mobile_code, mobile_number, email, nationality, date_of_birth,
+                (user_id, first_name, last_name, passport_number,
+                 passport_number_encrypted, passport_expiry, gender, mobile_code,
+                 mobile_number, email, nationality, date_of_birth,
                  address_line1, address_line2, state, city, postcode)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                        $13, $14, $15, $16, $17)
                 RETURNING id
             """,
                 user_id,

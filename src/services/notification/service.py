@@ -25,7 +25,8 @@ class NotificationService:
         Initialize notification service.
 
         Args:
-            config: Notification configuration (NotificationConfig or dict for backward compatibility)
+            config: Notification configuration (NotificationConfig or dict
+                for backward compatibility)
         """
         # Convert dict to NotificationConfig for backward compatibility
         if isinstance(config, dict):

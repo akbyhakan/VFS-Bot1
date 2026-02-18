@@ -54,7 +54,8 @@ class BrowserManager:
                 rotation_interval_minutes=rotation_minutes,
             )
             logger.info(
-                f"FingerprintRotator enabled (rotation: {rotation_pages} pages or {rotation_minutes} minutes)"
+                f"FingerprintRotator enabled (rotation: {rotation_pages} "
+                f"pages or {rotation_minutes} minutes)"
             )
 
         # Optional session ID for browser pool support

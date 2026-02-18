@@ -1,8 +1,8 @@
 """Browser fingerprint rotation for enhanced anti-detection."""
 
 import random
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 from loguru import logger
@@ -45,35 +45,40 @@ class FingerprintRotator:
     PROFILE_POOL: List[Tuple[str, str, str, str, str]] = [
         # (user_agent, platform, timezone, webgl_vendor, webgl_renderer)
         (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             "Win32",
             "Europe/Istanbul",
             "Google Inc. (Intel)",
             "ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0)",
         ),
         (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
             "Win32",
             "Europe/Istanbul",
             "Google Inc. (NVIDIA)",
             "ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Ti Direct3D11 vs_5_0 ps_5_0)",
         ),
         (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/135.0.0.0",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/135.0.0.0",
             "Win32",
             "Europe/Istanbul",
             "Google Inc. (AMD)",
             "ANGLE (AMD, AMD Radeon RX 580 Series Direct3D11 vs_5_0 ps_5_0)",
         ),
         (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             "MacIntel",
             "Europe/Istanbul",
             "Apple Inc.",
             "Apple M1",
         ),
         (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+            "(KHTML, like Gecko) Version/18.3 Safari/605.1.15",
             "MacIntel",
             "Europe/Istanbul",
             "Apple Inc.",
@@ -87,28 +92,32 @@ class FingerprintRotator:
             "Intel(R) UHD Graphics 630",
         ),
         (
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             "Linux x86_64",
             "Europe/Istanbul",
             "Google Inc. (Intel)",
             "ANGLE (Intel, Mesa Intel(R) UHD Graphics 630 (CML GT2), OpenGL 4.6)",
         ),
         (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
             "Win32",
             "Europe/London",
             "Google Inc. (Intel)",
             "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0)",
         ),
         (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
             "MacIntel",
             "Europe/Berlin",
             "Apple Inc.",
             "Apple M2",
         ),
         (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
             "Win32",
             "Europe/Paris",
             "Google Inc. (NVIDIA)",
@@ -239,7 +248,8 @@ class FingerprintRotator:
         )
 
         logger.debug(
-            f"Generated fingerprint profile: {platform} | {webgl_vendor} | {viewport_width}x{viewport_height}"
+            f"Generated fingerprint profile: {platform} | {webgl_vendor} | "
+            f"{viewport_width}x{viewport_height}"
         )
         return profile
 

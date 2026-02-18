@@ -92,7 +92,8 @@ class SelectorHealthCheck:
                                 return result
                         except Exception as fallback_error:
                             logger.debug(
-                                f"Fallback selector {i} failed for {selector_path}: {fallback_error}"
+                                f"Fallback selector {i} failed for "
+                                f"{selector_path}: {fallback_error}"
                             )
                             continue
 

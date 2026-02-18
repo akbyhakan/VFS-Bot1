@@ -262,7 +262,8 @@ class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
             await conn.execute(
                 """
                 UPDATE appointment_history
-                SET status = $1, error_message = $2, updated_at = $3, attempt_count = attempt_count + 1
+                SET status = $1, error_message = $2, updated_at = $3,
+                    attempt_count = attempt_count + 1
                 WHERE id = $4
                 """,
                 status,

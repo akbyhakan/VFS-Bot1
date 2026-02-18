@@ -232,14 +232,16 @@ class SlotChecker:
 
                             if normalized_slot_date not in normalized_preferred_dates:
                                 logger.warning(
-                                    f"Slot found but date not in preferred list: {date} not in {preferred_dates}"
+                                    f"Slot found but date not in preferred list: "
+                                    f"{date} not in {preferred_dates}"
                                 )
                                 return None
                         except Exception as date_error:
                             # Graceful fallback: if date comparison fails, return the slot anyway
                             # and let check_double_match handle date validation
                             logger.debug(
-                                f"Could not compare dates (fallback to check_double_match): {date_error}"
+                                f"Could not compare dates "
+                                f"(fallback to check_double_match): {date_error}"
                             )
 
                     # Check capacity if required_capacity > 1
@@ -257,20 +259,23 @@ class SlotChecker:
                                 # Check if capacity is sufficient
                                 if capacity < required_capacity:
                                     logger.warning(
-                                        f"Slot found but insufficient capacity: {capacity} < {required_capacity} "
+                                        f"Slot found but insufficient capacity: "
+                                        f"{capacity} < {required_capacity} "
                                         f"(Date: {date}, Time: {time})"
                                     )
                                     return None
 
                                 logger.info(
-                                    f"Slot found with sufficient capacity! Date: {date}, Time: {time}, "
+                                    f"Slot found with sufficient capacity! "
+                                    f"Date: {date}, Time: {time}, "
                                     f"Capacity: {capacity}/{required_capacity}"
                                 )
                         except Exception as capacity_error:
                             # Graceful fallback: if capacity selector not found or parsing fails,
                             # return the slot anyway (let check_double_match handle capacity)
                             logger.debug(
-                                f"Could not read capacity from page (fallback to check_double_match): {capacity_error}"
+                                f"Could not read capacity from page "
+                                f"(fallback to check_double_match): {capacity_error}"
                             )
                     else:
                         logger.info(f"Slot found! Date: {date}, Time: {time}")

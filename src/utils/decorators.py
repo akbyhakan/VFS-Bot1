@@ -2,7 +2,6 @@
 
 import asyncio
 import functools
-import logging as _stdlib_logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
 
@@ -28,7 +27,8 @@ def handle_errors(
         operation_name: Name of the operation for logging. If None, defaults to module.function_name
         reraise: Whether to reraise the exception after logging
         log_level: Logging level for errors (error, warning, info)
-        wrap_error: If True, wraps exceptions in VFSBotError (default). If False, reraised original exception
+        wrap_error: If True, wraps exceptions in VFSBotError (default).
+            If False, reraised original exception
         default_return: Value to return if not reraising (default: None)
 
     Examples:

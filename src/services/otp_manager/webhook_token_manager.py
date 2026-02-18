@@ -147,7 +147,8 @@ class WebhookTokenManager:
             base_url = os.getenv("WEBHOOK_BASE_URL")
             if not base_url:
                 raise ValueError(
-                    "WEBHOOK_BASE_URL must be configured (e.g., https://your-api-domain.example.com). "
+                    "WEBHOOK_BASE_URL must be configured "
+                    "(e.g., https://your-api-domain.example.com). "
                     "Set it via environment variable or pass base_url parameter."
                 )
         self.base_url = base_url.rstrip("/")
