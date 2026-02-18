@@ -137,9 +137,6 @@ class AuthRateLimiter:
                     "bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
                     "chat_id": os.getenv("TELEGRAM_ADMIN_CHAT_ID"),
                 },
-                "email": {
-                    "enabled": bool(os.getenv("SMTP_SERVER")),
-                },
             }
 
             notifier = NotificationService(config)
