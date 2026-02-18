@@ -281,7 +281,8 @@ async def test_circuit_breaker_creates_state_dir():
             failure_threshold=2, timeout_seconds=5, state_file=str(state_file), name="TestCB"
         )
 
-        # Record a failure to trigger persistence
+        # Record failures to trigger state change and _save_state()
+        await cb.record_failure()
         await cb.record_failure()
 
         # Verify directory was created

@@ -322,15 +322,16 @@ async def test_notify_waitlist_success(notification_service):
         "total_amount": "200 EUR",
     }
 
-    # Mock the cached bot instance directly
-    mock_bot = AsyncMock()
-    mock_bot.send_message = AsyncMock()
-    notification_service._telegram_bot = mock_bot
+    # Mock the telegram channel's send method
+    mock_channel = AsyncMock()
+    mock_channel.send = AsyncMock(return_value=True)
+    notification_service._telegram_channel = mock_channel
+    notification_service.telegram_enabled = True
 
     await notification_service.notify_waitlist_success(details)
 
-    # Verify send_message was called
-    assert mock_bot.send_message.called
+    # Verify send was called (notify_waitlist_success calls send_notification which calls _telegram_channel.send)
+    assert mock_channel.send.called
 
 
 @pytest.mark.asyncio
@@ -351,15 +352,23 @@ async def test_notify_waitlist_success_with_screenshot(notification_service, tmp
         "total_amount": "100 EUR",
     }
 
-    # Mock the cached bot instance directly
-    mock_bot = AsyncMock()
-    mock_bot.send_photo = AsyncMock()
-    notification_service._telegram_bot = mock_bot
+    # Mock the telegram channel and its client
+    mock_client = AsyncMock()
+    mock_client.send_photo = AsyncMock(return_value=True)
+    mock_client.TELEGRAM_CAPTION_LIMIT = 1024
+    
+    mock_channel = MagicMock()
+    mock_channel._get_or_create_client = MagicMock(return_value=mock_client)
+    mock_channel._config = MagicMock()
+    mock_channel._config.chat_id = "test_chat_id"
+    
+    notification_service._telegram_channel = mock_channel
+    notification_service.telegram_enabled = True
 
     await notification_service.notify_waitlist_success(details, str(screenshot_file))
 
     # Verify send_photo was called
-    mock_bot.send_photo.assert_called_once()
+    mock_client.send_photo.assert_called_once()
 
 
 @pytest.mark.asyncio

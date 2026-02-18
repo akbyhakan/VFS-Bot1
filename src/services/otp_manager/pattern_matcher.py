@@ -59,6 +59,7 @@ SMS_OTP_PATTERNS: List[str] = [
     # --- Keyword-based patterns (most specific, checked first) ---
     r"(?:verification|doğrulama)\s*(?:code|kodu?)?[:\s]+(\d{4,6})",
     r"(?:OTP|one.time)\s*(?:code|password)?[:\s]+(\d{4,6})",
+    r"(?:passcode|pass\s*code)\s*(?:is)?[:\s]+(\d{4,6})",
     r"(?:code|kod|şifre)[:\s]+(\d{4,6})",
     r"VFS[^0-9]{0,20}(\d{4,6})",  # VFS-specific context
     # --- Bare digit fallbacks (least specific, checked last) ---

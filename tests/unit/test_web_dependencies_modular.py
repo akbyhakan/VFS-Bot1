@@ -83,9 +83,9 @@ class TestWebDependenciesModularStructure:
         assert manager is not None
         assert metrics is not None
 
-        # Verify they're the right types
-        assert hasattr(bot_state, "get")
-        assert hasattr(bot_state, "set")
+        # Verify they're the right types - use actual typed API methods
+        assert hasattr(bot_state, "get_running")
+        assert hasattr(bot_state, "set_running")
         assert hasattr(manager, "broadcast")
         assert hasattr(metrics, "increment")
 
