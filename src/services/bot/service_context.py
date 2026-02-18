@@ -7,9 +7,12 @@ reducing complexity and improving testability by organizing related services int
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from ...core.infra.runners import BotConfigDict
 
 from src.core.rate_limiting import get_rate_limiter
 from src.selector import SelectorSelfHealing
@@ -172,7 +175,7 @@ class BotServiceFactory:
     """
 
     @staticmethod
-    def create_anti_detection(config: Dict[str, Any]) -> AntiDetectionContext:
+    def create_anti_detection(config: "BotConfigDict") -> AntiDetectionContext:
         """
         Create anti-detection context from configuration.
 
@@ -182,14 +185,16 @@ class BotServiceFactory:
         Returns:
             AntiDetectionContext with initialized services or None placeholders
         """
-        anti_detection_config = config.get("anti_detection", {})
+        # Cast to Dict[str, Any] for flexible key access
+        config_dict = cast(Dict[str, Any], config)
+        anti_detection_config = config_dict.get("anti_detection", {})
         enabled = anti_detection_config.get("enabled", True)
 
         if enabled:
-            human_sim = HumanSimulator(config.get("human_behavior", {}))
+            human_sim = HumanSimulator(config_dict.get("human_behavior", {}))
             header_manager = HeaderManager()
 
-            session_config = config.get("session", {})
+            session_config = config_dict.get("session", {})
             session_manager = SessionManager(
                 session_file=session_config.get("save_file", "data/session.json"),
                 token_refresh_buffer=session_config.get("token_refresh_buffer", 5),
@@ -201,8 +206,8 @@ class BotServiceFactory:
                 token_refresh_buffer_minutes=session_config.get("token_refresh_buffer", 5),
             )
 
-            cloudflare_handler = CloudflareHandler(config.get("cloudflare", {}))
-            proxy_manager = ProxyManager(config.get("proxy", {}))
+            cloudflare_handler = CloudflareHandler(config_dict.get("cloudflare", {}))
+            proxy_manager = ProxyManager(config_dict.get("proxy", {}))
 
             logger.info("Anti-detection features initialized")
         else:
@@ -226,7 +231,7 @@ class BotServiceFactory:
 
     @staticmethod
     def create_core_services(
-        config: Dict[str, Any],
+        config: "BotConfigDict",
         captcha_solver: Optional[CaptchaSolver] = None,
         centre_fetcher: Optional[CentreFetcher] = None,
     ) -> CoreServicesContext:
@@ -244,13 +249,15 @@ class BotServiceFactory:
         Raises:
             ValueError: If required VFS configuration fields are missing
         """
+        # Cast to Dict[str, Any] for flexible key access
+        config_dict = cast(Dict[str, Any], config)
         user_semaphore = asyncio.Semaphore(RateLimits.CONCURRENT_USERS)
         rate_limiter = get_rate_limiter()
         error_capture = ErrorCapture()
         otp_service = get_otp_service()
 
         # Create or use provided captcha solver
-        captcha_config = config.get("captcha", {})
+        captcha_config = config_dict.get("captcha", {})
         if captcha_solver is None:
             api_key = captcha_config.get("api_key", "")
             if not api_key:
@@ -261,7 +268,7 @@ class BotServiceFactory:
             captcha_solver = CaptchaSolver(api_key=api_key)
 
         # Create or use provided centre fetcher
-        vfs_config = config.get("vfs", {})
+        vfs_config = config_dict.get("vfs", {})
         if centre_fetcher is None:
             # Validate required VFS configuration fields
             required_fields = ["base_url", "country", "mission"]
@@ -292,7 +299,7 @@ class BotServiceFactory:
 
     @staticmethod
     def create_workflow_services(
-        config: Dict[str, Any],
+        config: "BotConfigDict",
         anti_detection: AntiDetectionContext,
         core: CoreServicesContext,
     ) -> WorkflowServicesContext:
@@ -307,8 +314,10 @@ class BotServiceFactory:
         Returns:
             WorkflowServicesContext with all workflow services
         """
+        # Cast to Dict[str, Any] for flexible key access
+        config_dict = cast(Dict[str, Any], config)
         # Initialize PaymentService with PCI-DSS security controls
-        payment_config = config.get("payment", {})
+        payment_config = config_dict.get("payment", {})
         payment_service = None
         try:
             from ..payment_service import PaymentService
@@ -320,7 +329,7 @@ class BotServiceFactory:
             logger.warning(f"PaymentService not available: {e}")
 
         # Initialize AlertService for critical notifications
-        alert_config_dict = config.get("alerts", {})
+        alert_config_dict = config_dict.get("alerts", {})
         alert_service = None
         try:
             # Parse enabled channels from config
@@ -343,18 +352,18 @@ class BotServiceFactory:
 
         # Create booking service
         booking_service = BookingOrchestrator(
-            config, core.captcha_solver, anti_detection.human_sim, payment_service
+            config_dict, core.captcha_solver, anti_detection.human_sim, payment_service
         )
 
         # Create waitlist handler
-        waitlist_handler = WaitlistHandler(config, anti_detection.human_sim)
+        waitlist_handler = WaitlistHandler(config_dict, anti_detection.human_sim)
 
         # Create error handler
         error_handler = ErrorHandler()
 
         # Create auth service
         auth_service = AuthService(
-            config,
+            config_dict,
             core.captcha_solver,
             anti_detection.human_sim,
             anti_detection.cloudflare_handler,
@@ -364,19 +373,19 @@ class BotServiceFactory:
 
         # Create page state detector
         page_state_detector = PageStateDetector(
-            config=config,
+            config=config_dict,
             cloudflare_handler=anti_detection.cloudflare_handler,
         )
 
         # Get selector manager for country-aware selectors
         from src.selector import get_selector_manager
 
-        country = config.get("vfs", {}).get("mission", "default")
+        country = config_dict.get("vfs", {}).get("mission", "default")
         selector_manager = get_selector_manager(country)
 
         # Create slot checker with selector manager injection
         slot_checker = SlotChecker(
-            config,
+            config_dict,
             core.rate_limiter,
             anti_detection.human_sim,
             anti_detection.cloudflare_handler,
@@ -397,7 +406,7 @@ class BotServiceFactory:
         )
 
     @staticmethod
-    def create_automation_services(config: Dict[str, Any]) -> AutomationServicesContext:
+    def create_automation_services(config: "BotConfigDict") -> AutomationServicesContext:
         """
         Create automation services context from configuration.
 
@@ -407,11 +416,13 @@ class BotServiceFactory:
         Returns:
             AutomationServicesContext with all automation services
         """
+        # Cast to Dict[str, Any] for flexible key access
+        config_dict = cast(Dict[str, Any], config)
         # Country profile loader
         country_profiles = CountryProfileLoader()
 
         # Get country from config
-        vfs_config = config.get("vfs", {})
+        vfs_config = config_dict.get("vfs", {})
         country_code = vfs_config.get("country", "tur")
 
         # Adaptive scheduler with country-specific multiplier
@@ -444,7 +455,7 @@ class BotServiceFactory:
 
     @staticmethod
     def create(
-        config: Dict[str, Any],
+        config: "BotConfigDict",
         captcha_solver: Optional[CaptchaSolver] = None,
         centre_fetcher: Optional[CentreFetcher] = None,
     ) -> BotServiceContext:

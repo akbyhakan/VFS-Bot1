@@ -1,10 +1,13 @@
 """Browser lifecycle and context management for VFS automation."""
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 
 from loguru import logger
 from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
+
+if TYPE_CHECKING:
+    from ...core.infra.runners import BotConfigDict
 
 from ...utils.anti_detection.fingerprint_bypass import FingerprintBypass
 from ...utils.anti_detection.fingerprint_rotator import FingerprintRotator
@@ -18,7 +21,7 @@ class BrowserManager:
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: Union["BotConfigDict", Dict[str, Any]],
         header_manager: Optional[HeaderManager] = None,
         proxy_manager: Optional[ProxyManager] = None,
     ):
@@ -30,23 +33,24 @@ class BrowserManager:
             header_manager: Optional HeaderManager instance for custom headers
             proxy_manager: Optional ProxyManager instance for proxy configuration
         """
-        self.config = config
+        # Cast to Dict[str, Any] for flexible key access
+        self.config = cast(Dict[str, Any], config)
         self.header_manager = header_manager
         self.proxy_manager = proxy_manager
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.playwright: Optional[Playwright] = None
-        self._anti_detection_enabled = config.get("anti_detection", {}).get("enabled", True)
+        self._anti_detection_enabled = self.config.get("anti_detection", {}).get("enabled", True)
         self._page_count: int = 0
-        self._max_pages_before_restart: int = config.get("bot", {}).get(
+        self._max_pages_before_restart: int = self.config.get("bot", {}).get(
             "browser_restart_after_pages", 100
         )
 
         # Initialize fingerprint rotator
         self._fingerprint_rotator: Optional[FingerprintRotator] = None
         if self._anti_detection_enabled:
-            rotation_pages = config.get("anti_detection", {}).get("fingerprint_rotation_pages", 50)
-            rotation_minutes = config.get("anti_detection", {}).get(
+            rotation_pages = self.config.get("anti_detection", {}).get("fingerprint_rotation_pages", 50)
+            rotation_minutes = self.config.get("anti_detection", {}).get(
                 "fingerprint_rotation_minutes", 30
             )
             self._fingerprint_rotator = FingerprintRotator(
