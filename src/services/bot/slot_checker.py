@@ -185,20 +185,34 @@ class SlotChecker:
                     "appointment.slot_capacity", ".slot-capacity"
                 )
 
-                # Get first available slot with specific TimeoutError handling
+                # Get first available slot
+                date_content = None
+                time_content = None
                 try:
-                    date_content = await page.locator(date_selector).first.text_content(timeout=5000)
-                    time_content = await page.locator(time_selector).first.text_content(timeout=5000)
+                    date_content = await page.locator(date_selector).first.text_content()
                 except Exception as e:
                     # Handle TimeoutError specifically for better debugging
                     error_name = type(e).__name__
                     if "TimeoutError" in error_name or "Timeout" in str(e):
                         logger.warning(
-                            "Slot element found but could not read date/time content "
+                            "Slot date element found but could not read content "
                             "(element may have disappeared or timed out)"
                         )
                     else:
-                        logger.error(f"Error reading slot date/time content: {e}")
+                        logger.error(f"Error reading slot date content: {e}")
+                    return None
+                
+                try:
+                    time_content = await page.locator(time_selector).first.text_content()
+                except Exception as e:
+                    error_name = type(e).__name__
+                    if "TimeoutError" in error_name or "Timeout" in str(e):
+                        logger.warning(
+                            "Slot time element found but could not read content "
+                            "(element may have disappeared or timed out)"
+                        )
+                    else:
+                        logger.error(f"Error reading slot time content: {e}")
                     return None
 
                 date = date_content.strip() if date_content else ""
