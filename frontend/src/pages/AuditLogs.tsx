@@ -376,7 +376,7 @@ export default function AuditLogs() {
                     ),
                 },
                 {
-                  key: 'id',
+                  key: 'actions',
                   header: 'İşlemler',
                   className: 'text-right',
                   render: (log) => (
