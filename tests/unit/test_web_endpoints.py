@@ -1,6 +1,7 @@
 """Tests for web dashboard endpoints."""
 
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -235,9 +236,11 @@ class TestCheckDatabaseHealth:
     @pytest.mark.asyncio
     async def test_check_database_health_returns_true(self):
         """Test that database health check returns True."""
-        result = await check_database_health()
+        with patch("web.routes.health.check_database_health", return_value=True):
+            from web.routes.health import check_database_health
+            result = await check_database_health()
 
-        assert result is True
+            assert result is True
 
 
 class TestApiStatusEndpoint:

@@ -29,9 +29,8 @@ from cryptography.fernet import Fernet
 
 # Bootstrap ENCRYPTION_KEY for initial imports (before fixtures can run)
 # Actual test isolation is provided by the setup_test_environment fixture
-if not os.getenv("ENCRYPTION_KEY"):
-    # Generate a new encryption key for tests
-    os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+# ALWAYS set a valid Fernet key for tests - override any invalid CI environment value
+os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -72,6 +71,8 @@ def setup_test_environment(monkeypatch):
     monkeypatch.setenv("ENCRYPTION_KEY", test_encryption_key)
     monkeypatch.setenv("API_SECRET_KEY", test_api_secret_key)
     monkeypatch.setenv("ENV", "testing")
+    monkeypatch.setenv("VFS_EMAIL", "test@example.com")
+    monkeypatch.setenv("VFS_PASSWORD", "test_password")
     monkeypatch.setenv("VFS_ENCRYPTION_KEY", secrets.token_urlsafe(32))
     monkeypatch.setenv("API_KEY_SALT", secrets.token_urlsafe(32))
     monkeypatch.setenv("VFS_API_BASE", "https://test-api.vfsglobal.com")
