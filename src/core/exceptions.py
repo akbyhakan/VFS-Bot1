@@ -39,7 +39,7 @@ class VFSBotError(Exception):
         if class_name.endswith("Error"):
             class_name = class_name[:-5]
         # Insert hyphens before uppercase letters and convert to lowercase
-        kebab_case = re.sub(r'(?<!^)(?=[A-Z])', '-', class_name).lower()
+        kebab_case = re.sub(r"(?<!^)(?=[A-Z])", "-", class_name).lower()
         return f"urn:vfsbot:error:{kebab_case}"
 
     @property
@@ -52,7 +52,7 @@ class VFSBotError(Exception):
         """
         class_name = self.__class__.__name__
         # Insert spaces before uppercase letters
-        spaced = re.sub(r'(?<!^)(?=[A-Z])', ' ', class_name)
+        spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", class_name)
         return spaced
 
     def to_dict(self) -> Dict[str, Any]:

@@ -107,9 +107,7 @@ class TelegramClient:
         backoff=2.0,
         exceptions=(ConnectionError, TimeoutError, OSError),
     )
-    async def send_message(
-        self, chat_id: str, text: str, parse_mode: str = "Markdown"
-    ) -> bool:
+    async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
         """
         Send a text message via Telegram with automatic message splitting.
 
@@ -127,9 +125,7 @@ class TelegramClient:
 
             # Send all chunks
             for chunk in message_chunks:
-                await self._bot.send_message(
-                    chat_id=chat_id, text=chunk, parse_mode=parse_mode
-                )
+                await self._bot.send_message(chat_id=chat_id, text=chunk, parse_mode=parse_mode)
 
             logger.debug(f"Telegram message sent successfully ({len(message_chunks)} chunk(s))")
             return True
@@ -177,9 +173,7 @@ class TelegramClient:
             # Truncate caption if it exceeds limit
             final_caption = caption
             if caption and len(caption) > self.TELEGRAM_CAPTION_LIMIT:
-                logger.warning(
-                    f"Caption exceeds {self.TELEGRAM_CAPTION_LIMIT} chars, truncating"
-                )
+                logger.warning(f"Caption exceeds {self.TELEGRAM_CAPTION_LIMIT} chars, truncating")
                 final_caption = caption[: self.TELEGRAM_CAPTION_LIMIT - 3] + "..."
 
             with open(photo_file, "rb") as photo:

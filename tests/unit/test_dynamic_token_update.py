@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 
+from src.core.rate_limiting import EndpointRateLimiter
 from src.services.vfs.auth import VFSAuth
 from src.services.vfs.booking import VFSBooking
 from src.services.vfs.models import VFSSession
 from src.services.vfs.slots import VFSSlots
-from src.core.rate_limiting import EndpointRateLimiter
 
 
 class TestVFSAuthTokenUpdate:

@@ -155,16 +155,26 @@ async def test_run_booking_flow_includes_otp_step(orchestrator, mock_page):
     }
 
     # Mock all dependencies
-    with patch.object(orchestrator.validator, "check_double_match", new=AsyncMock(return_value={"match": True})):
+    with patch.object(
+        orchestrator.validator, "check_double_match", new=AsyncMock(return_value={"match": True})
+    ):
         with patch.object(orchestrator.form_filler, "fill_all_applicants", new=AsyncMock()):
-            with patch.object(orchestrator, "_handle_booking_otp_if_present", new=AsyncMock(return_value=True)) as mock_otp:
-                with patch.object(orchestrator.slot_selector, "select_appointment_slot", new=AsyncMock(return_value=True)):
+            with patch.object(
+                orchestrator, "_handle_booking_otp_if_present", new=AsyncMock(return_value=True)
+            ) as mock_otp:
+                with patch.object(
+                    orchestrator.slot_selector,
+                    "select_appointment_slot",
+                    new=AsyncMock(return_value=True),
+                ):
                     with patch.object(orchestrator, "skip_services_page", new=AsyncMock()):
                         with patch.object(orchestrator, "handle_review_and_pay", new=AsyncMock()):
                             with patch.object(orchestrator, "wait_for_overlay", new=AsyncMock()):
                                 mock_page.click = AsyncMock()
                                 orchestrator.payment_service = AsyncMock()
-                                orchestrator.payment_service.process_payment = AsyncMock(return_value=True)
+                                orchestrator.payment_service.process_payment = AsyncMock(
+                                    return_value=True
+                                )
 
                                 result = await orchestrator.run_booking_flow(mock_page, reservation)
 
@@ -187,7 +197,9 @@ async def test_run_booking_flow_fails_early_without_payment_service(orchestrator
     orchestrator.payment_service = None
 
     # Mock validator to verify it's NOT called (early failure)
-    with patch.object(orchestrator.validator, "check_double_match", new=AsyncMock()) as mock_validator:
+    with patch.object(
+        orchestrator.validator, "check_double_match", new=AsyncMock()
+    ) as mock_validator:
         # Should return False due to ValueError being caught
         result = await orchestrator.run_booking_flow(mock_page, reservation)
 
@@ -196,7 +208,6 @@ async def test_run_booking_flow_fails_early_without_payment_service(orchestrator
 
         # Verify that double_match check was NOT called (failed early)
         mock_validator.assert_not_called()
-
 
 
 # ──────────────────────────────────────────────────────────────
@@ -211,9 +222,7 @@ async def test_select_appointment_slot_captcha_not_handled(orchestrator, mock_pa
 
     # Mock handle_captcha_if_present to return False (captcha failed)
     with patch.object(
-        orchestrator.slot_selector,
-        "handle_captcha_if_present",
-        new=AsyncMock(return_value=False)
+        orchestrator.slot_selector, "handle_captcha_if_present", new=AsyncMock(return_value=False)
     ) as mock_captcha:
         with patch.object(orchestrator.slot_selector, "wait_for_overlay", new=AsyncMock()):
             result = await orchestrator.slot_selector.select_appointment_slot(
@@ -243,15 +252,13 @@ async def test_select_appointment_slot_captcha_handled(orchestrator, mock_page):
 
     # Mock handle_captcha_if_present to return True (captcha handled or not present)
     with patch.object(
-        orchestrator.slot_selector,
-        "handle_captcha_if_present",
-        new=AsyncMock(return_value=True)
+        orchestrator.slot_selector, "handle_captcha_if_present", new=AsyncMock(return_value=True)
     ) as mock_captcha:
         with patch.object(orchestrator.slot_selector, "wait_for_overlay", new=AsyncMock()):
             with patch.object(
                 orchestrator.slot_selector,
                 "select_preferred_time",
-                new=AsyncMock(return_value=True)
+                new=AsyncMock(return_value=True),
             ):
                 result = await orchestrator.slot_selector.select_appointment_slot(
                     mock_page, reservation
@@ -270,46 +277,48 @@ async def test_select_appointment_slot_captcha_handled(orchestrator, mock_page):
 @pytest.mark.asyncio
 async def test_vfs_bot_deep_copy_config():
     """Test that VFSBot uses deep copy for config to prevent mutation."""
-    from unittest.mock import MagicMock, patch
     import copy
-    
+    from unittest.mock import MagicMock, patch
+
     # Create config with nested dict
     original_config = {
         "bot": {"setting1": "value1"},
         "anti_detection": {"setting2": "value2"},
-        "vfs": {"base_url": "https://test.com"}
+        "vfs": {"base_url": "https://test.com"},
     }
-    
+
     # Mock dependencies
     mock_db = MagicMock()
     mock_notifier = MagicMock()
-    
-    with patch('src.services.bot.vfs_bot.BotServiceFactory') as mock_factory, \
-         patch('src.services.bot.vfs_bot.BrowserManager') as mock_browser_manager:
-        
+
+    with (
+        patch("src.services.bot.vfs_bot.BotServiceFactory") as mock_factory,
+        patch("src.services.bot.vfs_bot.BrowserManager") as mock_browser_manager,
+    ):
+
         # Mock the service factory to return a mock service context
         mock_services = MagicMock()
         mock_services.anti_detection.header_manager = MagicMock()
         mock_services.anti_detection.proxy_manager = MagicMock()
         mock_factory.create.return_value = mock_services
-        
+
         # Import and instantiate VFSBot
         from src.services.bot.vfs_bot import VFSBot
-        
+
         bot = VFSBot(
             config=original_config,
             db=mock_db,
             notifier=mock_notifier,
-            services=mock_services  # Pass services to avoid BotServiceFactory.create call
+            services=mock_services,  # Pass services to avoid BotServiceFactory.create call
         )
-        
+
         # Verify BrowserManager was called with a deep-copied config
         # Get the config passed to BrowserManager
         browser_config_call = mock_browser_manager.call_args[0][0]
-        
+
         # Modify original config's nested dict
         original_config["bot"]["setting1"] = "MODIFIED"
-        
+
         # The config passed to BrowserManager should not be affected by the mutation
         # This verifies that copy.deepcopy was used, not dict() shallow copy
         # Note: bot.config stores the original (not deep copied), but what matters is
@@ -317,4 +326,3 @@ async def test_vfs_bot_deep_copy_config():
         assert bot.config["bot"]["setting1"] == "MODIFIED"  # bot.config = config (not copied)
         # The real test is that the code uses copy.deepcopy() in the calls,
         # which prevents unintended mutations in BotServiceFactory and BrowserManager
-

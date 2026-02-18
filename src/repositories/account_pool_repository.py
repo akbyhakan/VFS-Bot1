@@ -52,13 +52,13 @@ class AccountPoolRepository(BaseRepository):
     async def get_available_accounts(self) -> List[Dict[str, Any]]:
         """
         Get all available accounts (not in cooldown or quarantine).
-        
+
         Returns accounts where:
         - status = 'available'
         - cooldown_until is NULL or in the past
         - quarantine_until is NULL or in the past
         - is_active = TRUE
-        
+
         Sorted by last_used_at ASC (LRU - least recently used first).
 
         Returns:
@@ -93,7 +93,9 @@ class AccountPoolRepository(BaseRepository):
 
             return accounts
 
-    async def get_account_by_id(self, account_id: int, decrypt: bool = True) -> Optional[Dict[str, Any]]:
+    async def get_account_by_id(
+        self, account_id: int, decrypt: bool = True
+    ) -> Optional[Dict[str, Any]]:
         """
         Get account by ID.
 

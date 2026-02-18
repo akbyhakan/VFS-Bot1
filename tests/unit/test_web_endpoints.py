@@ -281,8 +281,9 @@ class TestWebSocketAuthentication:
 
     def test_websocket_query_param_auth(self, client):
         """Test WebSocket connection with query parameter authentication and deprecation warning."""
-        from src.core.auth import create_access_token
         from unittest.mock import patch
+
+        from src.core.auth import create_access_token
 
         # Create a valid token
         token = create_access_token({"sub": "test_user"})
@@ -339,10 +340,11 @@ class TestRFC7807ErrorResponses:
     def test_error_response_content_type(self, client):
         """Test that error responses have Content-Type: application/problem+json."""
         # Trigger a validation error by sending invalid data
-        from src.core.exceptions import ValidationError
-        from web.app import create_app
         from fastapi import FastAPI, Request
+
+        from src.core.exceptions import ValidationError
         from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.app import create_app
 
         # Create a simple endpoint that raises ValidationError
         app = create_app(run_security_validation=False, env_override="testing")

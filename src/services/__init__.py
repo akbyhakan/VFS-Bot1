@@ -1,7 +1,7 @@
 """Business logic services module."""
 
 import importlib as _importlib
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .bot.vfs_bot import VFSBot as VFSBot

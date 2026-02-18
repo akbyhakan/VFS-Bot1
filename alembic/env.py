@@ -27,18 +27,17 @@ target_metadata = None
 def get_url() -> str:
     """
     Get database URL from environment variable.
-    
+
     Converts postgresql:// to postgresql+asyncpg:// for async support.
     """
     database_url = os.getenv(
-        "DATABASE_URL",
-        os.getenv("TEST_DATABASE_URL", "postgresql://localhost/vfs_bot")
+        "DATABASE_URL", os.getenv("TEST_DATABASE_URL", "postgresql://localhost/vfs_bot")
     )
-    
+
     # Convert to asyncpg driver if needed
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    
+
     return database_url
 
 
@@ -77,13 +76,13 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """
     Run migrations in async mode.
-    
+
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_url()
-    
+
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",

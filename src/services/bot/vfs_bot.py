@@ -8,13 +8,12 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from loguru import logger
 from playwright.async_api import Page
 
-from ...constants import AccountPoolConfig, CircuitBreakerConfig
-from ...constants import Intervals, Timeouts
+from ...constants import AccountPoolConfig, CircuitBreakerConfig, Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
-from ..session.account_pool import AccountPool
 from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
+from ..session.account_pool import AccountPool
 from ..session.session_orchestrator import SessionOrchestrator
 from .booking_dependencies import BookingDependencies, InfraServices, WorkflowServices
 from .booking_workflow import BookingWorkflow
@@ -71,7 +70,7 @@ class VFSBot:
 
         # Track if stop() has been called to make it idempotent
         self._stopped: bool = False
-        
+
         # Track if cleanup() has been called to make it idempotent
         self._cleaned_up: bool = False
 
@@ -114,7 +113,7 @@ class VFSBot:
             session_recovery=self.services.automation.session_recovery,
             alert_service=self.services.workflow.alert_service,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=self.browser_manager,
             header_manager=self.services.anti_detection.header_manager,
@@ -122,12 +121,12 @@ class VFSBot:
             human_sim=self.services.anti_detection.human_sim,
             error_capture=self.services.core.error_capture,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         self.booking_workflow = BookingWorkflow(
             config=self.config,
             db=self.db,
@@ -520,7 +519,7 @@ class VFSBot:
 
                 # Load accounts from pool (initialization check)
                 account_count = await self.account_pool.load_accounts()
-                
+
                 if account_count == 0:
                     logger.warning("No available accounts in pool - waiting before retry")
                     # Wait for accounts to become available or cooldown to expire

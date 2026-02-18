@@ -20,7 +20,8 @@ if TYPE_CHECKING:
 class BookingExecutor:
     """Executes booking flows and confirms appointments."""
 
-    def __init__(self,
+    def __init__(
+        self,
         db: "Database",
         notifier: "NotificationService",
         deps: "BookingDependencies",
@@ -79,9 +80,7 @@ class BookingExecutor:
         final_category = category or user["category"]
         final_subcategory = subcategory or user["subcategory"]
 
-        success = await self.deps.workflow.booking_service.run_booking_flow(
-            page, dict(reservation)
-        )
+        success = await self.deps.workflow.booking_service.run_booking_flow(page, dict(reservation))
 
         if success:
             # Verify booking confirmation and extract reference number
@@ -90,8 +89,10 @@ class BookingExecutor:
             # It is accessed via BookingOrchestrator.validator attribute.
             reference = "CONFIRMED"
             try:
-                confirmation = await self.deps.workflow.booking_service.validator.verify_booking_confirmation(
-                    page
+                confirmation = (
+                    await self.deps.workflow.booking_service.validator.verify_booking_confirmation(
+                        page
+                    )
                 )
                 if confirmation.get("success"):
                     reference = confirmation.get("reference") or "CONFIRMED"
@@ -151,9 +152,7 @@ class BookingExecutor:
                 user["id"]
             )
             if appointment_request:
-                await self.appointment_request_repo.update_status(
-                    appointment_request.id, "booked"
-                )
+                await self.appointment_request_repo.update_status(appointment_request.id, "booked")
 
             # Clear recovery checkpoint after successful booking
             self.deps.workflow.session_recovery.clear_checkpoint()

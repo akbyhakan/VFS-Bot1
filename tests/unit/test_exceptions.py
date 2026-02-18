@@ -369,10 +369,10 @@ def test_error_type_uri_property():
     """Test that error_type_uri property works correctly with re module at top."""
     error = RateLimitError()
     assert error.error_type_uri == "urn:vfsbot:error:rate-limit"
-    
+
     login_error = LoginError()
     assert login_error.error_type_uri == "urn:vfsbot:error:login"
-    
+
     booking_error = BookingError()
     assert booking_error.error_type_uri == "urn:vfsbot:error:booking"
 
@@ -381,10 +381,10 @@ def test_title_property():
     """Test that title property works correctly with re module at top."""
     error = RateLimitError()
     assert error.title == "Rate Limit Error"
-    
+
     login_error = LoginError()
     assert login_error.title == "Login Error"
-    
+
     booking_error = BookingError()
     assert booking_error.title == "Booking Error"
 
@@ -394,15 +394,15 @@ def test_http_status_codes():
     # ValidationError should return 400
     validation_error = ValidationError("Test validation")
     assert validation_error._get_http_status() == 400
-    
+
     # AuthenticationError should return 401
     auth_error = AuthenticationError()
     assert auth_error._get_http_status() == 401
-    
+
     # RateLimitError should return 429
     rate_limit_error = RateLimitError()
     assert rate_limit_error._get_http_status() == 429
-    
+
     # DatabaseError should return 500
     db_error = DatabaseError()
     assert db_error._get_http_status() == 500
@@ -415,10 +415,16 @@ def test_error_type_uri_for_new_exceptions():
     assert SessionBindingError().error_type_uri == "urn:vfsbot:error:session-binding"
     assert CaptchaTimeoutError().error_type_uri == "urn:vfsbot:error:captcha-timeout"
     assert CircuitBreakerOpenError().error_type_uri == "urn:vfsbot:error:circuit-breaker-open"
-    assert MissingEnvironmentVariableError("TEST").error_type_uri == "urn:vfsbot:error:missing-environment-variable"
+    assert (
+        MissingEnvironmentVariableError("TEST").error_type_uri
+        == "urn:vfsbot:error:missing-environment-variable"
+    )
     assert InvalidCredentialsError().error_type_uri == "urn:vfsbot:error:invalid-credentials"
     assert TokenExpiredError().error_type_uri == "urn:vfsbot:error:token-expired"
-    assert InsufficientPermissionsError("admin").error_type_uri == "urn:vfsbot:error:insufficient-permissions"
+    assert (
+        InsufficientPermissionsError("admin").error_type_uri
+        == "urn:vfsbot:error:insufficient-permissions"
+    )
     assert VFSApiError().error_type_uri == "urn:vfsbot:error:v-f-s-api"
     assert VFSAuthenticationError().error_type_uri == "urn:vfsbot:error:v-f-s-authentication"
     assert VFSRateLimitError().error_type_uri == "urn:vfsbot:error:v-f-s-rate-limit"
@@ -430,7 +436,9 @@ def test_error_type_uri_for_new_exceptions():
     assert DatabaseError().error_type_uri == "urn:vfsbot:error:database"
     assert DatabaseConnectionError().error_type_uri == "urn:vfsbot:error:database-connection"
     assert DatabaseNotConnectedError().error_type_uri == "urn:vfsbot:error:database-not-connected"
-    assert DatabasePoolTimeoutError(5.0, 10).error_type_uri == "urn:vfsbot:error:database-pool-timeout"
+    assert (
+        DatabasePoolTimeoutError(5.0, 10).error_type_uri == "urn:vfsbot:error:database-pool-timeout"
+    )
     assert RecordNotFoundError("User", 1).error_type_uri == "urn:vfsbot:error:record-not-found"
     assert PaymentError().error_type_uri == "urn:vfsbot:error:payment"
     assert PaymentCardNotFoundError().error_type_uri == "urn:vfsbot:error:payment-card-not-found"
@@ -488,14 +496,14 @@ def test_to_dict_for_exceptions():
     assert "Invalid field" in error_dict["detail"]
     assert error_dict["recoverable"] is False
     assert "timestamp" in error_dict
-    
+
     # Test DatabaseError
     db_error = DatabaseError("Connection lost")
     db_dict = db_error.to_dict()
     assert db_dict["type"] == "urn:vfsbot:error:database"
     assert db_dict["status"] == 500
     assert db_dict["detail"] == "Connection lost"
-    
+
     # Test RateLimitError
     rate_error = RateLimitError(retry_after=60)
     rate_dict = rate_error.to_dict()
@@ -510,37 +518,33 @@ def test_new_exception_specific_behaviors():
     assert "API_KEY" in missing_env.message
     assert missing_env.details["variable"] == "API_KEY"
     assert missing_env.recoverable is False
-    
+
     # Test DatabasePoolTimeoutError
     pool_error = DatabasePoolTimeoutError(timeout=5.0, pool_size=10)
     assert pool_error.details["timeout"] == 5.0
     assert pool_error.details["pool_size"] == 10
     assert "5.0" in pool_error.message
     assert "10" in pool_error.message
-    
+
     # Test RecordNotFoundError
     not_found = RecordNotFoundError("User", 123)
     assert not_found.details["resource_type"] == "User"
     assert not_found.details["resource_id"] == 123
     assert "User" in not_found.message
     assert "123" in not_found.message
-    
+
     # Test InsufficientPermissionsError
     permissions_error = InsufficientPermissionsError("admin")
     assert permissions_error.details["required_permission"] == "admin"
     assert "admin" in permissions_error.message
-    
+
     # Test OTPTimeoutError
     otp_timeout = OTPTimeoutError(30)
     assert otp_timeout.details["timeout_seconds"] == 30
     assert "30" in otp_timeout.message
-    
+
     # Test BatchOperationError
-    batch_error = BatchOperationError(
-        operation="bulk_insert",
-        failed_count=5,
-        total_count=100
-    )
+    batch_error = BatchOperationError(operation="bulk_insert", failed_count=5, total_count=100)
     assert batch_error.details["operation"] == "bulk_insert"
     assert batch_error.details["failed_count"] == 5
     assert batch_error.details["total_count"] == 100

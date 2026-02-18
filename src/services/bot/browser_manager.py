@@ -41,12 +41,14 @@ class BrowserManager:
         self._max_pages_before_restart: int = config.get("bot", {}).get(
             "browser_restart_after_pages", 100
         )
-        
+
         # Initialize fingerprint rotator
         self._fingerprint_rotator: Optional[FingerprintRotator] = None
         if self._anti_detection_enabled:
             rotation_pages = config.get("anti_detection", {}).get("fingerprint_rotation_pages", 50)
-            rotation_minutes = config.get("anti_detection", {}).get("fingerprint_rotation_minutes", 30)
+            rotation_minutes = config.get("anti_detection", {}).get(
+                "fingerprint_rotation_minutes", 30
+            )
             self._fingerprint_rotator = FingerprintRotator(
                 rotation_interval_pages=rotation_pages,
                 rotation_interval_minutes=rotation_minutes,
@@ -54,11 +56,11 @@ class BrowserManager:
             logger.info(
                 f"FingerprintRotator enabled (rotation: {rotation_pages} pages or {rotation_minutes} minutes)"
             )
-        
+
         # Optional session ID for browser pool support
         self.session_id: Optional[str] = None
         self._last_activity: Optional[datetime] = None
-        
+
         # Deferred rotation flag to prevent state loss during new_page()
         self._needs_rotation: bool = False
 
@@ -90,7 +92,7 @@ class BrowserManager:
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/135.0.0.0 Safari/537.36"
             )
-            
+
             if self._anti_detection_enabled and self._fingerprint_rotator:
                 # Use user agent from current fingerprint profile
                 profile = self._fingerprint_rotator.get_current_profile()
@@ -111,7 +113,7 @@ class BrowserManager:
                 "viewport": {"width": 1920, "height": 1080},
                 "user_agent": user_agent,
             }
-            
+
             # Use viewport from fingerprint profile if available
             if self._anti_detection_enabled and self._fingerprint_rotator:
                 profile = self._fingerprint_rotator.get_current_profile()
@@ -133,11 +135,13 @@ class BrowserManager:
                 pass
             else:
                 # Add basic stealth script for backwards compatibility
-                await self.context.add_init_script("""
+                await self.context.add_init_script(
+                    """
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => undefined
                     });
-                """)
+                """
+                )
 
             logger.info("Browser started successfully")
         except Exception:
@@ -190,11 +194,12 @@ class BrowserManager:
 
         # Increment page count when actually creating a page
         self._page_count += 1
-        
+
         page = await self.context.new_page()
-        
+
         # Track activity
         from datetime import timezone
+
         self._last_activity = datetime.now(timezone.utc)
 
         # Apply anti-detection features if enabled
@@ -207,7 +212,11 @@ class BrowserManager:
 
             if apply_fingerprint_bypass and anti_config.get("fingerprint_bypass", True):
                 # Pass current profile to fingerprint bypass if rotator is enabled
-                profile = self._fingerprint_rotator.get_current_profile() if self._fingerprint_rotator else None
+                profile = (
+                    self._fingerprint_rotator.get_current_profile()
+                    if self._fingerprint_rotator
+                    else None
+                )
                 await FingerprintBypass.apply_all(page, profile=profile)
 
         return page
@@ -225,12 +234,14 @@ class BrowserManager:
             # Clear storage for all pages
             for page in self.context.pages:
                 try:
-                    await page.evaluate("""
+                    await page.evaluate(
+                        """
                         () => {
                             localStorage.clear();
                             sessionStorage.clear();
                         }
-                    """)
+                    """
+                    )
                 except Exception:
                     pass
 
@@ -268,7 +279,7 @@ class BrowserManager:
         if self._needs_rotation:
             logger.info("Browser restart triggered by fingerprint rotation flag")
             return True
-        
+
         if self._page_count >= self._max_pages_before_restart:
             logger.info(
                 f"Browser restart threshold reached ({self._page_count} pages created). "
@@ -281,13 +292,13 @@ class BrowserManager:
         """Restart browser with clean state for memory management."""
         logger.info("Restarting browser for memory management...")
         await self.close()
-        
+
         # Rotate fingerprint on restart if rotator is enabled
         if self._anti_detection_enabled and self._fingerprint_rotator:
             rotation_reason = "deferred rotation" if self._needs_rotation else "restart"
             logger.info(f"Rotating to new fingerprint profile ({rotation_reason})...")
             self._fingerprint_rotator.rotate()
-        
+
         await self.start()
         self._page_count = 0
         self._needs_rotation = False  # Clear rotation flag after restart
@@ -297,7 +308,7 @@ class BrowserManager:
         """Force browser restart on next should_restart() check."""
         self._page_count = self._max_pages_before_restart
         logger.info("Browser restart forced - will restart on next cycle")
-    
+
     @property
     def is_idle(self) -> bool:
         """
@@ -308,11 +319,12 @@ class BrowserManager:
         """
         if self._last_activity is None:
             return False
-        
+
         from datetime import datetime, timedelta, timezone
+
         idle_threshold = timedelta(minutes=10)
         return datetime.now(timezone.utc) - self._last_activity > idle_threshold
-    
+
     @property
     def last_activity(self) -> Optional[Any]:
         """

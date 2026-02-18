@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
 import aiohttp
 from loguru import logger
 
-from ...core.exceptions import VFSApiError, VFSRateLimitError
 from src.core.rate_limiting import EndpointRateLimiter
+
+from ...core.exceptions import VFSApiError, VFSRateLimitError
 from .encryption import get_vfs_api_base
 from .models import BookingResponse
 

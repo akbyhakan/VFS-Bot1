@@ -23,9 +23,9 @@ from ...repositories import (
 from ...types.user import UserDict
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
-from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..appointment_deduplication import get_deduplication_service
 from ..booking import get_selector
+from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
 from .booking_dependencies import BookingDependencies
 from .booking_executor import BookingExecutor
@@ -96,8 +96,6 @@ class BookingWorkflow:
             reservation_builder=self.reservation_builder,
             booking_executor=self.booking_executor,
         )
-
-
 
     async def _login_and_stabilize(
         self, page: Page, email: str, password: str
@@ -193,23 +191,39 @@ class BookingWorkflow:
 
         except LoginError as e:
             return await self._handle_workflow_exception(
-                page, e, account.id, masked_email, "login_fail",
+                page,
+                e,
+                account.id,
+                masked_email,
+                "login_fail",
                 f"Login error for account {masked_email}: {e}",
             )
         except BannedError as e:
             return await self._handle_workflow_exception(
-                page, e, account.id, masked_email, "banned",
+                page,
+                e,
+                account.id,
+                masked_email,
+                "banned",
                 f"Account {masked_email} has been banned: {e}",
             )
         except VFSBotError as e:
             result = "banned" if "banned" in str(e).lower() else "error"
             return await self._handle_workflow_exception(
-                page, e, account.id, masked_email, result,
+                page,
+                e,
+                account.id,
+                masked_email,
+                result,
                 f"VFS error for account {masked_email}: {e}",
             )
         except Exception as e:
             return await self._handle_workflow_exception(
-                page, e, account.id, masked_email, "error",
+                page,
+                e,
+                account.id,
+                masked_email,
+                "error",
                 f"Unexpected error for account {masked_email}: {e}",
                 exc_info=True,
             )

@@ -5,8 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.exceptions import VFSBotError
+from src.services.bot.booking_dependencies import (
+    BookingDependencies,
+    InfraServices,
+    WorkflowServices,
+)
 from src.services.bot.booking_workflow import BookingWorkflow
-from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 from src.utils.error_capture import ErrorCapture
 
 # Add parent directory to path for imports
@@ -34,17 +38,21 @@ class TestBookingWorkflowErrorCapture:
         slot_analyzer = MagicMock()
         session_recovery = MagicMock()
         page_state_detector = MagicMock()
-        page_state_detector.wait_for_stable_state = AsyncMock(return_value=MagicMock(
-            needs_recovery=False,
-            is_on_appointment_page=True,
-            state=MagicMock(name="DASHBOARD"),
-        ))
-        page_state_detector.detect = AsyncMock(return_value=MagicMock(
-            needs_recovery=False,
-            is_on_appointment_page=True,
-            confidence=0.85,
-            state=MagicMock(name="APPOINTMENT_PAGE"),
-        ))
+        page_state_detector.wait_for_stable_state = AsyncMock(
+            return_value=MagicMock(
+                needs_recovery=False,
+                is_on_appointment_page=True,
+                state=MagicMock(name="DASHBOARD"),
+            )
+        )
+        page_state_detector.detect = AsyncMock(
+            return_value=MagicMock(
+                needs_recovery=False,
+                is_on_appointment_page=True,
+                confidence=0.85,
+                state=MagicMock(name="APPOINTMENT_PAGE"),
+            )
+        )
 
         return {
             "config": config,
@@ -63,19 +71,23 @@ class TestBookingWorkflowErrorCapture:
     @pytest.fixture(autouse=True)
     def mock_repositories(self):
         """Automatically patch repository classes for all tests."""
-        with patch("src.services.bot.booking_workflow.AppointmentRepository") as mock_appt_repo, \
-             patch("src.services.bot.booking_workflow.UserRepository") as mock_user_repo, \
-             patch("src.services.bot.booking_workflow.AppointmentRequestRepository") as mock_req_repo:
+        with (
+            patch("src.services.bot.booking_workflow.AppointmentRepository") as mock_appt_repo,
+            patch("src.services.bot.booking_workflow.UserRepository") as mock_user_repo,
+            patch(
+                "src.services.bot.booking_workflow.AppointmentRequestRepository"
+            ) as mock_req_repo,
+        ):
             # Setup default async return values for repository methods
             # Create a mock pending request to allow tests to proceed past the pending check
             mock_pending_request = MagicMock()
             mock_pending_request.person_count = 1
             mock_pending_request.preferred_dates = []
-            
+
             mock_req_instance = MagicMock()
             mock_req_instance.get_pending_for_user = AsyncMock(return_value=mock_pending_request)
             mock_req_repo.return_value = mock_req_instance
-            
+
             yield
 
     def test_init_with_error_capture(self, mock_dependencies):
@@ -93,7 +105,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -101,12 +113,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=error_capture,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -129,7 +141,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -137,12 +149,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -166,7 +178,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -174,12 +186,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -207,7 +219,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -215,12 +227,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=mock_error_capture,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -286,7 +298,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -294,12 +306,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -376,7 +388,7 @@ class TestBookingWorkflowErrorCapture:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -384,12 +396,12 @@ class TestBookingWorkflowErrorCapture:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -406,7 +418,9 @@ class TestBookingWorkflowErrorCapture:
 
         # Setup mocks
         workflow.waitlist_handler.join_waitlist = AsyncMock(return_value=True)
-        workflow.user_repo.get_personal_details = AsyncMock(return_value=None)  # No personal details
+        workflow.user_repo.get_personal_details = AsyncMock(
+            return_value=None
+        )  # No personal details
         workflow.booking_service.fill_all_applicants = AsyncMock()
         workflow.waitlist_handler.accept_review_checkboxes = AsyncMock(return_value=True)
 

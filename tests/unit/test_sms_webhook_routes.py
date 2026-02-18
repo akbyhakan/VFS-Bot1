@@ -103,7 +103,9 @@ class TestSMSWebhookRoutes:
 
         # Mock OTP service
         mock_otp_service = MagicMock()
-        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch(
+            "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
+        ):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         assert response.status_code == 200

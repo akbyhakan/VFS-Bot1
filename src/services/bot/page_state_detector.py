@@ -41,9 +41,9 @@ class PageState(Enum):
     OTP_3D_SECURE = auto()
 
     # Booking OTP states (post-form, country-specific)
-    OTP_BOOKING_GENERATE = auto()    # "OTP Oluştur" button visible
-    OTP_BOOKING_INPUT = auto()       # OTP input field visible, awaiting code
-    OTP_BOOKING_SUCCESS = auto()     # "OTP doğrulaması başarılı" message visible
+    OTP_BOOKING_GENERATE = auto()  # "OTP Oluştur" button visible
+    OTP_BOOKING_INPUT = auto()  # OTP input field visible, awaiting code
+    OTP_BOOKING_SUCCESS = auto()  # "OTP doğrulaması başarılı" message visible
 
     # Error/interruption states
     SESSION_EXPIRED = auto()
@@ -82,11 +82,19 @@ class PageStateResult:
 
     @property
     def is_waiting_for_otp(self) -> bool:
-        return self.state in (PageState.OTP_LOGIN, PageState.OTP_3D_SECURE, PageState.OTP_BOOKING_INPUT)
+        return self.state in (
+            PageState.OTP_LOGIN,
+            PageState.OTP_3D_SECURE,
+            PageState.OTP_BOOKING_INPUT,
+        )
 
     @property
     def is_booking_otp_screen(self) -> bool:
-        return self.state in (PageState.OTP_BOOKING_GENERATE, PageState.OTP_BOOKING_INPUT, PageState.OTP_BOOKING_SUCCESS)
+        return self.state in (
+            PageState.OTP_BOOKING_GENERATE,
+            PageState.OTP_BOOKING_INPUT,
+            PageState.OTP_BOOKING_SUCCESS,
+        )
 
     @property
     def is_loading(self) -> bool:

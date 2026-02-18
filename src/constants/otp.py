@@ -25,8 +25,7 @@ class BookingOTPSelectors:
 
     # Verify button (Turkish and English)
     VERIFY_BUTTON: Final[str] = (
-        'span.mdc-button__label:has-text("Doğrula"), '
-        'span.mdc-button__label:has-text("Verify")'
+        'span.mdc-button__label:has-text("Doğrula"), ' 'span.mdc-button__label:has-text("Verify")'
     )
 
     # Success message (Turkish and English regex)

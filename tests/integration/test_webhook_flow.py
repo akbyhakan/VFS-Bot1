@@ -151,7 +151,9 @@ class TestOTPDeliveryFlow:
 
     def test_otp_service_integration(self, client, mock_otp_service):
         """Test OTP service integration with webhook endpoint."""
-        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch(
+            "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
+        ):
             response = client.post(
                 "/api/webhook/sms", json={"from": "+1234567890", "text": "Your code is 123456"}
             )
@@ -168,7 +170,9 @@ class TestOTPDeliveryFlow:
             "OTP 777666",
         ]
 
-        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch(
+            "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
+        ):
             for message in test_messages:
                 response = client.post(
                     "/api/webhook/sms", json={"from": "+1234567890", "text": message}
@@ -181,7 +185,9 @@ class TestOTPDeliveryFlow:
         """Test handling of duplicate OTP messages."""
         message = {"from": "+1234567890", "text": "Your OTP is: 123456"}
 
-        with patch("src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service):
+        with patch(
+            "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
+        ):
             # Send same OTP twice
             response1 = client.post("/api/webhook/sms", json=message)
             response2 = client.post("/api/webhook/sms", json=message)
@@ -271,9 +277,7 @@ class TestWebhookSecurity:
         signature = hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
 
         with patch.dict("os.environ", {"SMS_WEBHOOK_SECRET": secret, "ENV": "production"}):
-            with patch(
-                "web.routes.webhook.get_webhook_repository", return_value=mock_webhook_repo
-            ):
+            with patch("web.routes.webhook.get_webhook_repository", return_value=mock_webhook_repo):
                 # Request without signature should be rejected
                 response = client.post("/api/webhook/otp/test-token-123", json=payload)
                 assert response.status_code == 401
@@ -291,18 +295,18 @@ class TestWebhookSecurity:
     def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
         """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET is not configured in production."""
         import os
-        
+
         # Remove secret and set production environment
         # Note: empty string is treated the same as missing by the code (checks `not webhook_secret`)
         env_vars = {"ENV": "production"}
         # Remove SMS_WEBHOOK_SECRET from the patched environment
         original_secret = os.environ.get("SMS_WEBHOOK_SECRET")
-        
+
         with patch.dict("os.environ", env_vars, clear=False):
             # Ensure SMS_WEBHOOK_SECRET is not set
             if "SMS_WEBHOOK_SECRET" in os.environ:
                 del os.environ["SMS_WEBHOOK_SECRET"]
-            
+
             try:
                 response = client.post(
                     "/api/webhook/otp/test-token-123", json={"message": "Test OTP"}

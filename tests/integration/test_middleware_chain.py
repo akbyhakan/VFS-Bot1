@@ -364,4 +364,3 @@ class TestHTTPSRedirectMiddleware:
         # Should NOT redirect (already HTTPS via proxy)
         # Will fail auth but should reach the endpoint
         assert response.status_code in [401, 404, 422]
-

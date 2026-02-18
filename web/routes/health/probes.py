@@ -72,9 +72,7 @@ async def health_check() -> Dict[str, Any]:
     health_threshold = float(os.getenv("BOT_HEALTH_THRESHOLD", "50.0"))
     bot_healthy = snapshot.success_rate > health_threshold
 
-    circuit_breaker_healthy = not (
-        snapshot.circuit_breaker_trips > 0 and bot_state.get_running()
-    )
+    circuit_breaker_healthy = not (snapshot.circuit_breaker_trips > 0 and bot_state.get_running())
 
     # Check notification service health
     notification_health = await check_notification_health()

@@ -43,7 +43,9 @@ def handle_errors(
 
     def decorator(func: F) -> F:
         # Determine operation name
-        op_name = operation_name if operation_name is not None else f"{func.__module__}.{func.__name__}"
+        op_name = (
+            operation_name if operation_name is not None else f"{func.__module__}.{func.__name__}"
+        )
 
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -56,7 +58,7 @@ def handle_errors(
                 # VFSBotError always passes through
                 if isinstance(e, VFSBotError):
                     raise
-                
+
                 # CancelledError always passes through
                 if isinstance(e, asyncio.CancelledError):
                     logger.info(f"{op_name} was cancelled")
@@ -65,7 +67,7 @@ def handle_errors(
                 # Log the error
                 log_func = getattr(logger, log_level, logger.error)
                 log_func(f"{op_name} failed: {e}", exc_info=True)
-                
+
                 if reraise:
                     if wrap_error:
                         raise VFSBotError(f"{op_name} failed: {str(e)}") from e
@@ -88,7 +90,7 @@ def handle_errors(
                 # Log the error
                 log_func = getattr(logger, log_level, logger.error)
                 log_func(f"{op_name} failed: {e}", exc_info=True)
-                
+
                 if reraise:
                     if wrap_error:
                         raise VFSBotError(f"{op_name} failed: {str(e)}") from e

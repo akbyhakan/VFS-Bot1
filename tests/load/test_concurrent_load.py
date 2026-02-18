@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 from src.constants import Database as DbConstants
+from src.core.rate_limiting import RateLimiter, reset_rate_limiter
 from src.models.database import Database
 from src.repositories import UserRepository
-from src.core.rate_limiting import RateLimiter, reset_rate_limiter
 
 
 class TestConcurrentLoad:

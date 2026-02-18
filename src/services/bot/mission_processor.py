@@ -45,8 +45,6 @@ class MissionProcessor:
         self.reservation_builder = reservation_builder
         self.booking_executor = booking_executor
 
-
-
     async def process_single_request(
         self, page: Page, user: "UserDict", appointment_request: Any, dedup_service: Any
     ) -> bool:

@@ -6,66 +6,48 @@ from .config.config_loader import load_config
 from .config.config_validator import ConfigValidator
 from .config.config_version_checker import CURRENT_CONFIG_VERSION, check_config_version
 from .config.env_validator import EnvValidator
-from .exceptions import (
-    # Base exception
-    VFSBotError,
-    # Login & Booking
-    LoginError,
-    BookingError,
-    # Captcha
-    CaptchaError,
-    CaptchaTimeoutError,
-    # Slot checking
-    SlotCheckError,
-    # Session
-    SessionError,
-    SessionExpiredError,
-    SessionBindingError,
-    # Network
-    NetworkError,
-    # Selector
-    SelectorNotFoundError,
-    # Rate limiting
-    RateLimitError,
-    # Circuit breaker
-    CircuitBreakerOpenError,
-    # Configuration
-    ConfigurationError,
-    MissingEnvironmentVariableError,
-    # Authentication
+from .exceptions import (  # Base exception; Login & Booking; Captcha; Slot checking; Session; Network; Selector; Rate limiting; Circuit breaker; Configuration; Authentication; VFS API; Validation; Database; Payment; OTP; Shutdown; Batch operations
     AuthenticationError,
-    InvalidCredentialsError,
-    TokenExpiredError,
-    InsufficientPermissionsError,
-    # VFS API
-    VFSApiError,
-    VFSAuthenticationError,
-    VFSRateLimitError,
-    VFSSlotNotFoundError,
-    VFSSessionExpiredError,
-    CaptchaRequiredError,
     BannedError,
-    # Validation
-    ValidationError,
-    # Database
-    DatabaseError,
+    BatchOperationError,
+    BookingError,
+    CaptchaError,
+    CaptchaRequiredError,
+    CaptchaTimeoutError,
+    CircuitBreakerOpenError,
+    ConfigurationError,
     DatabaseConnectionError,
+    DatabaseError,
     DatabaseNotConnectedError,
     DatabasePoolTimeoutError,
-    RecordNotFoundError,
-    # Payment
-    PaymentError,
-    PaymentCardNotFoundError,
-    PaymentProcessingError,
-    PaymentFailedError,
-    # OTP
+    InsufficientPermissionsError,
+    InvalidCredentialsError,
+    LoginError,
+    MissingEnvironmentVariableError,
+    NetworkError,
     OTPError,
-    OTPTimeoutError,
     OTPInvalidError,
-    # Shutdown
+    OTPTimeoutError,
+    PaymentCardNotFoundError,
+    PaymentError,
+    PaymentFailedError,
+    PaymentProcessingError,
+    RateLimitError,
+    RecordNotFoundError,
+    SelectorNotFoundError,
+    SessionBindingError,
+    SessionError,
+    SessionExpiredError,
     ShutdownTimeoutError,
-    # Batch operations
-    BatchOperationError,
+    SlotCheckError,
+    TokenExpiredError,
+    ValidationError,
+    VFSApiError,
+    VFSAuthenticationError,
+    VFSBotError,
+    VFSRateLimitError,
+    VFSSessionExpiredError,
+    VFSSlotNotFoundError,
 )
 from .infra.retry import (
     get_captcha_retry,

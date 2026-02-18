@@ -921,37 +921,37 @@ async def test_pool_stats_method():
     """Test get_pool_stats method returns correct structure."""
     from src.constants import Database as DatabaseConfig
     from src.models.db_connection import DatabaseConnectionManager
-    
+
     test_db_url = DatabaseConfig.TEST_URL
     db = DatabaseConnectionManager(database_url=test_db_url)
-    
+
     try:
         await db.connect()
     except Exception as e:
         pytest.skip(f"PostgreSQL test database not available: {e}")
-    
+
     try:
         # Get pool stats
         stats = db.get_pool_stats()
-        
+
         # Verify structure
         assert "pool_size" in stats
         assert "pool_free" in stats
         assert "pool_used" in stats
         assert "utilization" in stats
-        
+
         # Verify types
         assert isinstance(stats["pool_size"], int)
         assert isinstance(stats["pool_free"], int)
         assert isinstance(stats["pool_used"], int)
         assert isinstance(stats["utilization"], (int, float))
-        
+
         # Verify ranges
         assert stats["pool_size"] > 0
         assert stats["pool_free"] >= 0
         assert stats["pool_used"] >= 0
         assert 0.0 <= stats["utilization"] <= 1.0
-        
+
         # Verify consistency
         assert stats["pool_used"] + stats["pool_free"] <= stats["pool_size"]
     finally:
@@ -962,12 +962,14 @@ async def test_pool_stats_method():
 async def test_pool_stats_without_connection():
     """Test get_pool_stats when pool is not connected."""
     from src.models.db_connection import DatabaseConnectionManager
-    
-    db = DatabaseConnectionManager(database_url="postgresql://test:test@localhost/test", pool_size=10)
-    
+
+    db = DatabaseConnectionManager(
+        database_url="postgresql://test:test@localhost/test", pool_size=10
+    )
+
     # Get stats before connecting
     stats = db.get_pool_stats()
-    
+
     # Should return the configured pool size but zero usage
     assert stats["pool_size"] == 10  # Should match configured size
     assert stats["pool_free"] == 0

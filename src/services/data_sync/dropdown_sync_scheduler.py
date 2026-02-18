@@ -73,7 +73,7 @@ class DropdownSyncScheduler:
 
         This is called by the scheduler. It marks all countries as 'pending'
         so they can be picked up by a background worker.
-        
+
         Note: Actual sync implementation (login, browser automation) would be
         handled by a separate background worker process to avoid blocking.
         """
@@ -85,7 +85,7 @@ class DropdownSyncScheduler:
             for country_code in SUPPORTED_COUNTRIES.keys():
                 # Check current status
                 status = await self.dropdown_cache_repo.get_sync_status(country_code)
-                
+
                 # Skip if already syncing
                 if status and status["sync_status"] == "syncing":
                     logger.info(f"Skipping {country_code} - already syncing")

@@ -14,7 +14,7 @@ from loguru import logger
 
 from src.core.config.config_loader import load_config
 from src.core.config.env_validator import EnvValidator
-from src.core.infra.runners import run_both_mode, run_bot_mode, run_web_mode
+from src.core.infra.runners import run_bot_mode, run_both_mode, run_web_mode
 from src.core.infra.shutdown import setup_signal_handlers
 from src.core.infra.startup import validate_environment, verify_critical_dependencies
 from src.core.infra.startup_validator import log_security_warnings

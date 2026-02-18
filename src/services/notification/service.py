@@ -47,13 +47,9 @@ class NotificationService:
 
         # Legacy compatibility - keep these for backward compatibility
         self._websocket_manager = None
-        self._telegram_client = (
-            self._telegram_channel._client if self._telegram_channel else None
-        )
+        self._telegram_client = self._telegram_channel._client if self._telegram_channel else None
 
-        logger.info(
-            f"NotificationService initialized (Telegram: {self.telegram_enabled})"
-        )
+        logger.info(f"NotificationService initialized (Telegram: {self.telegram_enabled})")
 
     def _get_or_create_telegram_client(self) -> Optional[TelegramClient]:
         """
@@ -151,9 +147,7 @@ class NotificationService:
 
         # If all channels failed and priority is high, increment failure counter
         if all_failed and priority == "high":
-            logger.warning(
-                f"All channels failed for high-priority notification: {title}"
-            )
+            logger.warning(f"All channels failed for high-priority notification: {title}")
             self._failed_high_priority_count += 1
             return False
 

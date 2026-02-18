@@ -47,23 +47,23 @@ class CaptchaSolver:
     def _get_executor(self) -> Optional[ThreadPoolExecutor]:
         """
         Get executor if available and not shutdown.
-        
+
         Returns:
             ThreadPoolExecutor if valid, None otherwise (will use asyncio default executor)
         """
         executor = self._executor
         if executor is None:
             return None
-        
+
         # Check if executor is shutdown by attempting to access _shutdown attribute
         try:
             # If _shutdown is True, the executor has been shut down
-            if hasattr(executor, '_shutdown') and executor._shutdown:
+            if hasattr(executor, "_shutdown") and executor._shutdown:
                 return None
         except Exception:
             # If we can't check, assume it's not usable
             return None
-        
+
         return executor
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
@@ -150,7 +150,7 @@ class CaptchaSolver:
             # Use safe executor check to avoid RuntimeError if executor was shutdown
             loop = asyncio.get_running_loop()
             executor = self._get_executor()
-            
+
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(
@@ -160,7 +160,7 @@ class CaptchaSolver:
                             url=page_url,
                         ),
                     ),
-                    timeout=timeout
+                    timeout=timeout,
                 )
             except asyncio.TimeoutError:
                 logger.error(f"Turnstile solving timeout after {timeout}s")
@@ -171,7 +171,7 @@ class CaptchaSolver:
                 token = str(result["code"])
                 logger.info("Turnstile solved successfully")
                 return token
-            
+
             logger.warning(f"Turnstile returned unexpected result: {result}")
             return None
 
@@ -225,10 +225,10 @@ class CaptchaSolver:
             wait: If True, wait for pending tasks to complete before shutdown
         """
         # Guard against multiple shutdown calls
-        if not hasattr(cls, '_executor') or cls._executor is None:
+        if not hasattr(cls, "_executor") or cls._executor is None:
             logger.debug("Executor already shut down or not initialized")
             return
-        
+
         try:
             cls._executor.shutdown(wait=wait)
             logger.info(f"CaptchaSolver executor shutdown (wait={wait})")

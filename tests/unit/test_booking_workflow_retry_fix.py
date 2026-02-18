@@ -6,8 +6,12 @@ import pytest
 from tenacity import RetryError
 
 from src.core.exceptions import LoginError, VFSBotError
+from src.services.bot.booking_dependencies import (
+    BookingDependencies,
+    InfraServices,
+    WorkflowServices,
+)
 from src.services.bot.booking_workflow import BookingWorkflow
-from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 
 # Add parent directory to path for imports
 
@@ -52,9 +56,11 @@ class TestBookingWorkflowHelperMethods:
     @pytest.fixture(autouse=True)
     def mock_repositories(self):
         """Automatically patch repository classes for all tests."""
-        with patch("src.services.bot.booking_workflow.AppointmentRepository"), \
-             patch("src.services.bot.booking_workflow.UserRepository"), \
-             patch("src.services.bot.booking_workflow.AppointmentRequestRepository"):
+        with (
+            patch("src.services.bot.booking_workflow.AppointmentRepository"),
+            patch("src.services.bot.booking_workflow.UserRepository"),
+            patch("src.services.bot.booking_workflow.AppointmentRequestRepository"),
+        ):
             yield
 
     @pytest.mark.asyncio
@@ -74,7 +80,7 @@ class TestBookingWorkflowHelperMethods:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -82,12 +88,12 @@ class TestBookingWorkflowHelperMethods:
             human_sim=None,
             error_capture=mock_error_capture,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -111,9 +117,7 @@ class TestBookingWorkflowHelperMethods:
         assert call_args[1]["context"]["email"] == "t***@example.com"
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_multi_person(
-        self, mock_dependencies
-    ):
+    async def test_build_reservation_for_user_multi_person(self, mock_dependencies):
         """Test _build_reservation_for_user with multi-person data."""
         workflow_services = WorkflowServices(
             auth_service=mock_dependencies["auth_service"],
@@ -126,7 +130,7 @@ class TestBookingWorkflowHelperMethods:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -134,12 +138,12 @@ class TestBookingWorkflowHelperMethods:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -164,16 +168,16 @@ class TestBookingWorkflowHelperMethods:
             return_value=mock_appointment_request
         )
 
-        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(
+            mock_user, mock_slot
+        )
 
         assert reservation is not None
         assert reservation["person_count"] == 2
         assert len(reservation["persons"]) == 2
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_single_person_fallback(
-        self, mock_dependencies
-    ):
+    async def test_build_reservation_for_user_single_person_fallback(self, mock_dependencies):
         """Test _build_reservation_for_user falls back to single-person flow."""
         workflow_services = WorkflowServices(
             auth_service=mock_dependencies["auth_service"],
@@ -186,7 +190,7 @@ class TestBookingWorkflowHelperMethods:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -194,12 +198,12 @@ class TestBookingWorkflowHelperMethods:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -218,16 +222,16 @@ class TestBookingWorkflowHelperMethods:
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
         workflow.user_repo.get_personal_details = AsyncMock(return_value=mock_details)
 
-        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(
+            mock_user, mock_slot
+        )
 
         assert reservation is not None
         assert reservation["person_count"] == 1
         assert len(reservation["persons"]) == 1
 
     @pytest.mark.asyncio
-    async def test_build_reservation_for_user_no_data(
-        self, mock_dependencies
-    ):
+    async def test_build_reservation_for_user_no_data(self, mock_dependencies):
         """Test _build_reservation_for_user returns None when no data available."""
         workflow_services = WorkflowServices(
             auth_service=mock_dependencies["auth_service"],
@@ -240,7 +244,7 @@ class TestBookingWorkflowHelperMethods:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -248,12 +252,12 @@ class TestBookingWorkflowHelperMethods:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -267,6 +271,8 @@ class TestBookingWorkflowHelperMethods:
         workflow.appointment_request_repo.get_pending_for_user = AsyncMock(return_value=None)
         workflow.user_repo.get_personal_details = AsyncMock(return_value=None)
 
-        reservation = await workflow.reservation_builder.build_reservation_for_user(mock_user, mock_slot)
+        reservation = await workflow.reservation_builder.build_reservation_for_user(
+            mock_user, mock_slot
+        )
 
         assert reservation is None

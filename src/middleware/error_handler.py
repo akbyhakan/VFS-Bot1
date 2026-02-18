@@ -76,7 +76,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             "instance": request.url.path,
             "recoverable": error.recoverable,
         }
-        
+
         # Add extension members from details
         if error.details:
             content.update(error.details)
@@ -101,7 +101,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             "detail": error.message,
             "instance": request.url.path,
         }
-        
+
         # Add field as extension member if present
         if error.field:
             content["field"] = error.field
@@ -170,7 +170,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             "instance": request.url.path,
             "recoverable": True,
         }
-        
+
         # Add retry_after as extension member
         if error.retry_after:
             content["retry_after"] = error.retry_after

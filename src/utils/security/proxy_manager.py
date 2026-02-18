@@ -128,8 +128,6 @@ class ProxyManager:
             logger.error(f"Error parsing proxy '{proxy_string}': {e}")
             return None
 
-
-
     def mark_proxy_failed(self, proxy: Dict[str, Any]) -> None:
         """
         Track failed proxy.
@@ -219,11 +217,11 @@ class ProxyManager:
     def allocate_next(self) -> Optional[Dict[str, Any]]:
         """
         Allocate the next proxy sequentially (deterministic allocation).
-        
+
         This method provides deterministic proxy allocation for multi-mission scenarios,
         ensuring each browser gets a unique proxy in sequential order. The allocation
         index advances with each call and wraps around when reaching the end.
-        
+
         Returns:
             Next proxy dictionary in sequence or None if disabled/no proxies
         """
@@ -232,31 +230,31 @@ class ProxyManager:
 
         total_proxies = len(self.proxies)
         attempts = 0
-        
+
         # Try to find a non-failed proxy, wrapping around if needed
         while attempts < total_proxies:
             # Get proxy at current allocation index
             current_index = self._allocation_index
             proxy = self.proxies[current_index]
-            
+
             # Advance allocation index for next call (with wrap-around)
             self._allocation_index = (self._allocation_index + 1) % total_proxies
-            
+
             # Check if this proxy has failed
             if proxy["server"] not in self.failed_proxies:
                 logger.info(
                     f"Allocated proxy {proxy['server']} (allocation index: {current_index})"
                 )
                 return proxy
-            
+
             # Skip failed proxy and continue
             logger.debug(f"Skipping failed proxy {proxy['server']}")
             attempts += 1
-        
+
         # All proxies have failed, reset failed list and return first proxy
         logger.warning("All proxies marked as failed, resetting failed list")
         self.failed_proxies.clear()
-        
+
         # Reset to first proxy
         self._allocation_index = 1 % total_proxies
         proxy = self.proxies[0]

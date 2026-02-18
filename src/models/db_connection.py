@@ -170,6 +170,7 @@ class DatabaseConnectionManager:
 
                 # Record pool size metric
                 from src.utils.prometheus_metrics import MetricsHelper
+
                 MetricsHelper.set_db_pool_size(self.pool_size)
 
                 # Verify Alembic migration status (only on first connect)
@@ -194,7 +195,7 @@ class DatabaseConnectionManager:
                                     "SELECT version_num FROM alembic_version LIMIT 1"
                                 )
                                 logger.info(f"Database schema at Alembic revision: {current_rev}")
-                        
+
                         # Mark migration as verified after successful check
                         self._migration_verified = True
                     except RuntimeError:
@@ -263,10 +264,11 @@ class DatabaseConnectionManager:
         """
         if self.pool is None:
             raise DatabaseNotConnectedError()
-        
+
         import time
+
         from src.utils.prometheus_metrics import MetricsHelper
-        
+
         start_time = time.time()
         try:
             async with self.pool.acquire(timeout=timeout) as conn:
@@ -370,18 +372,19 @@ class DatabaseConnectionManager:
                 "pool_used": 0,
                 "utilization": 0.0,
             }
-        
+
         pool_total = self.pool.get_size()
         pool_idle = self.pool.get_idle_size()
         pool_used = pool_total - pool_idle
         # Use pool_total (current pool size) as denominator for accurate utilization
         utilization = pool_used / pool_total if pool_total > 0 else 0.0
-        
+
         # Update metrics
         from src.utils.prometheus_metrics import MetricsHelper
+
         MetricsHelper.set_db_pool_idle(pool_idle)
         MetricsHelper.set_db_pool_utilization(utilization)
-        
+
         return {
             "pool_size": self.pool_size,
             "pool_free": pool_idle,

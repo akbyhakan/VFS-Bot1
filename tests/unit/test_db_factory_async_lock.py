@@ -42,11 +42,11 @@ class TestDatabaseFactoryAsyncLock:
         """Test that concurrent ensure_connected calls are properly serialized."""
         mock_db = MagicMock()
         mock_db.pool = None
-        
+
         async def connect_side_effect():
             # Simulate successful connection by setting pool to non-None value
             mock_db.pool = "connection_pool"
-        
+
         mock_db.connect = AsyncMock(side_effect=connect_side_effect)
 
         with patch.object(DatabaseFactory, "get_instance", return_value=mock_db):

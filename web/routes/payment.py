@@ -96,7 +96,9 @@ async def save_payment_card(
             "message": "Payment card saved successfully",
         }
     except ValueError as e:
-        logger.warning("Payment card validation failed for user %s", token_data.get('sub', 'unknown'))
+        logger.warning(
+            "Payment card validation failed for user %s", token_data.get("sub", "unknown")
+        )
         raise HTTPException(status_code=400, detail="Invalid card data format")
     except Exception as e:
         logger.error(f"Failed to save payment card: {e}")
@@ -130,6 +132,3 @@ async def delete_payment_card(
     except Exception as e:
         logger.error(f"Failed to delete payment card: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete payment card")
-
-
-

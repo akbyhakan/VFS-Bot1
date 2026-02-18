@@ -19,9 +19,7 @@ _async_locks: Dict[str, asyncio.Lock] = {}
 _registry_lock = threading.Lock()
 
 
-def get_or_create_sync(
-    key: str, factory: Callable[..., T], *args: Any, **kwargs: Any
-) -> T:
+def get_or_create_sync(key: str, factory: Callable[..., T], *args: Any, **kwargs: Any) -> T:
     """
     Get or create a singleton instance using thread-safe double-checked locking.
 
@@ -59,9 +57,7 @@ def get_or_create_sync(
         return cast(T, _instances[key])
 
 
-async def get_or_create_async(
-    key: str, factory: Callable[..., T], *args: Any, **kwargs: Any
-) -> T:
+async def get_or_create_async(key: str, factory: Callable[..., T], *args: Any, **kwargs: Any) -> T:
     """
     Get or create a singleton instance using async-safe double-checked locking.
 

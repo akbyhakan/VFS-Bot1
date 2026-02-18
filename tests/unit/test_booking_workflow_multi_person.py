@@ -4,8 +4,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.services.bot.booking_dependencies import (
+    BookingDependencies,
+    InfraServices,
+    WorkflowServices,
+)
 from src.services.bot.booking_workflow import BookingWorkflow
-from src.services.bot.booking_dependencies import BookingDependencies, WorkflowServices, InfraServices
 
 # Add parent directory to path for imports
 
@@ -67,7 +71,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -75,12 +79,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -110,7 +114,9 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(
+            appointment_request, slot
+        )
 
         assert reservation["person_count"] == 1
         assert len(reservation["persons"]) == 1
@@ -133,7 +139,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -141,12 +147,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -200,7 +206,9 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "14:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(
+            appointment_request, slot
+        )
 
         assert reservation["person_count"] == 3
         assert len(reservation["persons"]) == 3
@@ -214,7 +222,7 @@ class TestBookingWorkflowMultiPerson:
         """Test building reservation when no payment card is configured."""
         # Remove payment card from config
         mock_dependencies["config"] = {"bot": {"screenshot_on_error": True}}
-        
+
         workflow_services = WorkflowServices(
             auth_service=mock_dependencies["auth_service"],
             slot_checker=mock_dependencies["slot_checker"],
@@ -226,7 +234,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -234,12 +242,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -269,7 +277,9 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(
+            appointment_request, slot
+        )
 
         assert reservation["person_count"] == 1
         assert "payment_card" not in reservation
@@ -287,7 +297,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -295,12 +305,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -346,7 +356,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -354,12 +364,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -390,7 +400,9 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "11:30"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(
+            appointment_request, slot
+        )
 
         # Verify field mapping
         person = reservation["persons"][0]
@@ -412,7 +424,7 @@ class TestBookingWorkflowMultiPerson:
             session_recovery=mock_dependencies["session_recovery"],
             alert_service=None,
         )
-        
+
         infra_services = InfraServices(
             browser_manager=None,
             header_manager=None,
@@ -420,12 +432,12 @@ class TestBookingWorkflowMultiPerson:
             human_sim=None,
             error_capture=None,
         )
-        
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
         )
-        
+
         workflow = BookingWorkflow(
             config=mock_dependencies["config"],
             db=mock_dependencies["db"],
@@ -455,7 +467,9 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(appointment_request, slot)
+        reservation = workflow.reservation_builder.build_reservation_from_request(
+            appointment_request, slot
+        )
 
         # Verify repr and str don't contain actual card number
         repr_str = repr(reservation["payment_card"])

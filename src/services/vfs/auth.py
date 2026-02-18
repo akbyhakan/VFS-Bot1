@@ -8,12 +8,13 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 import aiohttp
 from loguru import logger
 
+from src.core.rate_limiting import EndpointRateLimiter
+
 from ...core.exceptions import (
     VFSAuthenticationError,
     VFSRateLimitError,
     VFSSessionExpiredError,
 )
-from src.core.rate_limiting import EndpointRateLimiter
 from ...utils.token_utils import calculate_effective_expiry
 from .encryption import VFSPasswordEncryption, get_vfs_api_base
 from .models import VFSSession
@@ -28,7 +29,9 @@ def _get_token_refresh_buffer() -> int:
     try:
         value = int(raw)
         if value < 0:
-            logger.warning(f"TOKEN_REFRESH_BUFFER_MINUTES must be >= 0, got {value}. Using default 5.")
+            logger.warning(
+                f"TOKEN_REFRESH_BUFFER_MINUTES must be >= 0, got {value}. Using default 5."
+            )
             return 5
         return value
     except (ValueError, TypeError):
@@ -300,9 +303,7 @@ class VFSAuth:
             # Update expiry time if present
             if new_expires_in:
                 token_refresh_buffer = _get_token_refresh_buffer()
-                effective_expiry = calculate_effective_expiry(
-                    new_expires_in, token_refresh_buffer
-                )
+                effective_expiry = calculate_effective_expiry(new_expires_in, token_refresh_buffer)
                 self.session.expires_at = datetime.now(timezone.utc) + timedelta(
                     minutes=effective_expiry
                 )

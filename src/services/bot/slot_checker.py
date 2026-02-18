@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from loguru import logger
 from playwright.async_api import Page
 
+from src.core.rate_limiting import RateLimiter
+
 from ...constants import Delays, Timeouts
 from ...core.exceptions import VFSBotError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
 from ...utils.helpers import smart_click
-from src.core.rate_limiting import RateLimiter
 from ...utils.spa_navigation import navigate_to_appointment_page
 
 if TYPE_CHECKING:
@@ -201,7 +202,7 @@ class SlotChecker:
                     else:
                         logger.error(f"Error reading slot date content: {e}")
                     return None
-                
+
                 try:
                     time_content = await page.locator(time_selector).first.text_content()
                 except Exception as e:

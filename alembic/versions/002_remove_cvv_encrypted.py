@@ -7,15 +7,16 @@ Create Date: 2026-02-08 14:23:00.000000
 Per PCI-DSS Requirement 3.2, CVV must not be stored after authorization.
 This migration removes the cvv_encrypted column from the payment_card table.
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '002'
-down_revision: Union[str, None] = '001'
+revision: str = "002"
+down_revision: Union[str, None] = "001"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -23,7 +24,8 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Remove cvv_encrypted column from payment_card table."""
     # Check if column exists before dropping (for idempotency)
-    op.execute("""
+    op.execute(
+        """
         DO $$ 
         BEGIN
             IF EXISTS (
@@ -33,13 +35,15 @@ def upgrade() -> None:
                 ALTER TABLE payment_card DROP COLUMN cvv_encrypted;
             END IF;
         END $$;
-    """)
+    """
+    )
 
 
 def downgrade() -> None:
     """Add back cvv_encrypted column (NOT RECOMMENDED - violates PCI-DSS)."""
     # Only add if it doesn't exist
-    op.execute("""
+    op.execute(
+        """
         DO $$ 
         BEGIN
             IF NOT EXISTS (
@@ -49,4 +53,5 @@ def downgrade() -> None:
                 ALTER TABLE payment_card ADD COLUMN cvv_encrypted TEXT;
             END IF;
         END $$;
-    """)
+    """
+    )

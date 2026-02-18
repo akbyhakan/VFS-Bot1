@@ -7,15 +7,16 @@ Create Date: 2026-02-08 21:32:00.000000
 Add passport_number_encrypted column to personal_details table for PII encryption.
 Migrates existing unencrypted passport numbers to encrypted storage.
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '006'
-down_revision: Union[str, None] = '005'
+revision: str = "006"
+down_revision: Union[str, None] = "005"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -23,7 +24,8 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Add passport_number_encrypted column and migrate data."""
     # Add passport_number_encrypted column if it doesn't exist
-    op.execute("""
+    op.execute(
+        """
         DO $$ 
         BEGIN
             IF NOT EXISTS (
@@ -33,8 +35,9 @@ def upgrade() -> None:
                 ALTER TABLE personal_details ADD COLUMN passport_number_encrypted TEXT;
             END IF;
         END $$;
-    """)
-    
+    """
+    )
+
     # Note: Data migration for existing passport numbers should be handled
     # during application runtime when passport numbers are accessed and updated.
 
@@ -42,7 +45,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove passport_number_encrypted column from personal_details."""
     # WARNING: This will result in data loss of encrypted passport numbers
-    op.execute("""
+    op.execute(
+        """
         DO $$ 
         BEGIN
             IF EXISTS (
@@ -52,4 +56,5 @@ def downgrade() -> None:
                 ALTER TABLE personal_details DROP COLUMN passport_number_encrypted;
             END IF;
         END $$;
-    """)
+    """
+    )
