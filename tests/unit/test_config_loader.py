@@ -16,8 +16,8 @@ from src.core.config.config_loader import (
 MINIMAL_VALID_CONFIG_YAML = """
 vfs:
   base_url: https://test.vfsglobal.com
-  country: test
-  mission: test
+  country: tst
+  mission: tst
   centres: [Test Centre]
 bot:
   check_interval: 30
@@ -201,7 +201,7 @@ class TestLoadConfig:
         """Test loading config with nested structure."""
         result = load_config("nested.yaml")
         assert "vfs" in result
-        assert result["vfs"]["country"] == "test"
+        assert result["vfs"]["country"] == "tst"
 
     @patch("pathlib.Path.exists")
     def test_load_config_no_fallback_in_production(self, mock_exists):
