@@ -79,3 +79,12 @@ class Environment:
             True if environment is 'production' or 'staging'.
         """
         return cls.current() in (cls.PRODUCTION, cls.STAGING)
+
+    @classmethod
+    def is_testing(cls) -> bool:
+        """Check if the current environment is testing mode.
+
+        Returns:
+            True if environment is 'testing' or 'test'.
+        """
+        return cls.current() in ("testing", "test")
