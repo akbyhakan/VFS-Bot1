@@ -282,15 +282,16 @@ class TestWebSocketAuthentication:
             assert "data" in data
 
     def test_websocket_query_param_auth(self, client):
-        """Test WebSocket connection with query parameter authentication and deprecation warning."""
+        """Test WebSocket connection with cookie authentication."""
         from src.core.auth import create_access_token
 
         # Create a valid token
         token = create_access_token({"sub": "test_user"})
 
-        # Connect with token in query param - don't mock loguru globally
-        with client.websocket_connect(f"/ws?token={token}") as websocket:
-            # Should receive initial status message without sending token message
+        # Connect with token in cookie (the supported method)
+        client.cookies.set("access_token", token)
+        with client.websocket_connect("/ws") as websocket:
+            # Should receive initial status message
             data = websocket.receive_json()
             assert data["type"] == "status"
             assert "data" in data
@@ -332,18 +333,18 @@ class TestRFC7807ErrorResponses:
 
     def test_error_response_content_type(self, client):
         """Test that error responses have Content-Type: application/problem+json."""
-        # Trigger a validation error by sending invalid data
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
         from src.core.exceptions import ValidationError
         from src.middleware.error_handler import ErrorHandlerMiddleware
-        from web.app import create_app
 
-        # Create a simple endpoint that raises ValidationError
-        app = create_app(run_security_validation=False, env_override="testing")
+        # Create a minimal app without catch-all routes
+        app = FastAPI()
+        app.add_middleware(ErrorHandlerMiddleware)
 
         @app.get("/test/validation-error")
-        async def trigger_validation_error():
+        def trigger_validation_error():
             raise ValidationError("Invalid field", field="test_field")
 
         client_test = TestClient(app, raise_server_exceptions=False)
@@ -354,13 +355,17 @@ class TestRFC7807ErrorResponses:
 
     def test_error_response_has_rfc7807_fields(self, client):
         """Test that error responses include all required RFC 7807 fields."""
-        from src.core.exceptions import ValidationError
-        from web.app import create_app
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
-        app = create_app(run_security_validation=False, env_override="testing")
+        from src.core.exceptions import ValidationError
+        from src.middleware.error_handler import ErrorHandlerMiddleware
+
+        app = FastAPI()
+        app.add_middleware(ErrorHandlerMiddleware)
 
         @app.get("/test/validation-error")
-        async def trigger_validation_error():
+        def trigger_validation_error():
             raise ValidationError("Invalid field", field="test_field")
 
         client_test = TestClient(app, raise_server_exceptions=False)
@@ -381,13 +386,17 @@ class TestRFC7807ErrorResponses:
 
     def test_rate_limit_error_format(self, client):
         """Test that rate limit errors include retry_after extension."""
-        from src.core.exceptions import RateLimitError
-        from web.app import create_app
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
-        app = create_app(run_security_validation=False, env_override="testing")
+        from src.core.exceptions import RateLimitError
+        from src.middleware.error_handler import ErrorHandlerMiddleware
+
+        app = FastAPI()
+        app.add_middleware(ErrorHandlerMiddleware)
 
         @app.get("/test/rate-limit")
-        async def trigger_rate_limit():
+        def trigger_rate_limit():
             raise RateLimitError("Rate limit exceeded", retry_after=60)
 
         client_test = TestClient(app, raise_server_exceptions=False)
@@ -405,13 +414,17 @@ class TestRFC7807ErrorResponses:
 
     def test_validation_error_format(self, client):
         """Test that validation errors include field extension."""
-        from src.core.exceptions import ValidationError
-        from web.app import create_app
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
-        app = create_app(run_security_validation=False, env_override="testing")
+        from src.core.exceptions import ValidationError
+        from src.middleware.error_handler import ErrorHandlerMiddleware
+
+        app = FastAPI()
+        app.add_middleware(ErrorHandlerMiddleware)
 
         @app.get("/test/validation-error-field")
-        async def trigger_validation_error():
+        def trigger_validation_error():
             raise ValidationError("Field is required", field="username")
 
         client_test = TestClient(app, raise_server_exceptions=False)
@@ -425,12 +438,16 @@ class TestRFC7807ErrorResponses:
 
     def test_unexpected_error_no_leak(self, client):
         """Test that unexpected errors do not leak internal details."""
-        from web.app import create_app
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
-        app = create_app(run_security_validation=False, env_override="testing")
+        from src.middleware.error_handler import ErrorHandlerMiddleware
+
+        app = FastAPI()
+        app.add_middleware(ErrorHandlerMiddleware)
 
         @app.get("/test/unexpected-error")
-        async def trigger_unexpected_error():
+        def trigger_unexpected_error():
             raise RuntimeError("Internal implementation detail that should not leak")
 
         client_test = TestClient(app, raise_server_exceptions=False)
