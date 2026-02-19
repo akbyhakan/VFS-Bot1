@@ -12,6 +12,24 @@ from src.core.config.config_loader import (
     substitute_env_vars,
 )
 
+# Minimal valid config for testing
+MINIMAL_VALID_CONFIG_YAML = """
+vfs:
+  base_url: https://test.vfsglobal.com
+  country: test
+  mission: test
+  centres: [Test Centre]
+bot:
+  check_interval: 30
+  headless: true
+captcha:
+  provider: 2captcha
+  api_key: test_key
+notifications:
+  telegram:
+    enabled: false
+"""
+
 
 class TestLoadEnvVariables:
     """Tests for load_env_variables function."""
@@ -148,21 +166,23 @@ class TestSubstituteEnvVars:
 class TestLoadConfig:
     """Tests for load_config function."""
 
-    @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
+    @patch("builtins.open", new_callable=mock_open, read_data=MINIMAL_VALID_CONFIG_YAML)
     @patch("src.core.config.config_loader.substitute_env_vars")
     def test_load_config_basic(self, mock_substitute, mock_file):
         """Test loading basic config file."""
         mock_substitute.side_effect = lambda x: x
         result = load_config("test_config.yaml")
         assert isinstance(result, dict)
+        assert "vfs" in result
+        assert "bot" in result
         mock_file.assert_called_once()
 
-    @patch("builtins.open", new_callable=mock_open, read_data="key: ${VAR}\n")
+    @patch("builtins.open", new_callable=mock_open, read_data=MINIMAL_VALID_CONFIG_YAML.replace("test_key", "${VAR}"))
     @patch.dict(os.environ, {"VAR": "value"})
     def test_load_config_with_env_vars(self, mock_file):
         """Test loading config with environment variable substitution."""
         result = load_config("test_config.yaml")
-        assert result["key"] == "value"
+        assert result["captcha"]["api_key"] == "value"
 
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_load_config_file_not_found(self, mock_file):
@@ -176,12 +196,12 @@ class TestLoadConfig:
         with pytest.raises(Exception):
             load_config("invalid.yaml")
 
-    @patch("builtins.open", new_callable=mock_open, read_data="nested:\n  key: value\n")
+    @patch("builtins.open", new_callable=mock_open, read_data=MINIMAL_VALID_CONFIG_YAML)
     def test_load_config_nested_structure(self, mock_file):
         """Test loading config with nested structure."""
         result = load_config("nested.yaml")
-        assert "nested" in result
-        assert result["nested"]["key"] == "value"
+        assert "vfs" in result
+        assert result["vfs"]["country"] == "test"
 
     @patch("pathlib.Path.exists")
     def test_load_config_no_fallback_in_production(self, mock_exists):
