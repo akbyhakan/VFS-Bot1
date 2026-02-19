@@ -1,13 +1,21 @@
 """Connection pool stress tests."""
 
 import asyncio
+import os
 
 import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
+# Skip these tests in CI or when DATABASE_URL is not available
+skip_no_db = pytest.mark.skipif(
+    not os.getenv("DATABASE_URL") or os.getenv("CI") == "true",
+    reason="No database available in CI"
+)
 
+
+@skip_no_db
 @pytest.mark.asyncio
 async def test_connection_pool_stress():
     """Test 100 concurrent queries with pool of 10."""
@@ -29,6 +37,7 @@ async def test_connection_pool_stress():
         await db.close()
 
 
+@skip_no_db
 @pytest.mark.asyncio
 async def test_connection_pool_timeout():
     """Test connection pool behavior when pool size is limited."""
@@ -41,6 +50,7 @@ async def test_connection_pool_timeout():
         await db.close()
 
 
+@skip_no_db
 @pytest.mark.asyncio
 async def test_concurrent_writes(database):
     """Test concurrent write operations don't cause corruption."""
@@ -74,6 +84,7 @@ async def test_concurrent_writes(database):
     assert len(set(unique_emails)) == 20  # All test users are unique
 
 
+@skip_no_db
 @pytest.mark.asyncio
 async def test_connection_cleanup_on_error():
     """Test connections are returned to pool even on error."""

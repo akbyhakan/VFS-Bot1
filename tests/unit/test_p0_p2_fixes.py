@@ -421,7 +421,7 @@ class TestEnvironmentValidation:
 
     def test_unknown_environment_log_is_sanitized(self, caplog):
         """Test that unknown environment values are sanitized in log messages."""
-        from web.app import get_validated_environment
+        from web.cors import get_validated_environment
 
         old_env = os.getenv("ENV")
         try:

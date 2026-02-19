@@ -15,6 +15,12 @@ from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 from src.utils.encryption import reset_encryption
 
+# Skip these tests in CI or when DATABASE_URL is not available
+skip_no_db = pytest.mark.skipif(
+    not os.getenv("DATABASE_URL") or os.getenv("CI") == "true",
+    reason="No database available in CI"
+)
+
 
 @pytest.fixture(scope="function")
 def unique_encryption_key(monkeypatch):
@@ -44,6 +50,7 @@ async def test_alembic_migration_files_exist():
     ), f"Expected at least 1 migration file, found {len(migration_files)}"
 
 
+@skip_no_db
 @pytest.mark.asyncio
 async def test_migrated_columns_exist(unique_encryption_key):
     """Test that all migrated columns actually exist in the tables.
