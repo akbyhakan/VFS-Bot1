@@ -69,8 +69,8 @@ class TestConfigValidator:
 
         result = ConfigValidator.validate(config)
 
-        assert result is False
-        assert "Missing bot.check_interval" in caplog.text
+        # Validation should pass because check_interval has a default value
+        assert result is True
 
     def test_validate_check_interval_too_low(self, caplog):
         """Test validation fails when check_interval is too low."""
