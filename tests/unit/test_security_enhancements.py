@@ -32,6 +32,16 @@ class TestAPIKeySaltSecurity:
 
     def test_api_key_salt_warning_in_development(self, monkeypatch, caplog):
         """Test that API_KEY_SALT shows warning in development."""
+        import logging
+        from loguru import logger
+        
+        # Add handler to capture loguru logs in caplog
+        logger.add(
+            lambda msg: logging.getLogger("loguru").warning(msg),
+            level="WARNING",
+            format="{message}"
+        )
+        
         # Set caplog to capture WARNING level logs
         caplog.set_level(logging.WARNING)
 
@@ -119,6 +129,16 @@ class TestSessionEncryption:
 
     def test_session_backward_compatibility(self, tmp_path, monkeypatch, caplog):
         """Test that old unencrypted sessions can still be loaded."""
+        import logging
+        from loguru import logger
+        
+        # Add handler to capture loguru logs in caplog
+        logger.add(
+            lambda msg: logging.getLogger("loguru").warning(msg),
+            level="WARNING",
+            format="{message}"
+        )
+        
         # Set caplog to capture WARNING level logs
         caplog.set_level(logging.WARNING)
 
