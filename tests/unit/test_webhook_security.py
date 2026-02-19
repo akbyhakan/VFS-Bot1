@@ -88,8 +88,8 @@ class TestWebhookSecurity:
 
         with patch("src.services.otp_manager.otp_webhook.get_otp_service"):
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
-            # Should work without HMAC when secret not configured
-            assert response.status_code == 200, f"Unexpected status: {response.status_code}"
+            # Production requires SMS_WEBHOOK_SECRET - should return 422 when not configured
+            assert response.status_code == 422, f"Expected 422 when secret not configured in production"
 
     def test_webhook_enforces_signature_in_dev_when_secret_configured(self, mock_webhook_manager, monkeypatch):
         """Dev mode should enforce signature when secret is configured."""
