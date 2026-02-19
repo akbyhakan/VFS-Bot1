@@ -256,12 +256,21 @@ class TestSMSWebhookRoutes:
 class TestSMSWebhookHMACVerification:
     """Tests for SMS webhook HMAC signature verification."""
 
+    def _make_client(self, env: str, mock_webhook_manager, monkeypatch, secret: str | None = None):
+        """Create test client with specific environment."""
+        if secret:
+            monkeypatch.setenv("SMS_WEBHOOK_SECRET", secret)
+        else:
+            monkeypatch.delenv("SMS_WEBHOOK_SECRET", raising=False)
+        set_webhook_manager(mock_webhook_manager)
+        app = create_app(run_security_validation=False, env_override=env)
+        return TestClient(app)
+
     def test_hmac_verification_production_mode_missing_signature(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that missing signature is rejected in production mode."""
-        monkeypatch.setenv("ENV", "production")
-        monkeypatch.setenv("SMS_WEBHOOK_SECRET", "test_secret_key")
+        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret="test_secret_key")
 
         payload = {"message": "OTP: 123456"}
 
@@ -272,11 +281,10 @@ class TestSMSWebhookHMACVerification:
         assert "Missing webhook signature" in response.json()["detail"]
 
     def test_hmac_verification_production_mode_invalid_signature(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that invalid signature is rejected in production mode."""
-        monkeypatch.setenv("ENV", "production")
-        monkeypatch.setenv("SMS_WEBHOOK_SECRET", "test_secret_key")
+        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret="test_secret_key")
 
         payload = {"message": "OTP: 123456"}
 
@@ -291,7 +299,7 @@ class TestSMSWebhookHMACVerification:
         assert "Invalid webhook signature" in response.json()["detail"]
 
     def test_hmac_verification_production_mode_valid_signature(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that valid signature is accepted in production mode."""
         import json
@@ -299,9 +307,8 @@ class TestSMSWebhookHMACVerification:
 
         from src.utils.webhook_utils import generate_webhook_signature
 
-        monkeypatch.setenv("ENV", "production")
         secret = "test_secret_key"
-        monkeypatch.setenv("SMS_WEBHOOK_SECRET", secret)
+        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret=secret)
 
         payload = {"message": "OTP: 123456"}
         payload_str = json.dumps(payload)
@@ -319,10 +326,10 @@ class TestSMSWebhookHMACVerification:
         assert response.status_code == 200
 
     def test_hmac_verification_development_mode_no_signature(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that missing signature is allowed in development mode."""
-        monkeypatch.setenv("ENV", "development")
+        client = self._make_client("development", mock_webhook_manager, monkeypatch)
 
         payload = {"message": "OTP: 123456"}
 
@@ -333,16 +340,15 @@ class TestSMSWebhookHMACVerification:
         assert response.status_code == 200
 
     def test_hmac_verification_development_mode_with_valid_signature(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that valid signature works in development mode."""
         import json
 
         from src.utils.webhook_utils import generate_webhook_signature
 
-        monkeypatch.setenv("ENV", "development")
         secret = "test_secret_key"
-        monkeypatch.setenv("SMS_WEBHOOK_SECRET", secret)
+        client = self._make_client("development", mock_webhook_manager, monkeypatch, secret=secret)
 
         payload = {"message": "OTP: 123456"}
         payload_str = json.dumps(payload)
@@ -359,11 +365,10 @@ class TestSMSWebhookHMACVerification:
         assert response.status_code == 200
 
     def test_hmac_verification_no_secret_configured(
-        self, client, mock_webhook_manager, monkeypatch
+        self, mock_webhook_manager, monkeypatch
     ):
         """Test that webhook works when no secret is configured."""
-        monkeypatch.setenv("ENV", "production")
-        monkeypatch.delenv("SMS_WEBHOOK_SECRET", raising=False)
+        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret=None)
 
         payload = {"message": "OTP: 123456"}
 
