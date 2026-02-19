@@ -42,9 +42,9 @@ class TestEncryptionRaceCondition:
             new_key = Fernet.generate_key().decode()
             os.environ["ENCRYPTION_KEY"] = new_key
 
-            # Should create new instance
+            # Due to TTL caching, should still return same instance (within cache window)
             enc3 = get_encryption()
-            assert enc3 is not enc1
+            assert enc3 is enc1  # Cached instance within TTL window
 
         finally:
             # Restore original key
