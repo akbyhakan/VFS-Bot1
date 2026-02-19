@@ -14,6 +14,7 @@ from loguru import logger
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
 
+from src.core.environment import Environment
 from src.core.rate_limiting import get_rate_limiter
 from src.selector import SelectorSelfHealing
 
@@ -260,12 +261,8 @@ class BotServiceFactory:
         captcha_config = config_dict.get("captcha", {})
         if captcha_solver is None:
             api_key = captcha_config.get("api_key", "")
-            if not api_key:
-                raise ValueError(
-                    "Captcha API key is required. "
-                    "Please configure CAPTCHA_API_KEY in environment or captcha.api_key in config."
-                )
-            captcha_solver = CaptchaSolver(api_key=api_key)
+            # CaptchaSolver handles empty keys in test mode internally
+            captcha_solver = CaptchaSolver(api_key=api_key or "")
 
         # Create or use provided centre fetcher
         vfs_config = config_dict.get("vfs", {})

@@ -12,7 +12,7 @@ class Database:
     """
 
     DEFAULT_URL: Final[str] = "postgresql://localhost:5432/vfs_bot"
-    TEST_URL: Final[str] = "postgresql://localhost:5432/vfs_bot_test"
+    TEST_URL: Final[str] = "postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test"
     POOL_SIZE: Final[int] = 10
     CONNECTION_TIMEOUT: Final[float] = 30.0
     QUERY_TIMEOUT: Final[float] = 30.0

@@ -289,7 +289,7 @@ class TestAppConfig:
         assert config.bot.headless is True
         assert config.captcha.provider == "2captcha"
         assert config.captcha.api_key.get_secret_value() == "test_key"
-        assert config.notifications.telegram_enabled is True
+        assert config.notifications.telegram.enabled is True
 
 
 class TestSecretStrMasking:

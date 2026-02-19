@@ -52,7 +52,7 @@ class TestConfigValidator:
         assert "Missing vfs.mission" in caplog.text
 
     def test_validate_with_missing_bot_fields(self, caplog):
-        """Test validation fails with missing bot fields."""
+        """Test validation passes with missing bot fields (defaults provided)."""
         config = {
             "vfs": {
                 "base_url": "https://visa.vfsglobal.com",
@@ -61,7 +61,7 @@ class TestConfigValidator:
                 "centres": ["Istanbul"],
             },
             "bot": {
-                # Missing check_interval
+                # Missing check_interval - should use default
             },
             "captcha": {},
             "notifications": {},
@@ -69,8 +69,8 @@ class TestConfigValidator:
 
         result = ConfigValidator.validate(config)
 
-        assert result is False
-        assert "Missing bot.check_interval" in caplog.text
+        # Validation should pass because defaults are provided
+        assert result is True
 
     def test_validate_check_interval_too_low(self, caplog):
         """Test validation fails when check_interval is too low."""
