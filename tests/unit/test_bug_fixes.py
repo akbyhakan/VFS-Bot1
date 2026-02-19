@@ -135,6 +135,7 @@ class TestBug3DoubleEncode:
         with patch.dict(os.environ, {}, clear=True):
             # Create settings with encrypted password
             settings = VFSSettings(
+                env="development",  # Set to development to avoid production DATABASE_URL validation
                 encryption_key=fernet_key,
                 api_secret_key="a" * 64,
                 vfs_password=encrypted_password,

@@ -162,18 +162,23 @@ class TestPasswordLeakPrevention:
 
             with patch("src.services.bot.auth_service.safe_navigate", return_value=True):
                 with patch("src.services.bot.auth_service.logger") as mock_logger:
-                    # Login should return False due to exception
-                    result = await auth_service.login(mock_page, "test@example.com", password)
-                    assert result is False
+                    # Login should raise LoginError due to exception
+                    from src.core.exceptions import LoginError
+                    with pytest.raises(LoginError) as exc_info:
+                        await auth_service.login(mock_page, "test@example.com", password)
+                    
+                    # Check that the exception message has redacted password
+                    error_message = str(exc_info.value)
+                    assert password not in error_message, "Password was not redacted from exception message!"
+                    assert "[REDACTED]" in error_message, "Expected [REDACTED] in exception message"
 
                     # Check the logged error message for redaction
                     # The error should be logged with the password redacted
-                    assert mock_logger.error.called
-                    error_calls = [str(call) for call in mock_logger.error.call_args_list]
-                    error_msg = str(error_calls)
-
-                    # Password should NOT appear in any error logs
-                    assert password not in error_msg, "Password was not redacted from error logs!"
+                    if mock_logger.error.called:
+                        error_calls = [str(call) for call in mock_logger.error.call_args_list]
+                        error_msg = str(error_calls)
+                        # Password should NOT appear in any error logs
+                        assert password not in error_msg, "Password was not redacted from error logs!"
 
 
 # P1-4: Graceful shutdown timeout

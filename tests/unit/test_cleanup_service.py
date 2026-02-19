@@ -35,12 +35,17 @@ class TestCleanupService:
     async def test_cleanup_old_requests_success(self):
         """Test cleanup_old_requests when successful."""
         db = MagicMock()
-        db.cleanup_completed_requests = AsyncMock(return_value=5)
-        service = CleanupService(db, cleanup_days=30)
-
-        deleted = await service.cleanup_old_requests()
-        assert deleted == 5
-        db.cleanup_completed_requests.assert_called_once_with(30)
+        # Mock the AppointmentRequestRepository
+        with patch('src.services.scheduling.cleanup_service.AppointmentRequestRepository') as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.cleanup_completed = AsyncMock(return_value=5)
+            mock_repo_class.return_value = mock_repo
+            
+            service = CleanupService(db, cleanup_days=30)
+            deleted = await service.cleanup_old_requests()
+            
+            assert deleted == 5
+            mock_repo.cleanup_completed.assert_called_once_with(30)
 
     @pytest.mark.asyncio
     async def test_cleanup_old_requests_with_error(self):
