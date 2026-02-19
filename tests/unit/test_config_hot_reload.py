@@ -303,7 +303,7 @@ class TestConfigHotReloadGlobal:
     def test_get_hot_reload_service_singleton(self):
         """Test that get_hot_reload_service returns singleton."""
         # Clear any existing instance
-        from src.core import config_hot_reload
+        from src.core.config import config_hot_reload
 
         config_hot_reload._hot_reload_service = None
 
@@ -317,7 +317,7 @@ class TestConfigHotReloadGlobal:
 
     def test_get_hot_reload_service_creates_instance(self):
         """Test that service is created if not exists."""
-        from src.core import config_hot_reload
+        from src.core.config import config_hot_reload
 
         config_hot_reload._hot_reload_service = None
 

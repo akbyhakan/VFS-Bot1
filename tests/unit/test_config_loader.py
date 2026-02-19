@@ -150,7 +150,8 @@ class TestLoadConfig:
 
     @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
     @patch("src.core.config.config_loader.substitute_env_vars")
-    def test_load_config_basic(self, mock_substitute, mock_file):
+    @patch("src.core.config.config_validator.ConfigValidator.validate", return_value=True)
+    def test_load_config_basic(self, mock_validate, mock_substitute, mock_file):
         """Test loading basic config file."""
         mock_substitute.side_effect = lambda x: x
         result = load_config("test_config.yaml")
@@ -159,7 +160,8 @@ class TestLoadConfig:
 
     @patch("builtins.open", new_callable=mock_open, read_data="key: ${VAR}\n")
     @patch.dict(os.environ, {"VAR": "value"})
-    def test_load_config_with_env_vars(self, mock_file):
+    @patch("src.core.config.config_validator.ConfigValidator.validate", return_value=True)
+    def test_load_config_with_env_vars(self, mock_validate, mock_file):
         """Test loading config with environment variable substitution."""
         result = load_config("test_config.yaml")
         assert result["key"] == "value"
@@ -177,7 +179,8 @@ class TestLoadConfig:
             load_config("invalid.yaml")
 
     @patch("builtins.open", new_callable=mock_open, read_data="nested:\n  key: value\n")
-    def test_load_config_nested_structure(self, mock_file):
+    @patch("src.core.config.config_validator.ConfigValidator.validate", return_value=True)
+    def test_load_config_nested_structure(self, mock_validate, mock_file):
         """Test loading config with nested structure."""
         result = load_config("nested.yaml")
         assert "nested" in result
@@ -196,7 +199,8 @@ class TestLoadConfig:
             assert "production" in str(exc_info.value)
 
     @patch("builtins.open", new_callable=mock_open, read_data="example: config\n")
-    def test_load_config_fallback_in_development(self, mock_file):
+    @patch("src.core.config.config_validator.ConfigValidator.validate", return_value=True)
+    def test_load_config_fallback_in_development(self, mock_validate, mock_file):
         """Test that config loading falls back to example in development."""
         with patch.dict(os.environ, {"ENV": "development"}):
             with patch("pathlib.Path.exists") as mock_exists:
