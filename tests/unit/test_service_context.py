@@ -163,6 +163,7 @@ class TestWorkflowServicesContext:
             booking_service=Mock(),
             waitlist_handler=Mock(),
             error_handler=Mock(),
+            page_state_detector=Mock(),
             payment_service=Mock(),
             alert_service=Mock(),
         )
@@ -183,6 +184,7 @@ class TestWorkflowServicesContext:
             booking_service=Mock(),
             waitlist_handler=Mock(),
             error_handler=Mock(),
+            page_state_detector=Mock(),
         )
 
         # Should be able to modify attributes (not frozen)
@@ -239,6 +241,7 @@ class TestBotServiceContext:
             booking_service=Mock(),
             waitlist_handler=Mock(),
             error_handler=Mock(),
+            page_state_detector=Mock(),
         )
         automation = AutomationServicesContext(
             scheduler=Mock(),

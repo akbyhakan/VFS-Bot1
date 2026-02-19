@@ -29,7 +29,7 @@ class TestR1LoggerMigration:
         "src/utils/helpers.py",
         "src/utils/error_capture.py",
         # "src/utils/selector_learning.py",  # File was deleted during refactoring
-        "src/services/booking/selector_utils.py",
+        # "src/services/booking/selector_utils.py",  # File has no logging, doesn't need logger
         "src/services/bot/error_handler.py",
         "src/repositories/log_repository.py",
         "src/repositories/appointment_repository.py",
@@ -145,20 +145,20 @@ class TestR2DoubleShutdownFix:
             "if not skip_shutdown:" in content
         ), "run_web_mode should check skip_shutdown before calling graceful_shutdown"
 
-        # Check that graceful_shutdown_with_timeout is conditionally called
+        # Check that graceful cleanup is conditionally called
         lines = content.split("\n")
         found_conditional = False
         for i, line in enumerate(lines):
             if "if not skip_shutdown:" in line:
-                # Check next few lines for graceful_shutdown_with_timeout
+                # Check next few lines for graceful cleanup calls
                 for j in range(i + 1, min(i + 10, len(lines))):
-                    if "graceful_shutdown_with_timeout" in lines[j]:
+                    if "_graceful_cleanup" in lines[j] or "safe_shutdown_cleanup" in lines[j]:
                         found_conditional = True
                         break
 
         assert (
             found_conditional
-        ), "graceful_shutdown_with_timeout should be called conditionally based on skip_shutdown"
+        ), "graceful cleanup should be called conditionally based on skip_shutdown"
 
     def test_run_both_mode_passes_skip_shutdown_true(self):
         """Test that run_both_mode passes skip_shutdown=True to run_web_mode."""
@@ -172,9 +172,9 @@ class TestR2DoubleShutdownFix:
             "skip_shutdown=True" in content
         ), "run_both_mode should pass skip_shutdown=True to run_web_mode"
 
-        # More specific check
+        # More specific check - the call includes start_backup=False
         assert (
-            "run_web_mode(config, start_cleanup=True, db=db, skip_shutdown=True)" in content
+            "run_web_mode(config, start_cleanup=True, start_backup=False, db=db, skip_shutdown=True)" in content
         ), "run_both_mode should call run_web_mode with correct parameters"
 
 
@@ -501,24 +501,25 @@ class TestR6RuntimeSafetyFixes:
 
     def test_db_pool_size_has_error_handling(self):
         """Test that DB_POOL_SIZE parsing has try/except with validation."""
-        db_file = Path(__file__).parent.parent.parent / "src/models/database.py"
+        # DB_POOL_SIZE is now parsed in DatabaseConnectionManager
+        db_file = Path(__file__).parent.parent.parent / "src/models/db_connection.py"
 
         with open(db_file, "r") as f:
             content = f.read()
 
         tree = ast.parse(content)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and node.name == "Database":
+            if isinstance(node, ast.ClassDef) and node.name == "DatabaseConnectionManager":
                 # Find __init__ method
                 for method in node.body:
                     if isinstance(method, ast.FunctionDef) and method.name == "__init__":
                         method_lines = content.split("\n")[method.lineno - 1 : method.end_lineno]
                         method_str = "\n".join(method_lines)
 
-                        # Should have try/except for DB_POOL_SIZE
+                        # Should have DB_POOL_SIZE
                         assert (
                             "DB_POOL_SIZE" in method_str
-                        ), "Database.__init__ should reference DB_POOL_SIZE"
+                        ), "DatabaseConnectionManager.__init__ should reference DB_POOL_SIZE"
 
                         # Should have try/except ValueError
                         assert (
@@ -653,9 +654,9 @@ class TestR6RuntimeSafetyFixes:
         tree = ast.parse(content)
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "TelegramClient":
-                # Find send_photo method
+                # Find send_photo method (can be sync or async)
                 for method in node.body:
-                    if isinstance(method, ast.FunctionDef) and method.name == "send_photo":
+                    if isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)) and method.name == "send_photo":
                         method_lines = content.split("\n")[method.lineno - 1 : method.end_lineno]
                         method_str = "\n".join(method_lines)
 
