@@ -115,16 +115,21 @@ class TestRetryStrategies:
         assert result == "connected"
         assert counter["calls"] == 2
 
+    @pytest.mark.timeout(180)  # Increase timeout to accommodate retry waits
     def test_rate_limit_retry_max_attempts(self):
         """Test that rate limit retry stops after max attempts."""
+        from unittest.mock import patch
+        
         retry_decorator = get_rate_limit_retry()
 
         @retry_decorator
         def always_fails():
             raise RateLimitError("Rate limited")
 
-        with pytest.raises(RateLimitError):
-            always_fails()
+        # Mock sleep to avoid actually waiting
+        with patch('time.sleep'):
+            with pytest.raises(RateLimitError):
+                always_fails()
 
     def test_login_retry_with_network_error(self):
         """Test login retry also retries on NetworkError."""

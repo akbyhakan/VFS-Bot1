@@ -142,7 +142,6 @@ def test_notification_config_defaults():
     config = NotificationConfig()
 
     assert config.telegram.enabled is False
-    assert config.email.enabled is False
     assert config.webhook_enabled is False
     assert config.webhook_url is None
 

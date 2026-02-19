@@ -55,6 +55,25 @@ def pytest_configure(config):
     warnings.filterwarnings("ignore", message="coroutine.*was never awaited")
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     warnings.filterwarnings("ignore", category=pytest.PytestUnraisableExceptionWarning)
+    
+    # Configure loguru to emit to standard logging for pytest caplog compatibility
+    import logging
+    from loguru import logger
+    
+    # Remove default handlers
+    logger.remove()
+    
+    # Add a handler that writes to standard logging
+    # This allows pytest's caplog to capture loguru messages
+    def sink(message):
+        """Forward loguru messages to standard logging."""
+        record = message.record
+        level_name = record["level"].name
+        std_level = getattr(logging, level_name, logging.INFO)
+        std_logger = logging.getLogger("loguru")
+        std_logger.log(std_level, message)
+    
+    logger.add(sink, format="{message}", level="DEBUG")
 
 
 @pytest.fixture(scope="session")

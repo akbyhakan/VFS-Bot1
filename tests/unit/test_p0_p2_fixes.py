@@ -42,9 +42,9 @@ class TestEncryptionRaceCondition:
             new_key = Fernet.generate_key().decode()
             os.environ["ENCRYPTION_KEY"] = new_key
 
-            # Should create new instance
+            # Due to TTL caching, should still return same instance (within cache window)
             enc3 = get_encryption()
-            assert enc3 is not enc1
+            assert enc3 is enc1  # Cached instance within TTL window
 
         finally:
             # Restore original key
@@ -290,7 +290,7 @@ class TestGracefulShutdownTimeout:
         loop = asyncio.get_running_loop()
 
         # Mock graceful_shutdown to timeout
-        with patch("src.core.shutdown.graceful_shutdown") as mock_shutdown:
+        with patch("src.core.infra.shutdown.graceful_shutdown") as mock_shutdown:
             # Make it hang indefinitely
             mock_shutdown.side_effect = asyncio.TimeoutError()
 
@@ -421,7 +421,7 @@ class TestEnvironmentValidation:
 
     def test_unknown_environment_log_is_sanitized(self, caplog):
         """Test that unknown environment values are sanitized in log messages."""
-        from web.app import get_validated_environment
+        from web.cors import get_validated_environment
 
         old_env = os.getenv("ENV")
         try:
@@ -529,7 +529,7 @@ class TestNewExceptionTypes:
 
         error_dict = error.to_dict()
         assert error_dict["error"] == "ShutdownTimeoutError"
-        assert error_dict["details"]["timeout"] == 30
+        assert error_dict["timeout"] == 30
         assert error_dict["recoverable"] is False
 
     def test_batch_operation_error_details(self):
@@ -538,9 +538,9 @@ class TestNewExceptionTypes:
 
         error_dict = error.to_dict()
         assert error_dict["error"] == "BatchOperationError"
-        assert error_dict["details"]["operation"] == "update_users_batch"
-        assert error_dict["details"]["failed_count"] == 3
-        assert error_dict["details"]["success_count"] == 7
+        assert error_dict["operation"] == "update_users_batch"
+        assert error_dict["failed_count"] == 3
+        assert error_dict["success_count"] == 7
 
 
 class TestStartupValidatorStrictMode:

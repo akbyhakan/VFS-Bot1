@@ -199,7 +199,7 @@ async def test_login_timing_attack_protection():
         )
 
         # Mock verify_password to track calls
-        with patch("web.routes.auth.verify_password") as mock_verify:
+        with patch("src.core.auth.verify_password") as mock_verify:
             mock_verify.return_value = False
 
             # Create mock request and response
