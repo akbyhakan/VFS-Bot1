@@ -1,6 +1,6 @@
 """Application settings with Pydantic validation."""
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,6 +49,22 @@ class VFSSettings(BaseSettings):
     env: str = Field(
         default="production", description="Environment (production, development, testing)"
     )
+    
+    @model_validator(mode="before")
+    @classmethod
+    def default_env_for_pytest(cls, data: Any) -> Any:
+        """Auto-detect testing environment when running under pytest."""
+        import sys
+        
+        # Ensure data is a dict
+        if not isinstance(data, dict):
+            return data
+        
+        # If env not set and we're running under pytest, default to testing
+        if ("env" not in data or not data.get("env")) and "pytest" in sys.modules:
+            data["env"] = "testing"
+        
+        return data
 
     # Database Configuration
     database_url: str = Field(
@@ -179,7 +195,6 @@ class VFSSettings(BaseSettings):
     def ensure_required_keys_or_defaults(self) -> "VFSSettings":
         """
         Ensure encryption_key and api_secret_key are set.
-        Also adjust env to 'testing' when running under pytest.
         
         In production/staging: These fields are REQUIRED
         In testing/development: Auto-generate secure defaults if missing
@@ -191,13 +206,7 @@ class VFSSettings(BaseSettings):
             ValueError: If required keys are missing in production/staging
         """
         import secrets
-        import sys
         from cryptography.fernet import Fernet
-        
-        # If env is still "production" (the default) but we're running under pytest,
-        # change it to "testing" to allow test-friendly defaults
-        if self.env == "production" and "pytest" in sys.modules:
-            self.env = "testing"
         
         is_test_or_dev = self.env in ("testing", "development")
         

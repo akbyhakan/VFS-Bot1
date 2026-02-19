@@ -261,19 +261,8 @@ class BotServiceFactory:
         captcha_config = config_dict.get("captcha", {})
         if captcha_solver is None:
             api_key = captcha_config.get("api_key", "")
-            # Only require CAPTCHA API key in non-test environments
-            # In test/CI environments, captcha functionality is mocked
-            if not api_key and not Environment.is_testing():
-                raise ValueError(
-                    "Captcha API key is required. "
-                    "Please configure CAPTCHA_API_KEY in environment or captcha.api_key in config."
-                )
-            # Create captcha solver with API key if available (or empty string for tests)
-            if api_key:
-                captcha_solver = CaptchaSolver(api_key=api_key)
-            else:
-                # In testing mode without API key, create with empty key (will be mocked)
-                captcha_solver = CaptchaSolver(api_key="")
+            # CaptchaSolver handles empty keys in test mode internally
+            captcha_solver = CaptchaSolver(api_key=api_key or "")
 
         # Create or use provided centre fetcher
         vfs_config = config_dict.get("vfs", {})
