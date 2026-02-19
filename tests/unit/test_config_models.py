@@ -196,12 +196,6 @@ class TestNotificationConfig:
         assert config.telegram.enabled is False
         assert config.telegram.bot_token.get_secret_value() == ""
         assert config.telegram.chat_id == ""
-        assert config.email.enabled is False
-        assert config.email.sender == ""
-        assert config.email.password.get_secret_value() == ""
-        assert config.email.receiver == ""
-        assert config.email.smtp_server == "smtp.gmail.com"
-        assert config.email.smtp_port == 587
         assert config.webhook_enabled is False
         assert config.webhook_url is None
 
@@ -209,7 +203,7 @@ class TestNotificationConfig:
         """Test from_dict with empty dict."""
         config = NotificationConfig.from_dict({})
         assert config.telegram.enabled is False
-        assert config.email.enabled is False
+        assert config.webhook_enabled is False
 
     def test_from_dict_with_telegram(self):
         """Test from_dict with telegram config."""
@@ -224,48 +218,34 @@ class TestNotificationConfig:
         assert config.telegram.enabled is True
         assert config.telegram.bot_token.get_secret_value() == "test_token"
         assert config.telegram.chat_id == "123456"
-        assert config.email.enabled is False
+        assert config.webhook_enabled is False
 
-    def test_from_dict_with_email(self):
-        """Test from_dict with email config."""
+    def test_from_dict_with_webhook(self):
+        """Test from_dict with webhook config."""
         data = {
-            "email": {
-                "enabled": True,
-                "sender": "sender@test.com",
-                "password": "pass123",
-                "receiver": "receiver@test.com",
-                "smtp_server": "smtp.test.com",
-                "smtp_port": 465,
-            }
+            "webhook_enabled": True,
+            "webhook_url": "https://example.com/webhook",
         }
         config = NotificationConfig.from_dict(data)
-        assert config.email.enabled is True
-        assert config.email.sender == "sender@test.com"
-        assert config.email.password.get_secret_value() == "pass123"
-        assert config.email.receiver == "receiver@test.com"
-        assert config.email.smtp_server == "smtp.test.com"
-        assert config.email.smtp_port == 465
+        assert config.webhook_enabled is True
+        assert config.webhook_url == "https://example.com/webhook"
 
-    def test_from_dict_with_both(self):
-        """Test from_dict with both telegram and email."""
+    def test_from_dict_with_both_telegram_and_webhook(self):
+        """Test from_dict with both telegram and webhook."""
         data = {
             "telegram": {
                 "enabled": True,
                 "bot_token": "token",
                 "chat_id": "123",
             },
-            "email": {
-                "enabled": True,
-                "sender": "test@test.com",
-                "password": "pass",
-                "receiver": "recv@test.com",
-            },
+            "webhook_enabled": True,
+            "webhook_url": "https://example.com/hook",
         }
         config = NotificationConfig.from_dict(data)
         assert config.telegram.enabled is True
-        assert config.email.enabled is True
+        assert config.webhook_enabled is True
         assert config.telegram.bot_token.get_secret_value() == "token"
-        assert config.email.sender == "test@test.com"
+        assert config.webhook_url == "https://example.com/hook"
 
 
 class TestAppConfig:

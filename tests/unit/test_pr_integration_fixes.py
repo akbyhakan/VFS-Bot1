@@ -121,6 +121,11 @@ class TestPageStateDetectorIntegration:
         """Test that BookingWorkflow accepts page_state_detector parameter."""
         from src.services.bot.booking_workflow import BookingWorkflow
         from src.services.bot.page_state_detector import PageStateDetector
+        from src.services.bot.booking_dependencies import (
+            BookingDependencies,
+            InfraServices,
+            WorkflowServices,
+        )
 
         # Create mock dependencies
         config = {"bot": {}}
@@ -135,23 +140,42 @@ class TestPageStateDetectorIntegration:
         session_recovery = Mock()
         page_state_detector = Mock(spec=PageStateDetector)
 
-        # Create BookingWorkflow with page_state_detector
-        workflow = BookingWorkflow(
-            config=config,
-            db=db,
-            notifier=notifier,
+        # Create dependency containers
+        workflow_services = WorkflowServices(
             auth_service=auth_service,
             slot_checker=slot_checker,
             booking_service=booking_service,
             waitlist_handler=waitlist_handler,
             error_handler=error_handler,
+            page_state_detector=page_state_detector,
             slot_analyzer=slot_analyzer,
             session_recovery=session_recovery,
-            page_state_detector=page_state_detector,
+            alert_service=None,
         )
 
-        # Verify it's stored
-        assert workflow.page_state_detector is page_state_detector
+        infra_services = InfraServices(
+            browser_manager=None,
+            header_manager=None,
+            proxy_manager=None,
+            human_sim=None,
+            error_capture=None,
+        )
+
+        deps = BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+        )
+
+        # Create BookingWorkflow with deps
+        workflow = BookingWorkflow(
+            config=config,
+            db=db,
+            notifier=notifier,
+            deps=deps,
+        )
+
+        # Verify page_state_detector is accessible through deps
+        assert workflow.deps.workflow.page_state_detector is page_state_detector
 
 
 class TestImportOrder:
