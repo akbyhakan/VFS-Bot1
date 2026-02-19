@@ -43,25 +43,28 @@ def test_create_access_token_with_expiry():
     assert payload["sub"] == "testuser"
 
 
-def test_verify_token_valid():
+@pytest.mark.asyncio
+async def test_verify_token_valid():
     """Test token verification with valid token."""
     data = {"sub": "testuser", "name": "Test User"}
     token = create_access_token(data)
 
-    payload = verify_token(token)
+    payload = await verify_token(token)
     assert payload["sub"] == "testuser"
     assert payload["name"] == "Test User"
 
 
-def test_verify_token_invalid():
+@pytest.mark.asyncio
+async def test_verify_token_invalid():
     """Test token verification with invalid token."""
     with pytest.raises(HTTPException) as exc_info:
-        verify_token("invalid.token.here")
+        await verify_token("invalid.token.here")
 
     assert exc_info.value.status_code == 401
 
 
-def test_verify_token_expired():
+@pytest.mark.asyncio
+async def test_verify_token_expired():
     """Test token verification with expired token."""
     data = {"sub": "testuser"}
     # Create token that expired immediately
@@ -69,7 +72,7 @@ def test_verify_token_expired():
     token = create_access_token(data, expires_delta)
 
     with pytest.raises(HTTPException) as exc_info:
-        verify_token(token)
+        await verify_token(token)
 
     assert exc_info.value.status_code == 401
 
@@ -157,7 +160,8 @@ def test_hash_password_multibyte_characters():
         hash_password(multibyte_password)
 
 
-def test_jwt_key_rotation(monkeypatch):
+@pytest.mark.asyncio
+async def test_jwt_key_rotation(monkeypatch):
     """Test JWT key rotation support with API_SECRET_KEY_PREVIOUS."""
     import secrets
 
@@ -182,17 +186,18 @@ def test_jwt_key_rotation(monkeypatch):
     invalidate_jwt_settings_cache()
 
     # Old token should still verify using the previous key
-    payload = verify_token(old_token)
+    payload = await verify_token(old_token)
     assert payload["sub"] == "testuser"
     assert payload["name"] == "Test User"
 
     # New token should verify with new key
     new_token = create_access_token(data)
-    payload = verify_token(new_token)
+    payload = await verify_token(new_token)
     assert payload["sub"] == "testuser"
 
 
-def test_jwt_key_rotation_without_previous_key(monkeypatch):
+@pytest.mark.asyncio
+async def test_jwt_key_rotation_without_previous_key(monkeypatch):
     """Test that tokens fail when key changes without API_SECRET_KEY_PREVIOUS."""
     import secrets
 
@@ -219,12 +224,13 @@ def test_jwt_key_rotation_without_previous_key(monkeypatch):
 
     # Old token should fail to verify
     with pytest.raises(HTTPException) as exc_info:
-        verify_token(old_token)
+        await verify_token(old_token)
 
     assert exc_info.value.status_code == 401
 
 
-def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
+@pytest.mark.asyncio
+async def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
     """Test that tokens verified with previous key exceeding max age are rejected."""
     import secrets
     from datetime import datetime, timezone
@@ -264,13 +270,14 @@ def test_jwt_rotation_max_age_rejects_old_token(monkeypatch):
 
     # Old token should be rejected due to exceeding max age
     with pytest.raises(HTTPException) as exc_info:
-        verify_token(old_token)
+        await verify_token(old_token)
 
     assert exc_info.value.status_code == 401
     assert "too old" in exc_info.value.detail.lower()
 
 
-def test_jwt_rotation_within_grace_period_accepts(monkeypatch):
+@pytest.mark.asyncio
+async def test_jwt_rotation_within_grace_period_accepts(monkeypatch):
     """Test that tokens within grace period are accepted with previous key."""
     import secrets
 
@@ -297,6 +304,6 @@ def test_jwt_rotation_within_grace_period_accepts(monkeypatch):
     invalidate_jwt_settings_cache()
 
     # Token should verify successfully (it's fresh, within grace period)
-    payload = verify_token(old_token)
+    payload = await verify_token(old_token)
     assert payload["sub"] == "testuser"
     assert payload["name"] == "Test User"

@@ -52,8 +52,8 @@ async def test_circuit_breaker_thread_safety():
     )
 
     # Verify circuit breaker tracked the errors
-    stats = await bot.circuit_breaker.get_stats()
-    assert stats["consecutive_errors"] > 0
+    stats = bot.circuit_breaker.get_stats()
+    assert stats["failure_count"] > 0
 
 
 @pytest.mark.asyncio
@@ -108,7 +108,7 @@ async def test_circuit_breaker_opens_with_concurrent_errors():
         await bot.circuit_breaker.record_failure()
 
     # Circuit breaker should be open
-    is_available = await bot.circuit_breaker.is_available()
+    is_available = await bot.circuit_breaker.can_execute()
     assert is_available is False
 
 
