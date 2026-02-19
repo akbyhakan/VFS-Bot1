@@ -14,8 +14,9 @@ def test_captcha_solver_initialization():
     assert solver.api_key == "test_key"
 
 
-def test_captcha_solver_no_api_key():
-    """Test CaptchaSolver raises ValueError without API key."""
+def test_captcha_solver_no_api_key(monkeypatch):
+    """Test CaptchaSolver raises ValueError without API key in production."""
+    monkeypatch.setenv("ENV", "production")
     with pytest.raises(ValueError, match="2Captcha API key is required"):
         CaptchaSolver(api_key="")
 

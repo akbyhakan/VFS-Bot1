@@ -22,13 +22,15 @@ def test_settings_validation_requires_encryption_key(monkeypatch):
     # Remove ENCRYPTION_KEY from environment to test requirement
     monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
     
+    # Use production environment to bypass pytest auto-defaults
     with pytest.raises(ValidationError) as exc_info:
         VFSSettings(
             api_secret_key="a" * 64,  # Valid secret key
+            env="production",
         )
 
     # Should fail due to missing encryption_key
-    assert "encryption_key" in str(exc_info.value)
+    assert "encryption_key" in str(exc_info.value).lower()
 
 
 def test_settings_validation_encryption_key_format():
