@@ -1,7 +1,6 @@
 """Tests for security enhancements."""
 
 import json
-import logging
 import os
 import tempfile
 from unittest.mock import MagicMock, patch
@@ -30,11 +29,8 @@ class TestAPIKeySaltSecurity:
         with pytest.raises(ValueError, match="API_KEY_SALT environment variable MUST be set"):
             APIKeyManager().get_salt()
 
-    def test_api_key_salt_warning_in_development(self, monkeypatch, caplog):
+    def test_api_key_salt_warning_in_development(self, monkeypatch):
         """Test that API_KEY_SALT shows warning in development."""
-        # Set caplog to capture WARNING level logs
-        caplog.set_level(logging.WARNING)
-
         # Reset the singleton instance to force reload
         APIKeyManager.reset()
 
@@ -43,9 +39,13 @@ class TestAPIKeySaltSecurity:
         monkeypatch.delenv("API_KEY_SALT", raising=False)
 
         # Should work but log warning
-        salt = APIKeyManager().get_salt()
-        assert salt == b"dev-only-insecure-salt-do-not-use-in-prod"
-        assert "SECURITY WARNING" in caplog.text
+        with patch("src.core.security.logger") as mock_logger:
+            salt = APIKeyManager().get_salt()
+            assert salt == b"dev-only-insecure-salt-do-not-use-in-prod"
+            # Verify warning was logged via loguru
+            mock_logger.warning.assert_called_once()
+            warning_msg = mock_logger.warning.call_args[0][0]
+            assert "SECURITY WARNING" in warning_msg
 
     def test_api_key_salt_minimum_length(self, monkeypatch):
         """Test that API_KEY_SALT must be at least 32 characters."""
@@ -117,11 +117,8 @@ class TestSessionEncryption:
         assert manager2.access_token == "encrypted_token"
         assert manager2.refresh_token == "refresh_token"
 
-    def test_session_backward_compatibility(self, tmp_path, monkeypatch, caplog):
+    def test_session_backward_compatibility(self, tmp_path, monkeypatch):
         """Test that old unencrypted sessions can still be loaded."""
-        # Set caplog to capture WARNING level logs
-        caplog.set_level(logging.WARNING)
-
         session_file = tmp_path / "session.json"
 
         # Ensure encryption key is set
@@ -140,9 +137,16 @@ class TestSessionEncryption:
             json.dump(old_data, f)
 
         # Load old session
-        manager = SessionManager(str(session_file))
-        assert manager.access_token == "old_token"
-        assert "unencrypted session" in caplog.text.lower()
+        with patch("src.utils.security.session_manager.logger") as mock_logger:
+            manager = SessionManager(str(session_file))
+            assert manager.access_token == "old_token"
+            # Verify warning was logged via loguru
+            mock_logger.warning.assert_called()
+            any_warning_has_unencrypted = any(
+                "unencrypted" in str(call).lower()
+                for call in mock_logger.warning.call_args_list
+            )
+            assert any_warning_has_unencrypted
 
 
 @pytest.mark.skip(

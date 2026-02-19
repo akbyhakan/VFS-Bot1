@@ -319,6 +319,7 @@ class TestProxyDatabase:
 class TestNetNutProxyManager:
     """Test NetNut proxy manager."""
 
+    @skip_no_db
     @pytest.mark.asyncio
     async def test_load_from_database(self):
         """Test loading proxies from database."""
