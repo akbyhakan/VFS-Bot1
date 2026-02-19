@@ -290,7 +290,7 @@ class TestGracefulShutdownTimeout:
         loop = asyncio.get_running_loop()
 
         # Mock graceful_shutdown to timeout
-        with patch("src.core.shutdown.graceful_shutdown") as mock_shutdown:
+        with patch("src.core.infra.shutdown.graceful_shutdown") as mock_shutdown:
             # Make it hang indefinitely
             mock_shutdown.side_effect = asyncio.TimeoutError()
 
@@ -529,7 +529,7 @@ class TestNewExceptionTypes:
 
         error_dict = error.to_dict()
         assert error_dict["error"] == "ShutdownTimeoutError"
-        assert error_dict["details"]["timeout"] == 30
+        assert error_dict["timeout"] == 30
         assert error_dict["recoverable"] is False
 
     def test_batch_operation_error_details(self):
@@ -538,9 +538,9 @@ class TestNewExceptionTypes:
 
         error_dict = error.to_dict()
         assert error_dict["error"] == "BatchOperationError"
-        assert error_dict["details"]["operation"] == "update_users_batch"
-        assert error_dict["details"]["failed_count"] == 3
-        assert error_dict["details"]["success_count"] == 7
+        assert error_dict["operation"] == "update_users_batch"
+        assert error_dict["failed_count"] == 3
+        assert error_dict["success_count"] == 7
 
 
 class TestStartupValidatorStrictMode:
