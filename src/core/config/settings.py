@@ -24,8 +24,8 @@ class VFSSettings(BaseSettings):
     )
 
     # Encryption Keys
-    encryption_key: SecretStr = Field(
-        ...,  # Required field
+    encryption_key: Optional[SecretStr] = Field(
+        default=None,
         description=(
             "Base64-encoded Fernet encryption key for password encryption. "
             "Must be 32 bytes (44 characters when base64 encoded). "
@@ -38,8 +38,8 @@ class VFSSettings(BaseSettings):
     )
 
     # API Security
-    api_secret_key: SecretStr = Field(
-        ..., description="Secret key for API authentication (JWT signing)"  # Required field
+    api_secret_key: Optional[SecretStr] = Field(
+        default=None, description="Secret key for API authentication (JWT signing)"
     )
     api_key_salt: Optional[SecretStr] = Field(
         default=None, description="Optional salt for API key generation"
@@ -115,8 +115,10 @@ class VFSSettings(BaseSettings):
 
     @field_validator("api_secret_key")
     @classmethod
-    def validate_secret_key_length(cls, v: SecretStr) -> SecretStr:
+    def validate_secret_key_length(cls, v: Optional[SecretStr]) -> Optional[SecretStr]:
         """Validate API secret key length."""
+        if v is None:
+            return None
         secret_value = v.get_secret_value()
         if len(secret_value) < 64:
             raise ValueError("API_SECRET_KEY must be at least 64 characters")
@@ -124,8 +126,11 @@ class VFSSettings(BaseSettings):
 
     @field_validator("encryption_key")
     @classmethod
-    def validate_encryption_key_format(cls, v: SecretStr) -> SecretStr:
+    def validate_encryption_key_format(cls, v: Optional[SecretStr]) -> Optional[SecretStr]:
         """Validate encryption key format (should be base64)."""
+        if v is None:
+            return None
+            
         import base64
 
         key_value = v.get_secret_value()
@@ -169,6 +174,50 @@ class VFSSettings(BaseSettings):
         if v_upper not in allowed:
             raise ValueError(f'LOG_LEVEL must be one of: {", ".join(allowed)}')
         return v_upper
+
+    @model_validator(mode="after")
+    def ensure_required_keys_or_defaults(self) -> "VFSSettings":
+        """
+        Ensure encryption_key and api_secret_key are set.
+        
+        In production/staging: These fields are REQUIRED
+        In testing/development: Auto-generate secure defaults if missing
+        
+        Returns:
+            Self with keys populated
+            
+        Raises:
+            ValueError: If required keys are missing in production/staging
+        """
+        import secrets
+        from cryptography.fernet import Fernet
+        
+        is_test_or_dev = self.env in ("testing", "development")
+        
+        # Handle encryption_key
+        if self.encryption_key is None:
+            if is_test_or_dev:
+                # Auto-generate for testing/development
+                self.encryption_key = SecretStr(Fernet.generate_key().decode())
+            else:
+                raise ValueError(
+                    "ENCRYPTION_KEY is required in production/staging. "
+                    'Generate with: python -c "from cryptography.fernet import Fernet; '
+                    'print(Fernet.generate_key().decode())"'
+                )
+        
+        # Handle api_secret_key
+        if self.api_secret_key is None:
+            if is_test_or_dev:
+                # Auto-generate for testing/development
+                self.api_secret_key = SecretStr(secrets.token_urlsafe(48))
+            else:
+                raise ValueError(
+                    "API_SECRET_KEY is required in production/staging. "
+                    "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
+                )
+        
+        return self
 
     @model_validator(mode="after")
     def decrypt_vfs_password(self) -> "VFSSettings":

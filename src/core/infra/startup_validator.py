@@ -1,6 +1,7 @@
 """Startup security validator - prevents running with insecure defaults."""
 
 import os
+import re
 from typing import List
 
 from loguru import logger
@@ -117,8 +118,8 @@ def validate_production_security() -> List[str]:
                 "Generate a secure password with: "
                 'python -c "import secrets; print(secrets.token_urlsafe(16))"'
             )
-        # Substring match for placeholder patterns
-        elif any(pattern in grafana_password for pattern in ("CHANGE_ME", "change_me", "changeme")):
+        # Case-insensitive match for placeholder patterns (e.g., CHANGE_ME, change_me, ChangeMeNow)
+        elif re.search(r"change.?me", grafana_password, re.IGNORECASE):
             warnings.append(
                 "GRAFANA_ADMIN_PASSWORD contains a default/placeholder value. "
                 "Generate a secure password with: "

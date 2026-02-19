@@ -148,6 +148,12 @@ async def verify_hybrid_auth(request: Request) -> Dict[str, Any]:
     )
 
 
+# Alias for admin token verification
+# In this application, any authenticated user is an admin
+# This is used by the config API routes for consistency
+verify_admin_token = verify_jwt_token
+
+
 async def verify_webhook_request(request: Request) -> None:
     """
     Shared webhook signature verification dependency.
