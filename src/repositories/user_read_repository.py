@@ -61,8 +61,9 @@ class UserReadRepository(BaseRepository[User]):
         async with self.db.get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, email, phone, first_name, last_name, center_name,
-                       visa_category, visa_subcategory, is_active, created_at, updated_at
+                SELECT id, email, centre as center_name,
+                       category as visa_category, subcategory as visa_subcategory,
+                       active as is_active, created_at, updated_at
                 FROM users
                 WHERE id = $1
                 """,
@@ -87,8 +88,9 @@ class UserReadRepository(BaseRepository[User]):
         async with self.db.get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, email, phone, first_name, last_name, center_name,
-                       visa_category, visa_subcategory, is_active, created_at, updated_at
+                SELECT id, email, centre as center_name,
+                       category as visa_category, subcategory as visa_subcategory,
+                       active as is_active, created_at, updated_at
                 FROM users
                 WHERE email = $1
                 """,
@@ -112,13 +114,14 @@ class UserReadRepository(BaseRepository[User]):
             List of user entities
         """
         query = """
-            SELECT id, email, phone, first_name, last_name, center_name,
-                   visa_category, visa_subcategory, is_active, created_at, updated_at
+            SELECT id, email, centre as center_name,
+                   category as visa_category, subcategory as visa_subcategory,
+                   active as is_active, created_at, updated_at
             FROM users
         """
 
         if active_only:
-            query += " WHERE is_active = TRUE"
+            query += " WHERE active = TRUE"
 
         query += " ORDER BY created_at DESC LIMIT $1"
 
@@ -338,7 +341,7 @@ class UserReadRepository(BaseRepository[User]):
             Number of active users
         """
         async with self.db.get_connection() as conn:
-            row = await conn.fetchrow("SELECT COUNT(*) FROM users WHERE is_active = TRUE")
+            row = await conn.fetchrow("SELECT COUNT(*) FROM users WHERE active = TRUE")
             count: int = row[0] if row else 0
             return count
 
