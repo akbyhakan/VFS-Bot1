@@ -17,6 +17,7 @@ from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS
 from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 from src.core.security import APIKeyManager
 from src.models.database import Database
+from src.repositories import AuditLogRepository, UserRepository
 from src.utils.encryption import reset_encryption
 from web.state.bot_state import ThreadSafeBotState
 
@@ -47,6 +48,15 @@ async def test_db(unique_encryption_key):
         pytest.skip(f"PostgreSQL test database not available: {e}")
 
     yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
@@ -62,18 +72,20 @@ async def test_update_personal_details_allows_whitelisted_fields(
 ):
     """Test that update_personal_details allows whitelisted fields."""
     # Create a user first
-    user_id = await test_db.add_user(
-        email="test@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
+    user_id = await UserRepository(test_db).create(
+        {
+            "email": "test@example.com",
+            "password": "password123",
+            "center_name": "Istanbul",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
     )
 
     # Add personal details
-    await test_db.add_personal_details(
-        user_id=user_id,
-        details={
+    await UserRepository(test_db).add_personal_details(
+        user_id,
+        {
             "first_name": "John",
             "last_name": "Doe",
             "passport_number": "AB123456",
@@ -83,8 +95,8 @@ async def test_update_personal_details_allows_whitelisted_fields(
     )
 
     # Update with allowed fields
-    updated = await test_db.update_personal_details(
-        user_id=user_id,
+    updated = await UserRepository(test_db).update_personal_details(
+        user_id,
         first_name="Jane",
         passport_number="CD789012",
         email="jane@example.com",
@@ -93,7 +105,7 @@ async def test_update_personal_details_allows_whitelisted_fields(
     assert updated is True
 
     # Verify update
-    details = await test_db.get_personal_details(user_id)
+    details = await UserRepository(test_db).get_personal_details(user_id)
     assert details["first_name"] == "Jane"
     assert details["passport_number"] == "CD789012"
     assert details["email"] == "jane@example.com"
@@ -109,18 +121,20 @@ async def test_update_personal_details_blocks_disallowed_fields(
     caplog.set_level(logging.WARNING)
 
     # Create a user first
-    user_id = await test_db.add_user(
-        email="test@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
+    user_id = await UserRepository(test_db).create(
+        {
+            "email": "test@example.com",
+            "password": "password123",
+            "center_name": "Istanbul",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
     )
 
     # Add personal details
-    await test_db.add_personal_details(
-        user_id=user_id,
-        details={
+    await UserRepository(test_db).add_personal_details(
+        user_id,
+        {
             "first_name": "John",
             "last_name": "Doe",
             "passport_number": "AB123456",
@@ -130,8 +144,8 @@ async def test_update_personal_details_blocks_disallowed_fields(
     )
 
     # Try to update with a disallowed field (SQL injection attempt)
-    updated = await test_db.update_personal_details(
-        user_id=user_id,
+    updated = await UserRepository(test_db).update_personal_details(
+        user_id,
         first_name="Jane",
         malicious_field="DROP TABLE users;",  # SQL injection attempt
     )
@@ -144,7 +158,7 @@ async def test_update_personal_details_blocks_disallowed_fields(
     assert any("malicious_field" in record.message for record in caplog.records)
 
     # Verify only allowed field was updated
-    details = await test_db.get_personal_details(user_id)
+    details = await UserRepository(test_db).get_personal_details(user_id)
     assert details["first_name"] == "Jane"
     assert "malicious_field" not in details
 
@@ -185,13 +199,15 @@ async def test_allowed_fields_whitelist_is_frozen():
 @pytest.mark.security
 async def test_add_audit_log(test_db):
     """Test adding audit log entries."""
-    log_id = await test_db.add_audit_log(
-        action="login",
-        username="admin",
-        ip_address="127.0.0.1",
-        user_agent="Mozilla/5.0",
-        details='{"browser": "Chrome"}',
-        success=True,
+    log_id = await AuditLogRepository(test_db).create(
+        {
+            "action": "login",
+            "username": "admin",
+            "ip_address": "127.0.0.1",
+            "user_agent": "Mozilla/5.0",
+            "details": '{"browser": "Chrome"}',
+            "success": True,
+        }
     )
 
     assert log_id > 0
@@ -201,17 +217,18 @@ async def test_add_audit_log(test_db):
 @pytest.mark.security
 async def test_get_audit_logs(test_db):
     """Test retrieving audit log entries."""
+    audit_repo = AuditLogRepository(test_db)
     # Add multiple log entries
-    await test_db.add_audit_log(action="login", username="admin", success=True)
-    await test_db.add_audit_log(action="logout", username="admin", success=True)
-    await test_db.add_audit_log(action="user_created", username="admin", success=True)
+    await audit_repo.create({"action": "login", "username": "admin", "success": True})
+    await audit_repo.create({"action": "logout", "username": "admin", "success": True})
+    await audit_repo.create({"action": "user_created", "username": "admin", "success": True})
 
     # Get all logs
-    logs = await test_db.get_audit_logs(limit=10)
+    logs = await audit_repo.get_all(limit=10)
     assert len(logs) == 3
 
     # Get filtered by action
-    login_logs = await test_db.get_audit_logs(action="login")
+    login_logs = await audit_repo.get_all(action="login")
     assert len(login_logs) == 1
     assert login_logs[0]["action"] == "login"
 
@@ -220,29 +237,35 @@ async def test_get_audit_logs(test_db):
 @pytest.mark.security
 async def test_get_audit_logs_with_user_filter(test_db):
     """Test filtering audit logs by user_id."""
+    user_repo = UserRepository(test_db)
+    audit_repo = AuditLogRepository(test_db)
     # Create users
-    user1_id = await test_db.add_user(
-        email="user1@example.com",
-        password="pass123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
+    user1_id = await user_repo.create(
+        {
+            "email": "user1@example.com",
+            "password": "pass123",
+            "center_name": "Istanbul",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
     )
-    user2_id = await test_db.add_user(
-        email="user2@example.com",
-        password="pass456",
-        centre="Ankara",
-        category="Tourism",
-        subcategory="Short Stay",
+    user2_id = await user_repo.create(
+        {
+            "email": "user2@example.com",
+            "password": "pass456",
+            "center_name": "Ankara",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
     )
 
     # Add audit logs for different users
-    await test_db.add_audit_log(action="payment_initiated", user_id=user1_id)
-    await test_db.add_audit_log(action="payment_initiated", user_id=user2_id)
-    await test_db.add_audit_log(action="login", user_id=user1_id)
+    await audit_repo.create({"action": "payment_initiated", "user_id": user1_id})
+    await audit_repo.create({"action": "payment_initiated", "user_id": user2_id})
+    await audit_repo.create({"action": "login", "user_id": user1_id})
 
     # Filter by user
-    user1_logs = await test_db.get_audit_logs(user_id=user1_id)
+    user1_logs = await audit_repo.get_all(user_id=user1_id)
     assert len(user1_logs) == 2
     assert all(log["user_id"] == user1_id for log in user1_logs)
 

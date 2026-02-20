@@ -15,13 +15,23 @@ async def temp_db():
 
     yield db
 
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
 @pytest.mark.asyncio
 async def test_get_personal_details_batch_empty(temp_db):
     """Test batch query with empty list."""
-    result = await temp_db.get_personal_details_batch([])
+    user_repo = UserRepository(temp_db)
+    result = await user_repo.get_personal_details_batch([])
     assert result == {}
 
 
@@ -47,10 +57,11 @@ async def test_get_personal_details_batch_single(temp_db):
         "passport_number": "A12345678",
         "email": "test@example.com",
     }
-    await temp_db.add_personal_details(user_id, details)
+    user_repo_write = UserRepository(temp_db)
+    await user_repo_write.add_personal_details(user_id, details)
 
     # Batch query
-    result = await temp_db.get_personal_details_batch([user_id])
+    result = await user_repo_write.get_personal_details_batch([user_id])
 
     assert len(result) == 1
     assert user_id in result
@@ -94,7 +105,8 @@ async def test_get_personal_details_batch_multiple(temp_db):
     )
 
     # Add personal details
-    await temp_db.add_personal_details(
+    user_repo_write = UserRepository(temp_db)
+    await user_repo_write.add_personal_details(
         user1_id,
         {
             "first_name": "Alice",
@@ -104,7 +116,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
         },
     )
 
-    await temp_db.add_personal_details(
+    await user_repo_write.add_personal_details(
         user2_id,
         {
             "first_name": "Bob",
@@ -114,7 +126,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
         },
     )
 
-    await temp_db.add_personal_details(
+    await user_repo_write.add_personal_details(
         user3_id,
         {
             "first_name": "Charlie",
@@ -125,7 +137,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
     )
 
     # Batch query all three
-    result = await temp_db.get_personal_details_batch([user1_id, user2_id, user3_id])
+    result = await user_repo_write.get_personal_details_batch([user1_id, user2_id, user3_id])
 
     assert len(result) == 3
     assert result[user1_id]["first_name"] == "Alice"
@@ -148,7 +160,7 @@ async def test_get_personal_details_batch_missing_users(temp_db):
         }
     )
 
-    await temp_db.add_personal_details(
+    await user_repo.add_personal_details(
         user_id,
         {
             "first_name": "John",
@@ -159,7 +171,7 @@ async def test_get_personal_details_batch_missing_users(temp_db):
     )
 
     # Query with mix of existing and non-existing IDs
-    result = await temp_db.get_personal_details_batch([user_id, 9999, 8888])
+    result = await user_repo.get_personal_details_batch([user_id, 9999, 8888])
 
     # Should only return the existing user
     assert len(result) == 1
@@ -175,14 +187,15 @@ async def test_get_personal_details_batch_invalid_ids():
     await db.connect()
 
     try:
+        user_repo = UserRepository(db)
         # Test with invalid IDs (negative, zero)
         with pytest.raises(ValueError, match="Invalid user_id"):
-            await db.get_personal_details_batch([0])
+            await user_repo.get_personal_details_batch([0])
 
         with pytest.raises(ValueError, match="Invalid user_id"):
-            await db.get_personal_details_batch([-1])
+            await user_repo.get_personal_details_batch([-1])
 
         with pytest.raises(ValueError, match="Invalid user_id"):
-            await db.get_personal_details_batch([1, -5, 3])
+            await user_repo.get_personal_details_batch([1, -5, 3])
     finally:
         await db.close()

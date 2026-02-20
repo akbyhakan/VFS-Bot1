@@ -425,7 +425,7 @@ class TestEnvironmentValidation:
             # Test with ANSI escape sequence injection
             os.environ["ENV"] = "\x1b[31mmalicious\x1b[0m\nFAKE LOG LINE"
 
-            with caplog.at_level("WARNING"):
+            with caplog.at_level("WARNING", logger="loguru"):
                 result = get_validated_environment()
 
             # Should default to production

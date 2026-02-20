@@ -108,7 +108,7 @@ async def test_get_user_with_decrypted_password(test_db):
     )
 
     # Get user with decrypted password
-    user = await test_db.get_user_with_decrypted_password(user_id)
+    user = await user_repo.get_by_id_with_password(user_id)
 
     assert user is not None
     assert user["email"] == email
