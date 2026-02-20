@@ -2,7 +2,6 @@
 thread safety, and JWT validation."""
 
 import asyncio
-import logging
 import os
 import threading
 from collections import deque
@@ -128,11 +127,10 @@ async def test_update_personal_details_allows_whitelisted_fields(
 @pytest.mark.asyncio
 @pytest.mark.security
 async def test_update_personal_details_blocks_disallowed_fields(
-    test_db, unique_encryption_key, caplog
+    test_db, unique_encryption_key
 ):
     """Test that update_personal_details blocks disallowed fields and logs warning."""
-    # Set caplog to capture WARNING level logs
-    caplog.set_level(logging.WARNING)
+    from unittest.mock import patch
 
     # Create a user first
     user_id = await UserRepository(test_db).create(
@@ -158,18 +156,21 @@ async def test_update_personal_details_blocks_disallowed_fields(
     )
 
     # Try to update with a disallowed field (SQL injection attempt)
-    updated = await UserRepository(test_db).update_personal_details(
-        user_id,
-        first_name="Jane",
-        malicious_field="DROP TABLE users;",  # SQL injection attempt
-    )
+    with patch("src.repositories.user_write_repository.logger.warning") as mock_warning:
+        updated = await UserRepository(test_db).update_personal_details(
+            user_id,
+            first_name="Jane",
+            malicious_field="DROP TABLE users;",  # SQL injection attempt
+        )
 
     # Should still return True (update succeeded for allowed fields)
     assert updated is True
 
     # Check that warning was logged
-    assert any("disallowed field" in record.message.lower() for record in caplog.records)
-    assert any("malicious_field" in record.message for record in caplog.records)
+    mock_warning.assert_called_once()
+    warning_message = str(mock_warning.call_args.args[0])
+    assert "disallowed field" in warning_message.lower()
+    assert "malicious_field" in warning_message
 
     # Verify only allowed field was updated
     details = await UserRepository(test_db).get_personal_details(user_id)

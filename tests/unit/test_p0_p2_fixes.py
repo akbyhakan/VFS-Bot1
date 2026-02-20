@@ -416,8 +416,10 @@ class TestEnvironmentValidation:
             elif "ENV" in os.environ:
                 del os.environ["ENV"]
 
-    def test_unknown_environment_log_is_sanitized(self, caplog):
+    def test_unknown_environment_log_is_sanitized(self):
         """Test that unknown environment values are sanitized in log messages."""
+        from unittest.mock import patch
+
         from web.cors import get_validated_environment
 
         old_env = os.getenv("ENV")
@@ -425,14 +427,17 @@ class TestEnvironmentValidation:
             # Test with ANSI escape sequence injection
             os.environ["ENV"] = "\x1b[31mmalicious\x1b[0m\nFAKE LOG LINE"
 
-            with caplog.at_level("WARNING", logger="loguru"):
+            with patch("web.cors.logger.warning") as mock_warning:
                 result = get_validated_environment()
 
             # Should default to production
             assert result == "production"
 
+            # Check that logger.warning was called
+            mock_warning.assert_called_once()
+            log_message = str(mock_warning.call_args.args[0])
+
             # Check that log message was sanitized (no ANSI escape sequences)
-            log_message = caplog.text
             assert "\x1b" not in log_message, "ANSI escape sequences should be removed"
 
             # Check for expected warning message

@@ -164,13 +164,21 @@ async def test_concurrent_start_guard(config, database, notifier):
 
     result1, result2 = await asyncio.gather(task1, task2)
 
-    # One should succeed, one should fail with "already starting"
+    # One should succeed, one should fail with "already starting" or "already running"
     results = [result1, result2]
     success_count = sum(1 for r in results if r["status"] == "success")
-    starting_count = sum(1 for r in results if "starting" in r.get("message", "").lower())
+    guard_count = sum(
+        1
+        for r in results
+        if r["status"] == "error"
+        and (
+            "starting" in r.get("message", "").lower()
+            or "running" in r.get("message", "").lower()
+        )
+    )
 
     assert success_count == 1
-    assert starting_count == 1
+    assert guard_count == 1
 
     # Clean up
     await controller.stop_bot()

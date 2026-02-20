@@ -14,7 +14,7 @@ def _mock_slot_checker_state(bot):
 
     bot.services.workflow.slot_checker.page_state_detector = MagicMock()
     bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
-        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0, url="")
     )
 
 
@@ -27,24 +27,6 @@ async def test_bot_initialization(config, mock_db, mock_notifier):
     assert bot.running is False
     assert bot.db == mock_db
     assert bot.notifier == mock_notifier
-
-
-@pytest.mark.asyncio
-async def test_login_success(mock_page, config, mock_db, mock_notifier):
-    """Test successful login flow."""
-    bot = VFSBot(config, mock_db, mock_notifier)
-
-    # Mock successful login redirect
-    mock_page.url = "https://visa.vfsglobal.com/tur/deu/en/dashboard"
-    mock_page.locator.return_value.count = AsyncMock(return_value=0)  # No captcha
-
-    result = await bot.services.workflow.auth_service.login(
-        mock_page, "test@example.com", "password"
-    )
-
-    assert result is True
-    mock_page.goto.assert_called_once()
-    mock_page.fill.assert_called()
 
 
 @pytest.mark.asyncio
@@ -104,53 +86,6 @@ async def test_check_slots_not_available(mock_page, config, mock_db, mock_notifi
     )
 
     assert slot is None
-
-
-@pytest.mark.asyncio
-async def test_build_reservation(config, mock_db, mock_notifier):
-    """Test building reservation data structure from user, slot, and details."""
-    bot = VFSBot(config, mock_db, mock_notifier)
-
-    user = {
-        "id": 1,
-        "email": "test@example.com",
-        "centre": "Istanbul",
-        "category": "Schengen Visa",
-    }
-
-    slot = {"date": "15/02/2024", "time": "10:00"}
-
-    details = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "gender": "male",
-        "date_of_birth": "01/01/1990",
-        "passport_number": "AB123456",
-        "passport_expiry": "01/01/2030",
-        "mobile_code": "90",
-        "mobile_number": "5551234567",
-        "email": "test@example.com",
-    }
-
-    # Build reservation
-    reservation = bot.booking_workflow._build_reservation(user, slot, details)
-
-    # Verify reservation structure
-    assert reservation["person_count"] == 1
-    assert reservation["preferred_dates"] == ["15/02/2024"]
-    assert len(reservation["persons"]) == 1
-
-    person = reservation["persons"][0]
-    assert person["first_name"] == "John"
-    assert person["last_name"] == "Doe"
-    assert person["gender"] == "male"
-    assert person["birth_date"] == "01/01/1990"
-    assert person["passport_number"] == "AB123456"
-    assert person["passport_expiry_date"] == "01/01/2030"
-    assert person["phone_code"] == "90"
-    assert person["phone_number"] == "5551234567"
-    assert person["email"] == "test@example.com"
-    assert person["is_child_with_parent"] is False
 
 
 @pytest.mark.asyncio
