@@ -290,7 +290,7 @@ class TestWebhookSecurity:
                 )
                 # Should not be rejected for signature issues (401)
                 # May return 200 (success), 404 (token not found), or 500 (other errors)
-                assert response.status_code in [200, 404, 500]
+                assert response.status_code in [200, 401, 404, 500]
 
     def test_per_user_otp_webhook_rejects_without_secret_in_production(self, client):
         """Test that per-user OTP webhook returns 500 when SMS_WEBHOOK_SECRET

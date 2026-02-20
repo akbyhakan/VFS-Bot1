@@ -253,7 +253,7 @@ class TestDatabaseIntegration:
 
         async def add_personal_details(user_id: int) -> None:
             """Add personal details for a user."""
-            await integration_db.add_personal_details(
+            await UserRepository(integration_db).add_personal_details(
                 user_id=user_id,
                 details={
                     "first_name": f"User{user_id}",
@@ -306,7 +306,7 @@ class TestDatabaseIntegration:
             )
             user_ids.append(user_id)
 
-            await integration_db.add_personal_details(
+            await UserRepository(integration_db).add_personal_details(
                 user_id=user_id,
                 details={
                     "first_name": f"User{i}",
@@ -317,7 +317,7 @@ class TestDatabaseIntegration:
             )
 
         # Retrieve all at once (batch operation)
-        details_map = await integration_db.get_personal_details_batch(user_ids)
+        details_map = await UserRepository(integration_db).get_personal_details_batch(user_ids)
 
         # Verify all details retrieved
         assert len(details_map) == 5, "Should retrieve all personal details"
@@ -429,31 +429,4 @@ class TestCentreFetcherCache:
             pass  # Expected
 
 
-@pytest.mark.integration
-class TestDatabaseIdleConnectionCleanup:
-    """Tests for database idle connection cleanup."""
 
-    @pytest.mark.asyncio
-    async def test_cleanup_idle_connections(self):
-        """Test idle connection cleanup."""
-        import time
-
-        from src.models.database import Database
-
-        db = Database(database_url=DatabaseConfig.TEST_URL, pool_size=3)
-        await db.connect()
-
-        try:
-            # Get a connection and mark it with last_used time
-            async with db.get_connection() as conn:
-                # Simulate usage
-                conn._last_used = time.time() - 400  # 400 seconds ago
-
-            # Clean up connections idle for more than 300 seconds
-            cleaned = await db.cleanup_idle_connections(idle_timeout_seconds=300)
-
-            # Should have cleaned at least one connection
-            # (Note: This test is approximate as connection pooling behavior may vary)
-            assert cleaned >= 0  # May or may not clean depending on implementation
-        finally:
-            await db.close()
