@@ -226,14 +226,12 @@ class SlotSelector:
 
             if self.captcha_solver:
                 # Extract sitekey and solve
-                sitekey = await page.evaluate(
-                    """
+                sitekey = await page.evaluate("""
                     () => {
                         const widget = document.querySelector('.cf-turnstile, [data-sitekey]');
                         return widget ? widget.getAttribute('data-sitekey') : null;
                     }
-                """
-                )
+                """)
 
                 if sitekey:
                     token = await self.captcha_solver.solve_turnstile(page.url, sitekey)

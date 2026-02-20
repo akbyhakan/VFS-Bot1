@@ -21,7 +21,7 @@ def test_settings_validation_requires_encryption_key(monkeypatch):
     """Test that encryption key is required."""
     # Remove ENCRYPTION_KEY from environment to test requirement
     monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
-    
+
     # Use production environment to bypass pytest auto-defaults
     with pytest.raises(ValidationError) as exc_info:
         VFSSettings(

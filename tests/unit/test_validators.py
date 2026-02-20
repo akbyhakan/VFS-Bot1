@@ -164,7 +164,7 @@ def test_captcha_api_key_length_validation(monkeypatch):
 
 def test_optional_vars_warning(monkeypatch):
     """Test that missing optional vars produce warnings but validation passes.
-    
+
     Note: This test verifies behavior (validation succeeds) rather than log capture.
     The validator uses loguru which requires special pytest integration to capture logs.
     The warnings are still emitted (visible in test output) but not captured by caplog.

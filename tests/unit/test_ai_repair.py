@@ -183,9 +183,7 @@ def test_ai_repair_init_import_error(temp_selectors_file):
     with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
         # Simulate ImportError by blocking google.genai in sys.modules
         # Setting a module to None in sys.modules causes ImportError on import
-        blocked_modules = {
-            k: None for k in list(sys.modules.keys()) if k.startswith("google")
-        }
+        blocked_modules = {k: None for k in list(sys.modules.keys()) if k.startswith("google")}
         blocked_modules["google"] = None
         blocked_modules["google.genai"] = None
 

@@ -174,7 +174,8 @@ class TestR2DoubleShutdownFix:
 
         # More specific check - the call includes start_backup=False
         assert (
-            "run_web_mode(config, start_cleanup=True, start_backup=False, db=db, skip_shutdown=True)" in content
+            "run_web_mode(config, start_cleanup=True, start_backup=False, db=db, skip_shutdown=True)"
+            in content
         ), "run_both_mode should call run_web_mode with correct parameters"
 
 
@@ -576,7 +577,9 @@ class TestR6RuntimeSafetyFixes:
 
     def test_notification_has_escape_markdown(self):
         """Test that TelegramClient has escape_markdown static method."""
-        telegram_client_file = Path(__file__).parent.parent.parent / "src/services/notification/telegram_client.py"
+        telegram_client_file = (
+            Path(__file__).parent.parent.parent / "src/services/notification/telegram_client.py"
+        )
 
         with open(telegram_client_file, "r") as f:
             content = f.read()
@@ -614,7 +617,9 @@ class TestR6RuntimeSafetyFixes:
 
     def test_send_telegram_uses_escape_markdown(self):
         """Test that TelegramChannel.send() uses TelegramClient.escape_markdown."""
-        telegram_channel_file = Path(__file__).parent.parent.parent / "src/services/notification/channels/telegram.py"
+        telegram_channel_file = (
+            Path(__file__).parent.parent.parent / "src/services/notification/channels/telegram.py"
+        )
 
         with open(telegram_channel_file, "r") as f:
             content = f.read()
@@ -635,7 +640,8 @@ class TestR6RuntimeSafetyFixes:
 
                         # Should escape both title and message
                         assert (
-                            "escaped_title" in method_str or "TelegramClient.escape_markdown(title)" in method_str
+                            "escaped_title" in method_str
+                            or "TelegramClient.escape_markdown(title)" in method_str
                         ), "TelegramChannel.send() should escape title"
                         assert (
                             "escaped_message" in method_str
@@ -646,7 +652,9 @@ class TestR6RuntimeSafetyFixes:
 
     def test_send_telegram_with_photo_uses_escape_markdown(self):
         """Test that TelegramClient.send_photo exists and handles captions."""
-        telegram_client_file = Path(__file__).parent.parent.parent / "src/services/notification/telegram_client.py"
+        telegram_client_file = (
+            Path(__file__).parent.parent.parent / "src/services/notification/telegram_client.py"
+        )
 
         with open(telegram_client_file, "r") as f:
             content = f.read()
@@ -656,7 +664,10 @@ class TestR6RuntimeSafetyFixes:
             if isinstance(node, ast.ClassDef) and node.name == "TelegramClient":
                 # Find send_photo method (can be sync or async)
                 for method in node.body:
-                    if isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef)) and method.name == "send_photo":
+                    if (
+                        isinstance(method, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and method.name == "send_photo"
+                    ):
                         method_lines = content.split("\n")[method.lineno - 1 : method.end_lineno]
                         method_str = "\n".join(method_lines)
 
@@ -664,12 +675,12 @@ class TestR6RuntimeSafetyFixes:
                         assert (
                             "caption" in method_str
                         ), "TelegramClient.send_photo should accept caption parameter"
-                        
+
                         assert (
                             "caption=" in method_str
                         ), "TelegramClient.send_photo should pass caption to bot.send_photo"
                         return
-                
+
         pytest.fail("TelegramClient.send_photo method not found")
 
 
@@ -697,5 +708,9 @@ class TestDocumentationUpdates:
             content = f.read()
 
         # Should list some key web routes (more robust than checking exact counts)
-        assert "web/routes/payment.py" in content, "FINAL_VERIFICATION.md should mention web/routes/payment.py"
-        assert "web/routes/webhook.py" in content, "FINAL_VERIFICATION.md should mention web/routes/webhook.py"
+        assert (
+            "web/routes/payment.py" in content
+        ), "FINAL_VERIFICATION.md should mention web/routes/payment.py"
+        assert (
+            "web/routes/webhook.py" in content
+        ), "FINAL_VERIFICATION.md should mention web/routes/webhook.py"

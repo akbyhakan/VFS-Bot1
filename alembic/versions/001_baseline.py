@@ -25,8 +25,7 @@ def upgrade() -> None:
     """Create complete database schema with all tables, indexes, and triggers."""
 
     # Create users table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -38,12 +37,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
         )
-    """
-    )
+    """)
 
     # Create personal_details table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS personal_details (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
@@ -66,12 +63,10 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    """
-    )
+    """)
 
     # Create appointments table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS appointments (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
@@ -85,12 +80,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    """
-    )
+    """)
 
     # Create logs table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS logs (
             id BIGSERIAL PRIMARY KEY,
             level TEXT NOT NULL,
@@ -99,12 +92,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
         )
-    """
-    )
+    """)
 
     # Create payment_card table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS payment_card (
             id BIGSERIAL PRIMARY KEY,
             card_holder_name TEXT NOT NULL,
@@ -114,23 +105,19 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
         )
-    """
-    )
+    """)
 
     # Create admin_secret_usage table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS admin_secret_usage (
             id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
             consumed BOOLEAN NOT NULL DEFAULT false,
             consumed_at TIMESTAMPTZ
         )
-    """
-    )
+    """)
 
     # Create appointment_requests table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS appointment_requests (
             id BIGSERIAL PRIMARY KEY,
             country_code TEXT NOT NULL,
@@ -144,12 +131,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
         )
-    """
-    )
+    """)
 
     # Create appointment_persons table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS appointment_persons (
             id BIGSERIAL PRIMARY KEY,
             request_id BIGINT NOT NULL,
@@ -168,12 +153,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (request_id) REFERENCES appointment_requests (id) ON DELETE CASCADE
         )
-    """
-    )
+    """)
 
     # Create audit_log table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id BIGSERIAL PRIMARY KEY,
             action TEXT NOT NULL,
@@ -187,12 +170,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
         )
-    """
-    )
+    """)
 
     # Create appointment_history table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS appointment_history (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
@@ -208,12 +189,10 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
-    """
-    )
+    """)
 
     # Create user_webhooks table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS user_webhooks (
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL UNIQUE,
@@ -222,12 +201,10 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW(),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
-    """
-    )
+    """)
 
     # Create proxy_endpoints table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS proxy_endpoints (
             id BIGSERIAL PRIMARY KEY,
             server TEXT NOT NULL,
@@ -241,19 +218,16 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             UNIQUE(server, port, username)
         )
-    """
-    )
+    """)
 
     # Create token_blacklist table
-    op.execute(
-        """
+    op.execute("""
         CREATE TABLE IF NOT EXISTS token_blacklist (
             jti VARCHAR(64) PRIMARY KEY,
             exp TIMESTAMPTZ NOT NULL,
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
-    """
-    )
+    """)
 
     # Create indexes
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
@@ -278,8 +252,7 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id)")
 
     # Create trigger function for auto-updating updated_at column
-    op.execute(
-        """
+    op.execute("""
         CREATE OR REPLACE FUNCTION update_updated_at_column()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -287,70 +260,61 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ language 'plpgsql';
-    """
-    )
+    """)
 
     # Create triggers for tables with updated_at column
     # Using explicit SQL statements for safety (no string interpolation)
-    op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+    op.execute("DROP TRIGGER IF EXISTS update_users_updated_at ON users;")
+    op.execute("""
         CREATE TRIGGER update_users_updated_at
             BEFORE UPDATE ON users
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
-    op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_personal_details_updated_at ON personal_details;
+    op.execute("DROP TRIGGER IF EXISTS update_personal_details_updated_at ON personal_details;")
+    op.execute("""
         CREATE TRIGGER update_personal_details_updated_at
             BEFORE UPDATE ON personal_details
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
-    op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_payment_card_updated_at ON payment_card;
+    op.execute("DROP TRIGGER IF EXISTS update_payment_card_updated_at ON payment_card;")
+    op.execute("""
         CREATE TRIGGER update_payment_card_updated_at
             BEFORE UPDATE ON payment_card
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
     op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_appointment_requests_updated_at ON appointment_requests;
+        "DROP TRIGGER IF EXISTS update_appointment_requests_updated_at ON appointment_requests;"
+    )
+    op.execute("""
         CREATE TRIGGER update_appointment_requests_updated_at
             BEFORE UPDATE ON appointment_requests
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
     op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_appointment_history_updated_at ON appointment_history;
+        "DROP TRIGGER IF EXISTS update_appointment_history_updated_at ON appointment_history;"
+    )
+    op.execute("""
         CREATE TRIGGER update_appointment_history_updated_at
             BEFORE UPDATE ON appointment_history
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
-    op.execute(
-        """
-        DROP TRIGGER IF EXISTS update_proxy_endpoints_updated_at ON proxy_endpoints;
+    op.execute("DROP TRIGGER IF EXISTS update_proxy_endpoints_updated_at ON proxy_endpoints;")
+    op.execute("""
         CREATE TRIGGER update_proxy_endpoints_updated_at
             BEFORE UPDATE ON proxy_endpoints
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
-    """
-    )
+    """)
 
 
 def downgrade() -> None:

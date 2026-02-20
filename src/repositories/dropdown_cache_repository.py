@@ -239,13 +239,11 @@ class DropdownCacheRepository(BaseRepository):
             List of country codes
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT country_code
                 FROM vfs_dropdown_cache
                 ORDER BY country_code
-                """
-            )
+                """)
 
             return [row["country_code"] for row in rows]
 
@@ -351,13 +349,11 @@ class DropdownCacheRepository(BaseRepository):
             List of dictionaries with sync status information for each country
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT country_code, sync_status, last_synced_at, error_message
                 FROM vfs_dropdown_cache
                 ORDER BY country_code
-                """
-            )
+                """)
 
             return [
                 {

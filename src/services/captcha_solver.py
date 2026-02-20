@@ -25,7 +25,7 @@ class CaptchaSolver:
             ValueError: If api_key is empty or missing in non-test environments
         """
         from src.core.environment import Environment
-        
+
         if not api_key and not Environment.is_testing():
             raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
 

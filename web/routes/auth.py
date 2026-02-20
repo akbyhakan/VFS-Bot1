@@ -49,11 +49,9 @@ async def _mark_admin_secret_consumed(db: Database) -> None:
         db: Database instance
     """
     async with db.get_connection() as conn:
-        await conn.execute(
-            """INSERT INTO admin_secret_usage (id, consumed, consumed_at)
+        await conn.execute("""INSERT INTO admin_secret_usage (id, consumed, consumed_at)
                VALUES (1, true, NOW())
-               ON CONFLICT (id) DO UPDATE SET consumed = true, consumed_at = NOW()"""
-        )
+               ON CONFLICT (id) DO UPDATE SET consumed = true, consumed_at = NOW()""")
 
 
 @router.post("/generate-key")

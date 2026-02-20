@@ -66,6 +66,7 @@ def test_rate_limit_headers_decrements(app_with_middleware):
 
     # Manually consume a request to simulate rate limit enforcement
     import asyncio
+
     asyncio.run(limiter.acquire())
 
     response2 = client.get("/test")

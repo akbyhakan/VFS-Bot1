@@ -431,7 +431,9 @@ async def test_batch_error_rate_threshold_constant_exists():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Batch processing methods removed - test needs rewrite for current implementation")
+@pytest.mark.skip(
+    reason="Batch processing methods removed - test needs rewrite for current implementation"
+)
 async def test_batch_error_rate_zero_records_success():
     """Test that zero error rate records success."""
     from unittest.mock import MagicMock, patch
@@ -487,7 +489,9 @@ async def test_batch_error_rate_zero_records_success():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Batch processing methods removed - test needs rewrite for current implementation")
+@pytest.mark.skip(
+    reason="Batch processing methods removed - test needs rewrite for current implementation"
+)
 async def test_batch_error_rate_below_threshold_records_success():
     """Test that error rate below 50% records success."""
     from unittest.mock import MagicMock, patch
@@ -548,7 +552,9 @@ async def test_batch_error_rate_below_threshold_records_success():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Batch processing methods removed - test needs rewrite for current implementation")
+@pytest.mark.skip(
+    reason="Batch processing methods removed - test needs rewrite for current implementation"
+)
 async def test_batch_error_rate_above_threshold_records_failure():
     """Test that error rate at or above 50% records failure."""
     from unittest.mock import MagicMock, patch

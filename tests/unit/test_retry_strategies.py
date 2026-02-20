@@ -119,7 +119,7 @@ class TestRetryStrategies:
     def test_rate_limit_retry_max_attempts(self):
         """Test that rate limit retry stops after max attempts."""
         from unittest.mock import patch
-        
+
         retry_decorator = get_rate_limit_retry()
 
         @retry_decorator
@@ -127,7 +127,7 @@ class TestRetryStrategies:
             raise RateLimitError("Rate limited")
 
         # Mock sleep to avoid actually waiting
-        with patch('time.sleep'):
+        with patch("time.sleep"):
             with pytest.raises(RateLimitError):
                 always_fails()
 

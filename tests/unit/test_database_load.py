@@ -10,8 +10,7 @@ from src.models.database import Database
 
 # Skip these tests in CI or when DATABASE_URL is not available
 skip_no_db = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL") or os.getenv("CI") == "true",
-    reason="No database available in CI"
+    not os.getenv("DATABASE_URL") or os.getenv("CI") == "true", reason="No database available in CI"
 )
 
 
