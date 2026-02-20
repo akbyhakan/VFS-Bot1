@@ -5,6 +5,7 @@ from cryptography.fernet import Fernet
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
+from src.repositories import UserRepository
 
 
 @pytest.fixture(scope="function")
@@ -33,47 +34,77 @@ def unique_encryption_key(monkeypatch):
 async def test_db(unique_encryption_key):
     """Create a test database."""
     db = Database(database_url=DatabaseConfig.TEST_URL)
-    await db.connect()
+    try:
+        await db.connect()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL test database not available: {e}")
+
+    # Clean slate before each test
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
 
     # Add a test user
-    await db.add_user(
-        email="test@example.com",
-        password="password123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
+    user_repo = UserRepository(db)
+    await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "password123",
+            "center_name": "Istanbul",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+        }
     )
 
     yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
 @pytest.mark.asyncio
 async def test_get_user_with_invalid_user_id_negative(test_db):
     """Test that negative user_id raises ValueError."""
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.get_user_with_decrypted_password(-1)
+        await user_repo.get_by_id_with_password(-1)
 
 
 @pytest.mark.asyncio
 async def test_get_user_with_invalid_user_id_zero(test_db):
     """Test that zero user_id raises ValueError."""
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.get_user_with_decrypted_password(0)
+        await user_repo.get_by_id_with_password(0)
 
 
 @pytest.mark.asyncio
 async def test_get_user_with_invalid_user_id_string(test_db):
     """Test that string user_id raises ValueError."""
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.get_user_with_decrypted_password("not_an_int")  # type: ignore
+        await user_repo.get_by_id_with_password("not_an_int")  # type: ignore
 
 
 @pytest.mark.asyncio
 async def test_get_personal_details_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in get_personal_details."""
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.get_personal_details(-1)
+        await user_repo.get_personal_details(-1)
 
 
 @pytest.mark.asyncio
@@ -86,21 +117,24 @@ async def test_add_personal_details_with_invalid_user_id(test_db):
         "email": "john@example.com",
     }
 
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.add_personal_details(0, details)
+        await user_repo.add_personal_details(0, details)
 
 
 @pytest.mark.asyncio
 async def test_delete_user_with_invalid_user_id(test_db):
-    """Test that invalid user_id raises ValueError in delete_user."""
+    """Test that invalid user_id raises ValueError in hard_delete."""
+    user_repo = UserRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
-        await test_db.delete_user(-5)
+        await user_repo.hard_delete(-5)
 
 
 @pytest.mark.asyncio
 async def test_valid_user_id_passes_validation(test_db):
     """Test that valid user_id passes validation."""
     # This should not raise an error
-    user = await test_db.get_user_with_decrypted_password(1)
+    user_repo = UserRepository(test_db)
+    user = await user_repo.get_by_id_with_password(1)
     assert user is not None
     assert user["id"] == 1

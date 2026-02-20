@@ -499,7 +499,13 @@ class UserWriteRepository(BaseRepository[User]):
 
         Returns:
             True if deleted, False otherwise
+
+        Raises:
+            ValueError: If id is invalid
         """
+        if not isinstance(id, int) or id <= 0:
+            raise ValueError(f"Invalid user_id: {id}. Must be a positive integer.")
+
         async with self.db.get_connection() as conn:
             result = await conn.execute("DELETE FROM users WHERE id = $1", id)
 
