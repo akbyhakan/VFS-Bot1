@@ -47,14 +47,28 @@ async def test_db(unique_encryption_key):
     except Exception as e:
         pytest.skip(f"PostgreSQL test database not available: {e}")
 
-    yield db
     try:
         async with db.get_connection() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
                 personal_details, token_blacklist, audit_log, logs, payment_card,
                 user_webhooks, users RESTART IDENTITY CASCADE
-            """)
+            """
+            )
+    except Exception:
+        pass
+
+    yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute(
+                """
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """
+            )
     except Exception:
         pass
     await db.close()

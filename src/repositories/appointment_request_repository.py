@@ -209,7 +209,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             # Find pending request where any person matches user email
             row = await conn.fetchrow(
                 """
-                SELECT DISTINCT ar.id FROM appointment_requests ar
+                SELECT DISTINCT ar.id, ar.created_at FROM appointment_requests ar
                 JOIN appointment_persons ap ON ar.id = ap.request_id
                 WHERE ap.email = $1 AND ar.status = 'pending'
                 ORDER BY ar.created_at DESC
@@ -244,7 +244,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             # Find all pending requests where any person matches user email
             rows = await conn.fetch(
                 """
-                SELECT DISTINCT ar.id FROM appointment_requests ar
+                SELECT DISTINCT ar.id, ar.created_at FROM appointment_requests ar
                 JOIN appointment_persons ap ON ar.id = ap.request_id
                 WHERE ap.email = $1 AND ar.status = 'pending'
                 ORDER BY ar.created_at DESC
@@ -273,13 +273,15 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             Set of user IDs with pending appointment requests
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT DISTINCT u.id
                 FROM users u
                 JOIN appointment_persons ap ON ap.email = u.email
                 JOIN appointment_requests ar ON ar.id = ap.request_id
                 WHERE ar.status = 'pending' AND u.active = true
-                """)
+                """
+            )
             return {row["id"] for row in rows}
 
     async def create(self, data: Dict[str, Any]) -> int:

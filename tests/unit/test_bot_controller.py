@@ -88,10 +88,10 @@ async def test_start_without_configure():
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_start_bot_success(mock_vfsbot, config, database, notifier):
+async def test_start_bot_success(config, database, notifier):
     """Test successful bot start."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -112,10 +112,10 @@ async def test_start_bot_success(mock_vfsbot, config, database, notifier):
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_start_bot_already_running(mock_vfsbot, config, database, notifier):
+async def test_start_bot_already_running(config, database, notifier):
     """Test starting bot when already running."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -139,10 +139,10 @@ async def test_start_bot_already_running(mock_vfsbot, config, database, notifier
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_concurrent_start_guard(mock_vfsbot, config, database, notifier):
+async def test_concurrent_start_guard(config, database, notifier):
     """Test concurrent start protection."""
     # Mock VFSBot with slow start
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.cleanup = AsyncMock()
@@ -188,10 +188,10 @@ async def test_stop_not_running(config, database, notifier):
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_stop_bot_success(mock_vfsbot, config, database, notifier):
+async def test_stop_bot_success(config, database, notifier):
     """Test successful bot stop."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -212,10 +212,10 @@ async def test_stop_bot_success(mock_vfsbot, config, database, notifier):
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_restart_bot(mock_vfsbot, config, database, notifier):
+async def test_restart_bot(config, database, notifier):
     """Test bot restart."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -251,10 +251,10 @@ async def test_trigger_check_now_not_running(config, database, notifier):
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier):
+async def test_trigger_check_now_success(config, database, notifier):
     """Test triggering manual check."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -280,10 +280,10 @@ async def test_trigger_check_now_success(mock_vfsbot, config, database, notifier
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, notifier):
+async def test_trigger_check_now_race_condition(config, database, notifier):
     """Test that trigger_check_now handles race condition when bot reference is lost."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -312,10 +312,10 @@ async def test_trigger_check_now_race_condition(mock_vfsbot, config, database, n
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, notifier):
+async def test_run_bot_cancelled_error_handling(config, database, notifier):
     """Test that _run_bot properly handles asyncio.CancelledError."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock(side_effect=asyncio.CancelledError())
@@ -337,9 +337,9 @@ async def test_run_bot_cancelled_error_handling(mock_vfsbot, config, database, n
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_run_bot_cleanup_without_deadlock(mock_vfsbot, config, database, notifier):
+async def test_run_bot_cleanup_without_deadlock(config, database, notifier):
     """Test that _run_bot cleanup runs without holding lock to prevent deadlock."""
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -376,10 +376,10 @@ async def test_run_bot_cleanup_without_deadlock(mock_vfsbot, config, database, n
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
-async def test_status_transitions(mock_vfsbot, config, database, notifier):
+async def test_status_transitions(config, database, notifier):
     """Test status transitions through bot lifecycle."""
     # Mock VFSBot
+    mock_vfsbot = MagicMock()
     mock_bot_instance = AsyncMock()
     mock_bot_instance.running = True
     mock_bot_instance.start = AsyncMock()
@@ -410,7 +410,7 @@ async def test_status_transitions(mock_vfsbot, config, database, notifier):
 
 
 @pytest.mark.asyncio
-@patch("src.core.bot_controller.VFSBot")
+@patch("src.services.bot.vfs_bot.VFSBot")
 async def test_error_handling_in_start(mock_vfsbot, config, database, notifier):
     """Test error handling during bot start."""
     # Mock VFSBot to raise exception

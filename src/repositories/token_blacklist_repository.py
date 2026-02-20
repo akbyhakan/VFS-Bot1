@@ -64,7 +64,7 @@ class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
             List of TokenBlacklistEntry entities
         """
         async with self.db.get_connection() as conn:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc)
             rows = await conn.fetch(
                 """
                 SELECT jti, exp FROM token_blacklist
@@ -108,7 +108,7 @@ class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
                 ON CONFLICT (jti) DO UPDATE SET exp = EXCLUDED.exp
                 """,
                 jti,
-                exp.isoformat(),
+                exp,
             )
             logger.debug(f"Token blacklisted: {jti}")
             return 1
@@ -134,7 +134,7 @@ class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
             True if token is blacklisted and not expired
         """
         async with self.db.get_connection() as conn:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc)
             result = await conn.fetchval(
                 """
                 SELECT 1 FROM token_blacklist
@@ -163,7 +163,7 @@ class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
             Number of tokens removed
         """
         async with self.db.get_connection() as conn:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc)
             result = await conn.execute(
                 """
                 DELETE FROM token_blacklist
