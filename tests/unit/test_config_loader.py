@@ -177,7 +177,11 @@ class TestLoadConfig:
         assert "bot" in result
         mock_file.assert_called_once()
 
-    @patch("builtins.open", new_callable=mock_open, read_data=MINIMAL_VALID_CONFIG_YAML.replace("test_key", "${VAR}"))
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=MINIMAL_VALID_CONFIG_YAML.replace("test_key", "${VAR}"),
+    )
     @patch.dict(os.environ, {"VAR": "value"})
     def test_load_config_with_env_vars(self, mock_file):
         """Test loading config with environment variable substitution."""

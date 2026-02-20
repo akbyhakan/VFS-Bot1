@@ -161,13 +161,11 @@ class TestSelectorSelfHealing:
     async def test_attempt_heal_success(self, temp_files, mock_page):
         """Test successful healing with high confidence candidate."""
         # Create a mock selectors.yaml file
-        temp_files["selectors"].write_text(
-            """
+        temp_files["selectors"].write_text("""
 login:
   email:
     primary: "old_selector"
-"""
-        )
+""")
 
         healing = SelectorSelfHealing(
             selectors_file=str(temp_files["selectors"]), healing_log_file=str(temp_files["log"])

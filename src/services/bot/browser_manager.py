@@ -142,13 +142,11 @@ class BrowserManager:
                 pass
             else:
                 # Add basic stealth script for backwards compatibility
-                await self.context.add_init_script(
-                    """
+                await self.context.add_init_script("""
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => undefined
                     });
-                """
-                )
+                """)
 
             logger.info("Browser started successfully")
         except Exception:
@@ -241,14 +239,12 @@ class BrowserManager:
             # Clear storage for all pages
             for page in self.context.pages:
                 try:
-                    await page.evaluate(
-                        """
+                    await page.evaluate("""
                         () => {
                             localStorage.clear();
                             sessionStorage.clear();
                         }
-                    """
-                    )
+                    """)
                 except Exception:
                     pass
 

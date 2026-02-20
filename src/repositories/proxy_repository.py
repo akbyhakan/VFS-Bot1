@@ -166,15 +166,13 @@ class ProxyRepository(BaseRepository[Proxy]):
             List of proxy dictionaries with decrypted passwords
         """
         async with self.db.get_connection() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT id, server, port, username, password_encrypted, is_active,
                        last_used, failure_count, created_at, updated_at
                 FROM proxy_endpoints
                 WHERE is_active = true
                 ORDER BY failure_count ASC, last_used ASC NULLS FIRST
-                """
-            )
+                """)
 
             proxies = []
             for row in rows:
@@ -392,14 +390,12 @@ class ProxyRepository(BaseRepository[Proxy]):
             Number of proxies updated
         """
         async with self.db.get_connection() as conn:
-            result = await conn.execute(
-                """
+            result = await conn.execute("""
                 UPDATE proxy_endpoints
                 SET failure_count = 0,
                     updated_at = NOW()
                 WHERE failure_count > 0
-                """
-            )
+                """)
             # Use helper to parse result count
             count = _parse_command_tag(result)
 
@@ -416,8 +412,7 @@ class ProxyRepository(BaseRepository[Proxy]):
             Dictionary with proxy statistics
         """
         async with self.db.get_connection() as conn:
-            row = await conn.fetchrow(
-                """
+            row = await conn.fetchrow("""
                 SELECT
                     COUNT(*) as total_proxies,
                     COUNT(*) FILTER (WHERE is_active = true) as active_proxies,
@@ -425,8 +420,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                     AVG(failure_count) as avg_failure_count,
                     MAX(failure_count) as max_failure_count
                 FROM proxy_endpoints
-                """
-            )
+                """)
 
             if row:
                 return {

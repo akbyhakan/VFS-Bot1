@@ -24,8 +24,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Add gender and is_child_with_parent columns to appointment_persons."""
     # Add gender column if it doesn't exist
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -35,15 +34,13 @@ def upgrade() -> None:
                 ALTER TABLE appointment_persons ADD COLUMN gender TEXT;
             END IF;
         END $$;
-    """
-    )
+    """)
 
     # Set default value for existing records
     op.execute("UPDATE appointment_persons SET gender = 'male' WHERE gender IS NULL")
 
     # Add is_child_with_parent column if it doesn't exist
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -53,8 +50,7 @@ def upgrade() -> None:
                 ALTER TABLE appointment_persons ADD COLUMN is_child_with_parent BOOLEAN;
             END IF;
         END $$;
-    """
-    )
+    """)
 
     # Set default value for existing records
     op.execute(
@@ -66,8 +62,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove gender and is_child_with_parent columns from appointment_persons."""
     # Drop is_child_with_parent column if it exists
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -77,12 +72,10 @@ def downgrade() -> None:
                 ALTER TABLE appointment_persons DROP COLUMN is_child_with_parent;
             END IF;
         END $$;
-    """
-    )
+    """)
 
     # Drop gender column if it exists
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -92,5 +85,4 @@ def downgrade() -> None:
                 ALTER TABLE appointment_persons DROP COLUMN gender;
             END IF;
         END $$;
-    """
-    )
+    """)

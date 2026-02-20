@@ -356,12 +356,12 @@ async def test_notify_waitlist_success_with_screenshot(notification_service, tmp
     mock_client = AsyncMock()
     mock_client.send_photo = AsyncMock(return_value=True)
     mock_client.TELEGRAM_CAPTION_LIMIT = 1024
-    
+
     mock_channel = MagicMock()
     mock_channel._get_or_create_client = MagicMock(return_value=mock_client)
     mock_channel._config = MagicMock()
     mock_channel._config.chat_id = "test_chat_id"
-    
+
     notification_service._telegram_channel = mock_channel
     notification_service.telegram_enabled = True
 

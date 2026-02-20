@@ -789,7 +789,9 @@ class TestOpenAPISecurityConfig:
         # Use the factory pattern to create app with production environment
         from web.app import create_app
 
-        with patch.dict(os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}):
+        with patch.dict(
+            os.environ, {"ENV": "production", "CORS_ALLOWED_ORIGINS": "https://example.com"}
+        ):
             # Create app with production environment override
             app = create_app(run_security_validation=False, env_override="production")
 

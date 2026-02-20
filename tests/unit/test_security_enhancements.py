@@ -143,8 +143,7 @@ class TestSessionEncryption:
             # Verify warning was logged via loguru
             mock_logger.warning.assert_called()
             any_warning_has_unencrypted = any(
-                "unencrypted" in str(call).lower()
-                for call in mock_logger.warning.call_args_list
+                "unencrypted" in str(call).lower() for call in mock_logger.warning.call_args_list
             )
             assert any_warning_has_unencrypted
 
@@ -154,7 +153,7 @@ class TestSessionEncryption:
 )
 class TestEnvironmentValidation:
     """Test environment validation at startup.
-    
+
     NOTE: These tests are skipped because the validate_environment() function
     was refactored into validate_production_security() and log_security_warnings()
     in src.core.infra.startup_validator with different behavior (returns warnings

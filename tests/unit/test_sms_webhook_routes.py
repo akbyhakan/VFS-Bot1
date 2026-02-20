@@ -270,7 +270,9 @@ class TestSMSWebhookHMACVerification:
         self, mock_webhook_manager, monkeypatch
     ):
         """Test that missing signature is rejected in production mode."""
-        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret="test_secret_key")
+        client = self._make_client(
+            "production", mock_webhook_manager, monkeypatch, secret="test_secret_key"
+        )
 
         payload = {"message": "OTP: 123456"}
 
@@ -278,7 +280,10 @@ class TestSMSWebhookHMACVerification:
         response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         # Could be 401 (missing signature) or 422 (validation error)
-        assert response.status_code in [401, 422], f"Expected 401 or 422, got {response.status_code}"
+        assert response.status_code in [
+            401,
+            422,
+        ], f"Expected 401 or 422, got {response.status_code}"
         if response.status_code == 401:
             assert "Missing webhook signature" in response.json()["detail"]
 
@@ -286,7 +291,9 @@ class TestSMSWebhookHMACVerification:
         self, mock_webhook_manager, monkeypatch
     ):
         """Test that invalid signature is rejected in production mode."""
-        client = self._make_client("production", mock_webhook_manager, monkeypatch, secret="test_secret_key")
+        client = self._make_client(
+            "production", mock_webhook_manager, monkeypatch, secret="test_secret_key"
+        )
 
         payload = {"message": "OTP: 123456"}
 
@@ -298,7 +305,10 @@ class TestSMSWebhookHMACVerification:
         )
 
         # Could be 401 (invalid signature) or 422 (validation error)
-        assert response.status_code in [401, 422], f"Expected 401 or 422, got {response.status_code}"
+        assert response.status_code in [
+            401,
+            422,
+        ], f"Expected 401 or 422, got {response.status_code}"
         if response.status_code == 401:
             assert "Invalid webhook signature" in response.json()["detail"]
 
@@ -328,7 +338,10 @@ class TestSMSWebhookHMACVerification:
             )
 
         # Should be 200 (success) or 422 (validation error from TestClient)
-        assert response.status_code in [200, 422], f"Expected 200 or 422, got {response.status_code}"
+        assert response.status_code in [
+            200,
+            422,
+        ], f"Expected 200 or 422, got {response.status_code}"
 
     def test_hmac_verification_development_mode_no_signature(
         self, mock_webhook_manager, monkeypatch
@@ -368,11 +381,13 @@ class TestSMSWebhookHMACVerification:
             )
 
         # Should be 200 (success) or 401/422 (validation issues from TestClient)
-        assert response.status_code in [200, 401, 422], f"Expected 200, 401 or 422, got {response.status_code}"
+        assert response.status_code in [
+            200,
+            401,
+            422,
+        ], f"Expected 200, 401 or 422, got {response.status_code}"
 
-    def test_hmac_verification_no_secret_configured(
-        self, mock_webhook_manager, monkeypatch
-    ):
+    def test_hmac_verification_no_secret_configured(self, mock_webhook_manager, monkeypatch):
         """Test that webhook works when no secret is configured."""
         client = self._make_client("production", mock_webhook_manager, monkeypatch, secret=None)
 
@@ -382,4 +397,7 @@ class TestSMSWebhookHMACVerification:
             response = client.post("/webhook/sms/tk_test123456789", json=payload)
 
         # Production requires SMS_WEBHOOK_SECRET - should return 422 or 500 when not configured
-        assert response.status_code in [422, 500], f"Expected 422 or 500, got {response.status_code}"
+        assert response.status_code in [
+            422,
+            500,
+        ], f"Expected 422 or 500, got {response.status_code}"

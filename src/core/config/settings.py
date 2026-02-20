@@ -49,21 +49,21 @@ class VFSSettings(BaseSettings):
     env: str = Field(
         default="production", description="Environment (production, development, testing)"
     )
-    
+
     @model_validator(mode="before")
     @classmethod
     def default_env_for_pytest(cls, data: Any) -> Any:
         """Auto-detect testing environment when running under pytest."""
         import sys
-        
+
         # Ensure data is a dict
         if not isinstance(data, dict):
             return data
-        
+
         # If env not set and we're running under pytest, default to testing
         if ("env" not in data or not data.get("env")) and "pytest" in sys.modules:
             data["env"] = "testing"
-        
+
         return data
 
     # Database Configuration
@@ -146,7 +146,7 @@ class VFSSettings(BaseSettings):
         """Validate encryption key format (should be base64)."""
         if v is None:
             return None
-            
+
         import base64
 
         key_value = v.get_secret_value()
@@ -195,21 +195,21 @@ class VFSSettings(BaseSettings):
     def ensure_required_keys_or_defaults(self) -> "VFSSettings":
         """
         Ensure encryption_key and api_secret_key are set.
-        
+
         In production/staging: These fields are REQUIRED
         In testing/development: Auto-generate secure defaults if missing
-        
+
         Returns:
             Self with keys populated
-            
+
         Raises:
             ValueError: If required keys are missing in production/staging
         """
         import secrets
         from cryptography.fernet import Fernet
-        
+
         is_test_or_dev = self.env in ("testing", "development")
-        
+
         # Handle encryption_key
         if self.encryption_key is None:
             if is_test_or_dev:
@@ -221,7 +221,7 @@ class VFSSettings(BaseSettings):
                     'Generate with: python -c "from cryptography.fernet import Fernet; '
                     'print(Fernet.generate_key().decode())"'
                 )
-        
+
         # Handle api_secret_key
         if self.api_secret_key is None:
             if is_test_or_dev:
@@ -232,7 +232,7 @@ class VFSSettings(BaseSettings):
                     "API_SECRET_KEY is required in production/staging. "
                     "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(48))'"
                 )
-        
+
         return self
 
     @model_validator(mode="after")
@@ -296,7 +296,7 @@ class VFSSettings(BaseSettings):
                     "Production DATABASE_URL must contain authentication credentials. "
                     "Format: postgresql://user:password@host:port/database"
                 )
-        
+
         # In test/dev environments, allow any database URL including defaults
         return self
 
