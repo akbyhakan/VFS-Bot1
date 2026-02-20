@@ -89,9 +89,12 @@ class TestWebSocketEndpoint:
             assert "running" in message["data"]
             assert "status" in message["data"]
 
+    @pytest.mark.deprecated_feature
     def test_websocket_query_param_auth(self, test_app: TestClient, valid_token: str):
         """
         Test successful WebSocket connection with query parameter authentication.
+
+        DEPRECATED: Bu test v3.0'da kaldırılacak deprecated auth yöntemini doğrular.
 
         This validates:
         - WebSocket accepts connection with query param
@@ -121,9 +124,12 @@ class TestWebSocketEndpoint:
             assert valid_token not in warning_call
             assert "token=***" in warning_call
 
+    @pytest.mark.deprecated_feature
     def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
         """
         Test successful WebSocket connection with legacy message-based authentication.
+
+        DEPRECATED: Bu test v3.0'da kaldırılacak deprecated auth yöntemini doğrular.
 
         This validates:
         - WebSocket accepts connection

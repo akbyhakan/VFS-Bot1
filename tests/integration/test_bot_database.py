@@ -1,4 +1,4 @@
-"""Tests for VFS bot functionality."""
+"""Integration tests for VFS bot database functionality."""
 
 import asyncio
 
@@ -39,12 +39,14 @@ async def database():
     await db.close()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_database_connection(database):
     """Test database connection and table creation."""
     assert database.pool is not None
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_add_user(database):
     """Test adding a user to database."""
@@ -61,6 +63,7 @@ async def test_add_user(database):
     assert user_id > 0
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_get_active_users(database):
     """Test retrieving active users."""
@@ -80,6 +83,7 @@ async def test_get_active_users(database):
     assert users[0]["email"] == "test@example.com"
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_add_personal_details(database):
     """Test adding personal details."""
@@ -108,6 +112,7 @@ async def test_add_personal_details(database):
     assert retrieved["first_name"] == "John"
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_add_appointment(database):
     """Test adding an appointment."""
@@ -142,6 +147,7 @@ async def test_add_appointment(database):
     assert appointments[0].reference_number == "REF123"
 
 
+@pytest.mark.integration
 def test_bot_initialization(config):
     """Test bot initialization."""
     from src.constants import Database as DatabaseConfig
