@@ -23,7 +23,7 @@ async def test_connection_pool_stress():
 
     async def query(n: int):
         async with db.get_connection() as conn:
-            result = await conn.fetchval("SELECT $1", n)
+            result = await conn.fetchval("SELECT $1::int", n)
             return result
 
     try:
@@ -78,7 +78,7 @@ async def test_concurrent_writes(database):
     assert len(users) >= 20  # At least 20 users created
 
     # Verify email uniqueness
-    emails = [u.email for u in users]
+    emails = [u["email"] for u in users]
     unique_emails = [e for e in emails if e.startswith("user") and e.endswith("@example.com")]
     assert len(set(unique_emails)) == 20  # All test users are unique
 

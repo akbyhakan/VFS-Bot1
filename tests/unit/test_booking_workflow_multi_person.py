@@ -284,66 +284,6 @@ class TestBookingWorkflowMultiPerson:
         assert reservation["person_count"] == 1
         assert "payment_card" not in reservation
 
-    @pytest.mark.skip(reason="Legacy _build_reservation method removed during refactoring")
-    def test_build_reservation_legacy_single_person(self, mock_dependencies):
-        """Test legacy _build_reservation method still works (backward compatibility)."""
-        workflow_services = WorkflowServices(
-            auth_service=mock_dependencies["auth_service"],
-            slot_checker=mock_dependencies["slot_checker"],
-            booking_service=mock_dependencies["booking_service"],
-            waitlist_handler=mock_dependencies["waitlist_handler"],
-            error_handler=mock_dependencies["error_handler"],
-            page_state_detector=mock_dependencies["page_state_detector"],
-            slot_analyzer=mock_dependencies["slot_analyzer"],
-            session_recovery=mock_dependencies["session_recovery"],
-            alert_service=None,
-        )
-
-        infra_services = InfraServices(
-            browser_manager=None,
-            header_manager=None,
-            proxy_manager=None,
-            human_sim=None,
-            error_capture=None,
-        )
-
-        deps = BookingDependencies(
-            workflow=workflow_services,
-            infra=infra_services,
-        )
-
-        workflow = BookingWorkflow(
-            config=mock_dependencies["config"],
-            db=mock_dependencies["db"],
-            notifier=mock_dependencies["notifier"],
-            deps=deps,
-        )
-
-        user = {"id": 1, "email": "test@example.com"}
-
-        details = {
-            "first_name": "Test",
-            "last_name": "User",
-            "gender": "female",
-            "date_of_birth": "01/01/1985",
-            "passport_number": "P12345678",
-            "passport_expiry": "01/01/2028",
-            "mobile_code": "44",
-            "mobile_number": "7700900123",
-            "email": "test@example.com",
-        }
-
-        slot = {"date": "20/03/2026", "time": "09:00"}
-
-        reservation = workflow._build_reservation(user, slot, details)
-
-        # Should always be single person
-        assert reservation["person_count"] == 1
-        assert len(reservation["persons"]) == 1
-        assert reservation["persons"][0]["first_name"] == "Test"
-        assert reservation["persons"][0]["phone_code"] == "44"
-        assert reservation["preferred_dates"] == ["20/03/2026"]
-
     def test_build_reservation_from_request_field_mapping(self, mock_dependencies):
         """Test that field mapping is correct for appointment_persons."""
         workflow_services = WorkflowServices(

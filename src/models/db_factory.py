@@ -55,9 +55,10 @@ class DatabaseFactory:
         Returns:
             Database singleton instance
         """
-        if cls._instance is None:
-            cls._instance = Database(database_url=database_url, pool_size=pool_size)
-            logger.info("Created new database singleton instance")
+        with cls._class_lock:
+            if cls._instance is None:
+                cls._instance = Database(database_url=database_url, pool_size=pool_size)
+                logger.info("Created new database singleton instance")
         return cls._instance
 
     @classmethod

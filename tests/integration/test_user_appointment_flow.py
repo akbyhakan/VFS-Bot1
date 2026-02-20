@@ -56,22 +56,23 @@ class TestUserAppointmentFlow:
             "nationality": "Turkish",
         }
 
-        await test_db.add_personal_details(user_id=user_id, details=personal_details)
+        await user_repo.add_personal_details(user_id, personal_details)
 
         # Step 3: Verify user was created with encrypted password
-        user_encrypted = await test_db.get_user(user_id)
+        async with test_db.get_connection() as conn:
+            user_encrypted = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         assert user_encrypted is not None
         assert user_encrypted["email"] == user_data["email"]
         # Password should be encrypted, not plaintext
-        assert user_encrypted["password"] != user_data["password"]
+        assert user_encrypted["password_encrypted"] != user_data["password"]
 
         # Step 4: Verify decrypted password matches original
-        user_decrypted = await test_db.get_user_with_decrypted_password(user_id)
+        user_decrypted = await user_repo.get_by_id_with_password(user_id)
         assert user_decrypted is not None
         assert user_decrypted["password"] == user_data["password"]
 
         # Step 5: Verify personal details
-        details = await test_db.get_personal_details(user_id)
+        details = await user_repo.get_personal_details(user_id)
         assert details is not None
         assert details["first_name"] == personal_details["first_name"]
         assert details["passport_number"] == personal_details["passport_number"]
@@ -92,7 +93,7 @@ class TestUserAppointmentFlow:
         assert appointment_id > 0
 
         # Step 7: Verify appointment
-        appointments = await test_db.get_appointments(user_id)
+        appointments = await appointment_repo.get_by_user(user_id)
         assert len(appointments) == 1
         assert appointments[0]["reference_number"] == appointment_data["reference_number"]
         assert appointments[0]["appointment_date"] == appointment_data["appointment_date"]
@@ -138,9 +139,7 @@ class TestUserAppointmentFlow:
             user_id=user_id,
             centre=appointment_key["centre"],
             category=appointment_key["category"],
-            subcategory=appointment_key["subcategory"],
-            appointment_date=appointment_key["date"],
-            appointment_time=appointment_key["time"],
+            date=appointment_key["date"],
         )
         assert is_dup_1 is False, "First appointment check should not be duplicate"
 
@@ -149,9 +148,7 @@ class TestUserAppointmentFlow:
             user_id=user_id,
             centre=appointment_key["centre"],
             category=appointment_key["category"],
-            subcategory=appointment_key["subcategory"],
-            appointment_date=appointment_key["date"],
-            appointment_time=appointment_key["time"],
+            date=appointment_key["date"],
         )
 
         # Step 3: Check again - should now be duplicate
@@ -159,9 +156,7 @@ class TestUserAppointmentFlow:
             user_id=user_id,
             centre=appointment_key["centre"],
             category=appointment_key["category"],
-            subcategory=appointment_key["subcategory"],
-            appointment_date=appointment_key["date"],
-            appointment_time=appointment_key["time"],
+            date=appointment_key["date"],
         )
         assert is_dup_2 is True, "Second check should identify as duplicate"
 
@@ -170,9 +165,7 @@ class TestUserAppointmentFlow:
             user_id=user_id,
             centre=appointment_key["centre"],
             category=appointment_key["category"],
-            subcategory=appointment_key["subcategory"],
-            appointment_date="2024-12-26",  # Different date
-            appointment_time=appointment_key["time"],
+            date="2024-12-26",  # Different date
         )
         assert is_dup_3 is False, "Different appointment should not be duplicate"
 
@@ -211,9 +204,9 @@ class TestUserAppointmentFlow:
 
         # Verify we can retrieve all users
         for user_id in user_ids:
-            user = await test_db.get_user(user_id)
+            user = await user_repo.get_by_id(user_id)
             assert user is not None
-            assert user["id"] == user_id
+            assert user.id == user_id
 
     @pytest.mark.asyncio
     async def test_user_cascade_delete(self, test_db: Database, user_repo: UserRepository):
@@ -236,7 +229,7 @@ class TestUserAppointmentFlow:
         )
 
         # Add personal details
-        await test_db.add_personal_details(
+        await user_repo.add_personal_details(
             user_id=user_id,
             details={
                 "first_name": "Test",
@@ -249,7 +242,7 @@ class TestUserAppointmentFlow:
         )
 
         # Verify personal details exist
-        details_before = await test_db.get_personal_details(user_id)
+        details_before = await user_repo.get_personal_details(user_id)
         assert details_before is not None
 
         # Delete user
@@ -257,9 +250,9 @@ class TestUserAppointmentFlow:
         assert deleted is True
 
         # Verify user is deleted
-        user_after = await test_db.get_user(user_id)
+        user_after = await user_repo.get_by_id(user_id)
         assert user_after is None
 
         # Verify personal details are also deleted (cascade)
-        details_after = await test_db.get_personal_details(user_id)
+        details_after = await user_repo.get_personal_details(user_id)
         assert details_after is None, "Personal details should be cascade deleted"

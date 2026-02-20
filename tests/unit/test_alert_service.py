@@ -122,19 +122,6 @@ async def test_alert_service_telegram_not_configured():
     assert result is True
 
 
-@pytest.mark.skip(reason="EMAIL alert channel removed during refactoring")
-@pytest.mark.asyncio
-async def test_alert_service_email_not_configured():
-    """Test Email channel when not configured."""
-    config = AlertConfig(enabled_channels=[AlertChannel.LOG, AlertChannel.EMAIL])
-    service = AlertService(config)
-
-    # Should not fail, just skip Email
-    result = await service.send_alert("Test alert", AlertSeverity.INFO)
-
-    # Should succeed via LOG channel
-    assert result is True
-
 
 @pytest.mark.asyncio
 async def test_alert_service_webhook_not_configured():
@@ -148,22 +135,3 @@ async def test_alert_service_webhook_not_configured():
     # Should succeed via LOG channel
     assert result is True
 
-
-@pytest.mark.skip(reason="EMAIL alert channel removed during refactoring")
-@pytest.mark.asyncio
-async def test_alert_service_all_channels():
-    """Test with all channels enabled."""
-    config = AlertConfig(
-        enabled_channels=[
-            AlertChannel.LOG,
-            AlertChannel.TELEGRAM,
-            AlertChannel.EMAIL,
-            AlertChannel.WEBHOOK,
-        ]
-    )
-    service = AlertService(config)
-
-    # Should at least succeed with LOG
-    result = await service.send_alert("Test alert", AlertSeverity.WARNING)
-
-    assert result is True

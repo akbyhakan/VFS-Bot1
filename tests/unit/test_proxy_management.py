@@ -6,6 +6,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
+from src.repositories.proxy_repository import ProxyRepository
 from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.security.netnut_proxy import NetNutProxyManager, mask_proxy_password
 
@@ -26,26 +27,29 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            proxy_id = await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="test_password",
+            proxy_id = await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "test_password",
+                }
             )
 
             assert proxy_id > 0
 
             # Verify proxy was added
-            proxy = await db.get_proxy_by_id(proxy_id)
+            proxy = await proxy_repo.get_by_id(proxy_id)
             assert proxy is not None
-            assert proxy["server"] == "gw.example.com"
-            assert proxy["port"] == 8080
-            assert proxy["username"] == "test_user"
-            assert proxy["password"] == "test_password"  # Should be decrypted
-            assert proxy["is_active"] == 1
-            assert proxy["failure_count"] == 0
+            assert proxy.server == "gw.example.com"
+            assert proxy.port == 8080
+            assert proxy.username == "test_user"
+            assert proxy.password == "test_password"  # Should be decrypted
+            assert proxy.is_active is True
+            assert proxy.failure_count == 0
 
         finally:
             await db.close()
@@ -56,13 +60,16 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            proxy_id = await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="secret_password_123",
+            proxy_id = await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "secret_password_123",
+                }
             )
 
             # Read directly from database to verify encryption
@@ -89,20 +96,21 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add multiple proxies
-            proxy1_id = await db.add_proxy(
-                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            proxy1_id = await proxy_repo.create(
+                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
             )
-            proxy2_id = await db.add_proxy(
-                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            proxy2_id = await proxy_repo.create(
+                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
             )
 
             # Make one inactive
-            await db.update_proxy(proxy2_id, is_active=False)
+            await proxy_repo.update(proxy2_id, {"is_active": False})
 
             # Get active proxies
-            active = await db.get_active_proxies()
+            active = await proxy_repo.get_active()
 
             # Only one should be active
             assert len(active) == 1
@@ -119,31 +127,32 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            proxy_id = await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="test_password",
+            proxy_id = await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "test_password",
+                }
             )
 
             # Update proxy
-            updated = await db.update_proxy(
-                proxy_id=proxy_id,
-                server="new.example.com",
-                port=9090,
-                password="new_password",
+            updated = await proxy_repo.update(
+                proxy_id,
+                {"server": "new.example.com", "port": 9090, "password": "new_password"},
             )
 
             assert updated is True
 
             # Verify updates
-            proxy = await db.get_proxy_by_id(proxy_id)
-            assert proxy["server"] == "new.example.com"
-            assert proxy["port"] == 9090
-            assert proxy["username"] == "test_user"  # Should remain unchanged
-            assert proxy["password"] == "new_password"
+            proxy = await proxy_repo.get_by_id(proxy_id)
+            assert proxy.server == "new.example.com"
+            assert proxy.port == 9090
+            assert proxy.username == "test_user"  # Should remain unchanged
+            assert proxy.password == "new_password"
 
         finally:
             await db.close()
@@ -154,25 +163,28 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            proxy_id = await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="test_password",
+            proxy_id = await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "test_password",
+                }
             )
 
             # Delete proxy
-            deleted = await db.delete_proxy(proxy_id)
+            deleted = await proxy_repo.delete(proxy_id)
             assert deleted is True
 
             # Verify deletion
-            proxy = await db.get_proxy_by_id(proxy_id)
+            proxy = await proxy_repo.get_by_id(proxy_id)
             assert proxy is None
 
             # Deleting again should return False
-            deleted_again = await db.delete_proxy(proxy_id)
+            deleted_again = await proxy_repo.delete(proxy_id)
             assert deleted_again is False
 
         finally:
@@ -184,30 +196,33 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            proxy_id = await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="test_password",
+            proxy_id = await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "test_password",
+                }
             )
 
             # Initially failure_count should be 0
-            proxy = await db.get_proxy_by_id(proxy_id)
-            assert proxy["failure_count"] == 0
+            proxy = await proxy_repo.get_by_id(proxy_id)
+            assert proxy.failure_count == 0
 
             # Mark as failed
-            await db.mark_proxy_failed(proxy_id)
+            await proxy_repo.mark_failed(proxy_id)
 
             # Verify failure count incremented
-            proxy = await db.get_proxy_by_id(proxy_id)
-            assert proxy["failure_count"] == 1
+            proxy = await proxy_repo.get_by_id(proxy_id)
+            assert proxy.failure_count == 1
 
             # Mark failed again
-            await db.mark_proxy_failed(proxy_id)
-            proxy = await db.get_proxy_by_id(proxy_id)
-            assert proxy["failure_count"] == 2
+            await proxy_repo.mark_failed(proxy_id)
+            proxy = await proxy_repo.get_by_id(proxy_id)
+            assert proxy.failure_count == 2
 
         finally:
             await db.close()
@@ -218,35 +233,36 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxies
-            proxy1_id = await db.add_proxy(
-                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            proxy1_id = await proxy_repo.create(
+                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
             )
-            proxy2_id = await db.add_proxy(
-                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            proxy2_id = await proxy_repo.create(
+                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
             )
 
             # Mark both as failed
-            await db.mark_proxy_failed(proxy1_id)
-            await db.mark_proxy_failed(proxy1_id)
-            await db.mark_proxy_failed(proxy2_id)
+            await proxy_repo.mark_failed(proxy1_id)
+            await proxy_repo.mark_failed(proxy1_id)
+            await proxy_repo.mark_failed(proxy2_id)
 
             # Verify failure counts
-            proxy1 = await db.get_proxy_by_id(proxy1_id)
-            proxy2 = await db.get_proxy_by_id(proxy2_id)
-            assert proxy1["failure_count"] == 2
-            assert proxy2["failure_count"] == 1
+            proxy1 = await proxy_repo.get_by_id(proxy1_id)
+            proxy2 = await proxy_repo.get_by_id(proxy2_id)
+            assert proxy1.failure_count == 2
+            assert proxy2.failure_count == 1
 
-            # Reset failures
-            count = await db.reset_proxy_failures()
+            # Reset all failures
+            count = await proxy_repo.reset_all_failures()
             assert count == 2  # Both proxies should be reset
 
             # Verify all failure counts are 0
-            proxy1 = await db.get_proxy_by_id(proxy1_id)
-            proxy2 = await db.get_proxy_by_id(proxy2_id)
-            assert proxy1["failure_count"] == 0
-            assert proxy2["failure_count"] == 0
+            proxy1 = await proxy_repo.get_by_id(proxy1_id)
+            proxy2 = await proxy_repo.get_by_id(proxy2_id)
+            assert proxy1.failure_count == 0
+            assert proxy2.failure_count == 0
 
         finally:
             await db.close()
@@ -257,32 +273,33 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Initially no proxies
-            stats = await db.get_proxy_stats()
-            assert stats["total"] == 0
-            assert stats["active"] == 0
-            assert stats["inactive"] == 0
+            stats = await proxy_repo.get_stats()
+            assert stats["total_proxies"] == 0
+            assert stats["active_proxies"] == 0
+            assert stats["inactive_proxies"] == 0
 
             # Add proxies
-            await db.add_proxy(
-                server="proxy1.example.com", port=8080, username="user1", password="pass1"
+            await proxy_repo.create(
+                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
             )
-            proxy2_id = await db.add_proxy(
-                server="proxy2.example.com", port=8081, username="user2", password="pass2"
+            proxy2_id = await proxy_repo.create(
+                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
             )
-            await db.add_proxy(
-                server="proxy3.example.com", port=8082, username="user3", password="pass3"
+            await proxy_repo.create(
+                {"server": "proxy3.example.com", "port": 8082, "username": "user3", "password": "pass3"}
             )
 
             # Make one inactive
-            await db.update_proxy(proxy2_id, is_active=False)
+            await proxy_repo.update(proxy2_id, {"is_active": False})
 
             # Get stats
-            stats = await db.get_proxy_stats()
-            assert stats["total"] == 3
-            assert stats["active"] == 2
-            assert stats["inactive"] == 1
+            stats = await proxy_repo.get_stats()
+            assert stats["total_proxies"] == 3
+            assert stats["active_proxies"] == 2
+            assert stats["inactive_proxies"] == 1
 
         finally:
             await db.close()
@@ -293,22 +310,27 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxy
-            await db.add_proxy(
-                server="gw.example.com",
-                port=8080,
-                username="test_user",
-                password="test_password",
+            await proxy_repo.create(
+                {
+                    "server": "gw.example.com",
+                    "port": 8080,
+                    "username": "test_user",
+                    "password": "test_password",
+                }
             )
 
             # Try to add duplicate - should raise ValueError
             with pytest.raises(ValueError, match="already exists"):
-                await db.add_proxy(
-                    server="gw.example.com",
-                    port=8080,
-                    username="test_user",
-                    password="different_password",
+                await proxy_repo.create(
+                    {
+                        "server": "gw.example.com",
+                        "port": 8080,
+                        "username": "test_user",
+                        "password": "different_password",
+                    }
                 )
 
         finally:
@@ -326,13 +348,14 @@ class TestNetNutProxyManager:
         await db.connect()
 
         try:
+            proxy_repo = ProxyRepository(db)
 
             # Add proxies
-            await db.add_proxy(
-                server="gw.example.com", port=8080, username="user1", password="pass1"
+            await proxy_repo.create(
+                {"server": "gw.example.com", "port": 8080, "username": "user1", "password": "pass1"}
             )
-            await db.add_proxy(
-                server="gw2.example.com", port=8081, username="user2", password="pass2"
+            await proxy_repo.create(
+                {"server": "gw2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
             )
 
             # Load into proxy manager
