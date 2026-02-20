@@ -34,24 +34,22 @@ def upgrade() -> None:
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             UNIQUE(country_code)
-        );
-
-        -- Create index on country_code for faster lookups
-        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_country
-            ON vfs_dropdown_cache(country_code);
-
-        -- Create index on last_synced_at for finding stale data
-        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_synced
-            ON vfs_dropdown_cache(last_synced_at);
-
-        -- Create index on sync_status for filtering
-        CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_status
-            ON vfs_dropdown_cache(sync_status);
+        )
     """)
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_country"
+        " ON vfs_dropdown_cache(country_code)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_synced"
+        " ON vfs_dropdown_cache(last_synced_at)"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_vfs_dropdown_cache_status"
+        " ON vfs_dropdown_cache(sync_status)"
+    )
 
 
 def downgrade() -> None:
     """Drop vfs_dropdown_cache table."""
-    op.execute("""
-        DROP TABLE IF EXISTS vfs_dropdown_cache CASCADE;
-    """)
+    op.execute("DROP TABLE IF EXISTS vfs_dropdown_cache CASCADE")
