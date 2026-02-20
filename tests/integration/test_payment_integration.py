@@ -22,7 +22,9 @@ async def test_complete_payment_flow(database):
     )
 
     # 2. Retrieve card
-    card = await db.get_payment_card()
+    _card = await PaymentRepository(db).get()
+    assert _card is not None
+    card = _card.to_dict()
 
     # 3. Verify CVV is NOT present (PCI-DSS compliance)
     assert card is not None
@@ -30,7 +32,9 @@ async def test_complete_payment_flow(database):
     assert "cvv_encrypted" not in card
 
     # 4. Verify masked card does NOT include CVV
-    masked_card = await db.get_payment_card_masked()
+    _masked = await PaymentRepository(db).get_masked()
+    assert _masked is not None
+    masked_card = _masked.to_dict()
     assert "cvv" not in masked_card
     assert "cvv_encrypted" not in masked_card
 
@@ -54,7 +58,9 @@ async def test_card_without_cvv_field(database):
     assert card_id > 0
 
     # Retrieve and verify
-    card = await db.get_payment_card()
+    _card = await PaymentRepository(db).get()
+    assert _card is not None
+    card = _card.to_dict()
     assert card is not None
     assert card["card_holder_name"] == "Test User"
     assert card["card_number"] == "4111111111111111"
@@ -79,7 +85,9 @@ async def test_masked_card_no_cvv(database):
     )
 
     # Get masked card
-    card = await db.get_payment_card_masked()
+    _masked = await PaymentRepository(db).get_masked()
+    assert _masked is not None
+    card = _masked.to_dict()
 
     # Verify CVV is not present
     assert "cvv" not in card

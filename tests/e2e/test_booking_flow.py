@@ -34,9 +34,9 @@ class TestBookingFlow:
             )
 
             # Add personal details
-            await db.add_personal_details(
-                user_id=user_id,
-                details={
+            await user_repo.add_personal_details(
+                user_id,
+                {
                     "first_name": "John",
                     "last_name": "Doe",
                     "passport_number": "AB1234567",
@@ -47,13 +47,13 @@ class TestBookingFlow:
             )
 
             # Verify user was created
-            user = await db.get_user_with_decrypted_password(user_id)
+            user = await user_repo.get_by_id_with_password(user_id)
             assert user is not None
             assert user["email"] == "e2e_test@example.com"
             assert user["password"] == "testpassword"  # Decrypted
 
             # Verify personal details
-            details = await db.get_personal_details(user_id)
+            details = await user_repo.get_personal_details(user_id)
             assert details is not None
             assert details["first_name"] == "John"
             assert details["passport_number"] == "AB1234567"
@@ -73,9 +73,9 @@ class TestBookingFlow:
             )
 
             # Verify appointment
-            appointments = await db.get_appointments(user_id)
+            appointments = await appointment_repo.get_by_user(user_id)
             assert len(appointments) == 1
-            assert appointments[0]["reference_number"] == "REF123456"
+            assert appointments[0].reference_number == "REF123456"
 
         finally:
             await db.close()
@@ -121,7 +121,7 @@ class TestBookingFlow:
 
             if not slot_available:
                 # No appointment should be created
-                appointments = await db.get_appointments(user_id)
+                appointments = await AppointmentRepository(db).get_by_user(user_id)
                 assert len(appointments) == 0
 
         finally:

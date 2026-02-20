@@ -129,6 +129,10 @@ class TestConcurrentLoad:
         await db.connect()
 
         try:
+            # Clean up any leftover data from previous tests
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE users RESTART IDENTITY CASCADE")
+
             # Create some test data
             user_repo = UserRepository(db)
             for i in range(10):
