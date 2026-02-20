@@ -140,6 +140,8 @@ markers = [
     "e2e: marks tests as end-to-end tests (require browser)",
     "unit: marks tests as unit tests",
     "security: marks tests as security-related tests",
+    "deprecated_feature: Tests for deprecated features scheduled for removal",
+    "audit_verification: One-time audit verification tests",
 ]
 filterwarnings = [
     "error",

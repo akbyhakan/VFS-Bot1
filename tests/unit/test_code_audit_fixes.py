@@ -411,6 +411,7 @@ class TestGrafanaPasswordNotHardcoded:
         # Verify the :? syntax requiring the variable
         assert ":?" in content, "Should use :? syntax to require environment variable"
 
+    @pytest.mark.audit_verification
     def test_monitoring_compose_no_version_key(self):
         """Test that docker-compose.monitoring.yml doesn't have deprecated version key."""
         compose_path = Path("docker-compose.monitoring.yml")
@@ -434,6 +435,7 @@ class TestGrafanaPasswordNotHardcoded:
         assert "127.0.0.1:9090:9090" in content, "Prometheus should bind to localhost"
         assert "127.0.0.1:3000:3000" in content, "Grafana should bind to localhost"
 
+    @pytest.mark.audit_verification
     def test_dev_compose_no_version_key(self):
         """Test that docker-compose.dev.yml doesn't have deprecated version key."""
         compose_path = Path("docker-compose.dev.yml")

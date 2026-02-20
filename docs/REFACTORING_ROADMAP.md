@@ -119,14 +119,14 @@ except VFSBotError as e:
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `src/utils/form_handler.py` | 362 | **Not imported anywhere** in `src/`, `web/`, or `main.py`. No production references. |
-| `src/core/feature_flags.py` | 194 | **Only imported in test file** (`tests/unit/test_feature_flags.py`). Not used in any production code path. |
-| `src/utils/user_agent_rotator.py` | 51 | **Only imported in test file** (`tests/unit/test_user_agent_rotator.py`). Not referenced in production code. The `HeaderManager` in `src/utils/security/header_manager.py` handles user-agent rotation independently. |
+| ~~`src/utils/form_handler.py`~~ | 362 | ✅ Removed — **Not imported anywhere** in `src/`, `web/`, or `main.py`. No production references. |
+| ~~`src/core/feature_flags.py`~~ | 194 | ✅ Removed — **Only imported in test file** (`tests/unit/test_feature_flags.py`). Not used in any production code path. |
+| ~~`src/utils/user_agent_rotator.py`~~ | 51 | ✅ Removed — **Only imported in test file** (`tests/unit/test_user_agent_rotator.py`). Not referenced in production code. The `HeaderManager` in `src/utils/security/header_manager.py` handles user-agent rotation independently. |
 
 ### Dead Functions/Variables
 
-- `src/core/feature_flags.py:187` defines `get_feature_flags()` — never called outside tests.
-- `src/utils/form_handler.py` defines `FormHandler` class with multiple methods — none called from production code.
+- ~~`src/core/feature_flags.py:187` defines `get_feature_flags()` — never called outside tests.~~ ✅ Removed
+- ~~`src/utils/form_handler.py` defines `FormHandler` class with multiple methods — none called from production code.~~ ✅ Removed
 
 ### Deprecated References
 
