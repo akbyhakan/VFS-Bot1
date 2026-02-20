@@ -27,6 +27,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -60,6 +63,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -96,6 +102,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add multiple proxies
@@ -127,6 +136,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -163,6 +175,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -196,6 +211,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -233,6 +251,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxies
@@ -273,6 +294,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Initially no proxies
@@ -310,6 +334,9 @@ class TestProxyDatabase:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxy
@@ -348,6 +375,9 @@ class TestNetNutProxyManager:
         await db.connect()
 
         try:
+            async with db.get_connection() as conn:
+                await conn.execute("TRUNCATE proxy_endpoints CASCADE")
+
             proxy_repo = ProxyRepository(db)
 
             # Add proxies

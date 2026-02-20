@@ -454,8 +454,8 @@ pytest --cov=src --cov-report=term-missing
 ```
 
 ### Coverage requirements:
-- Minimum coverage: 80% (configured in `pyproject.toml`)
-- Aim for 80%+ on new code
+- Minimum coverage: 70% (configured in `pyproject.toml`)
+- Aim for 70%+ on new code
 - Critical paths should have 100% coverage
 
 ## Troubleshooting

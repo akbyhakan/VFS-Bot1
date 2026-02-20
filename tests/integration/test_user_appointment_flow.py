@@ -64,7 +64,7 @@ class TestUserAppointmentFlow:
         assert user_encrypted is not None
         assert user_encrypted["email"] == user_data["email"]
         # Password should be encrypted, not plaintext
-        assert user_encrypted["password_encrypted"] != user_data["password"]
+        assert user_encrypted["password"] != user_data["password"]
 
         # Step 4: Verify decrypted password matches original
         user_decrypted = await user_repo.get_by_id_with_password(user_id)
