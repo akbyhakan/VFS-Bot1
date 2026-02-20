@@ -51,7 +51,7 @@ def mock_auth(client):
 
     client.app.dependency_overrides[verify_hybrid_auth] = mock_verify_hybrid_auth
     yield
-    client.app.dependency_overrides.pop(verify_hybrid_auth, None)
+    client.app.dependency_overrides.clear()
 
 
 class TestBotSettingsRoutes:
