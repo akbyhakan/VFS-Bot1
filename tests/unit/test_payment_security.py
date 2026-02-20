@@ -30,6 +30,15 @@ async def test_db(unique_encryption_key):
     db = Database(database_url=database_url)
     await db.connect()
     yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
@@ -55,9 +64,9 @@ async def test_card_stored_without_cvv(test_db):
     assert card_id > 0
 
     # Retrieve card
-    card = await test_db.get_payment_card()
-
-    assert card is not None
+    card_entity = await payment_repo.get()
+    assert card_entity is not None
+    card = card_entity.to_dict()
     # Assert CVV is NOT present (PCI-DSS compliance)
     assert "cvv" not in card
     assert "cvv_encrypted" not in card
@@ -88,9 +97,9 @@ async def test_masked_card_no_cvv(test_db):
     )
 
     # Get masked card
-    card = await test_db.get_payment_card_masked()
-
-    assert card is not None
+    card_entity = await payment_repo.get_masked()
+    assert card_entity is not None
+    card = card_entity.to_dict()
     # Assert CVV is not present in masked view
     assert "cvv" not in card
     assert "cvv_encrypted" not in card
@@ -108,8 +117,9 @@ async def test_connection_pool_leak_protection(test_db):
     This test ensures that database connections are properly returned
     to the pool even when exceptions occur during operations.
     """
-    # Get initial pool size
-    initial_available = test_db._available_connections.qsize()
+    # Get initial pool stats
+    initial_stats = test_db._connection_manager.get_pool_stats()
+    initial_available = initial_stats["pool_free"]
 
     # Try to perform an operation that will fail
     try:
@@ -125,7 +135,8 @@ async def test_connection_pool_leak_protection(test_db):
     await asyncio.sleep(0.1)
 
     # Connection should be returned to pool
-    final_available = test_db._available_connections.qsize()
+    final_stats = test_db._connection_manager.get_pool_stats()
+    final_available = final_stats["pool_free"]
     assert (
         final_available == initial_available
     ), f"Connection pool leaked! Initial: {initial_available}, Final: {final_available}"
@@ -191,7 +202,9 @@ async def test_card_update(test_db):
     assert updated_id == card_id
 
     # Verify update
-    card = await test_db.get_payment_card()
+    card_entity = await payment_repo.get()
+    assert card_entity is not None
+    card = card_entity.to_dict()
     assert card["card_holder_name"] == "Updated User"
     assert card["expiry_month"] == "01"
     assert card["expiry_year"] == "2026"

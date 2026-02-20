@@ -6,7 +6,13 @@ import pytest
 from cryptography.fernet import Fernet
 
 from src.models.database import Database
-from src.repositories import AppointmentRepository, UserRepository
+from src.repositories import (
+    AppointmentRepository,
+    AppointmentRequestRepository,
+    LogRepository,
+    TokenBlacklistRepository,
+    UserRepository,
+)
 from src.utils.encryption import PasswordEncryption, reset_encryption
 
 
@@ -37,6 +43,15 @@ async def test_db(tmp_path, unique_encryption_key):
         pytest.skip(f"PostgreSQL test database not available: {e}")
 
     yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
@@ -93,7 +108,7 @@ async def test_get_user_with_decrypted_password(test_db):
     )
 
     # Get user with decrypted password
-    user = await test_db.get_user_with_decrypted_password(user_id)
+    user = await user_repo.get_by_id_with_password(user_id)
 
     assert user is not None
     assert user["email"] == email
@@ -137,7 +152,7 @@ async def test_get_active_users_with_decrypted_passwords(test_db):
 async def test_connection_pooling(test_db):
     """Test that connection pooling works."""
     # Connection pool should be initialized
-    assert len(test_db._pool) == test_db.pool_size
+    assert test_db.pool is not None
 
     # Should be able to get connections
     async with test_db.get_connection() as conn:
@@ -192,11 +207,11 @@ async def test_add_personal_details(test_db):
         "email": "test@example.com",
     }
 
-    details_id = await test_db.add_personal_details(user_id, details)
+    details_id = await UserRepository(test_db).add_personal_details(user_id, details)
     assert details_id > 0
 
     # Get details back
-    retrieved = await test_db.get_personal_details(user_id)
+    retrieved = await UserRepository(test_db).get_personal_details(user_id)
     assert retrieved is not None
     assert retrieved["first_name"] == "John"
     assert retrieved["last_name"] == "Doe"
@@ -232,7 +247,7 @@ async def test_add_appointment(test_db):
     assert appointment_id > 0
 
     # Get appointments
-    appointments = await test_db.get_appointments(user_id)
+    appointments = [a.to_dict() for a in await AppointmentRepository(test_db).get_by_user(user_id)]
     assert len(appointments) == 1
     assert appointments[0]["reference_number"] == "REF123456"
 
@@ -251,10 +266,14 @@ async def test_add_log(test_db):
         }
     )
 
-    await test_db.add_log("INFO", "Test log message", user_id)
-    await test_db.add_log("ERROR", "Test error", user_id)
+    await LogRepository(test_db).create(
+        {"level": "INFO", "message": "Test log message", "user_id": user_id}
+    )
+    await LogRepository(test_db).create(
+        {"level": "ERROR", "message": "Test error", "user_id": user_id}
+    )
 
-    logs = await test_db.get_logs(limit=10)
+    logs = await LogRepository(test_db).get_all(limit=10)
     assert len(logs) >= 2
 
 
@@ -292,14 +311,16 @@ async def test_create_appointment_request(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul", "Ankara"],
-        preferred_dates=["15/02/2026", "16/02/2026"],
-        person_count=2,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul", "Ankara"],
+            "preferred_dates": ["15/02/2026", "16/02/2026"],
+            "person_count": 2,
+            "persons": persons,
+        }
     )
 
     assert request_id > 0
@@ -325,18 +346,21 @@ async def test_get_appointment_request(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Get the request
-    request = await test_db.get_appointment_request(request_id)
+    entity = await AppointmentRequestRepository(test_db).get_by_id(request_id)
+    request = entity.to_dict() if entity else None
 
     assert request is not None
     assert request["id"] == request_id
@@ -370,28 +394,32 @@ async def test_get_all_appointment_requests(test_db):
     ]
 
     # Create multiple requests
-    id1 = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    id1 = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
-    id2 = await test_db.create_appointment_request(
-        country_code="aut",
-        visa_category="Business",
-        visa_subcategory="Conference",
-        centres=["Ankara"],
-        preferred_dates=["20/02/2026"],
-        person_count=1,
-        persons=persons,
+    id2 = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "aut",
+            "visa_category": "Business",
+            "visa_subcategory": "Conference",
+            "centres": ["Ankara"],
+            "preferred_dates": ["20/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Get all requests
-    requests = await test_db.get_all_appointment_requests()
+    requests = [r.to_dict() for r in await AppointmentRequestRepository(test_db).get_all()]
 
     assert len(requests) >= 2
     assert any(r["id"] == id1 for r in requests)
@@ -420,26 +448,29 @@ async def test_update_appointment_request_status(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Update status
     completed_at = datetime.now(timezone.utc)
-    updated = await test_db.update_appointment_request_status(
-        request_id=request_id, status="completed", completed_at=completed_at
+    updated = await AppointmentRequestRepository(test_db).update_status(
+        request_id, "completed", completed_at=completed_at
     )
 
     assert updated is True
 
     # Verify update
-    request = await test_db.get_appointment_request(request_id)
+    entity = await AppointmentRequestRepository(test_db).get_by_id(request_id)
+    request = entity.to_dict() if entity else None
     assert request["status"] == "completed"
     assert request["completed_at"] is not None
 
@@ -464,22 +495,25 @@ async def test_delete_appointment_request(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Delete the request
-    deleted = await test_db.delete_appointment_request(request_id)
+    deleted = await AppointmentRequestRepository(test_db).delete(request_id)
     assert deleted is True
 
     # Verify it's deleted
-    request = await test_db.get_appointment_request(request_id)
+    entity = await AppointmentRequestRepository(test_db).get_by_id(request_id)
+    request = entity.to_dict() if entity else None
     assert request is None
 
 
@@ -516,18 +550,21 @@ async def test_get_pending_appointment_request_for_user(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Get the request by user
-    request = await test_db.get_pending_appointment_request_for_user(user_id)
+    entity = await AppointmentRequestRepository(test_db).get_pending_for_user(user_id)
+    request = entity.to_dict() if entity else None
 
     assert request is not None
     assert request["id"] == request_id
@@ -583,18 +620,21 @@ async def test_get_pending_appointment_request_for_user_multi_person(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul", "Ankara"],
-        preferred_dates=["15/02/2026", "16/02/2026"],
-        person_count=2,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul", "Ankara"],
+            "preferred_dates": ["15/02/2026", "16/02/2026"],
+            "person_count": 2,
+            "persons": persons,
+        }
     )
 
     # Get the request by user
-    request = await test_db.get_pending_appointment_request_for_user(user_id)
+    entity = await AppointmentRequestRepository(test_db).get_pending_for_user(user_id)
+    request = entity.to_dict() if entity else None
 
     assert request is not None
     assert request["id"] == request_id
@@ -620,7 +660,8 @@ async def test_get_pending_appointment_request_for_user_no_request(test_db):
     )
 
     # No appointment request created
-    request = await test_db.get_pending_appointment_request_for_user(user_id)
+    entity = await AppointmentRequestRepository(test_db).get_pending_for_user(user_id)
+    request = entity.to_dict() if entity else None
 
     assert request is None
 
@@ -658,21 +699,24 @@ async def test_get_pending_appointment_request_for_user_completed_status(test_db
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Mark as completed
-    await test_db.update_appointment_request_status(request_id, "completed")
+    await AppointmentRequestRepository(test_db).update_status(request_id, "completed")
 
     # Should not return completed request
-    request = await test_db.get_pending_appointment_request_for_user(user_id)
+    entity = await AppointmentRequestRepository(test_db).get_pending_for_user(user_id)
+    request = entity.to_dict() if entity else None
 
     assert request is None
 
@@ -699,30 +743,33 @@ async def test_cleanup_completed_requests(test_db):
         },
     ]
 
-    request_id = await test_db.create_appointment_request(
-        country_code="nld",
-        visa_category="Tourism",
-        visa_subcategory="Short Stay",
-        centres=["Istanbul"],
-        preferred_dates=["15/02/2026"],
-        person_count=1,
-        persons=persons,
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
     )
 
     # Mark as completed with old timestamp (35 days ago)
     old_date = datetime.now(timezone.utc) - timedelta(days=35)
-    await test_db.update_appointment_request_status(
-        request_id=request_id, status="completed", completed_at=old_date
+    await AppointmentRequestRepository(test_db).update_status(
+        request_id, "completed", completed_at=old_date
     )
 
     # Run cleanup (30 days threshold)
-    deleted_count = await test_db.cleanup_completed_requests(days=30)
+    deleted_count = await AppointmentRequestRepository(test_db).cleanup_completed(days=30)
 
     # Should have deleted 1 request
     assert deleted_count == 1
 
     # Verify it's deleted
-    request = await test_db.get_appointment_request(request_id)
+    entity = await AppointmentRequestRepository(test_db).get_by_id(request_id)
+    request = entity.to_dict() if entity else None
     assert request is None
 
 
@@ -737,15 +784,15 @@ class TestTokenBlacklist:
         jti = "test-jti-12345"
         exp = datetime.now(timezone.utc) + timedelta(hours=1)
 
-        await test_db.add_blacklisted_token(jti, exp)
+        await TokenBlacklistRepository(test_db).add(jti, exp)
 
         # Verify it's blacklisted
-        is_blacklisted = await test_db.is_token_blacklisted(jti)
+        is_blacklisted = await TokenBlacklistRepository(test_db).is_blacklisted(jti)
         assert is_blacklisted is True
 
     async def test_is_token_blacklisted_returns_false_for_non_blacklisted(self, test_db):
         """Test that non-blacklisted tokens return False."""
-        is_blacklisted = await test_db.is_token_blacklisted("non-existent-jti")
+        is_blacklisted = await TokenBlacklistRepository(test_db).is_blacklisted("non-existent-jti")
         assert is_blacklisted is False
 
     async def test_expired_token_not_blacklisted(self, test_db):
@@ -755,10 +802,10 @@ class TestTokenBlacklist:
         jti = "expired-jti"
         exp = datetime.now(timezone.utc) - timedelta(hours=1)  # Already expired
 
-        await test_db.add_blacklisted_token(jti, exp)
+        await TokenBlacklistRepository(test_db).add(jti, exp)
 
         # Should not be blacklisted because it's expired
-        is_blacklisted = await test_db.is_token_blacklisted(jti)
+        is_blacklisted = await TokenBlacklistRepository(test_db).is_blacklisted(jti)
         assert is_blacklisted is False
 
     async def test_get_active_blacklisted_tokens(self, test_db):
@@ -770,16 +817,16 @@ class TestTokenBlacklist:
         for i in range(3):
             jti = f"active-jti-{i}"
             exp = datetime.now(timezone.utc) + timedelta(hours=i + 1)
-            await test_db.add_blacklisted_token(jti, exp)
+            await TokenBlacklistRepository(test_db).add(jti, exp)
             active_tokens.append(jti)
 
         # Add expired token
         expired_jti = "expired-jti"
         expired_exp = datetime.now(timezone.utc) - timedelta(hours=1)
-        await test_db.add_blacklisted_token(expired_jti, expired_exp)
+        await TokenBlacklistRepository(test_db).add(expired_jti, expired_exp)
 
         # Get active tokens
-        tokens = await test_db.get_active_blacklisted_tokens()
+        tokens = await TokenBlacklistRepository(test_db).get_active()
 
         # Should only get active tokens
         assert len(tokens) == 3
@@ -796,21 +843,21 @@ class TestTokenBlacklist:
         for i in range(3):
             jti = f"expired-jti-{i}"
             exp = datetime.now(timezone.utc) - timedelta(hours=i + 1)
-            await test_db.add_blacklisted_token(jti, exp)
+            await TokenBlacklistRepository(test_db).add(jti, exp)
 
         # Add active token
         active_jti = "active-jti"
         active_exp = datetime.now(timezone.utc) + timedelta(hours=1)
-        await test_db.add_blacklisted_token(active_jti, active_exp)
+        await TokenBlacklistRepository(test_db).add(active_jti, active_exp)
 
         # Run cleanup
-        deleted_count = await test_db.cleanup_expired_tokens()
+        deleted_count = await TokenBlacklistRepository(test_db).cleanup_expired()
 
         # Should have deleted 3 expired tokens
         assert deleted_count == 3
 
         # Active token should still be there
-        is_blacklisted = await test_db.is_token_blacklisted(active_jti)
+        is_blacklisted = await TokenBlacklistRepository(test_db).is_blacklisted(active_jti)
         assert is_blacklisted is True
 
 
