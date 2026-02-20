@@ -172,8 +172,7 @@ async def test_concurrent_start_guard(config, database, notifier):
         for r in results
         if r["status"] == "error"
         and (
-            "starting" in r.get("message", "").lower()
-            or "running" in r.get("message", "").lower()
+            "starting" in r.get("message", "").lower() or "running" in r.get("message", "").lower()
         )
     )
 
