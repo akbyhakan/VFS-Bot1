@@ -6,6 +6,7 @@ import pytest
 import pytest_asyncio
 
 from src.models.database import Database
+from src.repositories import AppointmentRepository, UserRepository
 from src.services.bot.vfs_bot import VFSBot
 from src.services.notification.notification import NotificationService
 
@@ -26,24 +27,36 @@ async def database():
         pytest.skip(f"PostgreSQL test database not available: {e}")
 
     yield db
+    try:
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
+                personal_details, token_blacklist, audit_log, logs, payment_card,
+                user_webhooks, users RESTART IDENTITY CASCADE
+            """)
+    except Exception:
+        pass
     await db.close()
 
 
 @pytest.mark.asyncio
 async def test_database_connection(database):
     """Test database connection and table creation."""
-    assert database.conn is not None
+    assert database.pool is not None
 
 
 @pytest.mark.asyncio
 async def test_add_user(database):
     """Test adding a user to database."""
-    user_id = await database.add_user(
-        email="test@example.com",
-        password="testpass",
-        centre="Istanbul",
-        category="Schengen Visa",
-        subcategory="Tourism",
+    user_repo = UserRepository(database)
+    user_id = await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "testpass",
+            "center_name": "Istanbul",
+            "visa_category": "Schengen Visa",
+            "visa_subcategory": "Tourism",
+        }
     )
     assert user_id > 0
 
@@ -51,15 +64,18 @@ async def test_add_user(database):
 @pytest.mark.asyncio
 async def test_get_active_users(database):
     """Test retrieving active users."""
-    await database.add_user(
-        email="test@example.com",
-        password="testpass",
-        centre="Istanbul",
-        category="Schengen Visa",
-        subcategory="Tourism",
+    user_repo = UserRepository(database)
+    await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "testpass",
+            "center_name": "Istanbul",
+            "visa_category": "Schengen Visa",
+            "visa_subcategory": "Tourism",
+        }
     )
 
-    users = await database.get_active_users()
+    users = await user_repo.get_all_active()
     assert len(users) == 1
     assert users[0]["email"] == "test@example.com"
 
@@ -67,12 +83,15 @@ async def test_get_active_users(database):
 @pytest.mark.asyncio
 async def test_add_personal_details(database):
     """Test adding personal details."""
-    user_id = await database.add_user(
-        email="test@example.com",
-        password="testpass",
-        centre="Istanbul",
-        category="Schengen Visa",
-        subcategory="Tourism",
+    user_repo = UserRepository(database)
+    user_id = await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "testpass",
+            "center_name": "Istanbul",
+            "visa_category": "Schengen Visa",
+            "visa_subcategory": "Tourism",
+        }
     )
 
     details = {
@@ -82,39 +101,45 @@ async def test_add_personal_details(database):
         "email": "test@example.com",
     }
 
-    details_id = await database.add_personal_details(user_id, details)
+    details_id = await user_repo.add_personal_details(user_id, details)
     assert details_id > 0
 
-    retrieved = await database.get_personal_details(user_id)
+    retrieved = await user_repo.get_personal_details(user_id)
     assert retrieved["first_name"] == "John"
 
 
 @pytest.mark.asyncio
 async def test_add_appointment(database):
     """Test adding an appointment."""
-    user_id = await database.add_user(
-        email="test@example.com",
-        password="testpass",
-        centre="Istanbul",
-        category="Schengen Visa",
-        subcategory="Tourism",
+    user_repo = UserRepository(database)
+    user_id = await user_repo.create(
+        {
+            "email": "test@example.com",
+            "password": "testpass",
+            "center_name": "Istanbul",
+            "visa_category": "Schengen Visa",
+            "visa_subcategory": "Tourism",
+        }
     )
 
-    appointment_id = await database.add_appointment(
-        user_id=user_id,
-        centre="Istanbul",
-        category="Schengen Visa",
-        subcategory="Tourism",
-        date="2024-01-15",
-        time="10:00",
-        reference="REF123",
+    appt_repo = AppointmentRepository(database)
+    appointment_id = await appt_repo.create(
+        {
+            "user_id": user_id,
+            "centre": "Istanbul",
+            "category": "Schengen Visa",
+            "subcategory": "Tourism",
+            "appointment_date": "2024-01-15",
+            "appointment_time": "10:00",
+            "reference_number": "REF123",
+        }
     )
 
     assert appointment_id > 0
 
-    appointments = await database.get_appointments(user_id)
+    appointments = await appt_repo.get_by_user(user_id)
     assert len(appointments) == 1
-    assert appointments[0]["reference_number"] == "REF123"
+    assert appointments[0].reference_number == "REF123"
 
 
 def test_bot_initialization(config):
