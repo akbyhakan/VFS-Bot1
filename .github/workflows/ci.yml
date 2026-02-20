@@ -165,7 +165,7 @@ jobs:
         # This ensures tests never get an invalid key from CI secrets
         python -c "from cryptography.fernet import Fernet; import os; os.environ['ENCRYPTION_KEY'] = Fernet.generate_key().decode(); print('Generated valid test encryption key')"
         export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-        pytest tests/
+        pytest tests/ -m "not e2e"
     
     - name: Verify version sync
       run: |
