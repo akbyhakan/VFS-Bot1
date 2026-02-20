@@ -8,6 +8,16 @@ from src.core.exceptions import LoginError, SelectorNotFoundError
 from src.services.bot.vfs_bot import VFSBot
 
 
+def _mock_slot_checker_state(bot):
+    """Set up page state detector mock so slot checker skips SPA navigation."""
+    from src.services.bot.page_state_detector import PageState, PageStateResult
+
+    bot.services.workflow.slot_checker.page_state_detector = MagicMock()
+    bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+    )
+
+
 @pytest.mark.asyncio
 async def test_bot_initialization(config, mock_db, mock_notifier):
     """Test bot initialization."""
@@ -57,6 +67,7 @@ async def test_login_failure_wrong_credentials(mock_page, config, mock_db, mock_
 async def test_check_slots_available(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when slots are available."""
     bot = VFSBot(config, mock_db, mock_notifier)
+    _mock_slot_checker_state(bot)
 
     # Mock available slots
     mock_locator = MagicMock()
@@ -81,6 +92,7 @@ async def test_check_slots_available(mock_page, config, mock_db, mock_notifier):
 async def test_check_slots_not_available(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when no slots available."""
     bot = VFSBot(config, mock_db, mock_notifier)
+    _mock_slot_checker_state(bot)
 
     # Mock no available slots
     mock_locator = MagicMock()
@@ -156,6 +168,7 @@ async def test_take_screenshot(mock_page, config, mock_db, mock_notifier, tmp_pa
 async def test_check_slots_capacity_aware(mock_page, config, mock_db, mock_notifier):
     """Test slot checking with capacity awareness for multi-person booking."""
     bot = VFSBot(config, mock_db, mock_notifier)
+    _mock_slot_checker_state(bot)
 
     # Mock available slots with sufficient capacity
     mock_locator = MagicMock()
@@ -183,6 +196,7 @@ async def test_check_slots_capacity_aware(mock_page, config, mock_db, mock_notif
 async def test_check_slots_capacity_insufficient(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when capacity is insufficient for multi-person booking."""
     bot = VFSBot(config, mock_db, mock_notifier)
+    _mock_slot_checker_state(bot)
 
     # Mock available slots with insufficient capacity
     mock_locator = MagicMock()

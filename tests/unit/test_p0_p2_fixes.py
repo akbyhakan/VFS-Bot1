@@ -161,19 +161,16 @@ class TestPasswordLeakPrevention:
             mock_fill.side_effect = Exception(f"Failed to fill field with value: {password}")
 
             with patch("src.services.bot.auth_service.safe_navigate", return_value=True):
-                with patch("src.services.bot.auth_service.logger") as mock_logger:
-                    # Login should return False due to exception
-                    result = await auth_service.login(mock_page, "test@example.com", password)
-                    assert result is False
+                # Login raises LoginError (password sanitized before raising)
+                from src.core.exceptions import LoginError
 
-                    # Check the logged error message for redaction
-                    # The error should be logged with the password redacted
-                    assert mock_logger.error.called
-                    error_calls = [str(call) for call in mock_logger.error.call_args_list]
-                    error_msg = str(error_calls)
+                with pytest.raises(LoginError) as exc_info:
+                    await auth_service.login(mock_page, "test@example.com", password)
 
-                    # Password should NOT appear in any error logs
-                    assert password not in error_msg, "Password was not redacted from error logs!"
+                # Password should NOT appear in the raised exception message
+                assert password not in str(
+                    exc_info.value
+                ), "Password was not redacted from exception!"
 
 
 # P1-4: Graceful shutdown timeout
