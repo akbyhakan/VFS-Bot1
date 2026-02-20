@@ -147,6 +147,12 @@ jobs:
       run: |
         # Install browser WITHOUT --with-deps to avoid apt conflicts
         playwright install chromium
+
+    - name: Initialize database schema
+      env:
+        DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
+      run: |
+        alembic upgrade head
     
     - name: Run tests with coverage
       env:

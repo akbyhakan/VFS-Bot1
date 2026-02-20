@@ -178,20 +178,18 @@ def test_ai_repair_init_with_api_key(temp_selectors_file):
 
 def test_ai_repair_init_import_error(temp_selectors_file):
     """Test graceful handling when google-genai is not installed."""
+    import sys
+
     with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}):
-        # Simulate ImportError by removing from sys.modules and making import fail
-        import sys
+        # Simulate ImportError by blocking google.genai in sys.modules
+        # Setting a module to None in sys.modules causes ImportError on import
+        blocked_modules = {
+            k: None for k in list(sys.modules.keys()) if k.startswith("google")
+        }
+        blocked_modules["google"] = None
+        blocked_modules["google.genai"] = None
 
-        original_import = __builtins__["__import__"]
-
-        def mock_import(name, *args, **kwargs):
-            if "google.genai" in name or (
-                name == "google" and len(args) > 0 and "genai" in args[0]
-            ):
-                raise ImportError("No module named 'google.genai'")
-            return original_import(name, *args, **kwargs)
-
-        with patch("builtins.__import__", side_effect=mock_import):
+        with patch.dict(sys.modules, blocked_modules):
             repair = AISelectorRepair(str(temp_selectors_file))
 
             # Should gracefully degrade

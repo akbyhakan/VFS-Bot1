@@ -41,15 +41,17 @@ def mock_bot_controller():
 
 
 @pytest.fixture
-def mock_auth(monkeypatch):
+def mock_auth(client):
     """Mock authentication."""
 
     async def mock_verify_hybrid_auth():
         return {"sub": "test_user", "name": "Test User"}
 
-    from web import routes
+    from web.dependencies import verify_hybrid_auth
 
-    monkeypatch.setattr(routes.bot, "verify_hybrid_auth", lambda: mock_verify_hybrid_auth())
+    client.app.dependency_overrides[verify_hybrid_auth] = mock_verify_hybrid_auth
+    yield
+    client.app.dependency_overrides.pop(verify_hybrid_auth, None)
 
 
 class TestBotSettingsRoutes:
@@ -63,7 +65,7 @@ class TestBotSettingsRoutes:
 
             mock_get_controller.side_effect = HTTPException(status_code=503)
 
-            response = client.get("/api/bot/settings")
+            response = client.get("/api/v1/bot/settings")
 
             assert response.status_code == 200
             data = response.json()
@@ -77,7 +79,7 @@ class TestBotSettingsRoutes:
         with patch("web.routes.bot._get_controller") as mock_get_controller:
             mock_get_controller.return_value = mock_bot_controller
 
-            response = client.get("/api/bot/settings")
+            response = client.get("/api/v1/bot/settings")
 
             assert response.status_code == 200
             data = response.json()
@@ -92,7 +94,7 @@ class TestBotSettingsRoutes:
         with patch("web.routes.bot._get_controller") as mock_get_controller:
             mock_get_controller.return_value = mock_bot_controller
 
-            response = client.put("/api/bot/settings", json={"cooldown_minutes": 15})
+            response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 15})
 
             assert response.status_code == 200
             data = response.json()
@@ -106,13 +108,13 @@ class TestBotSettingsRoutes:
 
     def test_update_bot_settings_validation_min(self, client, mock_auth):
         """Test updating bot settings with value below minimum."""
-        response = client.put("/api/bot/settings", json={"cooldown_minutes": 4})
+        response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 4})
 
         assert response.status_code == 422  # Validation error
 
     def test_update_bot_settings_validation_max(self, client, mock_auth):
         """Test updating bot settings with value above maximum."""
-        response = client.put("/api/bot/settings", json={"cooldown_minutes": 61})
+        response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 61})
 
         assert response.status_code == 422  # Validation error
 
@@ -123,7 +125,7 @@ class TestBotSettingsRoutes:
 
             mock_get_controller.side_effect = HTTPException(status_code=503)
 
-            response = client.put("/api/bot/settings", json={"cooldown_minutes": 15})
+            response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 15})
 
             assert response.status_code == 200
             data = response.json()

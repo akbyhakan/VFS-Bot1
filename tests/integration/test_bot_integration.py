@@ -58,6 +58,14 @@ async def test_check_slots_available(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when slots are available."""
     bot = VFSBot(config, mock_db, mock_notifier)
 
+    # Mock page state detector to return "already on appointment page" state
+    from src.services.bot.page_state_detector import PageState, PageStateResult
+
+    bot.services.workflow.slot_checker.page_state_detector = MagicMock()
+    bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+    )
+
     # Mock available slots
     mock_locator = MagicMock()
     mock_locator.count = AsyncMock(return_value=1)
@@ -81,6 +89,14 @@ async def test_check_slots_available(mock_page, config, mock_db, mock_notifier):
 async def test_check_slots_not_available(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when no slots available."""
     bot = VFSBot(config, mock_db, mock_notifier)
+
+    # Mock page state detector to return "already on appointment page" state
+    from src.services.bot.page_state_detector import PageState, PageStateResult
+
+    bot.services.workflow.slot_checker.page_state_detector = MagicMock()
+    bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+    )
 
     # Mock no available slots
     mock_locator = MagicMock()
@@ -157,6 +173,14 @@ async def test_check_slots_capacity_aware(mock_page, config, mock_db, mock_notif
     """Test slot checking with capacity awareness for multi-person booking."""
     bot = VFSBot(config, mock_db, mock_notifier)
 
+    # Mock page state detector to return "already on appointment page" state
+    from src.services.bot.page_state_detector import PageState, PageStateResult
+
+    bot.services.workflow.slot_checker.page_state_detector = MagicMock()
+    bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+    )
+
     # Mock available slots with sufficient capacity
     mock_locator = MagicMock()
     mock_locator.count = AsyncMock(return_value=1)
@@ -183,6 +207,14 @@ async def test_check_slots_capacity_aware(mock_page, config, mock_db, mock_notif
 async def test_check_slots_capacity_insufficient(mock_page, config, mock_db, mock_notifier):
     """Test slot checking when capacity is insufficient for multi-person booking."""
     bot = VFSBot(config, mock_db, mock_notifier)
+
+    # Mock page state detector to return "already on appointment page" state
+    from src.services.bot.page_state_detector import PageState, PageStateResult
+
+    bot.services.workflow.slot_checker.page_state_detector = MagicMock()
+    bot.services.workflow.slot_checker.page_state_detector.detect = AsyncMock(
+        return_value=PageStateResult(state=PageState.APPOINTMENT_PAGE, confidence=1.0)
+    )
 
     # Mock available slots with insufficient capacity
     mock_locator = MagicMock()

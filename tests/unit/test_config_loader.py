@@ -215,8 +215,9 @@ class TestLoadConfig:
             assert "CRITICAL" in str(exc_info.value)
             assert "production" in str(exc_info.value)
 
+    @patch("src.core.config.config_validator.ConfigValidator.validate", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data="example: config\n")
-    def test_load_config_fallback_in_development(self, mock_file):
+    def test_load_config_fallback_in_development(self, mock_file, mock_validate):
         """Test that config loading falls back to example in development."""
         with patch.dict(os.environ, {"ENV": "development"}):
             with patch("pathlib.Path.exists") as mock_exists:

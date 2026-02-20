@@ -262,16 +262,18 @@ class TestGracefulShutdownNotifications:
 
         bot = mock_vfs_bot
 
-        # Create a long-running task that will timeout
-        async def long_running_task():
-            await asyncio.sleep(Timeouts.GRACEFUL_SHUTDOWN_GRACE_PERIOD + 10)
+        # Use a very short grace period to avoid test timeout
+        with patch.object(Timeouts, "GRACEFUL_SHUTDOWN_GRACE_PERIOD", 0.1):
+            # Create a long-running task that will exceed the short grace period
+            async def long_running_task():
+                await asyncio.sleep(10)
 
-        # Create task with a name
-        task = asyncio.create_task(long_running_task(), name="test_booking_task")
-        bot._active_booking_tasks = {task}
+            # Create task with a name
+            task = asyncio.create_task(long_running_task(), name="test_booking_task")
+            bot._active_booking_tasks = {task}
 
-        # Call stop - should timeout and save checkpoint
-        await bot.stop()
+            # Call stop - should timeout quickly and save checkpoint
+            await bot.stop()
 
         # Verify checkpoint was saved
         assert bot.services.workflow.error_handler.save_checkpoint.called
