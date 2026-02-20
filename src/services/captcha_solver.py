@@ -19,21 +19,16 @@ class CaptchaSolver:
         Initialize 2Captcha solver.
 
         Args:
-            api_key: 2Captcha API key (required in non-test environments)
+            api_key: 2Captcha API key (required)
 
         Raises:
-            ValueError: If api_key is empty or missing in non-test environments
+            ValueError: If api_key is empty or missing
         """
-        from src.core.environment import Environment
-
-        if not api_key and not Environment.is_testing():
-            raise ValueError("2Captcha API key is required. Manual solving mode is not supported.")
+        if not api_key:
+            raise ValueError("2Captcha API key is required")
 
         self._api_key = api_key
-        if api_key:
-            logger.info("CaptchaSolver initialized with 2Captcha")
-        else:
-            logger.debug("CaptchaSolver initialized in test mode (no API key)")
+        logger.info("CaptchaSolver initialized with 2Captcha")
 
     @property
     def api_key(self) -> str:

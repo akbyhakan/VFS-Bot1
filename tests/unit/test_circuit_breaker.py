@@ -18,7 +18,7 @@ async def test_circuit_breaker_thread_safety():
     # Create a mock config
     config = {
         "bot": {"check_interval": 30, "headless": True},
-        "captcha": {"provider": "manual", "api_key": ""},
+        "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
         "vfs": {
             "base_url": "https://visa.vfsglobal.com",
             "country": "tr",
@@ -61,7 +61,7 @@ async def test_circuit_breaker_async_signature():
     """Test that circuit breaker record_failure is async and returns None."""
     config = {
         "bot": {"check_interval": 30, "headless": True},
-        "captcha": {"provider": "manual", "api_key": ""},
+        "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
         "vfs": {
             "base_url": "https://visa.vfsglobal.com",
             "country": "tr",
@@ -88,7 +88,7 @@ async def test_circuit_breaker_opens_with_concurrent_errors():
     """Test that circuit breaker opens correctly under concurrent load."""
     config = {
         "bot": {"check_interval": 30, "headless": True},
-        "captcha": {"provider": "manual", "api_key": ""},
+        "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
         "vfs": {
             "base_url": "https://visa.vfsglobal.com",
             "country": "tr",
@@ -447,7 +447,7 @@ async def test_batch_error_rate_zero_records_success():
 
         config = {
             "bot": {"check_interval": 30, "headless": True},
-            "captcha": {"provider": "manual", "api_key": ""},
+            "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
             "vfs": {
                 "base_url": "https://visa.vfsglobal.com",
                 "country": "tr",
@@ -504,7 +504,7 @@ async def test_batch_error_rate_below_threshold_records_success():
 
         config = {
             "bot": {"check_interval": 30, "headless": True},
-            "captcha": {"provider": "manual", "api_key": ""},
+            "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
             "vfs": {
                 "base_url": "https://visa.vfsglobal.com",
                 "country": "tr",
@@ -567,7 +567,7 @@ async def test_batch_error_rate_above_threshold_records_failure():
 
         config = {
             "bot": {"check_interval": 30, "headless": True},
-            "captcha": {"provider": "manual", "api_key": ""},
+            "captcha": {"provider": "manual", "api_key": "test_captcha_key"},
             "vfs": {
                 "base_url": "https://visa.vfsglobal.com",
                 "country": "tr",

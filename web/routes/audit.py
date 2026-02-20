@@ -21,8 +21,8 @@ async def list_audit_logs(
     action: Optional[str] = Query(default=None, description="Filter by action type"),
     user_id: Optional[int] = Query(default=None, description="Filter by user ID"),
     success: Optional[bool] = Query(default=None, description="Filter by success status"),
-    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
     current_user: Dict[str, Any] = Depends(verify_jwt_token),
+    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
 ) -> List[AuditLogResponse]:
     """
     Get audit log entries with optional filters.
@@ -45,8 +45,8 @@ async def list_audit_logs(
 @router.get("/logs/{log_id}", response_model=AuditLogResponse)
 async def get_audit_log(
     log_id: int,
-    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
     current_user: Dict[str, Any] = Depends(verify_jwt_token),
+    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
 ) -> AuditLogResponse:
     """
     Get a specific audit log entry by ID.
@@ -69,8 +69,8 @@ async def get_audit_log(
 
 @router.get("/stats", response_model=AuditStatsResponse)
 async def get_audit_stats(
-    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
     current_user: Dict[str, Any] = Depends(verify_jwt_token),
+    audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
 ) -> AuditStatsResponse:
     """
     Get audit log statistics.
