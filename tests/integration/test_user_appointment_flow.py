@@ -95,8 +95,8 @@ class TestUserAppointmentFlow:
         # Step 7: Verify appointment
         appointments = await appointment_repo.get_by_user(user_id)
         assert len(appointments) == 1
-        assert appointments[0]["reference_number"] == appointment_data["reference_number"]
-        assert appointments[0]["appointment_date"] == appointment_data["appointment_date"]
+        assert appointments[0].reference_number == appointment_data["reference_number"]
+        assert appointments[0].appointment_date == appointment_data["appointment_date"]
 
     @pytest.mark.asyncio
     async def test_duplicate_appointment_prevention(
@@ -246,7 +246,7 @@ class TestUserAppointmentFlow:
         assert details_before is not None
 
         # Delete user
-        deleted = await user_repo.delete(user_id)
+        deleted = await user_repo.hard_delete(user_id)
         assert deleted is True
 
         # Verify user is deleted
