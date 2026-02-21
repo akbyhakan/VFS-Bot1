@@ -9,9 +9,7 @@ from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 
 # Skip these tests when DATABASE_URL is not available
-skip_no_db = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL"), reason="No database available"
-)
+skip_no_db = pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="No database available")
 
 
 @skip_no_db
@@ -23,7 +21,7 @@ async def test_connection_pool_stress():
 
     async def query(n: int):
         async with db.get_connection() as conn:
-            result = await conn.fetchval("SELECT $1::int", n)
+            result = await conn.fetchval("SELECT $1::text::int", str(n))
             return result
 
     try:
