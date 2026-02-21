@@ -32,27 +32,6 @@ country_profiles:
     retry_multiplier: 1.0
 """
 
-    @pytest.fixture
-    def yaml_with_unsupported(self):
-        """Sample YAML content including an unsupported country."""
-        return """version: "1.0"
-country_profiles:
-  nld:
-    name: "Hollanda"
-    name_en: "Netherlands"
-    default_mode: "dynamic"
-    timezone: "Europe/Amsterdam"
-    language: "nl"
-    retry_multiplier: 1.5
-  deu:
-    name: "Almanya"
-    name_en: "Germany"
-    default_mode: "dynamic"
-    timezone: "Europe/Berlin"
-    language: "de"
-    retry_multiplier: 1.0
-"""
-
     def test_load_profiles_success(self, sample_yaml_content, tmp_path):
         """Test successful loading of country profiles."""
         config_file = tmp_path / "country_profiles.yaml"
@@ -157,12 +136,3 @@ country_profiles:
         assert "nld" in all_countries
         assert "fra" in all_countries
 
-    def test_unsupported_countries_are_filtered(self, yaml_with_unsupported, tmp_path):
-        """Test that unsupported countries are silently excluded from loaded profiles."""
-        config_file = tmp_path / "country_profiles.yaml"
-        config_file.write_text(yaml_with_unsupported)
-
-        loader = CountryProfileLoader(str(config_file))
-
-        assert "nld" in loader._profiles
-        assert "deu" not in loader._profiles

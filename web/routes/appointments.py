@@ -9,7 +9,6 @@ import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
-from src.constants.countries import SUPPORTED_COUNTRIES
 from src.core.enums import AppointmentRequestStatus
 from src.core.exceptions import ValidationError
 from src.repositories import AppointmentRequestRepository
@@ -49,8 +48,6 @@ def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
 
         countries = []
         for code, profile in data.get("country_profiles", {}).items():
-            if code not in SUPPORTED_COUNTRIES:
-                continue
             countries.append(
                 {
                     "code": code,
