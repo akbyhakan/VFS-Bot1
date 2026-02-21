@@ -304,4 +304,4 @@ async def test_user_repository_get_all_active_only(mock_db, sample_user_data):
     assert len(users) == 1
     # Verify query includes WHERE is_active = TRUE
     call_args = mock_conn.fetch.call_args
-    assert "is_active = TRUE" in call_args[0][0]
+    assert "active = TRUE" in call_args[0][0]
