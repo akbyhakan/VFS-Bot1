@@ -59,7 +59,16 @@ jobs:
         run: |
           sleep 5
           pg_isready -h localhost -p 5432 -U vfs_test
-          redis-cli -h localhost -p 6379 ping
+          python -c "
+import sys, redis
+try:
+    r = redis.from_url('redis://localhost:6379', socket_connect_timeout=5)
+    r.ping()
+    print('Redis ping OK')
+except Exception as e:
+    print(f'Redis ping FAILED: {e}', file=sys.stderr)
+    sys.exit(1)
+"
       
       - name: Set up test database
         env:
@@ -75,14 +84,13 @@ jobs:
           DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
           TEST_DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
           REDIS_URL: redis://localhost:6379
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY_TEST }}
-          API_SECRET_KEY: ${{ secrets.API_SECRET_KEY_TEST }}
-          VFS_ENCRYPTION_KEY: ${{ secrets.VFS_ENCRYPTION_KEY_TEST }}
-          API_KEY_SALT: ${{ secrets.API_KEY_SALT_TEST }}
+          API_SECRET_KEY: "ci-test-secret-key-for-testing-minimum-64-characters-long-value-here"
           VFS_API_BASE: https://test-api.vfsglobal.com
           VFS_ASSETS_BASE: https://test-assets.vfsglobal.com
           CONTENTFUL_BASE: https://test-contentful.cloudfront.net
         run: |
+          # Generate valid test encryption key
+          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
           # Run only integration tests
           pytest -v -m integration tests/integration/
           
@@ -92,14 +100,13 @@ jobs:
           DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
           TEST_DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
           REDIS_URL: redis://localhost:6379
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY_TEST }}
-          API_SECRET_KEY: ${{ secrets.API_SECRET_KEY_TEST }}
-          VFS_ENCRYPTION_KEY: ${{ secrets.VFS_ENCRYPTION_KEY_TEST }}
-          API_KEY_SALT: ${{ secrets.API_KEY_SALT_TEST }}
+          API_SECRET_KEY: "ci-test-secret-key-for-testing-minimum-64-characters-long-value-here"
           VFS_API_BASE: https://test-api.vfsglobal.com
           VFS_ASSETS_BASE: https://test-assets.vfsglobal.com
           CONTENTFUL_BASE: https://test-contentful.cloudfront.net
         run: |
+          # Generate valid test encryption key
+          export ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
           # Run only E2E tests
           pytest -v -m e2e tests/e2e/
       

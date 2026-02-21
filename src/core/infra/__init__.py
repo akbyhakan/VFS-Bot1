@@ -1,6 +1,7 @@
 """Infrastructure utilities module."""
 
 from .circuit_breaker import CircuitBreaker
+from .redis_manager import RedisManager
 from .retry import (
     get_captcha_retry,
     get_login_retry,
@@ -23,6 +24,7 @@ from .startup_validator import log_security_warnings, validate_production_securi
 
 __all__ = [
     "CircuitBreaker",
+    "RedisManager",
     "get_login_retry",
     "get_captcha_retry",
     "get_slot_check_retry",

@@ -72,13 +72,10 @@ async def check_redis() -> Dict[str, Any]:
         return {"status": "not_configured", "backend": "in-memory"}
 
     try:
-        import redis
+        from src.core.infra.redis_manager import RedisManager
 
         start_time = time.time()
-        client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
-
-        # Test connection with PING
-        result = client.ping()
+        result = RedisManager.health_check()
         latency_ms = (time.time() - start_time) * 1000
 
         if result:
