@@ -135,3 +135,59 @@ country_profiles:
         assert len(all_countries) == 2
         assert "nld" in all_countries
         assert "deu" in all_countries
+
+    def test_warning_logged_for_unsupported_country(self, tmp_path):
+        """Test that a warning is logged for country codes not in SUPPORTED_COUNTRIES."""
+        yaml_content = """version: "1.0"
+country_profiles:
+  nld:
+    name: "Hollanda"
+    name_en: "Netherlands"
+    default_mode: "dynamic"
+    timezone: "Europe/Amsterdam"
+    language: "nl"
+    retry_multiplier: 1.5
+  deu:
+    name: "Almanya"
+    name_en: "Germany"
+    default_mode: "dynamic"
+    timezone: "Europe/Berlin"
+    language: "de"
+    retry_multiplier: 1.0
+"""
+        config_file = tmp_path / "country_profiles.yaml"
+        config_file.write_text(yaml_content)
+
+        with patch(
+            "src.services.data_sync.country_profile_loader.logger"
+        ) as mock_logger:
+            CountryProfileLoader(str(config_file))
+            # deu is not in SUPPORTED_COUNTRIES, so a warning should be logged
+            warning_calls = [
+                call
+                for call in mock_logger.warning.call_args_list
+                if "deu" in str(call)
+            ]
+            assert len(warning_calls) == 1
+
+    def test_no_warning_for_supported_country(self, tmp_path):
+        """Test that no warning is logged for supported country codes."""
+        yaml_content = """version: "1.0"
+country_profiles:
+  nld:
+    name: "Hollanda"
+    name_en: "Netherlands"
+    default_mode: "dynamic"
+    timezone: "Europe/Amsterdam"
+    language: "nl"
+    retry_multiplier: 1.5
+"""
+        config_file = tmp_path / "country_profiles.yaml"
+        config_file.write_text(yaml_content)
+
+        with patch(
+            "src.services.data_sync.country_profile_loader.logger"
+        ) as mock_logger:
+            CountryProfileLoader(str(config_file))
+            mock_logger.warning.assert_not_called()
+

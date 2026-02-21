@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
+from loguru import logger
+
+from src.constants.countries import SUPPORTED_COUNTRIES
 
 
 class CountryProfileLoader:
@@ -20,6 +23,11 @@ class CountryProfileLoader:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
                 self._profiles = data.get("country_profiles", {})
+            for code in self._profiles:
+                if code not in SUPPORTED_COUNTRIES:
+                    logger.warning(
+                        f"Country code '{code}' in YAML is not in SUPPORTED_COUNTRIES"
+                    )
 
     def get_profile(self, country_code: str) -> Optional[Dict[str, Any]]:
         """Ülke profilini getir."""

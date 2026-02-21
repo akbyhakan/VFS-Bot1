@@ -1,6 +1,9 @@
 """Tests for VFS Global Turkey countries configuration."""
 
+from pathlib import Path
+
 import pytest
+import yaml
 
 from src.constants.countries import (
     SOURCE_COUNTRY_CODE,
@@ -230,3 +233,24 @@ class TestIntegration:
         mission_values = [m.value for m in MissionCode]
         for code in SUPPORTED_COUNTRIES.keys():
             assert code in mission_values
+
+    def test_yaml_only_contains_supported_countries(self):
+        """Test that country_profiles.yaml only contains SUPPORTED_COUNTRIES codes."""
+        yaml_path = Path("config/country_profiles.yaml")
+        assert yaml_path.exists(), "country_profiles.yaml must exist"
+
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        yaml_codes = set(data.get("country_profiles", {}).keys())
+        supported_codes = set(SUPPORTED_COUNTRIES.keys())
+
+        unsupported_in_yaml = yaml_codes - supported_codes
+        assert not unsupported_in_yaml, (
+            f"YAML contains unsupported country codes: {unsupported_in_yaml}"
+        )
+
+        missing_from_yaml = supported_codes - yaml_codes
+        assert not missing_from_yaml, (
+            f"YAML is missing supported country codes: {missing_from_yaml}"
+        )
