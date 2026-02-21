@@ -427,6 +427,3 @@ class TestCentreFetcherCache:
             await cleanup_task
         except asyncio.CancelledError:
             pass  # Expected
-
-
-

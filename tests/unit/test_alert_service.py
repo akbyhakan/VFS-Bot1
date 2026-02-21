@@ -122,7 +122,6 @@ async def test_alert_service_telegram_not_configured():
     assert result is True
 
 
-
 @pytest.mark.asyncio
 async def test_alert_service_webhook_not_configured():
     """Test Webhook channel when not configured."""
@@ -134,4 +133,3 @@ async def test_alert_service_webhook_not_configured():
 
     # Should succeed via LOG channel
     assert result is True
-

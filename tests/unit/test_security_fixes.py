@@ -48,26 +48,22 @@ async def test_db(unique_encryption_key):
 
     try:
         async with db.get_connection() as conn:
-            await conn.execute(
-                """
+            await conn.execute("""
                 TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
                 personal_details, token_blacklist, audit_log, logs, payment_card,
                 user_webhooks, users RESTART IDENTITY CASCADE
-            """
-            )
+            """)
     except Exception:
         pass
 
     yield db
     try:
         async with db.get_connection() as conn:
-            await conn.execute(
-                """
+            await conn.execute("""
                 TRUNCATE TABLE appointment_persons, appointment_requests, appointments,
                 personal_details, token_blacklist, audit_log, logs, payment_card,
                 user_webhooks, users RESTART IDENTITY CASCADE
-            """
-            )
+            """)
     except Exception:
         pass
     await db.close()
@@ -126,9 +122,7 @@ async def test_update_personal_details_allows_whitelisted_fields(
 
 @pytest.mark.asyncio
 @pytest.mark.security
-async def test_update_personal_details_blocks_disallowed_fields(
-    test_db, unique_encryption_key
-):
+async def test_update_personal_details_blocks_disallowed_fields(test_db, unique_encryption_key):
     """Test that update_personal_details blocks disallowed fields and logs warning."""
     from unittest.mock import patch
 

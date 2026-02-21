@@ -16,9 +16,7 @@ from src.models.database import Database
 from src.utils.encryption import reset_encryption
 
 # Skip these tests when DATABASE_URL is not available
-skip_no_db = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL"), reason="No database available"
-)
+skip_no_db = pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="No database available")
 
 
 @pytest.fixture(scope="function")

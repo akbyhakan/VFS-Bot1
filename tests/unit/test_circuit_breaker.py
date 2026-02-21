@@ -428,4 +428,3 @@ async def test_batch_error_rate_threshold_constant_exists():
 
     # Verify it's 0.5 (50%)
     assert CircuitBreakerConfig.BATCH_ERROR_RATE_THRESHOLD == 0.5
-

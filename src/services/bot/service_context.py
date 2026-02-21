@@ -14,7 +14,6 @@ from loguru import logger
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
 
-from src.core.environment import Environment
 from src.core.rate_limiting import get_rate_limiter
 from src.selector import SelectorSelfHealing
 

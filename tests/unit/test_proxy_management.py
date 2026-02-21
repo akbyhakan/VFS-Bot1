@@ -11,9 +11,7 @@ from src.utils.encryption import decrypt_password, encrypt_password
 from src.utils.security.netnut_proxy import NetNutProxyManager, mask_proxy_password
 
 # Skip these tests when DATABASE_URL is not available
-skip_no_db = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL"), reason="No database available"
-)
+skip_no_db = pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="No database available")
 
 
 @skip_no_db
@@ -109,10 +107,20 @@ class TestProxyDatabase:
 
             # Add multiple proxies
             proxy1_id = await proxy_repo.create(
-                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
+                {
+                    "server": "proxy1.example.com",
+                    "port": 8080,
+                    "username": "user1",
+                    "password": "pass1",
+                }
             )
             proxy2_id = await proxy_repo.create(
-                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
+                {
+                    "server": "proxy2.example.com",
+                    "port": 8081,
+                    "username": "user2",
+                    "password": "pass2",
+                }
             )
 
             # Make one inactive
@@ -258,10 +266,20 @@ class TestProxyDatabase:
 
             # Add proxies
             proxy1_id = await proxy_repo.create(
-                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
+                {
+                    "server": "proxy1.example.com",
+                    "port": 8080,
+                    "username": "user1",
+                    "password": "pass1",
+                }
             )
             proxy2_id = await proxy_repo.create(
-                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
+                {
+                    "server": "proxy2.example.com",
+                    "port": 8081,
+                    "username": "user2",
+                    "password": "pass2",
+                }
             )
 
             # Mark both as failed
@@ -307,13 +325,28 @@ class TestProxyDatabase:
 
             # Add proxies
             await proxy_repo.create(
-                {"server": "proxy1.example.com", "port": 8080, "username": "user1", "password": "pass1"}
+                {
+                    "server": "proxy1.example.com",
+                    "port": 8080,
+                    "username": "user1",
+                    "password": "pass1",
+                }
             )
             proxy2_id = await proxy_repo.create(
-                {"server": "proxy2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
+                {
+                    "server": "proxy2.example.com",
+                    "port": 8081,
+                    "username": "user2",
+                    "password": "pass2",
+                }
             )
             await proxy_repo.create(
-                {"server": "proxy3.example.com", "port": 8082, "username": "user3", "password": "pass3"}
+                {
+                    "server": "proxy3.example.com",
+                    "port": 8082,
+                    "username": "user3",
+                    "password": "pass3",
+                }
             )
 
             # Make one inactive
@@ -385,7 +418,12 @@ class TestNetNutProxyManager:
                 {"server": "gw.example.com", "port": 8080, "username": "user1", "password": "pass1"}
             )
             await proxy_repo.create(
-                {"server": "gw2.example.com", "port": 8081, "username": "user2", "password": "pass2"}
+                {
+                    "server": "gw2.example.com",
+                    "port": 8081,
+                    "username": "user2",
+                    "password": "pass2",
+                }
             )
 
             # Load into proxy manager
