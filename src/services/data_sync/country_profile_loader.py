@@ -5,6 +5,8 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from src.constants.countries import SUPPORTED_COUNTRIES
+
 
 class CountryProfileLoader:
     """Ülke profillerini yükle ve yönet."""
@@ -19,7 +21,11 @@ class CountryProfileLoader:
         if self.config_path.exists():
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
-                self._profiles = data.get("country_profiles", {})
+                self._profiles = {
+                    k: v
+                    for k, v in data.get("country_profiles", {}).items()
+                    if k in SUPPORTED_COUNTRIES
+                }
 
     def get_profile(self, country_code: str) -> Optional[Dict[str, Any]]:
         """Ülke profilini getir."""

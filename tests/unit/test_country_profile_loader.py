@@ -13,7 +13,28 @@ class TestCountryProfileLoader:
 
     @pytest.fixture
     def sample_yaml_content(self):
-        """Sample YAML content for testing."""
+        """Sample YAML content for testing (only supported countries)."""
+        return """version: "1.0"
+country_profiles:
+  nld:
+    name: "Hollanda"
+    name_en: "Netherlands"
+    default_mode: "dynamic"
+    timezone: "Europe/Amsterdam"
+    language: "nl"
+    retry_multiplier: 1.5
+  fra:
+    name: "Fransa"
+    name_en: "France"
+    default_mode: "dynamic"
+    timezone: "Europe/Paris"
+    language: "fr"
+    retry_multiplier: 1.0
+"""
+
+    @pytest.fixture
+    def yaml_with_unsupported(self):
+        """Sample YAML content including an unsupported country."""
         return """version: "1.0"
 country_profiles:
   nld:
@@ -40,7 +61,7 @@ country_profiles:
         loader = CountryProfileLoader(str(config_file))
 
         assert "nld" in loader._profiles
-        assert "deu" in loader._profiles
+        assert "fra" in loader._profiles
         assert loader._profiles["nld"]["name"] == "Hollanda"
 
     def test_load_profiles_file_not_exists(self, tmp_path):
@@ -110,9 +131,9 @@ country_profiles:
         config_file.write_text(sample_yaml_content)
 
         loader = CountryProfileLoader(str(config_file))
-        timezone = loader.get_timezone("deu")
+        timezone = loader.get_timezone("fra")
 
-        assert timezone == "Europe/Berlin"
+        assert timezone == "Europe/Paris"
 
     def test_get_timezone_default(self, sample_yaml_content, tmp_path):
         """Test getting timezone for non-existent country."""
@@ -134,4 +155,14 @@ country_profiles:
 
         assert len(all_countries) == 2
         assert "nld" in all_countries
-        assert "deu" in all_countries
+        assert "fra" in all_countries
+
+    def test_unsupported_countries_are_filtered(self, yaml_with_unsupported, tmp_path):
+        """Test that unsupported countries are silently excluded from loaded profiles."""
+        config_file = tmp_path / "country_profiles.yaml"
+        config_file.write_text(yaml_with_unsupported)
+
+        loader = CountryProfileLoader(str(config_file))
+
+        assert "nld" in loader._profiles
+        assert "deu" not in loader._profiles
