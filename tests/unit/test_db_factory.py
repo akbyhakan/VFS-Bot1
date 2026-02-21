@@ -105,10 +105,12 @@ class TestDatabaseFactory:
         import threading
 
         instances = []
+        lock = threading.Lock()
 
         def create_instance():
             db = DatabaseFactory.get_instance()
-            instances.append(db)
+            with lock:
+                instances.append(db)
 
         threads = [threading.Thread(target=create_instance) for _ in range(10)]
         for thread in threads:

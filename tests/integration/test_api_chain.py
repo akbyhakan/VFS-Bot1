@@ -1,41 +1,30 @@
 """Integration tests for API endpoint chains using FastAPI TestClient."""
 
-import asyncio
 import logging
-from typing import AsyncGenerator
+from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
-
-from src.models.database import Database
-from src.models.db_factory import DatabaseFactory
 
 logger = logging.getLogger(__name__)
 
 
-@pytest_asyncio.fixture
-async def test_app():
+@pytest.fixture
+def test_app():
     """
-    Create a FastAPI test client with real database.
+    Create a FastAPI test client with mocked database connection.
 
     Yields:
         TestClient instance for making HTTP requests
     """
-    # Ensure database factory is initialized
-    try:
-        await DatabaseFactory.ensure_connected()
-    except Exception as e:
-        pytest.skip(f"Database not available for integration test: {e}")
-
     from web.app import create_app
 
     app = create_app(run_security_validation=False, env_override="testing")
-    client = TestClient(app)
-    yield client
 
-    # Cleanup
-    await DatabaseFactory.close_instance()
+    with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
+        with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
+            with TestClient(app) as client:
+                yield client
 
 
 @pytest.mark.integration
