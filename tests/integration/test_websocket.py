@@ -6,7 +6,6 @@ from typing import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 from fastapi import WebSocket
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
@@ -33,8 +32,8 @@ def test_app():
                 yield client
 
 
-@pytest_asyncio.fixture
-async def valid_token() -> str:
+@pytest.fixture
+def valid_token() -> str:
     """
     Create a valid JWT token for testing.
 
@@ -47,8 +46,8 @@ async def valid_token() -> str:
     return token
 
 
-@pytest_asyncio.fixture
-async def expired_token() -> str:
+@pytest.fixture
+def expired_token() -> str:
     """
     Create an expired JWT token for testing.
 
