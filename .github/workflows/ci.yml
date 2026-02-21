@@ -79,6 +79,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     
     steps:
     - uses: actions/checkout@v4
@@ -159,6 +168,7 @@ jobs:
         ENV: testing
         DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
         TEST_DATABASE_URL: postgresql://vfs_test:test_password_123@localhost:5432/vfs_bot_test
+        REDIS_URL: redis://localhost:6379
         API_SECRET_KEY: "ci-test-secret-key-for-testing-minimum-64-characters-long-value-here"
       run: |
         # Generate valid test encryption key if not provided
