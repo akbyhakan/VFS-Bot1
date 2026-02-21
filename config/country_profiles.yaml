@@ -7,15 +7,7 @@ country_profiles:
     timezone: "Europe/Amsterdam"
     language: "nl"
     retry_multiplier: 1.5  # Hollanda için daha agresif retry
-    
-  deu:  # Almanya
-    name: "Almanya"
-    name_en: "Germany"
-    default_mode: "dynamic"
-    timezone: "Europe/Berlin"
-    language: "de"
-    retry_multiplier: 1.0
-    
+
   fra:  # Fransa
     name: "Fransa"
     name_en: "France"
@@ -62,14 +54,6 @@ country_profiles:
     default_mode: "dynamic"
     timezone: "Europe/Copenhagen"
     language: "da"
-    retry_multiplier: 1.0
-
-  esp:  # İspanya
-    name: "İspanya"
-    name_en: "Spain"
-    default_mode: "dynamic"
-    timezone: "Europe/Madrid"
-    language: "es"
     retry_multiplier: 1.0
 
   fin:  # Finlandiya
@@ -120,14 +104,6 @@ country_profiles:
     language: "mt"
     retry_multiplier: 1.0
 
-  grc:  # Yunanistan
-    name: "Yunanistan"
-    name_en: "Greece"
-    default_mode: "dynamic"
-    timezone: "Europe/Athens"
-    language: "el"
-    retry_multiplier: 1.0
-
   hrv:  # Hırvatistan
     name: "Hırvatistan"
     name_en: "Croatia"
@@ -135,30 +111,6 @@ country_profiles:
     timezone: "Europe/Zagreb"
     language: "hr"
     retry_multiplier: 1.0
-
-  hun:  # Macaristan
-    name: "Macaristan"
-    name_en: "Hungary"
-    default_mode: "dynamic"
-    timezone: "Europe/Budapest"
-    language: "hu"
-    retry_multiplier: 1.0
-
-  irl:  # İrlanda
-    name: "İrlanda"
-    name_en: "Ireland"
-    default_mode: "dynamic"
-    timezone: "Europe/Dublin"
-    language: "en"
-    retry_multiplier: 1.0
-
-  ita:  # İtalya
-    name: "İtalya"
-    name_en: "Italy"
-    default_mode: "dynamic"
-    timezone: "Europe/Rome"
-    language: "it"
-    retry_multiplier: 1.2
 
   lux:  # Lüksemburg
     name: "Lüksemburg"
@@ -184,14 +136,6 @@ country_profiles:
     language: "pl"
     retry_multiplier: 1.0
 
-  prt:  # Portekiz
-    name: "Portekiz"
-    name_en: "Portugal"
-    default_mode: "dynamic"
-    timezone: "Europe/Lisbon"
-    language: "pt"
-    retry_multiplier: 1.0
-
   swe:  # İsveç
     name: "İsveç"
     name_en: "Sweden"
@@ -200,10 +144,26 @@ country_profiles:
     language: "sv"
     retry_multiplier: 1.0
 
-  gbr:  # İngiltere
-    name: "İngiltere"
-    name_en: "United Kingdom"
+  svn:  # Slovenya
+    name: "Slovenya"
+    name_en: "Slovenia"
     default_mode: "dynamic"
-    timezone: "Europe/London"
-    language: "en"
+    timezone: "Europe/Ljubljana"
+    language: "sl"
+    retry_multiplier: 1.0
+
+  bgr:  # Bulgaristan
+    name: "Bulgaristan"
+    name_en: "Bulgaria"
+    default_mode: "dynamic"
+    timezone: "Europe/Sofia"
+    language: "bg"
+    retry_multiplier: 1.0
+
+  svk:  # Slovakya
+    name: "Slovakya"
+    name_en: "Slovakia"
+    default_mode: "dynamic"
+    timezone: "Europe/Bratislava"
+    language: "sk"
     retry_multiplier: 1.0
