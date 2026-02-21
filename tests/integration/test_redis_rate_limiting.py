@@ -217,9 +217,8 @@ class TestRedisRateLimiting:
             test_identifier = f"test_concurrent_{int(time.time())}"
             limiter.clear_attempts(test_identifier)
 
-            async def make_attempt():
+            def make_attempt():
                 """Make a single rate limit check attempt."""
-                # Note: AuthRateLimiter is sync, but we can still test concurrency
                 return limiter.check_and_record_attempt(test_identifier)
 
             # Create 10 concurrent tasks
