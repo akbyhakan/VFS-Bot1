@@ -1,17 +1,13 @@
 """Integration tests for WebSocket endpoint."""
 
-import asyncio
 from datetime import timedelta
-from typing import AsyncGenerator
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import WebSocket
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from src.core.auth import create_access_token
-from src.models.db_factory import DatabaseFactory
 
 
 @pytest.fixture
