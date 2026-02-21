@@ -116,7 +116,7 @@ class TestWebhookSecurity:
             # Production requires SMS_WEBHOOK_SECRET - should return 422 when not configured
             assert (
                 response.status_code == 422
-            ), f"Expected 422 when secret not configured in production"
+            ), "Expected 422 when secret not configured in production"
 
     def test_webhook_enforces_signature_in_dev_when_secret_configured(
         self, mock_webhook_manager, monkeypatch

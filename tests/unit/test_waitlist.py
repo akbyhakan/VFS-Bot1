@@ -330,7 +330,8 @@ async def test_notify_waitlist_success(notification_service):
 
     await notification_service.notify_waitlist_success(details)
 
-    # Verify send was called (notify_waitlist_success calls send_notification which calls _telegram_channel.send)
+    # Verify send was called
+    # (notify_waitlist_success calls send_notification which calls _telegram_channel.send)
     assert mock_channel.send.called
 
 

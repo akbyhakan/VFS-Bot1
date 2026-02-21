@@ -162,8 +162,6 @@ class TestPasswordLeakPrevention:
 
             with patch("src.services.bot.auth_service.safe_navigate", return_value=True):
                 # Login raises LoginError (password sanitized before raising)
-                from src.core.exceptions import LoginError
-
                 with pytest.raises(LoginError) as exc_info:
                     await auth_service.login(mock_page, "test@example.com", password)
 
@@ -504,6 +502,7 @@ class TestDatabaseBatchOperations:
 
             with pytest.raises(ValidationError):
                 from src.repositories.user_repository import UserRepository
+
                 await UserRepository(db).create_batch(users)
         finally:
             await db.close()
