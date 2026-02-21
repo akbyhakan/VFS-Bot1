@@ -14,7 +14,7 @@ class TestAuthRateLimiter:
 
     def test_initial_state_not_limited(self):
         """Test that initially no identifier is rate limited."""
-        limiter = AuthRateLimiter(max_attempts=5, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=5, window_seconds=60, backend=InMemoryBackend())
         # First check_and_record_attempt should return False (not limited)
         assert not limiter.check_and_record_attempt("user1")
         # Different user should also not be limited initially
@@ -22,7 +22,7 @@ class TestAuthRateLimiter:
 
     def test_record_attempt_increments_count(self):
         """Test that recording attempts increments the count."""
-        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=InMemoryBackend())
 
         # First attempt - not limited, recorded
         assert not limiter.check_and_record_attempt("user1")
@@ -38,7 +38,7 @@ class TestAuthRateLimiter:
 
     def test_rate_limit_after_max_attempts(self):
         """Test that rate limiting activates after max attempts."""
-        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=InMemoryBackend())
 
         # First 3 attempts should succeed
         for _ in range(3):
@@ -49,7 +49,7 @@ class TestAuthRateLimiter:
 
     def test_different_identifiers_independent(self):
         """Test that different identifiers are tracked independently."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # user1 hits the limit
         assert not limiter.check_and_record_attempt("user1")
@@ -61,7 +61,7 @@ class TestAuthRateLimiter:
 
     def test_window_expiration(self):
         """Test that attempts expire after the time window."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=1)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=1, backend=InMemoryBackend())
 
         # Hit the limit
         assert not limiter.check_and_record_attempt("user1")
@@ -76,7 +76,7 @@ class TestAuthRateLimiter:
 
     def test_clear_attempts(self):
         """Test clearing attempts for an identifier."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # Hit the limit
         assert not limiter.check_and_record_attempt("user1")
@@ -90,7 +90,7 @@ class TestAuthRateLimiter:
 
     def test_clear_nonexistent_identifier(self):
         """Test clearing attempts for non-existent identifier doesn't error."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # Should not raise an error
         limiter.clear_attempts("nonexistent")
@@ -101,7 +101,7 @@ class TestAuthRateLimiter:
         """Test that rate limiter is thread-safe."""
         import threading
 
-        limiter = AuthRateLimiter(max_attempts=100, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=100, window_seconds=60, backend=InMemoryBackend())
         successful_attempts = []
         lock = threading.Lock()
 
@@ -125,7 +125,7 @@ class TestAuthRateLimiter:
 
     def test_custom_configuration(self):
         """Test custom max_attempts and window_seconds."""
-        limiter = AuthRateLimiter(max_attempts=10, window_seconds=30)
+        limiter = AuthRateLimiter(max_attempts=10, window_seconds=30, backend=InMemoryBackend())
 
         assert limiter.max_attempts == 10
         assert limiter.window_seconds == 30
@@ -139,7 +139,7 @@ class TestAuthRateLimiter:
 
     def test_memory_cleanup_after_expiration(self):
         """Test that empty attempt lists are cleaned up to prevent memory leak."""
-        limiter = AuthRateLimiter(max_attempts=3, window_seconds=1)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=1, backend=InMemoryBackend())
 
         # Record attempts for multiple users
         assert not limiter.check_and_record_attempt("user1")
@@ -163,7 +163,7 @@ class TestAuthRateLimiter:
 
     def test_timezone_aware_datetime(self):
         """Test that rate limiter uses timezone-aware datetime."""
-        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=InMemoryBackend())
 
         # Record an attempt
         assert not limiter.check_and_record_attempt("user1")
@@ -178,8 +178,8 @@ class TestAuthRateLimiter:
 
     def test_is_distributed_false_for_in_memory(self):
         """Test that is_distributed returns False when using InMemoryBackend."""
-        limiter = AuthRateLimiter(max_attempts=5, window_seconds=60)
-        # Without REDIS_URL, should use InMemoryBackend
+        limiter = AuthRateLimiter(max_attempts=5, window_seconds=60, backend=InMemoryBackend())
+        # With explicit InMemoryBackend, is_distributed should be False
         assert limiter.is_distributed is False
 
     def test_backend_auto_detection_fallback(self):
@@ -196,7 +196,7 @@ class TestAuthRateLimiter:
 
     def test_cleanup_stale_entries_through_backend(self):
         """Test that cleanup_stale_entries works correctly through the backend."""
-        limiter = AuthRateLimiter(max_attempts=5, window_seconds=1)
+        limiter = AuthRateLimiter(max_attempts=5, window_seconds=1, backend=InMemoryBackend())
 
         # Record attempts for multiple users
         assert not limiter.check_and_record_attempt("user1")
@@ -216,7 +216,7 @@ class TestCheckAndRecordAttempt:
 
     def test_check_and_record_attempt_basic(self):
         """Test that check_and_record_attempt returns False until max_attempts, then True."""
-        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=3, window_seconds=60, backend=InMemoryBackend())
 
         # First 3 attempts should succeed (return False = not limited)
         assert not limiter.check_and_record_attempt("user1")  # 1st attempt
@@ -231,7 +231,7 @@ class TestCheckAndRecordAttempt:
 
     def test_check_and_record_attempt_does_not_record_when_limited(self):
         """Verify that once limited, additional calls don't add more entries."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # First 2 attempts succeed
         assert not limiter.check_and_record_attempt("user1")
@@ -248,7 +248,7 @@ class TestCheckAndRecordAttempt:
 
     def test_check_and_record_attempt_window_expiration(self):
         """Verify attempts expire correctly with check_and_record_attempt."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=1)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=1, backend=InMemoryBackend())
 
         # Record 2 attempts - should hit the limit
         assert not limiter.check_and_record_attempt("user1")
@@ -265,7 +265,7 @@ class TestCheckAndRecordAttempt:
 
     def test_check_and_record_attempt_clear_attempts(self):
         """Verify clear_attempts resets the state for check_and_record_attempt."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # Hit the limit
         assert not limiter.check_and_record_attempt("user1")
@@ -282,7 +282,7 @@ class TestCheckAndRecordAttempt:
         """Multi-threaded test to verify atomicity of check_and_record_attempt."""
         import threading
 
-        limiter = AuthRateLimiter(max_attempts=50, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=50, window_seconds=60, backend=InMemoryBackend())
         successful_attempts = []
         failed_attempts = []
         lock = threading.Lock()
@@ -310,7 +310,7 @@ class TestCheckAndRecordAttempt:
 
     def test_check_and_record_attempt_different_identifiers(self):
         """Test that different identifiers are tracked independently."""
-        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60)
+        limiter = AuthRateLimiter(max_attempts=2, window_seconds=60, backend=InMemoryBackend())
 
         # user1 hits the limit
         assert not limiter.check_and_record_attempt("user1")

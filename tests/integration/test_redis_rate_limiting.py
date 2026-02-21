@@ -30,7 +30,7 @@ class TestRedisRateLimiting:
         - Rate limit threshold is enforced correctly
         - No race conditions in check-and-record operation
         """
-        from src.core.auth import AuthRateLimiter
+        from src.core.rate_limiting import AuthRateLimiter, RedisBackend
 
         # Get Redis URL from environment
         redis_url = os.getenv("REDIS_URL")
@@ -43,7 +43,10 @@ class TestRedisRateLimiting:
         redis_client = redis.from_url(redis_url, decode_responses=True)
 
         try:
-            limiter = AuthRateLimiter(redis_client)
+            max_attempts = 5
+            window_seconds = 60
+            backend = RedisBackend(redis_client)
+            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
 
             # Use a unique identifier for this test
             test_identifier = f"test_atomic_{int(time.time())}"
@@ -51,29 +54,17 @@ class TestRedisRateLimiting:
             # Clear any previous attempts
             limiter.clear_attempts(test_identifier)
 
-            # Configure: 5 max attempts, 60 second window
-            max_attempts = 5
-            window_seconds = 60
-
             # Step 1: First 5 attempts should succeed
             for i in range(max_attempts):
-                is_limited = limiter.check_and_record_attempt(
-                    identifier=test_identifier,
-                    max_attempts=max_attempts,
-                    window_seconds=window_seconds,
-                )
+                is_limited = limiter.check_and_record_attempt(test_identifier)
                 assert is_limited is False, f"Attempt {i+1} should not be rate limited"
 
             # Step 2: 6th attempt should be blocked
-            is_limited_6th = limiter.check_and_record_attempt(
-                identifier=test_identifier, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_6th = limiter.check_and_record_attempt(test_identifier)
             assert is_limited_6th is True, "6th attempt should be rate limited"
 
             # Step 3: 7th attempt should also be blocked
-            is_limited_7th = limiter.check_and_record_attempt(
-                identifier=test_identifier, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_7th = limiter.check_and_record_attempt(test_identifier)
             assert is_limited_7th is True, "7th attempt should be rate limited"
 
             # Cleanup
@@ -93,7 +84,7 @@ class TestRedisRateLimiting:
         - Attempts are cleared after window
         - New attempts are allowed after expiry
         """
-        from src.core.auth import AuthRateLimiter
+        from src.core.rate_limiting import AuthRateLimiter, RedisBackend
 
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
@@ -104,28 +95,22 @@ class TestRedisRateLimiting:
         redis_client = redis.from_url(redis_url, decode_responses=True)
 
         try:
-            limiter = AuthRateLimiter(redis_client)
+            # Use a short window for testing (5 seconds)
+            max_attempts = 3
+            window_seconds = 5
+            backend = RedisBackend(redis_client)
+            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
 
             test_identifier = f"test_expiry_{int(time.time())}"
             limiter.clear_attempts(test_identifier)
 
-            # Use a short window for testing (5 seconds)
-            max_attempts = 3
-            window_seconds = 5
-
             # Step 1: Use up all attempts
             for i in range(max_attempts):
-                is_limited = limiter.check_and_record_attempt(
-                    identifier=test_identifier,
-                    max_attempts=max_attempts,
-                    window_seconds=window_seconds,
-                )
+                is_limited = limiter.check_and_record_attempt(test_identifier)
                 assert is_limited is False, f"Initial attempt {i+1} should succeed"
 
             # Step 2: 4th attempt should be blocked
-            is_limited_4th = limiter.check_and_record_attempt(
-                identifier=test_identifier, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_4th = limiter.check_and_record_attempt(test_identifier)
             assert is_limited_4th is True, "4th attempt should be blocked"
 
             # Step 3: Wait for window to expire
@@ -133,9 +118,7 @@ class TestRedisRateLimiting:
             await asyncio.sleep(window_seconds + 1)
 
             # Step 4: After expiry, attempts should be allowed again
-            is_limited_after = limiter.check_and_record_attempt(
-                identifier=test_identifier, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_after = limiter.check_and_record_attempt(test_identifier)
             assert is_limited_after is False, "Attempt after window expiry should succeed"
 
             # Cleanup
@@ -154,7 +137,7 @@ class TestRedisRateLimiting:
         - One user hitting limit doesn't affect others
         - Identifiers are properly isolated
         """
-        from src.core.auth import AuthRateLimiter
+        from src.core.rate_limiting import AuthRateLimiter, RedisBackend
 
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
@@ -165,7 +148,10 @@ class TestRedisRateLimiting:
         redis_client = redis.from_url(redis_url, decode_responses=True)
 
         try:
-            limiter = AuthRateLimiter(redis_client)
+            max_attempts = 3
+            window_seconds = 60
+            backend = RedisBackend(redis_client)
+            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
 
             timestamp = int(time.time())
             user1 = f"test_user1_{timestamp}"
@@ -175,35 +161,24 @@ class TestRedisRateLimiting:
             limiter.clear_attempts(user1)
             limiter.clear_attempts(user2)
 
-            max_attempts = 3
-            window_seconds = 60
-
             # Step 1: User 1 uses all attempts
             for i in range(max_attempts):
-                is_limited = limiter.check_and_record_attempt(
-                    identifier=user1, max_attempts=max_attempts, window_seconds=window_seconds
-                )
+                is_limited = limiter.check_and_record_attempt(user1)
                 assert is_limited is False, f"User1 attempt {i+1} should succeed"
 
             # Step 2: User 1 is now rate limited
-            is_limited_user1 = limiter.check_and_record_attempt(
-                identifier=user1, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_user1 = limiter.check_and_record_attempt(user1)
             assert is_limited_user1 is True, "User1 should be rate limited"
 
             # Step 3: User 2 should still have full quota
             for i in range(max_attempts):
-                is_limited = limiter.check_and_record_attempt(
-                    identifier=user2, max_attempts=max_attempts, window_seconds=window_seconds
-                )
+                is_limited = limiter.check_and_record_attempt(user2)
                 assert (
                     is_limited is False
                 ), f"User2 attempt {i+1} should succeed (independent limit)"
 
             # Step 4: Now User 2 should also be limited
-            is_limited_user2 = limiter.check_and_record_attempt(
-                identifier=user2, max_attempts=max_attempts, window_seconds=window_seconds
-            )
+            is_limited_user2 = limiter.check_and_record_attempt(user2)
             assert is_limited_user2 is True, "User2 should now be rate limited"
 
             # Cleanup
@@ -223,7 +198,7 @@ class TestRedisRateLimiting:
         - No race conditions in check-and-record
         - Total attempts never exceed limit
         """
-        from src.core.auth import AuthRateLimiter
+        from src.core.rate_limiting import AuthRateLimiter, RedisBackend
 
         redis_url = os.getenv("REDIS_URL")
         if not redis_url:
@@ -234,22 +209,18 @@ class TestRedisRateLimiting:
         redis_client = redis.from_url(redis_url, decode_responses=True)
 
         try:
-            limiter = AuthRateLimiter(redis_client)
+            max_attempts = 5
+            window_seconds = 60
+            backend = RedisBackend(redis_client)
+            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
 
             test_identifier = f"test_concurrent_{int(time.time())}"
             limiter.clear_attempts(test_identifier)
 
-            max_attempts = 5
-            window_seconds = 60
-
             async def make_attempt():
                 """Make a single rate limit check attempt."""
                 # Note: AuthRateLimiter is sync, but we can still test concurrency
-                return limiter.check_and_record_attempt(
-                    identifier=test_identifier,
-                    max_attempts=max_attempts,
-                    window_seconds=window_seconds,
-                )
+                return limiter.check_and_record_attempt(test_identifier)
 
             # Create 10 concurrent tasks
             tasks = [asyncio.create_task(asyncio.to_thread(make_attempt)) for _ in range(10)]
