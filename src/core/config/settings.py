@@ -250,7 +250,11 @@ class VFSSettings(BaseSettings):
             try:
                 from cryptography.fernet import Fernet
 
-                # Get encryption key
+                # Guard against None encryption_key
+                if self.encryption_key is None:
+                    raise ValueError(
+                        "ENCRYPTION_KEY is required when VFS_PASSWORD_ENCRYPTED is True"
+                    )
                 encryption_key = self.encryption_key.get_secret_value()
                 cipher = Fernet(encryption_key)
 
