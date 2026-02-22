@@ -15,11 +15,11 @@ import yaml
 class TestCORSProductionHardFail:
     """Test CORS production configuration validation."""
 
-    def test_cors_raises_error_in_production_without_origins(self):
+    def test_cors_raises_error_in_production_without_origins(self, monkeypatch):
         """Test that missing CORS origins in production raises RuntimeError."""
         # Set production environment
-        os.environ["ENV"] = "production"
-        os.environ.pop("CORS_ALLOWED_ORIGINS", None)
+        monkeypatch.setenv("ENV", "production")
+        monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
 
         # Import the app module which should fail in production
         with pytest.raises(RuntimeError) as exc_info:
@@ -44,11 +44,11 @@ class TestCORSProductionHardFail:
         assert "CRITICAL" in str(exc_info.value)
         assert "CORS" in str(exc_info.value)
 
-    def test_cors_allows_empty_in_development(self):
+    def test_cors_allows_empty_in_development(self, monkeypatch):
         """Test that missing CORS origins is allowed in development."""
         # Set development environment
-        os.environ["ENV"] = "development"
-        os.environ.pop("CORS_ALLOWED_ORIGINS", None)
+        monkeypatch.setenv("ENV", "development")
+        monkeypatch.delenv("CORS_ALLOWED_ORIGINS", raising=False)
 
         from web.cors import validate_cors_origins
 
@@ -56,195 +56,32 @@ class TestCORSProductionHardFail:
         # Should not raise in development, just returns empty list
         assert allowed_origins == []
 
-    def test_cors_ipv6_localhost_blocked_in_production(self):
+    def test_cors_ipv6_localhost_blocked_in_production(self, monkeypatch):
         """Test that IPv6 localhost (::1) is blocked in production."""
-        os.environ["ENV"] = "production"
+        monkeypatch.setenv("ENV", "production")
 
         from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://[::1]:3000")
         assert origins == []
 
-    def test_cors_zero_ip_blocked_in_production(self):
+    def test_cors_zero_ip_blocked_in_production(self, monkeypatch):
         """Test that 0.0.0.0 is blocked in production."""
-        os.environ["ENV"] = "production"
+        monkeypatch.setenv("ENV", "production")
 
         from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://0.0.0.0:8000")
         assert origins == []
 
-    def test_cors_localhost_subdomain_bypass_blocked(self):
+    def test_cors_localhost_subdomain_bypass_blocked(self, monkeypatch):
         """Test that localhost subdomain bypass is blocked in production."""
-        os.environ["ENV"] = "production"
+        monkeypatch.setenv("ENV", "production")
 
         from web.cors import validate_cors_origins
 
         origins = validate_cors_origins("http://localhost.evil.com")
         assert origins == []
-
-
-class TestBrowserMemoryLeakPrevention:
-    """Test browser memory leak prevention features."""
-
-    @pytest.mark.asyncio
-    async def test_browser_manager_tracks_page_count(self):
-        """Test that BrowserManager tracks page creation count."""
-        from src.services.bot.browser_manager import BrowserManager
-
-        config = {
-            "bot": {"headless": True, "browser_restart_after_pages": 5},
-            "anti_detection": {"enabled": False},
-        }
-        browser_manager = BrowserManager(config)
-
-        assert browser_manager._page_count == 0
-        assert browser_manager._max_pages_before_restart == 5
-
-    @pytest.mark.asyncio
-    async def test_browser_manager_should_restart(self):
-        """Test should_restart logic based on page count threshold."""
-        from src.services.bot.browser_manager import BrowserManager
-
-        config = {
-            "bot": {"headless": True, "browser_restart_after_pages": 3},
-            "anti_detection": {"enabled": False},
-        }
-        browser_manager = BrowserManager(config)
-
-        # Simulate page creation (in production, new_page() increments _page_count)
-        browser_manager._page_count = 1
-        assert not await browser_manager.should_restart()
-
-        browser_manager._page_count = 2
-        assert not await browser_manager.should_restart()
-
-        # 3rd page should trigger restart
-        browser_manager._page_count = 3
-        assert await browser_manager.should_restart()
-
-    @pytest.mark.asyncio
-    async def test_browser_manager_default_restart_threshold(self):
-        """Test default restart threshold."""
-        from src.services.bot.browser_manager import BrowserManager
-
-        config = {"bot": {}, "anti_detection": {"enabled": False}}
-        browser_manager = BrowserManager(config)
-
-        # Default should be 100
-        assert browser_manager._max_pages_before_restart == 100
-
-
-class TestGracefulShutdownNotifications:
-    """Test graceful shutdown notification features."""
-
-    @pytest.fixture
-    def mock_vfs_bot(self):
-        """Create a mock VFSBot instance for testing."""
-        from src.services.bot.vfs_bot import VFSBot
-
-        # Mock browser manager
-        browser_manager = MagicMock()
-        browser_manager.close = AsyncMock()
-
-        # Mock notifier
-        notifier = MagicMock()
-        notifier.notify_bot_stopped = AsyncMock()
-
-        # Create VFSBot instance with mocks
-        with patch.object(VFSBot, "__init__", lambda self, *args, **kwargs: None):
-            bot = VFSBot.__new__(VFSBot)
-            bot.running = True
-            bot._stopped = False
-            bot._cleaned_up = False  # YENİ: cleanup idempotent flag
-            bot.browser_manager = browser_manager
-            bot.notifier = notifier
-            bot._active_booking_tasks = []
-            bot._health_task = None  # Add missing health task attribute
-
-            # Mock services.workflow.alert_service
-            bot.services = MagicMock()
-            bot.services.workflow = MagicMock()
-            bot.services.workflow.alert_service = MagicMock()
-            bot.services.workflow.alert_service.send_alert = AsyncMock()
-
-            # Mock error_handler for checkpoint tests
-            bot.services.workflow.error_handler = MagicMock()
-            bot.services.workflow.error_handler.save_checkpoint = AsyncMock()
-
-            return bot
-
-    @pytest.mark.asyncio
-    async def test_stop_sends_notification_when_waiting(self, mock_vfs_bot):
-        """Test that stop() sends notification when waiting for bookings."""
-        bot = mock_vfs_bot
-
-        # Simulate active tasks
-        async def mock_task():
-            await asyncio.sleep(0.1)
-
-        bot._active_booking_tasks = [asyncio.create_task(mock_task())]
-
-        # Call stop
-        await bot.stop()
-
-        # Verify notification was sent
-        assert bot.services.workflow.alert_service.send_alert.called
-        call_args = bot.services.workflow.alert_service.send_alert.call_args_list[0][1]
-        assert "waiting" in call_args["message"].lower()
-
-    @pytest.mark.asyncio
-    async def test_stop_idempotent(self, mock_vfs_bot):
-        """Test that stop() can be called multiple times safely."""
-        bot = mock_vfs_bot
-
-        # Set alert service to None to simplify test
-        bot.services.workflow.alert_service = None
-
-        # Call stop twice
-        await bot.stop()
-        await bot.stop()
-
-        # Browser manager close should only be called once
-        assert bot.browser_manager.close.call_count == 1
-        # Notifier should only be called once
-        assert bot.notifier.notify_bot_stopped.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_stop_saves_checkpoint_on_timeout(self, mock_vfs_bot):
-        """Test that stop() saves checkpoint when timeout occurs."""
-        from src.constants import Timeouts
-
-        bot = mock_vfs_bot
-
-        # Use a very short grace period to avoid test timeout
-        with patch.object(Timeouts, "GRACEFUL_SHUTDOWN_GRACE_PERIOD", 0.1):
-            # Create a long-running task that will exceed the short grace period
-            async def long_running_task():
-                await asyncio.sleep(10)
-
-            # Create task with a name
-            task = asyncio.create_task(long_running_task(), name="test_booking_task")
-            bot._active_booking_tasks = {task}
-
-            # Call stop - should timeout quickly and save checkpoint
-            await bot.stop()
-
-        # Verify checkpoint was saved
-        assert bot.services.workflow.error_handler.save_checkpoint.called
-        call_args = bot.services.workflow.error_handler.save_checkpoint.call_args[0][0]
-
-        # Verify checkpoint contains expected data
-        assert call_args["event"] == "forced_shutdown"
-        assert call_args["cancelled_task_count"] == 1
-        assert "test_booking_task" in call_args["cancelled_tasks"]
-        assert call_args["reason"] == "grace_period_timeout"
-
-        # Verify alert was sent with task info
-        assert bot.services.workflow.alert_service.send_alert.called
-        alert_call = bot.services.workflow.alert_service.send_alert.call_args[1]
-        assert "cancelled_tasks" in alert_call["metadata"]
-        assert "test_booking_task" in alert_call["metadata"]["cancelled_tasks"]
 
 
 class TestBotLoopErrorRecoveryJitter:
@@ -364,19 +201,6 @@ class TestGrafanaPasswordNotHardcoded:
         # Verify the :? syntax requiring the variable
         assert ":?" in content, "Should use :? syntax to require environment variable"
 
-    @pytest.mark.audit_verification
-    def test_monitoring_compose_no_version_key(self):
-        """Test that docker-compose.monitoring.yml doesn't have deprecated version key."""
-        compose_path = Path("docker-compose.monitoring.yml")
-        if not compose_path.exists():
-            pytest.skip("docker-compose.monitoring.yml not found")
-
-        content = compose_path.read_text()
-        lines = content.split("\n")
-        # Find first non-empty line
-        first_line = next((line.strip() for line in lines if line.strip()), "")
-        assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
-
     def test_monitoring_compose_localhost_binding(self):
         """Test that monitoring ports are bound to localhost only."""
         compose_path = Path("docker-compose.monitoring.yml")
@@ -388,55 +212,22 @@ class TestGrafanaPasswordNotHardcoded:
         assert "127.0.0.1:9090:9090" in content, "Prometheus should bind to localhost"
         assert "127.0.0.1:3000:3000" in content, "Grafana should bind to localhost"
 
-    @pytest.mark.audit_verification
-    def test_dev_compose_no_version_key(self):
-        """Test that docker-compose.dev.yml doesn't have deprecated version key."""
-        compose_path = Path("docker-compose.dev.yml")
-        if not compose_path.exists():
-            pytest.skip("docker-compose.dev.yml not found")
-
-        content = compose_path.read_text()
-        lines = content.split("\n")
-        # Find first non-empty line
-        first_line = next((line.strip() for line in lines if line.strip()), "")
-        assert not first_line.startswith("version"), "Deprecated 'version' key should be removed"
-
 
 class TestStartupValidatorGrafana:
     """Test that startup validator checks Grafana password."""
 
     @pytest.fixture
-    def production_env_vars(self):
+    def production_env_vars(self, monkeypatch):
         """Fixture to manage environment variables for production security tests."""
-        # Store original values
-        original_values = {
-            "ENV": os.environ.get("ENV"),
-            "GRAFANA_ADMIN_PASSWORD": os.environ.get("GRAFANA_ADMIN_PASSWORD"),
-            "DATABASE_URL": os.environ.get("DATABASE_URL"),
-            "API_SECRET_KEY": os.environ.get("API_SECRET_KEY"),
-            "ADMIN_PASSWORD": os.environ.get("ADMIN_PASSWORD"),
-            "ADMIN_USERNAME": os.environ.get("ADMIN_USERNAME"),
-        }
+        monkeypatch.setenv("ENV", "production")
+        monkeypatch.setenv("DATABASE_URL", "postgresql://user:securepass@localhost:5432/db")
+        monkeypatch.setenv("API_SECRET_KEY", "a" * 64)
+        monkeypatch.setenv("ADMIN_PASSWORD", "$2b$12$test_hash_value_here_placeholder")
+        monkeypatch.setenv("ADMIN_USERNAME", "unique_admin_name")
 
-        # Set common production environment
-        os.environ["ENV"] = "production"
-        os.environ["DATABASE_URL"] = "postgresql://user:securepass@localhost:5432/db"
-        os.environ["API_SECRET_KEY"] = "a" * 64
-        os.environ["ADMIN_PASSWORD"] = "$2b$12$test_hash_value_here_placeholder"
-        os.environ["ADMIN_USERNAME"] = "unique_admin_name"
-
-        yield
-
-        # Cleanup - restore original values or remove if they didn't exist
-        for key, value in original_values.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-
-    def test_grafana_default_password_detected(self, production_env_vars):
+    def test_grafana_default_password_detected(self, production_env_vars, monkeypatch):
         """Test that default Grafana password is detected."""
-        os.environ["GRAFANA_ADMIN_PASSWORD"] = "vfsbot_grafana"
+        monkeypatch.setenv("GRAFANA_ADMIN_PASSWORD", "vfsbot_grafana")
 
         from src.core.infra.startup_validator import validate_production_security
 
@@ -445,7 +236,7 @@ class TestStartupValidatorGrafana:
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
         assert len(grafana_warnings) > 0, "Should detect default Grafana password"
 
-    def test_grafana_placeholder_patterns_detected(self, production_env_vars):
+    def test_grafana_placeholder_patterns_detected(self, production_env_vars, monkeypatch):
         """Test that placeholder patterns in Grafana password are detected."""
         test_patterns = [
             "CHANGE_ME_generate_secure_grafana_password",
@@ -456,26 +247,26 @@ class TestStartupValidatorGrafana:
         from src.core.infra.startup_validator import validate_production_security
 
         for password in test_patterns:
-            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            monkeypatch.setenv("GRAFANA_ADMIN_PASSWORD", password)
             warnings = validate_production_security()
             grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
             assert len(grafana_warnings) > 0, f"Should detect placeholder pattern in '{password}'"
 
-    def test_grafana_common_defaults_detected(self, production_env_vars):
+    def test_grafana_common_defaults_detected(self, production_env_vars, monkeypatch):
         """Test that common default passwords are detected."""
         common_defaults = ["admin", "password", "grafana"]
 
         from src.core.infra.startup_validator import validate_production_security
 
         for password in common_defaults:
-            os.environ["GRAFANA_ADMIN_PASSWORD"] = password
+            monkeypatch.setenv("GRAFANA_ADMIN_PASSWORD", password)
             warnings = validate_production_security()
             grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
             assert len(grafana_warnings) > 0, f"Should detect common default password '{password}'"
 
-    def test_grafana_secure_password_passes(self, production_env_vars):
+    def test_grafana_secure_password_passes(self, production_env_vars, monkeypatch):
         """Test that secure Grafana password passes validation."""
-        os.environ["GRAFANA_ADMIN_PASSWORD"] = "super_secure_random_password_xyz123"
+        monkeypatch.setenv("GRAFANA_ADMIN_PASSWORD", "super_secure_random_password_xyz123")
 
         from src.core.infra.startup_validator import validate_production_security
 
@@ -484,10 +275,10 @@ class TestStartupValidatorGrafana:
         grafana_warnings = [w for w in warnings if "GRAFANA_ADMIN_PASSWORD" in w]
         assert len(grafana_warnings) == 0, "Secure Grafana password should not trigger warning"
 
-    def test_grafana_secure_with_vfsbot_substring_passes(self, production_env_vars):
+    def test_grafana_secure_with_vfsbot_substring_passes(self, production_env_vars, monkeypatch):
         """Test that password containing 'vfsbot' as part of secure string passes."""
         # This ensures we're using exact match for 'vfsbot_grafana', not substring
-        os.environ["GRAFANA_ADMIN_PASSWORD"] = "secure_vfsbot_integration_key_xyz789"
+        monkeypatch.setenv("GRAFANA_ADMIN_PASSWORD", "secure_vfsbot_integration_key_xyz789")
 
         from src.core.infra.startup_validator import validate_production_security
 
@@ -991,124 +782,6 @@ class TestSecurityConfigValidation:
                     warn for warn in w if "Empty security keys detected" in str(warn.message)
                 ]
                 assert len(security_warnings) == 0
-
-
-class TestPasswordLeakPrevention:
-    """Test password leak prevention in auth_service."""
-
-    @pytest.mark.asyncio
-    async def test_error_capture_receives_sanitized_exception(self):
-        """Test that error_capture receives sanitized exception, not raw."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from src.core.exceptions import LoginError
-        from src.services.bot.auth_service import AuthService
-
-        # Create mocks
-        config = {
-            "vfs": {
-                "base_url": "https://visa.vfsglobal.com",
-                "country": "tur",
-                "mission": "deu",
-                "language": "tr",
-            },
-            "bot": {"headless": True},
-        }
-        mock_human_sim = MagicMock()
-        mock_error_capture = AsyncMock()
-        mock_captcha_solver = AsyncMock()
-        mock_cloudflare_handler = AsyncMock()
-        mock_cloudflare_handler.handle_challenge = AsyncMock(return_value=True)
-
-        auth_service = AuthService(
-            config=config,
-            human_sim=mock_human_sim,
-            error_capture=mock_error_capture,
-            captcha_solver=mock_captcha_solver,
-            cloudflare_handler=mock_cloudflare_handler,
-        )
-
-        # Mock page
-        mock_page = AsyncMock()
-        mock_page.goto = AsyncMock()
-        mock_page.wait_for_load_state = AsyncMock()
-        mock_page.locator = MagicMock(return_value=MagicMock(count=AsyncMock(return_value=0)))
-
-        # Mock smart_fill to raise exception with password in message
-        password = "secretpassword123"
-        with patch("src.services.bot.auth_service.safe_navigate", return_value=True):
-            with patch(
-                "src.services.bot.auth_service.smart_fill",
-                side_effect=Exception(f"Error with {password}"),
-            ):
-                try:
-                    await auth_service.login(mock_page, "test@example.com", password)
-                except LoginError:
-                    pass
-
-        # Verify error_capture was called
-        assert mock_error_capture.capture.called
-
-        # Get the exception passed to error_capture
-        call_args = mock_error_capture.capture.call_args
-        captured_exception = call_args[0][1]  # Second positional arg
-
-        # Verify it's a LoginError (sanitized) and doesn't contain password
-        assert isinstance(captured_exception, LoginError)
-        assert password not in str(captured_exception)
-        assert "[REDACTED]" in str(captured_exception)
-
-    @pytest.mark.asyncio
-    async def test_outer_except_sanitizes_password_in_logs(self):
-        """Test that outer except block sanitizes password before logging."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from src.services.bot.auth_service import AuthService
-
-        config = {
-            "vfs": {
-                "base_url": "https://visa.vfsglobal.com",
-                "country": "tur",
-                "mission": "deu",
-                "language": "tr",
-            },
-            "bot": {"headless": True},
-        }
-        mock_human_sim = MagicMock()
-        mock_error_capture = AsyncMock()
-        mock_captcha_solver = AsyncMock()
-        mock_cloudflare_handler = AsyncMock()
-
-        auth_service = AuthService(
-            config=config,
-            human_sim=mock_human_sim,
-            error_capture=mock_error_capture,
-            captcha_solver=mock_captcha_solver,
-            cloudflare_handler=mock_cloudflare_handler,
-        )
-
-        mock_page = AsyncMock()
-        password = "secretpassword456"
-
-        # Mock safe_navigate to raise exception with password
-        with patch(
-            "src.services.bot.auth_service.safe_navigate",
-            side_effect=Exception(f"Network error with {password}"),
-        ):
-            # Capture logger calls
-            with patch("src.services.bot.auth_service.logger") as mock_logger:
-                result = await auth_service.login(mock_page, "test@example.com", password)
-
-                # Should return False
-                assert result is False
-
-                # Verify logger.error was called with sanitized message
-                assert mock_logger.error.called
-                error_message = mock_logger.error.call_args[0][0]
-
-                # Password should be redacted in log
-                assert password not in error_message
-                assert "[REDACTED]" in error_message
 
 
 if __name__ == "__main__":

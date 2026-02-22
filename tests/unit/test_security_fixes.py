@@ -76,6 +76,7 @@ async def test_db(unique_encryption_key):
 
 @pytest.mark.asyncio
 @pytest.mark.security
+@pytest.mark.integration
 async def test_update_personal_details_allows_whitelisted_fields(
     test_db, unique_encryption_key, caplog
 ):
@@ -122,6 +123,7 @@ async def test_update_personal_details_allows_whitelisted_fields(
 
 @pytest.mark.asyncio
 @pytest.mark.security
+@pytest.mark.integration
 async def test_update_personal_details_blocks_disallowed_fields(test_db, unique_encryption_key):
     """Test that update_personal_details blocks disallowed fields and logs warning."""
     from unittest.mock import patch
@@ -206,6 +208,7 @@ async def test_allowed_fields_whitelist_is_frozen():
 
 @pytest.mark.asyncio
 @pytest.mark.security
+@pytest.mark.integration
 async def test_add_audit_log(test_db):
     """Test adding audit log entries."""
     log_id = await AuditLogRepository(test_db).create(
@@ -224,6 +227,7 @@ async def test_add_audit_log(test_db):
 
 @pytest.mark.asyncio
 @pytest.mark.security
+@pytest.mark.integration
 async def test_get_audit_logs(test_db):
     """Test retrieving audit log entries."""
     audit_repo = AuditLogRepository(test_db)
@@ -244,6 +248,7 @@ async def test_get_audit_logs(test_db):
 
 @pytest.mark.asyncio
 @pytest.mark.security
+@pytest.mark.integration
 async def test_get_audit_logs_with_user_filter(test_db):
     """Test filtering audit logs by user_id."""
     user_repo = UserRepository(test_db)

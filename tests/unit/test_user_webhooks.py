@@ -44,6 +44,7 @@ async def test_user(db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_create_user_webhook(db, test_user):
     """Test creating a webhook for a user."""
     webhook_repo = WebhookRepository(db)
@@ -63,6 +64,7 @@ async def test_create_user_webhook(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_webhook_not_found(db, test_user):
     """Test getting webhook for user without webhook."""
     webhook_repo = WebhookRepository(db)
@@ -71,6 +73,7 @@ async def test_get_user_webhook_not_found(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_create_duplicate_webhook(db, test_user):
     """Test that creating duplicate webhook raises error."""
     webhook_repo = WebhookRepository(db)
@@ -83,6 +86,7 @@ async def test_create_duplicate_webhook(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_delete_user_webhook(db, test_user):
     """Test deleting a user webhook."""
     webhook_repo = WebhookRepository(db)
@@ -99,6 +103,7 @@ async def test_delete_user_webhook(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_delete_nonexistent_webhook(db, test_user):
     """Test deleting webhook that doesn't exist."""
     webhook_repo = WebhookRepository(db)
@@ -107,6 +112,7 @@ async def test_delete_nonexistent_webhook(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_by_webhook_token(db, test_user):
     """Test getting user by webhook token."""
     webhook_repo = WebhookRepository(db)
@@ -121,6 +127,7 @@ async def test_get_user_by_webhook_token(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_by_invalid_token(db):
     """Test getting user with invalid token."""
     webhook_repo = WebhookRepository(db)
@@ -129,6 +136,7 @@ async def test_get_user_by_invalid_token(db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_webhook_cascade_delete(db, test_user):
     """Test that webhook is deleted when user is deleted."""
     webhook_repo = WebhookRepository(db)
@@ -155,6 +163,7 @@ async def test_webhook_cascade_delete(db, test_user):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_webhook_token_uniqueness(db):
     """Test that webhook tokens are unique."""
     # Create two users
