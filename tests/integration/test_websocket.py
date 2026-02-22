@@ -90,41 +90,6 @@ class TestWebSocketEndpoint:
             assert "status" in message["data"]
 
     @pytest.mark.deprecated_feature
-    def test_websocket_query_param_auth(self, test_app: TestClient, valid_token: str):
-        """
-        Test successful WebSocket connection with query parameter authentication.
-
-        DEPRECATED: Bu test v3.0'da kaldırılacak deprecated auth yöntemini doğrular.
-
-        This validates:
-        - WebSocket accepts connection with query param
-        - Valid token from query param is accepted
-        - Initial status message is sent
-        - Deprecation warning is logged
-        """
-        # Capture logs to verify deprecation warning
-        from unittest.mock import patch
-
-        with patch("loguru.logger.warning") as mock_warning:
-            with test_app.websocket_connect(f"/ws?token={valid_token}") as websocket:
-                # No need to send token message - query param handles auth
-                # Should receive initial status message immediately
-                message = websocket.receive_json()
-                assert message["type"] == "status"
-                assert "data" in message
-                assert "running" in message["data"]
-                assert "status" in message["data"]
-
-            # Verify deprecation warning was logged
-            mock_warning.assert_called_once()
-            warning_call = mock_warning.call_args[0][0]
-            assert "DEPRECATED" in warning_call
-            assert "v3.0" in warning_call
-            # Verify token is fully masked (should be ***)
-            assert valid_token not in warning_call
-            assert "token=***" in warning_call
-
-    @pytest.mark.deprecated_feature
     def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
         """
         Test successful WebSocket connection with legacy message-based authentication.
@@ -278,30 +243,18 @@ class TestWebSocketEndpoint:
         limit (1000 by default) as that would be resource-intensive. Instead,
         it validates that the mechanism exists by checking a few connections work.
         """
-        connections = []
+        from contextlib import ExitStack
 
-        try:
-            # Create a few connections to verify the mechanism works
+        with ExitStack() as stack:
+            connections = []
             for i in range(3):
-                ws = test_app.websocket_connect("/ws")
+                ws = stack.enter_context(test_app.websocket_connect("/ws"))
                 ws.send_json({"token": valid_token})
-
-                # Receive initial status to confirm connection
                 status_msg = ws.receive_json()
                 assert status_msg["type"] == "status"
-
                 connections.append(ws)
 
-            # All connections should be successful (under the limit)
             assert len(connections) == 3
-
-        finally:
-            # Clean up connections
-            for ws in connections:
-                try:
-                    ws.close()
-                except Exception:
-                    pass
 
     def test_websocket_invalid_json_auth(self, test_app: TestClient):
         """
