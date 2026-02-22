@@ -28,6 +28,7 @@ async def temp_db():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_batch_empty(temp_db):
     """Test batch query with empty list."""
     user_repo = UserRepository(temp_db)
@@ -36,6 +37,7 @@ async def test_get_personal_details_batch_empty(temp_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_batch_single(temp_db):
     """Test batch query with single user."""
     # Create a user
@@ -70,6 +72,7 @@ async def test_get_personal_details_batch_single(temp_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_batch_multiple(temp_db):
     """Test batch query with multiple users."""
     # Create multiple users
@@ -146,6 +149,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_batch_missing_users(temp_db):
     """Test batch query with some non-existent users."""
     # Create one user
@@ -181,6 +185,7 @@ async def test_get_personal_details_batch_missing_users(temp_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_batch_invalid_ids():
     """Test batch query with invalid user IDs."""
     db = Database(database_url=DatabaseConfig.TEST_URL)

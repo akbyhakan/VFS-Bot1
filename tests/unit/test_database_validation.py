@@ -76,6 +76,7 @@ async def test_db(unique_encryption_key):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_with_invalid_user_id_negative(test_db):
     """Test that negative user_id raises ValueError."""
     user_repo = UserRepository(test_db)
@@ -84,6 +85,7 @@ async def test_get_user_with_invalid_user_id_negative(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_with_invalid_user_id_zero(test_db):
     """Test that zero user_id raises ValueError."""
     user_repo = UserRepository(test_db)
@@ -92,6 +94,7 @@ async def test_get_user_with_invalid_user_id_zero(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_user_with_invalid_user_id_string(test_db):
     """Test that string user_id raises ValueError."""
     user_repo = UserRepository(test_db)
@@ -100,6 +103,7 @@ async def test_get_user_with_invalid_user_id_string(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_personal_details_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in get_personal_details."""
     user_repo = UserRepository(test_db)
@@ -108,6 +112,7 @@ async def test_get_personal_details_with_invalid_user_id(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_add_personal_details_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in add_personal_details."""
     details = {
@@ -123,6 +128,7 @@ async def test_add_personal_details_with_invalid_user_id(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_delete_user_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in hard_delete."""
     user_repo = UserRepository(test_db)
@@ -131,6 +137,7 @@ async def test_delete_user_with_invalid_user_id(test_db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_valid_user_id_passes_validation(test_db):
     """Test that valid user_id passes validation."""
     # This should not raise an error
