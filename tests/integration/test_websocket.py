@@ -1,7 +1,8 @@
 """Integration tests for WebSocket endpoint."""
 
+from contextlib import asynccontextmanager
 from datetime import timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -20,12 +21,18 @@ def test_app():
     """
     from web.app import create_app
 
+    # Create app normally
     app = create_app(run_security_validation=False, env_override="testing")
 
-    with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
-        with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
-            with TestClient(app) as client:
-                yield client
+    # Replace lifespan with a no-op to avoid database/scheduler initialization
+    @asynccontextmanager
+    async def mock_lifespan(app):
+        yield
+
+    app.router.lifespan_context = mock_lifespan
+
+    with TestClient(app) as client:
+        yield client
 
 
 @pytest.fixture
