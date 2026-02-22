@@ -170,7 +170,9 @@ class TestGetPlaywrightProxy:
 
     def test_none_calls_rotate_proxy(self, mgr_with_proxies):
         """Passing None triggers rotate_proxy internally."""
-        with patch.object(mgr_with_proxies, "rotate_proxy", return_value=mgr_with_proxies.proxies[0]) as mock_rotate:
+        with patch.object(
+            mgr_with_proxies, "rotate_proxy", return_value=mgr_with_proxies.proxies[0]
+        ) as mock_rotate:
             result = mgr_with_proxies.get_playwright_proxy(None)
 
         mock_rotate.assert_called_once()
