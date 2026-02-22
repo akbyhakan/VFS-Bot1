@@ -20,7 +20,9 @@ def firefox_manager():
     """HeaderManager using the Firefox UA (no sec-ch-ua)."""
     hm = HeaderManager()
     # Find the Firefox UA config
-    hm.current_ua = next(ua for ua in HeaderManager.USER_AGENTS if ua["sec_ch_ua"] is None and "Firefox" in ua["ua"])
+    hm.current_ua = next(
+        ua for ua in HeaderManager.USER_AGENTS if ua["sec_ch_ua"] is None and "Firefox" in ua["ua"]
+    )
     hm.request_count = 0
     return hm
 
@@ -29,7 +31,11 @@ def firefox_manager():
 def safari_manager():
     """HeaderManager using the Safari UA (no sec-ch-ua)."""
     hm = HeaderManager()
-    hm.current_ua = next(ua for ua in HeaderManager.USER_AGENTS if ua["sec_ch_ua"] is None and "Safari" in ua["ua"] and "Chrome" not in ua["ua"])
+    hm.current_ua = next(
+        ua
+        for ua in HeaderManager.USER_AGENTS
+        if ua["sec_ch_ua"] is None and "Safari" in ua["ua"] and "Chrome" not in ua["ua"]
+    )
     hm.request_count = 0
     return hm
 
