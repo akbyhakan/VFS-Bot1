@@ -204,9 +204,10 @@ class TestMaskEmail:
         assert result.startswith("a*@")
 
     def test_domain_masked(self):
-        """Domain parts are partially masked."""
+        """Domain parts are partially masked (original domain name is not visible)."""
         result = mask_email("user@example.com")
-        assert "example" not in result or "ex***" in result
+        assert "example" not in result
+        assert "ex***" in result
 
     def test_no_at_sign_returned_as_is(self):
         """Input without @ is returned unchanged."""

@@ -125,7 +125,7 @@ class TestNavigateToAppointmentPageRecovery:
         with pytest.raises(VFSBotError) as exc_info:
             await navigate_to_appointment_page(page, detector)
 
-        assert "recovery" in str(exc_info.value).lower() or "DASHBOARD" in str(exc_info.value)
+        assert "recovery" in str(exc_info.value).lower()
 
 
 class TestNavigateToAppointmentPageDashboard:
@@ -285,7 +285,7 @@ class TestNavigateToAppointmentPageDashboard:
         await navigate_to_appointment_page(page, detector, max_wait=30.0)
 
         call_kwargs = detector.wait_for_stable_state.call_args
-        assert call_kwargs.kwargs.get("max_wait") == 30.0 or call_kwargs.args[-1] == 30.0
+        assert call_kwargs.kwargs.get("max_wait") == 30.0
 
 
 class TestNavigateToAppointmentPageUnknownState:
@@ -324,4 +324,4 @@ class TestNavigateToAppointmentPageUnknownState:
         with pytest.raises(VFSBotError) as exc_info:
             await navigate_to_appointment_page(page, detector)
 
-        assert "login" in str(exc_info.value).lower() or "navigate" in str(exc_info.value).lower()
+        assert "login" in str(exc_info.value).lower()
