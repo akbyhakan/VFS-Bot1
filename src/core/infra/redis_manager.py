@@ -71,7 +71,7 @@ class RedisManager:
         try:
             import redis
 
-            client = redis.from_url(
+            client: "redis_module.Redis" = redis.from_url(
                 redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,

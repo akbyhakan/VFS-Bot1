@@ -46,7 +46,9 @@ class TestRedisRateLimiting:
             max_attempts = 5
             window_seconds = 60
             backend = RedisBackend(redis_client)
-            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
+            limiter = AuthRateLimiter(
+                max_attempts=max_attempts, window_seconds=window_seconds, backend=backend
+            )
 
             # Use a unique identifier for this test
             test_identifier = f"test_atomic_{int(time.time())}"
@@ -99,7 +101,9 @@ class TestRedisRateLimiting:
             max_attempts = 3
             window_seconds = 5
             backend = RedisBackend(redis_client)
-            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
+            limiter = AuthRateLimiter(
+                max_attempts=max_attempts, window_seconds=window_seconds, backend=backend
+            )
 
             test_identifier = f"test_expiry_{int(time.time())}"
             limiter.clear_attempts(test_identifier)
@@ -151,7 +155,9 @@ class TestRedisRateLimiting:
             max_attempts = 3
             window_seconds = 60
             backend = RedisBackend(redis_client)
-            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
+            limiter = AuthRateLimiter(
+                max_attempts=max_attempts, window_seconds=window_seconds, backend=backend
+            )
 
             timestamp = int(time.time())
             user1 = f"test_user1_{timestamp}"
@@ -212,7 +218,9 @@ class TestRedisRateLimiting:
             max_attempts = 5
             window_seconds = 60
             backend = RedisBackend(redis_client)
-            limiter = AuthRateLimiter(max_attempts=max_attempts, window_seconds=window_seconds, backend=backend)
+            limiter = AuthRateLimiter(
+                max_attempts=max_attempts, window_seconds=window_seconds, backend=backend
+            )
 
             test_identifier = f"test_concurrent_{int(time.time())}"
             limiter.clear_attempts(test_identifier)

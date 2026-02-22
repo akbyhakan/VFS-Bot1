@@ -23,6 +23,7 @@ class TestVerifyTokenBlacklisted:
         # Decode the token to get its jti
         import jwt
         from src.core.auth import get_secret_key, get_algorithm
+
         payload = jwt.decode(token, get_secret_key(), algorithms=[get_algorithm()])
         jti = payload["jti"]
 
@@ -53,6 +54,7 @@ class TestVerifyTokenBlacklisted:
     async def test_verify_token_with_previous_key(self):
         """Test that verify_token falls back to previous key."""
         import os
+
         original_key = os.environ.get("API_SECRET_KEY")
 
         # Create token with current key
@@ -65,6 +67,7 @@ class TestVerifyTokenBlacklisted:
 
         # Invalidate cache to pick up new key
         from src.core.auth.jwt_tokens import invalidate_jwt_settings_cache
+
         invalidate_jwt_settings_cache()
 
         try:
@@ -100,6 +103,7 @@ class TestUpdateBotStats:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import update_bot_stats
+
             await update_bot_stats(slots_found=5, appointments_booked=2, active_users=10)
 
         mock_state.set_slots_found.assert_called_once_with(5)
@@ -127,6 +131,7 @@ class TestUpdateBotStats:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import update_bot_stats
+
             await update_bot_stats()
 
         mock_state.set_slots_found.assert_not_called()
@@ -150,6 +155,7 @@ class TestUpdateBotStats:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import update_bot_stats
+
             await update_bot_stats(slots_found=3)
 
         mock_state.set_slots_found.assert_called_once_with(3)
@@ -171,6 +177,7 @@ class TestAddLog:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import add_log
+
             await add_log("Test message")
 
         mock_state.append_log.assert_called_once()
@@ -194,6 +201,7 @@ class TestAddLog:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import add_log
+
             await add_log("Error occurred", level="ERROR")
 
         log_entry = mock_state.append_log.call_args[0][0]
@@ -214,6 +222,7 @@ class TestAddLog:
             patch("web.websocket.handler.broadcast_message", mock_broadcast),
         ):
             from web.websocket.handler import add_log
+
             await add_log("Test message")
 
         call_args = mock_broadcast.call_args[0][0]

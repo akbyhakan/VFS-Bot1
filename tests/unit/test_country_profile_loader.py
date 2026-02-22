@@ -135,4 +135,3 @@ country_profiles:
         assert len(all_countries) == 2
         assert "nld" in all_countries
         assert "fra" in all_countries
-
