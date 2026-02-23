@@ -10,11 +10,17 @@ from playwright.async_api import Page
 from ...constants import AccountPoolConfig, CircuitBreakerConfig, Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
+from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
 from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
 from ..session.account_pool import AccountPool
 from ..session.session_orchestrator import SessionOrchestrator
-from .booking_dependencies import BookingDependencies, InfraServices, WorkflowServices
+from .booking_dependencies import (
+    BookingDependencies,
+    InfraServices,
+    RepositoryServices,
+    WorkflowServices,
+)
 from .booking_workflow import BookingWorkflow
 from .browser_manager import BrowserManager
 from .service_context import BotServiceContext, BotServiceFactory
@@ -101,34 +107,10 @@ class VFSBot:
         )
 
         # Initialize booking workflow after all dependencies are ready
-        workflow_services = WorkflowServices(
-            auth_service=self.services.workflow.auth_service,
-            slot_checker=self.services.workflow.slot_checker,
-            booking_service=self.services.workflow.booking_service,
-            waitlist_handler=self.services.workflow.waitlist_handler,
-            error_handler=self.services.workflow.error_handler,
-            page_state_detector=self.services.workflow.page_state_detector,
-            slot_analyzer=self.services.automation.slot_analyzer,
-            session_recovery=self.services.automation.session_recovery,
-            alert_service=self.services.workflow.alert_service,
-        )
-
-        infra_services = InfraServices(
-            browser_manager=self.browser_manager,
-            header_manager=self.services.anti_detection.header_manager,
-            proxy_manager=self.services.anti_detection.proxy_manager,
-            human_sim=self.services.anti_detection.human_sim,
-            error_capture=self.services.core.error_capture,
-        )
-
-        deps = BookingDependencies(
-            workflow=workflow_services,
-            infra=infra_services,
-        )
+        deps = self._wire_booking_dependencies(self.services, self.browser_manager, self.db)
 
         self.booking_workflow = BookingWorkflow(
             config=self.config,
-            db=self.db,
             notifier=self.notifier,
             deps=deps,
         )
@@ -143,6 +125,58 @@ class VFSBot:
         )
 
         logger.info("VFSBot initialized with account pool and session orchestrator")
+
+    @staticmethod
+    def _wire_booking_dependencies(
+        services: BotServiceContext,
+        browser_manager: BrowserManager,
+        db: Database,
+    ) -> BookingDependencies:
+        """
+        Wire booking dependencies from service context and infrastructure.
+
+        Isolates the dependency wiring logic (WorkflowServices → InfraServices →
+        RepositoryServices → BookingDependencies) from __init__.
+
+        Args:
+            services: BotServiceContext containing workflow and infrastructure services
+            browser_manager: Initialized BrowserManager instance
+            db: Database instance for repository creation
+
+        Returns:
+            Fully wired BookingDependencies instance
+        """
+        workflow_services = WorkflowServices(
+            auth_service=services.workflow.auth_service,
+            slot_checker=services.workflow.slot_checker,
+            booking_service=services.workflow.booking_service,
+            waitlist_handler=services.workflow.waitlist_handler,
+            error_handler=services.workflow.error_handler,
+            page_state_detector=services.workflow.page_state_detector,
+            slot_analyzer=services.automation.slot_analyzer,
+            session_recovery=services.automation.session_recovery,
+            alert_service=services.workflow.alert_service,
+        )
+
+        infra_services = InfraServices(
+            browser_manager=browser_manager,
+            header_manager=services.anti_detection.header_manager,
+            proxy_manager=services.anti_detection.proxy_manager,
+            human_sim=services.anti_detection.human_sim,
+            error_capture=services.core.error_capture,
+        )
+
+        repository_services = RepositoryServices(
+            appointment_repo=AppointmentRepository(db),
+            user_repo=UserRepository(db),
+            appointment_request_repo=AppointmentRequestRepository(db),
+        )
+
+        return BookingDependencies(
+            workflow=workflow_services,
+            infra=infra_services,
+            repositories=repository_services,
+        )
 
     async def __aenter__(self) -> "VFSBot":
         """
@@ -235,7 +269,14 @@ class VFSBot:
         self._stopped = True
         self.running = False
 
-        # Cancel health checker task if running
+        await self._cancel_health_checker()
+        await self._shutdown_active_bookings()
+        await self.cleanup()
+        await self._notify_stopped()
+        logger.info("VFS-Bot stopped")
+
+    async def _cancel_health_checker(self) -> None:
+        """Cancel health checker task if running."""
         if self._health_task and not self._health_task.done():
             logger.info("Cancelling health checker task...")
             self._health_task.cancel()
@@ -246,85 +287,89 @@ class VFSBot:
             except Exception as e:
                 logger.warning(f"Error cancelling health checker task: {e}")
 
-        # Wait for active booking tasks to complete gracefully
-        if self._active_booking_tasks:
-            active_count = len(self._active_booking_tasks)
-            grace_period_seconds = Timeouts.GRACEFUL_SHUTDOWN_GRACE_PERIOD
-            grace_period_display = f"{grace_period_seconds // 60} min"
+    async def _shutdown_active_bookings(self) -> None:
+        """Wait for active booking tasks to complete gracefully, then force-cancel if needed."""
+        if not self._active_booking_tasks:
+            return
 
-            logger.info(f"Waiting for {active_count} active booking(s) to complete...")
+        active_count = len(self._active_booking_tasks)
+        grace_period_seconds = Timeouts.GRACEFUL_SHUTDOWN_GRACE_PERIOD
+        grace_period_display = f"{grace_period_seconds // 60} min"
 
-            # Notify about pending shutdown
-            await send_alert_safe(
-                alert_service=self.services.workflow.alert_service,
-                message=(
-                    f"⏳ Bot shutting down - waiting for {active_count} "
-                    f"active booking(s) to complete ({grace_period_display} grace period)"
-                ),
-                severity=AlertSeverity.WARNING,
-                metadata={"active_bookings": active_count},
+        logger.info(f"Waiting for {active_count} active booking(s) to complete...")
+
+        # Notify about pending shutdown
+        await send_alert_safe(
+            alert_service=self.services.workflow.alert_service,
+            message=(
+                f"⏳ Bot shutting down - waiting for {active_count} "
+                f"active booking(s) to complete ({grace_period_display} grace period)"
+            ),
+            severity=AlertSeverity.WARNING,
+            metadata={"active_bookings": active_count},
+        )
+
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
+                timeout=grace_period_seconds,
             )
+            logger.info("All active bookings completed")
+        except asyncio.TimeoutError:
+            logger.warning("Booking grace period expired, forcing shutdown")
+            await self._force_cancel_bookings(grace_period_display)
 
+    async def _force_cancel_bookings(self, grace_display: str) -> None:
+        """Force-cancel all active booking tasks after grace period timeout."""
+        task_names = []
+        for task in self._active_booking_tasks:
             try:
-                await asyncio.wait_for(
-                    asyncio.gather(*self._active_booking_tasks, return_exceptions=True),
-                    timeout=grace_period_seconds,
-                )
-                logger.info("All active bookings completed")
-            except asyncio.TimeoutError:
-                logger.warning("Booking grace period expired, forcing shutdown")
+                task_name = task.get_name()
+                task_names.append(task_name)
+            except Exception:
+                task_names.append("unknown")
 
-                # Collect task information for checkpoint before cancellation
-                task_names = []
-                for task in self._active_booking_tasks:
-                    try:
-                        task_name = task.get_name()
-                        task_names.append(task_name)
-                    except Exception:
-                        task_names.append("unknown")
+        await self._save_shutdown_checkpoint(task_names)
 
-                # Save checkpoint state before cancelling tasks
-                try:
-                    checkpoint_state = {
-                        "event": "forced_shutdown",
-                        "cancelled_task_count": len(self._active_booking_tasks),
-                        "cancelled_tasks": task_names,
-                        "reason": "grace_period_timeout",
-                    }
-                    await self.services.workflow.error_handler.save_checkpoint(checkpoint_state)
-                    logger.info(
-                        f"Checkpoint saved for {len(self._active_booking_tasks)} cancelled tasks"
-                    )
-                except Exception as checkpoint_error:
-                    # Don't let checkpoint failure block shutdown
-                    logger.error(f"Failed to save checkpoint during shutdown: {checkpoint_error}")
+        # Notify about forced cancellation with checkpoint info
+        await send_alert_safe(
+            alert_service=self.services.workflow.alert_service,
+            message=(
+                f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
+                f"booking(s) cancelled after {grace_display} timeout"
+            ),
+            severity=AlertSeverity.ERROR,
+            metadata={
+                "cancelled_bookings": len(self._active_booking_tasks),
+                "cancelled_tasks": task_names,
+            },
+        )
+        for task in self._active_booking_tasks:
+            task.cancel()
 
-                # Notify about forced cancellation with checkpoint info
-                await send_alert_safe(
-                    alert_service=self.services.workflow.alert_service,
-                    message=(
-                        f"⚠️ Forced shutdown - {len(self._active_booking_tasks)} "
-                        f"booking(s) cancelled after {grace_period_display} timeout"
-                    ),
-                    severity=AlertSeverity.ERROR,
-                    metadata={
-                        "cancelled_bookings": len(self._active_booking_tasks),
-                        "cancelled_tasks": task_names,
-                    },
-                )
-                for task in self._active_booking_tasks:
-                    task.cancel()
+    async def _save_shutdown_checkpoint(self, task_names: list) -> None:
+        """Save checkpoint state before cancelling tasks."""
+        try:
+            checkpoint_state = {
+                "event": "forced_shutdown",
+                "cancelled_task_count": len(self._active_booking_tasks),
+                "cancelled_tasks": task_names,
+                "reason": "grace_period_timeout",
+            }
+            await self.services.workflow.error_handler.save_checkpoint(checkpoint_state)
+            logger.info(
+                f"Checkpoint saved for {len(self._active_booking_tasks)} cancelled tasks"
+            )
+        except Exception as checkpoint_error:
+            # Don't let checkpoint failure block shutdown
+            logger.error(f"Failed to save checkpoint during shutdown: {checkpoint_error}")
 
-        # Clean up browser resources
-        await self.cleanup()
-
-        # Notify bot stopped with error handling
+    async def _notify_stopped(self) -> None:
+        """Send bot stopped notification."""
         try:
             await self.notifier.notify_bot_stopped()
         except Exception as e:
             logger.warning(f"Failed to send bot stopped notification: {e}")
-
-        logger.info("VFS-Bot stopped")
 
     def trigger_immediate_check(self) -> None:
         """Trigger an immediate slot check by setting the trigger event."""

@@ -9,7 +9,6 @@ from ...utils.masking import mask_email
 from .types import ReservationDict
 
 if TYPE_CHECKING:
-    from ...models.database import Database
     from ...repositories import AppointmentRepository, AppointmentRequestRepository
     from ...types.user import UserDict
     from ..notification.notification import NotificationService
@@ -22,7 +21,6 @@ class BookingExecutor:
 
     def __init__(
         self,
-        db: "Database",
         notifier: "NotificationService",
         deps: "BookingDependencies",
         appointment_repo: "AppointmentRepository",
@@ -32,13 +30,11 @@ class BookingExecutor:
         Initialize booking executor.
 
         Args:
-            db: Database instance
             notifier: Notification service instance
             deps: BookingDependencies container with all required services
             appointment_repo: Appointment repository instance
             appointment_request_repo: Appointment request repository instance
         """
-        self.db = db
         self.notifier = notifier
         self.deps = deps
         self.appointment_repo = appointment_repo

@@ -124,12 +124,13 @@ class TestPageStateDetectorIntegration:
         from src.services.bot.booking_dependencies import (
             BookingDependencies,
             InfraServices,
+            RepositoryServices,
             WorkflowServices,
         )
+        from unittest.mock import MagicMock
 
         # Create mock dependencies
         config = {"bot": {}}
-        db = Mock()
         notifier = Mock()
         auth_service = Mock()
         slot_checker = Mock()
@@ -161,15 +162,21 @@ class TestPageStateDetectorIntegration:
             error_capture=None,
         )
 
+        repository_services = RepositoryServices(
+            appointment_repo=MagicMock(),
+            user_repo=MagicMock(),
+            appointment_request_repo=MagicMock(),
+        )
+
         deps = BookingDependencies(
             workflow=workflow_services,
             infra=infra_services,
+            repositories=repository_services,
         )
 
         # Create BookingWorkflow with deps
         workflow = BookingWorkflow(
             config=config,
-            db=db,
             notifier=notifier,
             deps=deps,
         )
