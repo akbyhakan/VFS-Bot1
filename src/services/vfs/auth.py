@@ -61,9 +61,7 @@ class VFSAuth:
         self._http_session_getter = http_session_getter
 
         self.session: Optional[VFSSession] = None
-        self._is_refreshing = False  # Guard flag for token refresh
-        self._refresh_complete_event = asyncio.Event()  # Signal when refresh completes
-        self._refresh_complete_event.set()  # Initially set (no refresh in progress)
+        self._refresh_lock = asyncio.Lock()
 
     @property
     def _session(self) -> aiohttp.ClientSession:
@@ -168,73 +166,55 @@ class VFSAuth:
         Refresh the authentication token with guard against concurrent refresh.
 
         Raises:
-            VFSAuthenticationError: If token refresh fails or already in progress
+            VFSAuthenticationError: If token refresh fails
         """
-        if self._is_refreshing:
-            logger.warning("Token refresh already in progress, waiting for completion...")
-            # Wait for ongoing refresh to complete (with timeout)
-            try:
-                await asyncio.wait_for(self._refresh_complete_event.wait(), timeout=10.0)
-                # Check if session is now valid
-                if self.session and datetime.now(timezone.utc) < self.session.expires_at:
-                    logger.info("Token refresh completed by another caller")
-                    return  # Another refresh completed successfully
-                else:
-                    raise VFSAuthenticationError("Token refresh completed but session invalid")
-            except asyncio.TimeoutError:
-                raise VFSAuthenticationError(
-                    "Token refresh timeout - another refresh taking too long"
-                )
-
-        # Clear the event to signal refresh in progress
-        self._refresh_complete_event.clear()
-        self._is_refreshing = True
-
-        try:
+        async with self._refresh_lock:
             if not self.session or not self.session.refresh_token:
                 raise VFSAuthenticationError(
                     "Cannot refresh token: No refresh token available. Please login again."
                 )
 
-            async with self._session.post(
-                f"{get_vfs_api_base()}/user/refresh",
-                json={"refreshToken": self.session.refresh_token},
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Token refresh failed: {response.status} - {error_text}")
-                    raise VFSAuthenticationError(
-                        f"Token refresh failed with status {response.status}"
+            try:
+                async with self._session.post(
+                    f"{get_vfs_api_base()}/user/refresh",
+                    json={"refreshToken": self.session.refresh_token},
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"Token refresh failed: {response.status} - {error_text}")
+                        raise VFSAuthenticationError(
+                            f"Token refresh failed with status {response.status}"
+                        )
+
+                    data = await response.json()
+
+                    # Update session with new tokens
+                    token_refresh_buffer = _get_token_refresh_buffer()
+                    expires_in = data.get("expiresIn", 60)
+                    effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
+
+                    self.session.access_token = data["accessToken"]
+                    self.session.refresh_token = data.get(
+                        "refreshToken", self.session.refresh_token
+                    )
+                    self.session.expires_at = datetime.now(timezone.utc) + timedelta(
+                        minutes=effective_expiry
                     )
 
-                data = await response.json()
+                    # Update session headers with new auth token
+                    self._session.headers.update(
+                        {"Authorization": f"Bearer {self.session.access_token}"}
+                    )
 
-                # Update session with new tokens
-                token_refresh_buffer = _get_token_refresh_buffer()
-                expires_in = data.get("expiresIn", 60)
-                effective_expiry = calculate_effective_expiry(expires_in, token_refresh_buffer)
+                    logger.info(
+                        f"Token refreshed successfully, expires at {self.session.expires_at}"
+                    )
 
-                self.session.access_token = data["accessToken"]
-                self.session.refresh_token = data.get("refreshToken", self.session.refresh_token)
-                self.session.expires_at = datetime.now(timezone.utc) + timedelta(
-                    minutes=effective_expiry
-                )
-
-                # Update session headers with new auth token
-                self._session.headers.update(
-                    {"Authorization": f"Bearer {self.session.access_token}"}
-                )
-
-                logger.info(f"Token refreshed successfully, expires at {self.session.expires_at}")
-
-        except Exception as e:
-            logger.error(f"Token refresh failed: {e}")
-            if isinstance(e, VFSAuthenticationError):
-                raise
-            raise VFSSessionExpiredError(f"Token refresh failed: {e}")
-        finally:
-            self._is_refreshing = False
-            self._refresh_complete_event.set()  # Signal completion
+            except Exception as e:
+                logger.error(f"Token refresh failed: {e}")
+                if isinstance(e, VFSAuthenticationError):
+                    raise
+                raise VFSSessionExpiredError(f"Token refresh failed: {e}")
 
     def check_and_update_token_from_data(
         self, data: Union[Dict[str, Any], list], response_headers: Any
@@ -265,17 +245,19 @@ class VFSAuth:
 
         # 1. Check Set-Cookie header for accesstoken
         try:
-            set_cookie = response_headers.get("Set-Cookie", "")
-            if set_cookie and "accesstoken=" in set_cookie.lower():
-                # Parse cookie value (simple extraction)
-                for cookie_part in set_cookie.split(";"):
-                    cookie_part = cookie_part.strip()
-                    if cookie_part.lower().startswith("accesstoken="):
-                        cookie_value = cookie_part.split("=", 1)[1]
-                        if cookie_value and cookie_value != self.session.access_token:
-                            new_access_token = cookie_value
-                            logger.info("Found new access token in Set-Cookie header")
-                            break
+            set_cookie_list = response_headers.getall("Set-Cookie", [])
+            for set_cookie in set_cookie_list:
+                if set_cookie and "accesstoken=" in set_cookie.lower():
+                    for cookie_part in set_cookie.split(";"):
+                        cookie_part = cookie_part.strip()
+                        if cookie_part.lower().startswith("accesstoken="):
+                            cookie_value = cookie_part.split("=", 1)[1]
+                            if cookie_value and cookie_value != self.session.access_token:
+                                new_access_token = cookie_value
+                                logger.info("Found new access token in Set-Cookie header")
+                                break
+                if new_access_token:
+                    break
         except Exception as e:
             logger.debug(f"Error checking Set-Cookie header: {e}")
 
