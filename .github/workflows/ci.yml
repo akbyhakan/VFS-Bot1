@@ -188,6 +188,10 @@ jobs:
     - name: Verify version sync
       run: |
         python3 scripts/verify_version_sync.py
+
+    - name: Verify lock file consistency
+      run: |
+        python3 scripts/verify_lock.py
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
