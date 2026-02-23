@@ -170,11 +170,6 @@ async def test_circuit_breaker():
     assert stats["consecutive_errors"] == 1
 ```
 
-## 🔧 Deprecation Timeline
-
-- **v2.0**: Modular structure introduced with deprecation warnings
-- **v3.0**: Backward compatibility layer removed (completed)
-
 ## 📚 Related Documentation
 
 - [SOLID Principles](https://en.wikipedia.org/wiki/SOLID)
