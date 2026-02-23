@@ -14,12 +14,6 @@ from tenacity import (
 
 from ...constants import Delays, Retries
 from ...core.exceptions import BannedError, LoginError, VFSBotError
-from ...models.database import Database
-from ...repositories import (
-    AppointmentRepository,
-    AppointmentRequestRepository,
-    UserRepository,
-)
 from ...types.user import UserDict
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
@@ -50,7 +44,6 @@ class BookingWorkflow:
     def __init__(
         self,
         config: "BotConfigDict",
-        db: Database,
         notifier: NotificationService,
         deps: BookingDependencies,
     ):
@@ -59,19 +52,17 @@ class BookingWorkflow:
 
         Args:
             config: Bot configuration dictionary
-            db: Database instance
             notifier: Notification service instance
             deps: BookingDependencies container with all required services
         """
         self.config = config
-        self.db = db
         self.notifier = notifier
         self.deps = deps
 
-        # Initialize repositories
-        self.appointment_repo = AppointmentRepository(db)
-        self.user_repo = UserRepository(db)
-        self.appointment_request_repo = AppointmentRequestRepository(db)
+        # Repositories are injected via deps.repositories
+        self.appointment_repo = deps.repositories.appointment_repo
+        self.user_repo = deps.repositories.user_repo
+        self.appointment_request_repo = deps.repositories.appointment_request_repo
 
         # Initialize extracted service components
         self.reservation_builder = ReservationBuilder(
@@ -81,7 +72,6 @@ class BookingWorkflow:
         )
 
         self.booking_executor = BookingExecutor(
-            db=db,
             notifier=notifier,
             deps=deps,
             appointment_repo=self.appointment_repo,
