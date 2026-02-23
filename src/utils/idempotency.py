@@ -202,27 +202,24 @@ class IdempotencyStore:
         """
         Auto-detect and initialize appropriate backend.
 
-        Tries to connect to Redis if REDIS_URL is set, falls back to in-memory.
+        Uses RedisManager for a shared connection if available, falls back to in-memory.
 
         Returns:
             IdempotencyBackend instance
         """
-        redis_url = os.getenv("REDIS_URL")
+        from src.core.infra.redis_manager import RedisManager
 
-        if redis_url:
-            try:
-                import redis
+        client = RedisManager.get_client()
 
-                client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
-                # Test connection
-                client.ping()
-                logger.info("IdempotencyStore using Redis backend")
-                return RedisIdempotencyBackend(client)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to connect to Redis, falling back to in-memory backend. "
-                    f"Idempotency will NOT be shared across workers! Error: {e}"
-                )
+        if client is not None:
+            logger.info("IdempotencyStore using Redis backend")
+            return RedisIdempotencyBackend(client)
+
+        if os.getenv("REDIS_URL"):
+            logger.warning(
+                "Failed to connect to Redis, falling back to in-memory backend. "
+                "Idempotency will NOT be shared across workers!"
+            )
 
         # Fallback to in-memory
         logger.info("IdempotencyStore using in-memory backend")

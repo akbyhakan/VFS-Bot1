@@ -180,7 +180,7 @@ def test_idempotency_store_auto_detect_no_redis_url(monkeypatch):
 
 def test_idempotency_store_auto_detect_redis_url_fails(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
-    with patch("redis.from_url", side_effect=Exception("connection refused")):
+    with patch("src.core.infra.redis_manager.RedisManager.get_client", return_value=None):
         store = IdempotencyStore()
     assert isinstance(store._backend, InMemoryIdempotencyBackend)
 
@@ -188,8 +188,7 @@ def test_idempotency_store_auto_detect_redis_url_fails(monkeypatch):
 def test_idempotency_store_auto_detect_redis_success(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
     mock_redis = MagicMock()
-    mock_redis.ping = MagicMock(return_value=True)
-    with patch("redis.from_url", return_value=mock_redis):
+    with patch("src.core.infra.redis_manager.RedisManager.get_client", return_value=mock_redis):
         store = IdempotencyStore()
     assert isinstance(store._backend, RedisIdempotencyBackend)
 

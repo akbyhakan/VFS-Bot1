@@ -8,6 +8,7 @@ from typing import Optional
 from loguru import logger
 
 from src.constants import RateLimits
+from src.core.infra.redis_manager import RedisManager
 from src.utils.masking import mask_database_url
 
 from .backends import InMemoryBackend, RateLimiterBackend, RedisBackend
@@ -47,31 +48,29 @@ class AuthRateLimiter:
         """
         Auto-detect and initialize appropriate backend.
 
-        Tries to connect to Redis if REDIS_URL is set, falls back to in-memory.
+        Uses RedisManager for a shared connection if available, falls back to in-memory.
 
         Returns:
             RateLimiterBackend instance
         """
+        client = RedisManager.get_client()
+
+        if client is not None:
+            logger.info("AuthRateLimiter using Redis backend")
+            return RedisBackend(client)
+
+        # If REDIS_URL was set but RedisManager couldn't connect, notify
         redis_url = os.getenv("REDIS_URL")
-
         if redis_url:
-            try:
-                import redis
-
-                client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
-                # Test connection
-                client.ping()
-                logger.info(f"AuthRateLimiter using Redis backend: {mask_database_url(redis_url)}")
-                return RedisBackend(client)
-            except Exception as e:
-                logger.critical(
-                    f"🚨 REDIS FALLBACK: Failed to connect to Redis "
-                    f"({mask_database_url(redis_url)}), "
-                    f"falling back to in-memory backend. Rate limiting will NOT be "
-                    f"shared across workers! Error: {e}"
-                )
-                # Attempt to send notification alert
-                self._notify_redis_fallback(redis_url, str(e))
+            error = "RedisManager could not establish a connection"
+            logger.critical(
+                f"🚨 REDIS FALLBACK: Failed to connect to Redis "
+                f"({mask_database_url(redis_url)}), "
+                f"falling back to in-memory backend. Rate limiting will NOT be "
+                f"shared across workers! Error: {error}"
+            )
+            # Attempt to send notification alert
+            self._notify_redis_fallback(redis_url, error)
 
         # Fallback to in-memory
         logger.info("AuthRateLimiter using in-memory backend")
