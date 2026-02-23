@@ -117,6 +117,20 @@ class TelegramConfig(BaseModel):
     bot_token: SecretStr = Field(default=SecretStr(""))
     chat_id: str = Field(default="")
 
+    @property
+    def bot_token_plain(self) -> Optional[str]:
+        """Get plain text bot token for API calls. Returns None if empty."""
+        value = self.bot_token.get_secret_value()
+        return value if value else None
+
+    def __repr__(self) -> str:
+        """Return repr with masked bot_token for security."""
+        masked = "'***'" if self.bot_token.get_secret_value() else "None"
+        return (
+            f"TelegramConfig(enabled={self.enabled}, bot_token={masked}, "
+            f"chat_id='{self.chat_id}')"
+        )
+
 
 class NotificationConfig(BaseModel):
     """Notification services configuration."""
@@ -124,17 +138,28 @@ class NotificationConfig(BaseModel):
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     webhook_enabled: bool = Field(default=False)
     webhook_url: Optional[str] = Field(default=None)
+    timezone: str = Field(default="Europe/Istanbul")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NotificationConfig":
         """Create from dictionary with nested telegram support."""
-        # Handle nested structure - data should contain telegram as dict
         telegram_data = data.get("telegram", {})
+        # Filter out None values so Pydantic uses defaults instead of failing validation
+        if telegram_data:
+            telegram_data = {k: v for k, v in telegram_data.items() if v is not None}
 
         return cls(
             telegram=TelegramConfig(**telegram_data) if telegram_data else TelegramConfig(),
             webhook_enabled=data.get("webhook_enabled", False),
             webhook_url=data.get("webhook_url"),
+            timezone=data.get("timezone", "Europe/Istanbul"),
+        )
+
+    def __repr__(self) -> str:
+        """Return repr with masked sensitive fields in nested configs."""
+        return (
+            f"NotificationConfig(telegram={repr(self.telegram)}, "
+            f"timezone='{self.timezone}')"
         )
 
 
