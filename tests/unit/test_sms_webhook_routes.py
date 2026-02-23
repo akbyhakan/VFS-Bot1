@@ -165,6 +165,17 @@ class TestSMSWebhookRoutes:
         assert data["session_linked"] is True
         assert data["session_id"] == "session_456"
 
+    def test_webhook_status_created_at_format(self, client, mock_webhook_manager):
+        """Test that webhook status returns created_at in ISO format."""
+        response = client.get("/webhook/sms/tk_test123456789/status")
+
+        assert response.status_code == 200
+        data = response.json()
+        # created_at should be a valid ISO format string (not None since default_factory fills it)
+        assert data["created_at"] is not None
+        assert isinstance(data["created_at"], str)
+        assert "T" in data["created_at"]  # ISO format contains 'T' separator
+
     def test_test_webhook_success(self, client, mock_webhook_manager):
         """Test webhook test endpoint."""
         payload = {"message": "Test OTP 123456"}

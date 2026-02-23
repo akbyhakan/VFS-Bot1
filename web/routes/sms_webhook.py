@@ -176,7 +176,9 @@ async def webhook_status(token: str, request: Request):
             "account_id": webhook_token.account_id,
             "phone_number": webhook_token.phone_number,
             "webhook_url": webhook_token.webhook_url,
-            "created_at": webhook_token.created_at.isoformat(),
+            "created_at": (
+                webhook_token.created_at.isoformat() if webhook_token.created_at else None
+            ),
             "last_used_at": (
                 webhook_token.last_used_at.isoformat() if webhook_token.last_used_at else None
             ),
