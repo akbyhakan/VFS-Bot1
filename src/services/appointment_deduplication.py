@@ -203,10 +203,22 @@ class RedisDeduplicationBackend(DeduplicationBackend):
         """
         return 0
 
+    async def _scan_keys(self, pattern: str) -> list:
+        """Scan for keys matching pattern using SCAN (non-blocking)."""
+        keys = []
+        cursor = 0
+        while True:
+            cursor, batch = await asyncio.to_thread(
+                self._redis.scan, cursor, match=pattern, count=100
+            )
+            keys.extend(batch)
+            if cursor == 0:
+                break
+        return keys
+
     async def get_stats(self, ttl_seconds: int) -> Dict[str, int]:
         """Get cache statistics."""
-        # Note: Using KEYS can be slow on large datasets. Consider SCAN for production.
-        keys = await asyncio.to_thread(self._redis.keys, "dedup:*")
+        keys = await self._scan_keys("dedup:*")
         return {
             "total_entries": len(keys),
             "active_entries": len(keys),  # All keys in Redis are active (TTL handles expiry)
@@ -215,8 +227,7 @@ class RedisDeduplicationBackend(DeduplicationBackend):
 
     async def clear(self) -> None:
         """Clear all cache entries."""
-        # Note: Using KEYS can be slow on large datasets. Consider SCAN for production.
-        keys = await asyncio.to_thread(self._redis.keys, "dedup:*")
+        keys = await self._scan_keys("dedup:*")
         if keys:
             await asyncio.to_thread(self._redis.delete, *keys)
             logger.info(f"Cleared {len(keys)} deduplication cache entries")
@@ -263,27 +274,24 @@ class AppointmentDeduplication:
         """
         Auto-detect and initialize appropriate backend.
 
-        Tries to connect to Redis if REDIS_URL is set, falls back to in-memory.
+        Uses RedisManager for a shared connection if available, falls back to in-memory.
 
         Returns:
             DeduplicationBackend instance
         """
-        redis_url = os.getenv("REDIS_URL")
+        from src.core.infra.redis_manager import RedisManager
 
-        if redis_url:
-            try:
-                import redis
+        client = RedisManager.get_client()
 
-                client = redis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
-                # Test connection
-                client.ping()
-                logger.info("AppointmentDeduplication using Redis backend")
-                return RedisDeduplicationBackend(client)
-            except Exception as e:
-                logger.warning(
-                    f"Failed to connect to Redis, falling back to in-memory backend. "
-                    f"Deduplication will NOT be shared across workers! Error: {e}"
-                )
+        if client is not None:
+            logger.info("AppointmentDeduplication using Redis backend")
+            return RedisDeduplicationBackend(client)
+
+        if os.getenv("REDIS_URL"):
+            logger.warning(
+                "Failed to connect to Redis, falling back to in-memory backend. "
+                "Deduplication will NOT be shared across workers!"
+            )
 
         # Fallback to in-memory
         logger.info("AppointmentDeduplication using in-memory backend")

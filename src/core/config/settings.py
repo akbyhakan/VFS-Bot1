@@ -79,7 +79,10 @@ class VFSSettings(BaseSettings):
     # Redis Configuration
     redis_url: Optional[str] = Field(
         default=None,
-        description="Redis URL for distributed rate limiting (leave empty for in-memory)",
+        description=(
+            "Redis URL for distributed rate limiting and caching (leave empty for in-memory). "
+            "Read via os.getenv('REDIS_URL') in RedisManager, which manages the shared connection pool."
+        ),
     )
 
     # CORS Configuration

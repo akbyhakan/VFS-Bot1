@@ -78,6 +78,7 @@ class RedisManager:
                 socket_timeout=5,
                 retry_on_timeout=True,
                 health_check_interval=30,
+                max_connections=20,
             )
             try:
                 client.ping()
@@ -113,25 +114,35 @@ class RedisManager:
         """
         Perform a live health check against Redis.
 
+        Attempts reconnection if Redis is configured but unavailable.
+
         Returns:
             True if Redis responds to PING, False otherwise
         """
         client = cls.get_client()
         if client is None:
+            # If Redis URL is configured but client is None, try reconnecting
+            if os.getenv("REDIS_URL"):
+                cls.reset()
+                client = cls.get_client()
+                if client is not None:
+                    return True
             return False
         try:
             client.ping()
             return True
         except Exception as e:
             logger.warning(f"RedisManager health check failed: {e}")
+            cls.reset()  # Reset so next get_client() retries
             return False
 
     @classmethod
     def reset(cls) -> None:
         """
-        Reset the singleton (useful for testing).
+        Reset the singleton state.
 
-        Closes the existing client if present and clears the instance.
+        Closes the existing client if present and clears the instance,
+        allowing the next call to get_client() to reconnect.
         """
         with cls._lock:
             if cls._instance is not None:
