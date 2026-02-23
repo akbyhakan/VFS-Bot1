@@ -177,6 +177,62 @@ class TestBrowserPool:
             for browser in mock_browsers:
                 browser.close.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_close_all_releases_semaphore_on_close_error(self, test_config):
+        """Test that semaphore is released even when a browser's close() raises an exception."""
+        pool = BrowserPool(test_config, max_browsers=5)
+
+        with patch.object(pool, "_create_browser", new_callable=AsyncMock) as mock_create:
+            mock_browsers = []
+            for i in range(3):
+                mock_browser = MagicMock()
+                mock_browser.session_id = f"session{i+1}"
+                # Second browser raises an exception on close
+                if i == 1:
+                    mock_browser.close = AsyncMock(side_effect=Exception("close failed"))
+                else:
+                    mock_browser.close = AsyncMock()
+                mock_browsers.append(mock_browser)
+
+            mock_create.side_effect = mock_browsers
+
+            # Acquire 3 browsers
+            await pool.acquire("session1")
+            await pool.acquire("session2")
+            await pool.acquire("session3")
+
+            # Close all - should not raise
+            await pool.close_all()
+
+            # Semaphore should be fully restored to max capacity
+            assert pool._semaphore._value == pool.max_browsers
+
+    @pytest.mark.asyncio
+    async def test_close_all_releases_semaphore_when_all_close_fail(self, test_config):
+        """Test that semaphore is fully released even when all browser close() calls fail."""
+        pool = BrowserPool(test_config, max_browsers=5)
+
+        with patch.object(pool, "_create_browser", new_callable=AsyncMock) as mock_create:
+            mock_browsers = []
+            for i in range(3):
+                mock_browser = MagicMock()
+                mock_browser.session_id = f"session{i+1}"
+                mock_browser.close = AsyncMock(side_effect=Exception(f"close failed {i}"))
+                mock_browsers.append(mock_browser)
+
+            mock_create.side_effect = mock_browsers
+
+            # Acquire 3 browsers
+            await pool.acquire("session1")
+            await pool.acquire("session2")
+            await pool.acquire("session3")
+
+            # Close all - should not raise
+            await pool.close_all()
+
+            # Semaphore should be fully restored to max capacity
+            assert pool._semaphore._value == pool.max_browsers
+
     def test_get_stats(self, test_config):
         """Test getting pool statistics."""
         pool = BrowserPool(test_config, max_browsers=5)

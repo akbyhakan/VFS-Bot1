@@ -346,12 +346,14 @@ async def get_error_screenshot(request: Request, error_id: str, type: str = "ful
                 try:
                     resolved_path = screenshot_path.resolve()
                     # Check if path is within expected directory
-                    if not str(resolved_path).startswith(str(expected_dir)):
+                    if not resolved_path.is_relative_to(expected_dir):
                         logger.warning(f"Path traversal attempt: {screenshot_path}")
                         raise HTTPException(status_code=403, detail="Access denied")
 
                     if resolved_path.exists():
                         return FileResponse(resolved_path, media_type="image/png")
+                except HTTPException:
+                    raise
                 except Exception as e:
                     logger.error(f"Error accessing screenshot: {e}")
                     raise HTTPException(status_code=500, detail="Error accessing screenshot")
@@ -381,7 +383,7 @@ async def get_error_html_snapshot(request: Request, error_id: str):
                 try:
                     resolved_path = html_path.resolve()
                     # Check if path is within expected directory
-                    if not str(resolved_path).startswith(str(expected_dir)):
+                    if not resolved_path.is_relative_to(expected_dir):
                         logger.warning(f"Path traversal attempt: {html_path}")
                         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -391,6 +393,8 @@ async def get_error_html_snapshot(request: Request, error_id: str):
                             media_type="text/html",
                             filename=f"error_{error_id}.html",
                         )
+                except HTTPException:
+                    raise
                 except Exception as e:
                     logger.error(f"Error accessing HTML snapshot: {e}")
                     raise HTTPException(status_code=500, detail="Error accessing HTML snapshot")

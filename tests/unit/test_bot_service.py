@@ -330,10 +330,11 @@ async def test_bot_ensure_db_connection_attempts_reconnect_on_degraded(bot_confi
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
     # Call the method
-    await bot._ensure_db_connection()
+    result = await bot._ensure_db_connection()
 
     # Assert reconnect was called
     mock_db.reconnect.assert_called_once()
+    assert result is True
 
 
 @pytest.mark.asyncio
@@ -349,10 +350,45 @@ async def test_bot_ensure_db_connection_does_nothing_when_connected(bot_config, 
     bot = VFSBot(bot_config, mock_db, mock_notifier)
 
     # Call the method
-    await bot._ensure_db_connection()
+    result = await bot._ensure_db_connection()
 
     # Assert reconnect was NOT called
     mock_db.reconnect.assert_not_called()
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_bot_ensure_db_connection_returns_false_on_reconnect_failure(bot_config, mock_notifier):
+    """Test that _ensure_db_connection returns False when reconnect fails."""
+    from src.models.database import DatabaseState
+
+    mock_db = AsyncMock(spec=Database)
+    mock_db.state = DatabaseState.DISCONNECTED
+    mock_db.reconnect = AsyncMock(return_value=False)
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    result = await bot._ensure_db_connection()
+
+    mock_db.reconnect.assert_called_once()
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_bot_ensure_db_connection_returns_false_on_reconnect_exception(bot_config, mock_notifier):
+    """Test that _ensure_db_connection returns False when reconnect raises an exception."""
+    from src.models.database import DatabaseState
+
+    mock_db = AsyncMock(spec=Database)
+    mock_db.state = DatabaseState.DISCONNECTED
+    mock_db.reconnect = AsyncMock(side_effect=Exception("DB error"))
+
+    bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+    result = await bot._ensure_db_connection()
+
+    mock_db.reconnect.assert_called_once()
+    assert result is False
 
 
 @pytest.mark.asyncio

@@ -443,12 +443,16 @@ class VFSBot:
             trigger_task.cancel()
             raise
 
-    async def _ensure_db_connection(self) -> None:
+    async def _ensure_db_connection(self) -> bool:
         """
         Ensure database connection is healthy and attempt reconnection if needed.
 
         Checks database state and calls reconnect() if degraded or disconnected.
         Sends alert on successful reconnection.
+
+        Returns:
+            True if the database is connected (or reconnection succeeded),
+            False if reconnection failed or an exception occurred.
         """
         db_state = self.db.state
 
@@ -465,10 +469,15 @@ class VFSBot:
                         severity=AlertSeverity.INFO,
                         metadata={"previous_state": db_state, "new_state": self.db.state},
                     )
+                    return True
                 else:
                     logger.error("Database reconnection failed")
+                    return False
             except Exception as e:
                 logger.error(f"Error during database reconnection: {e}")
+                return False
+
+        return True
 
     async def _record_circuit_breaker_trip(self) -> None:
         """
@@ -561,7 +570,18 @@ class VFSBot:
                     await self.browser_manager.restart_fresh()
 
                 # Ensure database connection is healthy
-                await self._ensure_db_connection()
+                db_healthy = await self._ensure_db_connection()
+                if not db_healthy:
+                    logger.warning("Database not available - skipping iteration")
+                    await send_alert_safe(
+                        alert_service=self.services.workflow.alert_service,
+                        message="Database connection unavailable - waiting before retry",
+                        severity=AlertSeverity.WARNING,
+                        metadata={"db_state": str(self.db.state)},
+                    )
+                    if await self._wait_or_shutdown(Intervals.ERROR_RECOVERY):
+                        break
+                    continue
 
                 # Load accounts from pool (initialization check)
                 account_count = await self.account_pool.load_accounts()
