@@ -15,15 +15,6 @@ if TYPE_CHECKING:
 class AccountPoolRepository(BaseRepository):
     """Repository for VFS account pool operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize account pool repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     async def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
         """Get account by ID."""
         return await self.get_account_by_id(id)

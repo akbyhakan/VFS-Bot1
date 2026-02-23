@@ -19,15 +19,6 @@ from src.utils.validators import validate_email, validate_phone
 class UserWriteRepository(BaseRepository[User]):
     """Repository for user write operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize user write repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     async def create(self, data: Dict[str, Any]) -> int:
         """
         Create new user.

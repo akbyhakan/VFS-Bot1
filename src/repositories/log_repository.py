@@ -43,15 +43,6 @@ class LogEntry:
 class LogRepository(BaseRepository[LogEntry]):
     """Repository for log CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize log repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_log_entry(self, row: Any) -> LogEntry:
         """
         Convert database row to LogEntry entity.

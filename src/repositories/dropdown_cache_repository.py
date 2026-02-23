@@ -15,15 +15,6 @@ if TYPE_CHECKING:
 class DropdownCacheRepository(BaseRepository):
     """Repository for VFS dropdown cache CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize dropdown cache repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     async def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
         """Get by ID not supported - use get_dropdown_data(country_code) instead."""
         raise NotImplementedError("Use get_dropdown_data(country_code) instead")

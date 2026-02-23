@@ -59,15 +59,6 @@ class Proxy:
 class ProxyRepository(BaseRepository[Proxy]):
     """Repository for proxy CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize proxy repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_proxy(self, row: Any, decrypt: bool = True) -> Optional[Proxy]:
         """
         Convert database row to Proxy entity.

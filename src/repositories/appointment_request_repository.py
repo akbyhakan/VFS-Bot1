@@ -67,15 +67,6 @@ class AppointmentRequest:
 class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
     """Repository for appointment request CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize appointment request repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _dict_to_appointment_request(self, data: Dict[str, Any]) -> AppointmentRequest:
         """
         Convert dictionary to AppointmentRequest entity.

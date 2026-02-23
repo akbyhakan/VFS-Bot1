@@ -279,7 +279,7 @@ class NotificationService:
         if client is None:
             return False
 
-        # Escape markdown special characters to prevent injection
+        # Build formatted message text
         escaped_title = TelegramClient.escape_markdown(title)
         escaped_message = TelegramClient.escape_markdown(message)
         full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"

@@ -145,15 +145,13 @@ class AlertService:
         emoji_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "critical": "🚨"}
 
         emoji = emoji_map.get(severity, "📢")
-        # Escape markdown to prevent injection
-        escaped_message = TelegramClient.escape_markdown(message)
-        text = (
-            f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
-        )
-
-        # Send message (client handles splitting automatically)
-        success = await self._telegram_client.send_message(
-            chat_id=self.config.telegram_chat_id, text=text
+        # Send message with escaped title and footer
+        success = await self._telegram_client.format_and_send(
+            chat_id=self.config.telegram_chat_id,
+            title=f"ALERT [{severity.upper()}]",
+            message=message,
+            emoji=emoji,
+            footer=f"Time: {timestamp}",
         )
 
         if success:

@@ -181,6 +181,8 @@ def mock_page():
     page.url = "https://visa.vfsglobal.com/tur/deu/en/login"
     page.screenshot = AsyncMock()
     page.close = AsyncMock()
+    page.content = AsyncMock(return_value="")
+    page.text_content = AsyncMock(return_value="")
     return page
 
 

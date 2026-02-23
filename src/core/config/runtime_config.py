@@ -23,7 +23,9 @@ Example:
 
 import os
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional, TypeVar
+
+T = TypeVar("T")
 
 from loguru import logger
 
@@ -65,65 +67,60 @@ class RuntimeConfig:
     def _load_defaults(self) -> None:
         """Load default values from environment variables or Final constants."""
 
-        def get_int_env(key: str, default: int) -> int:
-            """Get integer from environment with error handling."""
+        def _get_typed_env(key: str, default: T, cast: Callable[[Any], T]) -> T:
+            """Get typed value from environment with error handling."""
             try:
-                return int(os.getenv(key, default))
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid value for {key}, using default {default}: {e}")
-                return default
-
-        def get_float_env(key: str, default: float) -> float:
-            """Get float from environment with error handling."""
-            try:
-                return float(os.getenv(key, default))
+                return cast(os.getenv(key, default))
             except (ValueError, TypeError) as e:
                 logger.warning(f"Invalid value for {key}, using default {default}: {e}")
                 return default
 
         # Retry configuration
-        self._config["retries.max_process_user"] = get_int_env(
-            "RETRIES_MAX_PROCESS_USER", Retries.MAX_PROCESS_USER
+        self._config["retries.max_process_user"] = _get_typed_env(
+            "RETRIES_MAX_PROCESS_USER", Retries.MAX_PROCESS_USER, int
         )
-        self._config["retries.max_login"] = get_int_env("RETRIES_MAX_LOGIN", Retries.MAX_LOGIN)
-        self._config["retries.max_booking"] = get_int_env(
-            "RETRIES_MAX_BOOKING", Retries.MAX_BOOKING
+        self._config["retries.max_login"] = _get_typed_env(
+            "RETRIES_MAX_LOGIN", Retries.MAX_LOGIN, int
         )
-        self._config["retries.max_network"] = get_int_env(
-            "RETRIES_MAX_NETWORK", Retries.MAX_NETWORK
+        self._config["retries.max_booking"] = _get_typed_env(
+            "RETRIES_MAX_BOOKING", Retries.MAX_BOOKING, int
         )
-        self._config["retries.backoff_multiplier"] = get_int_env(
-            "RETRIES_BACKOFF_MULTIPLIER", Retries.BACKOFF_MULTIPLIER
+        self._config["retries.max_network"] = _get_typed_env(
+            "RETRIES_MAX_NETWORK", Retries.MAX_NETWORK, int
         )
-        self._config["retries.backoff_min_seconds"] = get_int_env(
-            "RETRIES_BACKOFF_MIN_SECONDS", Retries.BACKOFF_MIN_SECONDS
+        self._config["retries.backoff_multiplier"] = _get_typed_env(
+            "RETRIES_BACKOFF_MULTIPLIER", Retries.BACKOFF_MULTIPLIER, int
         )
-        self._config["retries.backoff_max_seconds"] = get_int_env(
-            "RETRIES_BACKOFF_MAX_SECONDS", Retries.BACKOFF_MAX_SECONDS
+        self._config["retries.backoff_min_seconds"] = _get_typed_env(
+            "RETRIES_BACKOFF_MIN_SECONDS", Retries.BACKOFF_MIN_SECONDS, int
+        )
+        self._config["retries.backoff_max_seconds"] = _get_typed_env(
+            "RETRIES_BACKOFF_MAX_SECONDS", Retries.BACKOFF_MAX_SECONDS, int
         )
 
         # Circuit breaker configuration
-        self._config["circuit_breaker.fail_threshold"] = get_int_env(
-            "CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreakerConfig.FAIL_THRESHOLD
+        self._config["circuit_breaker.fail_threshold"] = _get_typed_env(
+            "CIRCUIT_BREAKER_FAIL_THRESHOLD", CircuitBreakerConfig.FAIL_THRESHOLD, int
         )
-        self._config["circuit_breaker.timeout_seconds"] = get_float_env(
-            "CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreakerConfig.TIMEOUT_SECONDS
+        self._config["circuit_breaker.timeout_seconds"] = _get_typed_env(
+            "CIRCUIT_BREAKER_TIMEOUT_SECONDS", CircuitBreakerConfig.TIMEOUT_SECONDS, float
         )
-        self._config["circuit_breaker.half_open_success_threshold"] = get_int_env(
+        self._config["circuit_breaker.half_open_success_threshold"] = _get_typed_env(
             "CIRCUIT_BREAKER_HALF_OPEN_SUCCESS_THRESHOLD",
             CircuitBreakerConfig.HALF_OPEN_SUCCESS_THRESHOLD,
+            int,
         )
-        self._config["circuit_breaker.max_errors_per_hour"] = get_int_env(
-            "CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreakerConfig.MAX_ERRORS_PER_HOUR
+        self._config["circuit_breaker.max_errors_per_hour"] = _get_typed_env(
+            "CIRCUIT_BREAKER_MAX_ERRORS_PER_HOUR", CircuitBreakerConfig.MAX_ERRORS_PER_HOUR, int
         )
-        self._config["circuit_breaker.error_window_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreakerConfig.ERROR_WINDOW_SECONDS
+        self._config["circuit_breaker.error_window_seconds"] = _get_typed_env(
+            "CIRCUIT_BREAKER_ERROR_WINDOW_SECONDS", CircuitBreakerConfig.ERROR_WINDOW_SECONDS, int
         )
-        self._config["circuit_breaker.backoff_base_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreakerConfig.BACKOFF_BASE_SECONDS
+        self._config["circuit_breaker.backoff_base_seconds"] = _get_typed_env(
+            "CIRCUIT_BREAKER_BACKOFF_BASE_SECONDS", CircuitBreakerConfig.BACKOFF_BASE_SECONDS, int
         )
-        self._config["circuit_breaker.backoff_max_seconds"] = get_int_env(
-            "CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreakerConfig.BACKOFF_MAX_SECONDS
+        self._config["circuit_breaker.backoff_max_seconds"] = _get_typed_env(
+            "CIRCUIT_BREAKER_BACKOFF_MAX_SECONDS", CircuitBreakerConfig.BACKOFF_MAX_SECONDS, int
         )
 
     @classmethod

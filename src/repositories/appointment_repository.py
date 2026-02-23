@@ -60,15 +60,6 @@ class Appointment:
 class AppointmentRepository(BaseRepository[Appointment]):
     """Repository for appointment CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize appointment repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_appointment(self, row: Any) -> Appointment:
         """
         Convert database row to Appointment entity.

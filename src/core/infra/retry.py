@@ -1,6 +1,7 @@
 """Retry strategies for different exception types."""
 
 import logging as stdlib_logging
+from typing import Tuple, Type, Union
 
 from tenacity import (
     before_sleep_log,
@@ -24,6 +25,31 @@ from src.core.exceptions import (
 _stdlib_logger = stdlib_logging.getLogger(__name__)
 
 
+def _make_retry(
+    attempts: int,
+    wait_strategy: object,
+    exception_types: Union[Type[Exception], Tuple[Type[Exception], ...]],
+) -> object:
+    """
+    Factory for creating retry decorators with consistent configuration.
+
+    Args:
+        attempts: Maximum number of retry attempts
+        wait_strategy: Tenacity wait strategy
+        exception_types: Exception type(s) to retry on
+
+    Returns:
+        Configured retry decorator
+    """
+    return retry(
+        stop=stop_after_attempt(attempts),
+        wait=wait_strategy,
+        retry=retry_if_exception_type(exception_types),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
+        reraise=True,
+    )
+
+
 def get_login_retry():
     """
     Get retry strategy for login operations.
@@ -31,12 +57,10 @@ def get_login_retry():
     Returns:
         Retry decorator configured for login errors
     """
-    return retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=2, min=5, max=30) + wait_random(0, 3),
-        retry=retry_if_exception_type((LoginError, NetworkError)),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=3,
+        wait_strategy=wait_exponential(multiplier=2, min=5, max=30) + wait_random(0, 3),
+        exception_types=(LoginError, NetworkError),
     )
 
 
@@ -47,12 +71,10 @@ def get_captcha_retry():
     Returns:
         Retry decorator configured for captcha errors
     """
-    return retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=2, max=15) + wait_random(0, 2),
-        retry=retry_if_exception_type(CaptchaError),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=5,
+        wait_strategy=wait_exponential(multiplier=1, min=2, max=15) + wait_random(0, 2),
+        exception_types=CaptchaError,
     )
 
 
@@ -63,12 +85,10 @@ def get_slot_check_retry():
     Returns:
         Retry decorator configured for slot check errors
     """
-    return retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=3, max=20) + wait_random(0, 2),
-        retry=retry_if_exception_type((SlotCheckError, NetworkError)),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=3,
+        wait_strategy=wait_exponential(multiplier=1, min=3, max=20) + wait_random(0, 2),
+        exception_types=(SlotCheckError, NetworkError),
     )
 
 
@@ -79,12 +99,10 @@ def get_network_retry():
     Returns:
         Retry decorator configured for network errors
     """
-    return retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=2, min=2, max=60) + wait_random(0, 5),
-        retry=retry_if_exception_type(NetworkError),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=5,
+        wait_strategy=wait_exponential(multiplier=2, min=2, max=60) + wait_random(0, 5),
+        exception_types=NetworkError,
     )
 
 
@@ -95,21 +113,17 @@ def get_rate_limit_retry():
     Returns:
         Retry decorator configured for rate limit errors
     """
-    return retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(60) + wait_random(0, 10),  # Wait 60 seconds + random jitter
-        retry=retry_if_exception_type(RateLimitError),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=3,
+        wait_strategy=wait_fixed(60) + wait_random(0, 10),  # Wait 60 seconds + random jitter
+        exception_types=RateLimitError,
     )
 
 
 def get_telegram_retry():
     """Get retry strategy for Telegram API operations."""
-    return retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=8) + wait_random(0, 1),
-        retry=retry_if_exception_type((ConnectionError, TimeoutError, OSError)),
-        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
-        reraise=True,
+    return _make_retry(
+        attempts=3,
+        wait_strategy=wait_exponential(multiplier=1, min=1, max=8) + wait_random(0, 1),
+        exception_types=(ConnectionError, TimeoutError, OSError),
     )

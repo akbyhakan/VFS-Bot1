@@ -102,6 +102,34 @@ class TelegramClient:
 
         return chunks
 
+    async def format_and_send(
+        self,
+        chat_id: str,
+        title: str,
+        message: str,
+        emoji: str = "🤖",
+        footer: Optional[str] = None,
+    ) -> bool:
+        """
+        Escape, format, and send a titled Telegram message.
+
+        Args:
+            chat_id: Telegram chat ID
+            title: Message title (will be escaped and bolded)
+            message: Message body (will be escaped)
+            emoji: Emoji prefix for the title (default: "🤖")
+            footer: Optional footer text (will be italicised)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        escaped_title = self.escape_markdown(title)
+        escaped_message = self.escape_markdown(message)
+        text = f"{emoji} *{escaped_title}*\n\n{escaped_message}"
+        if footer:
+            text += f"\n\n_{footer}_"
+        return await self.send_message(chat_id=chat_id, text=text)
+
     @get_telegram_retry()
     @safe_telegram_call("send message")
     async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:

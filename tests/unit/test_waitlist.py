@@ -9,53 +9,28 @@ from src.services.bot.waitlist_handler import WaitlistHandler
 from src.services.notification.notification import NotificationService
 
 
-class MockPage:
-    """Mock Playwright page for testing."""
+@pytest.fixture
+def waitlist_page(mock_page):
+    """Mock page with waitlist-specific tracking attributes."""
+    mock_page.content_data = ""
+    mock_page.screenshot_called = False
+    mock_page.screenshot_path = None
 
-    def __init__(self):
-        self.locator_results = {}
-        self.content_data = ""
-        self.screenshot_called = False
-        self.screenshot_path = None
+    async def _content():
+        return mock_page.content_data
 
-    def locator(self, selector):
-        """Mock locator method."""
-        mock_locator = MagicMock()
-        mock_locator.first = MagicMock()
-        mock_locator.all = AsyncMock(return_value=[])
-        mock_locator.wait_for = AsyncMock()
-        mock_locator.get_attribute = AsyncMock(return_value="")
-        mock_locator.is_checked = AsyncMock(return_value=False)
-        mock_locator.click = AsyncMock()
+    async def _text_content(selector):
+        return mock_page.content_data
 
-        # Setup nested input locator - locator() is not async
-        input_locator = MagicMock()
-        input_locator.first = MagicMock()
-        input_locator.click = AsyncMock()
-        mock_locator.locator = MagicMock(return_value=input_locator)
+    async def _screenshot(path=None, full_page=False):
+        mock_page.screenshot_called = True
+        mock_page.screenshot_path = path
 
-        # Setup first.wait_for for async waiting
-        async_waitable = AsyncMock()
-        async_waitable.wait_for = AsyncMock(return_value=mock_locator)
-        mock_locator.first.wait_for = AsyncMock(return_value=mock_locator)
+    mock_page.content = _content
+    mock_page.text_content = _text_content
+    mock_page.screenshot = _screenshot
 
-        if selector in self.locator_results:
-            return self.locator_results[selector]
-
-        return mock_locator
-
-    async def content(self):
-        """Mock content method."""
-        return self.content_data
-
-    async def text_content(self, selector):
-        """Mock text_content method."""
-        return self.content_data
-
-    async def screenshot(self, path=None, full_page=False):
-        """Mock screenshot method."""
-        self.screenshot_called = True
-        self.screenshot_path = path
+    return mock_page
 
 
 @pytest.fixture
@@ -79,9 +54,9 @@ def notification_service():
 
 
 @pytest.mark.asyncio
-async def test_detect_waitlist_mode_found(waitlist_handler):
+async def test_detect_waitlist_mode_found(waitlist_handler, waitlist_page):
     """Test waitlist mode detection when waitlist text is found."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock successful waitlist detection
     mock_element = AsyncMock()
@@ -95,9 +70,9 @@ async def test_detect_waitlist_mode_found(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_detect_waitlist_mode_not_found(waitlist_handler):
+async def test_detect_waitlist_mode_not_found(waitlist_handler, waitlist_page):
     """Test waitlist mode detection when waitlist text is not found."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock failed waitlist detection - all locators throw exception
     mock_locator = AsyncMock()
@@ -110,9 +85,9 @@ async def test_detect_waitlist_mode_not_found(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_join_waitlist_success(waitlist_handler):
+async def test_join_waitlist_success(waitlist_handler, waitlist_page):
     """Test successful waitlist checkbox selection."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock input element
     mock_input = AsyncMock()
@@ -137,9 +112,9 @@ async def test_join_waitlist_success(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_join_waitlist_already_checked(waitlist_handler):
+async def test_join_waitlist_already_checked(waitlist_handler, waitlist_page):
     """Test waitlist checkbox when already selected."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock already checked checkbox (this is the locator after wait_for)
     mock_locator_first = AsyncMock()
@@ -155,9 +130,9 @@ async def test_join_waitlist_already_checked(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_join_waitlist_not_found(waitlist_handler):
+async def test_join_waitlist_not_found(waitlist_handler, waitlist_page):
     """Test waitlist checkbox when element not found."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock checkbox not found
     mock_locator = AsyncMock()
@@ -170,9 +145,9 @@ async def test_join_waitlist_not_found(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_accept_review_checkboxes_success(waitlist_handler):
+async def test_accept_review_checkboxes_success(waitlist_handler, waitlist_page):
     """Test accepting all review checkboxes successfully."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock all checkboxes as unchecked and clickable
     mock_checkbox = AsyncMock()
@@ -189,9 +164,9 @@ async def test_accept_review_checkboxes_success(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_click_confirm_button_success(waitlist_handler):
+async def test_click_confirm_button_success(waitlist_handler, waitlist_page):
     """Test clicking confirm button successfully."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock confirm button
     mock_button = AsyncMock()
@@ -207,9 +182,9 @@ async def test_click_confirm_button_success(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_click_confirm_button_not_found(waitlist_handler):
+async def test_click_confirm_button_not_found(waitlist_handler, waitlist_page):
     """Test clicking confirm button when not found."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock button not found
     mock_locator = AsyncMock()
@@ -222,9 +197,9 @@ async def test_click_confirm_button_not_found(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_handle_waitlist_success_with_details(waitlist_handler):
+async def test_handle_waitlist_success_with_details(waitlist_handler, waitlist_page):
     """Test handling waitlist success screen with detail extraction."""
-    page = MockPage()
+    page = waitlist_page
     page.content_data = """
     <html>
         <body>
@@ -256,9 +231,9 @@ async def test_handle_waitlist_success_with_details(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_handle_waitlist_success_not_detected(waitlist_handler):
+async def test_handle_waitlist_success_not_detected(waitlist_handler, waitlist_page):
     """Test handling waitlist success when success screen not detected."""
-    page = MockPage()
+    page = waitlist_page
 
     # Mock success indicator not found
     mock_locator = AsyncMock()
@@ -273,9 +248,9 @@ async def test_handle_waitlist_success_not_detected(waitlist_handler):
 
 
 @pytest.mark.asyncio
-async def test_extract_waitlist_details(waitlist_handler):
+async def test_extract_waitlist_details(waitlist_handler, waitlist_page):
     """Test extracting waitlist details from page."""
-    page = MockPage()
+    page = waitlist_page
     page.content_data = """
     <html>
         <body>

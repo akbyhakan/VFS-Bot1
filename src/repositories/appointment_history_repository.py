@@ -64,15 +64,6 @@ class AppointmentHistory:
 class AppointmentHistoryRepository(BaseRepository[AppointmentHistory]):
     """Repository for appointment history CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize appointment history repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _dict_to_appointment_history(self, data: Dict[str, Any]) -> AppointmentHistory:
         """
         Convert dictionary to AppointmentHistory entity.

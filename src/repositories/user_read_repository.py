@@ -15,15 +15,6 @@ from src.utils.encryption import decrypt_password
 class UserReadRepository(BaseRepository[User]):
     """Repository for user read operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize user read repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_user(self, row: Any) -> User:
         """
         Convert database row to User entity.

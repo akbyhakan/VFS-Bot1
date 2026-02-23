@@ -31,15 +31,6 @@ class TokenBlacklistEntry:
 class TokenBlacklistRepository(BaseRepository[TokenBlacklistEntry]):
     """Repository for token blacklist operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize token blacklist repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     async def get_by_id(self, id: int) -> Optional[TokenBlacklistEntry]:
         """
         Get token by ID (not applicable for blacklist - use jti instead).
