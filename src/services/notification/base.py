@@ -1,65 +1,22 @@
-"""Base notification types: ABC, config dataclasses, and type aliases."""
+"""Base notification types: ABC, config re-exports, and type aliases."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, Literal, Optional
+from typing import Literal
+
+from src.core.config.config_models import (
+    NotificationConfig,
+    TelegramConfig,
+)
 
 NotificationPriority = Literal["low", "normal", "high"]
 
-
-@dataclass
-class TelegramConfig:
-    """Telegram notification configuration."""
-
-    enabled: bool = False
-    bot_token: Optional[str] = None
-    chat_id: Optional[str] = None
-
-    def __repr__(self) -> str:
-        """Return repr with masked bot_token."""
-        if self.bot_token:
-            masked_token = "'***'"
-        else:
-            masked_token = "None"
-        return (
-            f"TelegramConfig(enabled={self.enabled}, bot_token={masked_token}, "
-            f"chat_id='{self.chat_id}')"
-        )
-
-
-@dataclass
-class NotificationConfig:
-    """Notification service configuration."""
-
-    telegram: TelegramConfig = field(default_factory=TelegramConfig)
-    timezone: str = "Europe/Istanbul"
-
-    def __repr__(self) -> str:
-        """Return repr with masked sensitive fields in nested configs."""
-        return f"NotificationConfig(telegram={repr(self.telegram)}, " f"timezone='{self.timezone}')"
-
-    @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "NotificationConfig":
-        """
-        Create NotificationConfig from dictionary (backward compatibility).
-
-        Args:
-            config_dict: Configuration dictionary
-
-        Returns:
-            NotificationConfig instance
-        """
-        telegram_data = config_dict.get("telegram", {})
-        telegram_config = TelegramConfig(
-            enabled=telegram_data.get("enabled", False),
-            bot_token=telegram_data.get("bot_token"),
-            chat_id=telegram_data.get("chat_id"),
-        )
-
-        return cls(
-            telegram=telegram_config,
-            timezone=config_dict.get("timezone", "Europe/Istanbul"),
-        )
+# Re-export for backward compatibility - all existing imports from base will continue to work
+__all__ = [
+    "TelegramConfig",
+    "NotificationConfig",
+    "NotificationPriority",
+    "NotificationChannel",
+]
 
 
 class NotificationChannel(ABC):

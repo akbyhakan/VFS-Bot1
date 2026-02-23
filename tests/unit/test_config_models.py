@@ -198,12 +198,14 @@ class TestNotificationConfig:
         assert config.telegram.chat_id == ""
         assert config.webhook_enabled is False
         assert config.webhook_url is None
+        assert config.timezone == "Europe/Istanbul"
 
     def test_from_dict_empty(self):
         """Test from_dict with empty dict."""
         config = NotificationConfig.from_dict({})
         assert config.telegram.enabled is False
         assert config.webhook_enabled is False
+        assert config.timezone == "Europe/Istanbul"
 
     def test_from_dict_with_telegram(self):
         """Test from_dict with telegram config."""
@@ -246,6 +248,49 @@ class TestNotificationConfig:
         assert config.webhook_enabled is True
         assert config.telegram.bot_token.get_secret_value() == "token"
         assert config.webhook_url == "https://example.com/hook"
+
+    def test_from_dict_with_timezone(self):
+        """Test from_dict with timezone field."""
+        data = {"timezone": "UTC"}
+        config = NotificationConfig.from_dict(data)
+        assert config.timezone == "UTC"
+
+    def test_from_dict_with_none_bot_token(self):
+        """Test from_dict handles None bot_token gracefully."""
+        data = {"telegram": {"enabled": True, "bot_token": None, "chat_id": None}}
+        config = NotificationConfig.from_dict(data)
+        assert config.telegram.enabled is True
+        assert config.telegram.bot_token.get_secret_value() == ""
+        assert config.telegram.bot_token_plain is None
+
+
+class TestTelegramConfigProperties:
+    """Tests for TelegramConfig properties and methods."""
+
+    def test_bot_token_plain_empty(self):
+        """bot_token_plain returns None for empty SecretStr."""
+        config = TelegramConfig()
+        assert config.bot_token_plain is None
+
+    def test_bot_token_plain_with_value(self):
+        """bot_token_plain returns plain string when token is set."""
+        config = TelegramConfig(bot_token="my_token_123")
+        assert config.bot_token_plain == "my_token_123"
+
+    def test_repr_masks_bot_token(self):
+        """__repr__ masks non-empty bot_token."""
+        config = TelegramConfig(enabled=True, bot_token="secret", chat_id="999")
+        r = repr(config)
+        assert "secret" not in r
+        assert "***" in r
+        assert "999" in r
+
+    def test_repr_shows_none_for_empty_token(self):
+        """__repr__ shows None when bot_token is empty."""
+        config = TelegramConfig()
+        r = repr(config)
+        assert "***" not in r
+        assert "None" in r
 
 
 class TestAppConfig:
@@ -320,7 +365,7 @@ class TestSecretStrMasking:
         repr_str = repr(config)
 
         assert "secret_token_123" not in repr_str
-        assert "**********" in repr_str or "SecretStr" in repr_str
+        assert "***" in repr_str
 
     def test_notification_config_does_not_mask_non_sensitive_fields(self):
         """Test that repr does not mask non-sensitive fields."""

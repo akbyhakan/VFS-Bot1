@@ -23,9 +23,9 @@ class TelegramChannel(NotificationChannel):
         self._config = config
         self._client: Optional[TelegramClient] = None
 
-        if self._config.enabled and self._config.bot_token:
+        if self._config.enabled and self._config.bot_token_plain:
             try:
-                self._client = TelegramClient(bot_token=self._config.bot_token)
+                self._client = TelegramClient(bot_token=self._config.bot_token_plain)
             except ImportError:
                 logger.warning("python-telegram-bot not installed")
             except Exception as e:
@@ -46,12 +46,12 @@ class TelegramChannel(NotificationChannel):
         if self._client is not None:
             return self._client
 
-        if not self._config.bot_token:
+        if not self._config.bot_token_plain:
             logger.error("Telegram bot_token missing")
             return None
 
         try:
-            self._client = TelegramClient(bot_token=self._config.bot_token)
+            self._client = TelegramClient(bot_token=self._config.bot_token_plain)
             return self._client
         except ImportError:
             logger.warning("python-telegram-bot not installed")
