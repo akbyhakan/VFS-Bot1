@@ -219,9 +219,11 @@ class BrowserPool:
             while True:
                 await asyncio.sleep(60)  # Check every minute
 
+                # Collect idle sessions under the lock, then release outside to avoid deadlock
+                # (release() also acquires self._lock and asyncio.Lock is not re-entrant)
+                sessions_to_close = []
                 async with self._lock:
                     idle_threshold = timedelta(minutes=self.idle_timeout_minutes)
-                    sessions_to_close = []
 
                     for session_id, browser in self._browsers.items():
                         if browser.is_idle:
@@ -231,16 +233,16 @@ class BrowserPool:
                                 if idle_duration > idle_threshold:
                                     sessions_to_close.append(session_id)
 
-                    # Close idle browsers
-                    for session_id in sessions_to_close:
-                        logger.info(
-                            f"Closing idle browser for session {session_id} "
-                            f"(idle > {self.idle_timeout_minutes}m)"
-                        )
-                        await self.release(session_id, close_browser=True)
+                # Close idle browsers outside the lock to avoid deadlock with release()
+                for session_id in sessions_to_close:
+                    logger.info(
+                        f"Closing idle browser for session {session_id} "
+                        f"(idle > {self.idle_timeout_minutes}m)"
+                    )
+                    await self.release(session_id, close_browser=True)
 
         except asyncio.CancelledError:
-            logger.debug("Cleanup task cancelled")
+            logger.debug("Periodic cleanup task cancelled")
             raise
         except Exception as e:
             logger.error(f"Error in periodic cleanup: {e}")

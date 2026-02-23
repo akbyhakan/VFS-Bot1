@@ -136,6 +136,23 @@ class TestVFSAuthTokenUpdate:
         # Expiry should be updated with default (60 minutes with buffer)
         assert auth.session.expires_at > before
 
+    def test_update_from_multiple_set_cookie_headers(self, auth):
+        """Test updating token when accesstoken is in the second Set-Cookie header."""
+        from multidict import CIMultiDict
+
+        data = {}
+        headers = CIMultiDict(
+            [
+                ("Set-Cookie", "session_id=abc123; Path=/; HttpOnly"),
+                ("Set-Cookie", "accesstoken=multi-cookie-token; Path=/; Secure"),
+            ]
+        )
+
+        result = auth.check_and_update_token_from_data(data, headers)
+
+        assert result is True
+        assert auth.session.access_token == "multi-cookie-token"
+
 
 class TestVFSSlotsTokenUpdate:
     """Test VFSSlots token update callback integration."""

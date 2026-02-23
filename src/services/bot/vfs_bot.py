@@ -409,6 +409,8 @@ class VFSBot:
         Returns:
             True if shutdown was requested during wait, False on normal timeout or trigger
         """
+        if self.shutdown_event.is_set():
+            return True
         shutdown_task = asyncio.create_task(self.shutdown_event.wait())
         trigger_task = asyncio.create_task(self._trigger_event.wait())
 
