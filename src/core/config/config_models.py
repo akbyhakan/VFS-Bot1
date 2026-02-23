@@ -309,47 +309,38 @@ class AppConfig(BaseModel):
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AppConfig":
         """Create from dictionary for backward compatibility."""
-        # Create nested configs
+        # Required configs with custom from_dict logic
         vfs = VFSConfig.from_dict(data.get("vfs", {}))
         bot = BotConfig.from_dict(data.get("bot", {}))
         captcha = CaptchaConfig.from_dict(data.get("captcha", {}))
         notifications = NotificationConfig.from_dict(data.get("notifications", {}))
+
+        # Optional configs - parse only if present in data
+        _OPTIONAL_CONFIGS = {
+            "anti_detection": AntiDetectionConfig,
+            "credentials": CredentialsConfig,
+            "appointments": AppointmentsConfig,
+            "human_behavior": HumanBehaviorConfig,
+            "session": SessionConfig,
+            "cloudflare": CloudflareConfig,
+            "proxy": ProxyConfig,
+            "selector_health_check": SelectorHealthCheckConfig,
+            "payment": PaymentConfig,
+            "alerts": AlertsConfig,
+            "database": DatabaseConfig,
+            "security": SecurityConfig,
+        }
+
+        optional_configs = {
+            key: model_cls(**data[key])
+            for key, model_cls in _OPTIONAL_CONFIGS.items()
+            if key in data
+        }
 
         return cls(
             vfs=vfs,
             bot=bot,
             captcha=captcha,
             notifications=notifications,
-            anti_detection=(
-                AntiDetectionConfig(**data.get("anti_detection", {}))
-                if "anti_detection" in data
-                else None
-            ),
-            credentials=(
-                CredentialsConfig(**data.get("credentials", {})) if "credentials" in data else None
-            ),
-            appointments=(
-                AppointmentsConfig(**data.get("appointments", {}))
-                if "appointments" in data
-                else None
-            ),
-            human_behavior=(
-                HumanBehaviorConfig(**data.get("human_behavior", {}))
-                if "human_behavior" in data
-                else None
-            ),
-            session=SessionConfig(**data.get("session", {})) if "session" in data else None,
-            cloudflare=(
-                CloudflareConfig(**data.get("cloudflare", {})) if "cloudflare" in data else None
-            ),
-            proxy=ProxyConfig(**data.get("proxy", {})) if "proxy" in data else None,
-            selector_health_check=(
-                SelectorHealthCheckConfig(**data.get("selector_health_check", {}))
-                if "selector_health_check" in data
-                else None
-            ),
-            payment=PaymentConfig(**data.get("payment", {})) if "payment" in data else None,
-            alerts=AlertsConfig(**data.get("alerts", {})) if "alerts" in data else None,
-            database=DatabaseConfig(**data.get("database", {})) if "database" in data else None,
-            security=SecurityConfig(**data.get("security", {})) if "security" in data else None,
+            **optional_configs,
         )
