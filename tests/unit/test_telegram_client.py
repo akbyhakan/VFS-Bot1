@@ -30,8 +30,6 @@ async def test_format_and_send_basic(telegram_client):
     assert result is True
     telegram_client._bot.send_message.assert_called_once()
     call_kwargs = telegram_client._bot.send_message.call_args
-    text = call_kwargs.kwargs.get("text") or call_kwargs.args[0] if call_kwargs.args else call_kwargs.kwargs["text"]
-    # Check the text is in the sent message
     sent_text = call_kwargs.kwargs.get("text", "")
     assert "Hello" in sent_text
     assert "World" in sent_text

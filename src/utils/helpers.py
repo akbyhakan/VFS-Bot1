@@ -122,11 +122,20 @@ async def smart_fill(
         element_description: Optional description for self-healing (e.g., "email input field")
     """
     if human_sim and hasattr(human_sim, "human_type"):
-        primary = lambda: human_sim.human_type(page, selector, text)
-        healed = lambda new_sel: human_sim.human_type(page, new_sel, text)
+
+        async def primary():
+            await human_sim.human_type(page, selector, text)
+
+        async def healed(new_sel):
+            await human_sim.human_type(page, new_sel, text)
+
     else:
-        primary = lambda: page.fill(selector, text)
-        healed = lambda new_sel: page.fill(new_sel, text)
+
+        async def primary():
+            await page.fill(selector, text)
+
+        async def healed(new_sel):
+            await page.fill(new_sel, text)
 
     await _smart_action(
         page=page,
@@ -163,11 +172,20 @@ async def smart_click(
         element_description: Optional description for self-healing (e.g., "submit button")
     """
     if human_sim and hasattr(human_sim, "human_click"):
-        primary = lambda: human_sim.human_click(page, selector)
-        healed = lambda new_sel: human_sim.human_click(page, new_sel)
+
+        async def primary():
+            await human_sim.human_click(page, selector)
+
+        async def healed(new_sel):
+            await human_sim.human_click(page, new_sel)
+
     else:
-        primary = lambda: page.click(selector)
-        healed = lambda new_sel: page.click(new_sel)
+
+        async def primary():
+            await page.click(selector)
+
+        async def healed(new_sel):
+            await page.click(new_sel)
 
     await _smart_action(
         page=page,
