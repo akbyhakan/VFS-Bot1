@@ -138,39 +138,24 @@ class AccountPool:
         """
         Acquire an account from the pool using LRU + cooldown strategy.
 
-        Algorithm:
-        1. Filter accounts where status = 'available' AND cooldown_until < NOW()
-        2. Exclude quarantined accounts (quarantine_until > NOW())
-        3. Sort remaining by last_used_at ASC (LRU first)
-        4. Select and mark first account as 'in_use'
-        5. Return None if no accounts available
+        Uses atomic SELECT ... FOR UPDATE SKIP LOCKED at the database level
+        to prevent race conditions across multiple workers/instances.
 
-        Thread-safe using asyncio.Lock.
+        Thread-safe using both asyncio.Lock (in-process) and database-level locking.
 
         Returns:
             PooledAccount if available, None otherwise
         """
         async with self._lock:
-            # Get available accounts (already filtered and LRU-sorted by repository)
-            available = await self.repo.get_available_accounts()
+            account_dict = await self.repo.acquire_next_available_account()
 
-            if not available:
+            if not account_dict:
                 logger.warning("No available accounts in pool")
-                return None
-
-            # Select first account (LRU)
-            account_dict = available[0]
-            account_id = account_dict["id"]
-
-            # Mark as in use
-            success = await self.repo.mark_account_in_use(account_id)
-            if not success:
-                logger.error(f"Failed to mark account {account_id} as in_use")
                 return None
 
             account = PooledAccount.from_dict(account_dict)
             logger.info(
-                f"Acquired account {account_id} (email: {account.email}, "
+                f"Acquired account {account.id} (email: {account.email}, "
                 f"total_uses: {account.total_uses}, last_used: {account.last_used_at})"
             )
             return account

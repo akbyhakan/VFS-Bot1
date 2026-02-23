@@ -13,7 +13,7 @@ from playwright.async_api import Page
 class ErrorCapture:
     """Capture comprehensive error context."""
 
-    def __init__(self, screenshots_dir: str = "screenshots/errors", cleanup_days: int = 7):
+    def __init__(self, screenshots_dir: str = "screenshots/errors", cleanup_days: int = 3):
         """
         Initialize error capture.
 
@@ -27,6 +27,7 @@ class ErrorCapture:
         self.max_errors = 100  # Keep last 100 errors
         self.cleanup_days = cleanup_days
         self._last_cleanup = time.time()
+        self._last_capture_time: float = 0.0
 
     async def capture(
         self,
@@ -38,6 +39,9 @@ class ErrorCapture:
         """
         Capture error with full context.
 
+        Includes rapid-fire protection: if called within RAPID_ERROR_COOLDOWN_SECONDS
+        of the last capture, returns a minimal record without writing files to disk.
+
         Args:
             page: Playwright page object
             error: Exception that occurred
@@ -47,6 +51,8 @@ class ErrorCapture:
         Returns:
             Error record with all captured data
         """
+        from ..constants import ErrorCapture as ErrorCaptureConstants
+
         timestamp = datetime.now(timezone.utc)
         error_id = timestamp.strftime("%Y%m%d_%H%M%S_%f")
 
@@ -59,6 +65,22 @@ class ErrorCapture:
             "context": context,
             "captures": captures,
         }
+
+        # Rapid-fire protection: skip disk writes if called too frequently
+        current_time = time.time()
+        cooldown = ErrorCaptureConstants.RAPID_ERROR_COOLDOWN_SECONDS
+        if current_time - self._last_capture_time < cooldown:
+            logger.debug(
+                f"Error capture skipped (rapid-fire cooldown {cooldown}s): {error_id}"
+            )
+            error_record["skipped"] = True
+            # Still add to in-memory list for dashboard visibility
+            self.errors.append(error_record)
+            if len(self.errors) > self.max_errors:
+                self.errors.pop(0)
+            return error_record
+
+        self._last_capture_time = current_time
 
         try:
             # 1. Full page screenshot
@@ -89,8 +111,6 @@ class ErrorCapture:
                 logger.warning(f"Could not capture HTML snapshot: {e}")
 
             # 4. Console logs
-            # Note: Console logs should be collected during page lifecycle
-            # This is just a placeholder - implement console log collection in bot
             error_record["console_logs"] = context.get("console_logs", [])
 
             # 5. Network activity
@@ -128,7 +148,7 @@ class ErrorCapture:
         return error_record
 
     async def _cleanup_old_errors(self) -> None:
-        """Clean up error files older than cleanup_days."""
+        """Clean up error files older than cleanup_days and enforce max file count."""
         from ..constants import ErrorCapture as ErrorCaptureConstants
 
         current_time = time.time()
@@ -144,14 +164,25 @@ class ErrorCapture:
         deleted_count = 0
         for file_path in self.screenshots_dir.glob("*"):
             if file_path.is_file():
-                # Check file modification time
                 file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
                 if file_mtime < cutoff_time:
                     file_path.unlink()
                     deleted_count += 1
 
+        # Enforce max file count to prevent unbounded disk growth
+        max_files = ErrorCaptureConstants.MAX_DISK_FILES
+        remaining_files = sorted(
+            (f for f in self.screenshots_dir.glob("*") if f.is_file()),
+            key=lambda f: f.stat().st_mtime,
+        )
+        if len(remaining_files) > max_files:
+            excess = len(remaining_files) - max_files
+            for file_path in remaining_files[:excess]:
+                file_path.unlink()
+                deleted_count += 1
+
         if deleted_count > 0:
-            logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days)")
+            logger.info(f"Cleaned up {deleted_count} old error files (>{self.cleanup_days} days or excess)")
 
     def get_recent_errors(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent errors for dashboard."""

@@ -181,6 +181,56 @@ class AccountPoolRepository(BaseRepository):
             result = await conn.execute(query, *params)
             return bool(result == "UPDATE 1")
 
+    async def acquire_next_available_account(self) -> Optional[Dict[str, Any]]:
+        """
+        Atomically acquire the next available account using SELECT FOR UPDATE SKIP LOCKED.
+
+        This is safe for multiple concurrent workers/instances sharing the same database.
+        Combines the SELECT and UPDATE in a single transaction to prevent TOCTOU races.
+
+        Returns:
+            Account dictionary with decrypted password if available, None otherwise
+        """
+        async with self.db.get_connection() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow("""
+                    UPDATE vfs_account_pool
+                    SET status = 'in_use',
+                        last_used_at = NOW()
+                    WHERE id = (
+                        SELECT id FROM vfs_account_pool
+                        WHERE is_active = TRUE
+                          AND status = 'available'
+                          AND (cooldown_until IS NULL OR cooldown_until <= NOW())
+                          AND (quarantine_until IS NULL OR quarantine_until <= NOW())
+                        ORDER BY last_used_at ASC NULLS FIRST
+                        LIMIT 1
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING id, email, password, phone, status,
+                              last_used_at, cooldown_until, quarantine_until,
+                              consecutive_failures, total_uses, is_active,
+                              created_at, updated_at
+                """)
+
+                if row is None:
+                    return None
+
+                account = dict(row)
+                # Decrypt password
+                try:
+                    account["password"] = decrypt_password(account["password"])
+                except Exception as e:
+                    logger.error(f"Failed to decrypt password for account {account['id']}: {e}")
+                    # Revert status since we can't use this account
+                    await conn.execute(
+                        "UPDATE vfs_account_pool SET status = 'available' WHERE id = $1",
+                        account["id"],
+                    )
+                    return None
+
+                return account
+
     async def mark_account_in_use(self, account_id: int) -> bool:
         """
         Mark account as in use.

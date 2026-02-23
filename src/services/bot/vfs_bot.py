@@ -1,7 +1,6 @@
 """VFS Bot orchestrator - coordinates all bot components."""
 
 import asyncio
-import copy
 import random
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -79,12 +78,12 @@ class VFSBot:
 
         # Initialize services context
         if services is None:
-            services = BotServiceFactory.create(copy.deepcopy(config))
+            services = BotServiceFactory.create(config)
         self.services = services
 
         # Initialize browser manager (needs anti-detection services)
         self.browser_manager = BrowserManager(
-            copy.deepcopy(self.config),
+            self.config,
             self.services.anti_detection.header_manager,
             self.services.anti_detection.proxy_manager,
         )
