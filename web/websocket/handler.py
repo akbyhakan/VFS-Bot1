@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 from loguru import logger
@@ -102,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def update_bot_stats(
-    slots_found: int = None, appointments_booked: int = None, active_users: int = None
+    slots_found: Optional[int] = None, appointments_booked: Optional[int] = None, active_users: Optional[int] = None
 ) -> None:
     """
     Update bot statistics and broadcast to clients.

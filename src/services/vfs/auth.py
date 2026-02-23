@@ -109,7 +109,10 @@ class VFSAuth:
         ) as response:
             # Handle 429 rate limiting
             if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                try:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                except (ValueError, TypeError):
+                    retry_after = 60
                 self.endpoint_limiter.on_rate_limited("login", retry_after)
                 logger.error(f"Rate limited by VFS on login (429), retry after {retry_after}s")
                 raise VFSRateLimitError(

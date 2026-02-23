@@ -78,7 +78,10 @@ class VFSSlots:
         async with self._session.get(f"{get_vfs_api_base()}/master/center") as response:
             # Handle 429 rate limiting
             if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                try:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                except (ValueError, TypeError):
+                    retry_after = 60
                 self.endpoint_limiter.on_rate_limited("centres", retry_after)
                 logger.error(f"Rate limited by VFS on centres (429), retry after {retry_after}s")
                 raise VFSRateLimitError(
@@ -129,7 +132,10 @@ class VFSSlots:
         ) as response:
             # Handle 429 rate limiting
             if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                try:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                except (ValueError, TypeError):
+                    retry_after = 60
                 self.endpoint_limiter.on_rate_limited("centres", retry_after)
                 logger.error(
                     f"Rate limited by VFS on visa categories (429), retry after {retry_after}s"
@@ -185,7 +191,10 @@ class VFSSlots:
         ) as response:
             # Handle 429 rate limiting
             if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                try:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                except (ValueError, TypeError):
+                    retry_after = 60
                 self.endpoint_limiter.on_rate_limited("centres", retry_after)
                 logger.error(
                     f"Rate limited by VFS on visa subcategories (429), "
@@ -248,7 +257,10 @@ class VFSSlots:
         ) as response:
             # Handle 429 rate limiting
             if response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                try:
+                    retry_after = int(response.headers.get("Retry-After", 60))
+                except (ValueError, TypeError):
+                    retry_after = 60
                 self.endpoint_limiter.on_rate_limited("slot_check", retry_after)
                 logger.error(f"Rate limited by VFS on slot check (429), retry after {retry_after}s")
                 raise VFSRateLimitError(
