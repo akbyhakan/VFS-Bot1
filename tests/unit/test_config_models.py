@@ -4,10 +4,22 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from src.core.config.config_models import (
+    AlertsConfig,
+    AntiDetectionConfig,
     AppConfig,
+    AppointmentsConfig,
     BotConfig,
     CaptchaConfig,
+    CloudflareConfig,
+    CredentialsConfig,
+    DatabaseConfig,
+    HumanBehaviorConfig,
     NotificationConfig,
+    PaymentConfig,
+    ProxyConfig,
+    SecurityConfig,
+    SelectorHealthCheckConfig,
+    SessionConfig,
     TelegramConfig,
     VFSConfig,
 )
@@ -335,6 +347,84 @@ class TestAppConfig:
         assert config.captcha.provider == "2captcha"
         assert config.captcha.api_key.get_secret_value() == "test_key"
         assert config.notifications.telegram.enabled is True
+
+    def test_from_dict_with_optional_configs(self):
+        """Test that optional config sections are parsed correctly when present."""
+        data = {
+            "vfs": {"centres": ["Test Centre"]},
+            "anti_detection": {"enabled": True},
+            "session": {"timeout": 600},
+        }
+        config = AppConfig.from_dict(data)
+        assert isinstance(config.anti_detection, AntiDetectionConfig)
+        assert config.anti_detection.enabled is True
+        assert isinstance(config.session, SessionConfig)
+        assert config.session.timeout == 600
+
+    def test_from_dict_optional_configs_none_when_absent(self):
+        """Test that optional keys absent from data remain None."""
+        config = AppConfig.from_dict({"vfs": {"centres": ["Test Centre"]}})
+        assert config.anti_detection is None
+        assert config.credentials is None
+        assert config.appointments is None
+        assert config.human_behavior is None
+        assert config.session is None
+        assert config.cloudflare is None
+        assert config.proxy is None
+        assert config.selector_health_check is None
+        assert config.payment is None
+        assert config.alerts is None
+        assert config.database is None
+        assert config.security is None
+
+    def test_from_dict_with_all_optional_configs(self):
+        """Test that all optional sections are parsed correctly when all are provided."""
+        import os
+
+        original_env = os.environ.get("ENV")
+        os.environ["ENV"] = "testing"
+        try:
+            data = {
+                "vfs": {"centres": ["Test Centre"]},
+                "anti_detection": {"enabled": False},
+                "credentials": {"admin_username": "admin"},
+                "appointments": {"max_concurrent": 2},
+                "human_behavior": {"enabled": True},
+                "session": {"timeout": 120},
+                "cloudflare": {"enabled": True},
+                "proxy": {"enabled": True},
+                "selector_health_check": {"enabled": True},
+                "payment": {"method": "manual"},
+                "alerts": {"enabled_channels": ["telegram"]},
+                "database": {"pool_size": 5},
+                "security": {},
+            }
+            config = AppConfig.from_dict(data)
+        finally:
+            if original_env is None:
+                os.environ.pop("ENV", None)
+            else:
+                os.environ["ENV"] = original_env
+        assert isinstance(config.anti_detection, AntiDetectionConfig)
+        assert isinstance(config.credentials, CredentialsConfig)
+        assert isinstance(config.appointments, AppointmentsConfig)
+        assert config.appointments.max_concurrent == 2
+        assert isinstance(config.human_behavior, HumanBehaviorConfig)
+        assert config.human_behavior.enabled is True
+        assert isinstance(config.session, SessionConfig)
+        assert config.session.timeout == 120
+        assert isinstance(config.cloudflare, CloudflareConfig)
+        assert config.cloudflare.enabled is True
+        assert isinstance(config.proxy, ProxyConfig)
+        assert config.proxy.enabled is True
+        assert isinstance(config.selector_health_check, SelectorHealthCheckConfig)
+        assert config.selector_health_check.enabled is True
+        assert isinstance(config.payment, PaymentConfig)
+        assert isinstance(config.alerts, AlertsConfig)
+        assert config.alerts.enabled_channels == ["telegram"]
+        assert isinstance(config.database, DatabaseConfig)
+        assert config.database.pool_size == 5
+        assert isinstance(config.security, SecurityConfig)
 
 
 class TestSecretStrMasking:
