@@ -47,7 +47,7 @@ def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
             data = yaml.safe_load(f)
 
         if not isinstance(data, dict):
-            logger.warning("country_profiles.yaml contains invalid data, returning empty list")
+            logger.warning("country_profiles.yaml contains invalid data, returning empty country data")
             return tuple()
 
         countries = []
