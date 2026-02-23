@@ -111,6 +111,62 @@ class BotController:
             self._configured = True
             logger.info("BotController configured with dependencies")
 
+    def _create_bot_instance(self) -> "VFSBot":
+        """
+        Create and return a VFSBot instance.
+
+        Uses the provided bot_factory if available, otherwise falls back
+        to a lazy import of VFSBot.
+
+        Returns:
+            Configured VFSBot instance
+        """
+        assert self._shutdown_event is not None
+        if self._bot_factory:
+            return self._bot_factory(
+                self._config, self._db, self._notifier, shutdown_event=self._shutdown_event
+            )
+
+        # Fallback to lazy import for backwards compatibility
+        from src.services.bot.vfs_bot import VFSBot
+
+        assert self._config is not None
+        assert self._db is not None
+        assert self._notifier is not None
+        return VFSBot(
+            self._config,  # type: ignore[arg-type]
+            self._db,
+            self._notifier,
+            shutdown_event=self._shutdown_event,
+        )
+
+    def _init_health_checker(self) -> None:
+        """
+        Initialize selector health monitoring on the current bot instance.
+
+        Sets ``self._bot.health_checker`` to a ``SelectorHealthCheck`` instance
+        when the feature is enabled in config, or to ``None`` otherwise.
+        """
+        assert self._bot is not None
+        if self._config and self._config.get("selector_health_check", {}).get("enabled", True):
+            try:
+                from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
+
+                selector_manager = CountryAwareSelectorManager()
+                self._bot.health_checker = SelectorHealthCheck(
+                    selector_manager,
+                    self._notifier,
+                    check_interval=self._config.get("selector_health_check", {}).get(
+                        "interval", 3600
+                    ),
+                )
+                logger.info("Selector health monitoring initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize selector health monitoring: {e}")
+                self._bot.health_checker = None
+        else:
+            self._bot.health_checker = None
+
     async def start_bot(self) -> Dict[str, str]:
         """
         Start the bot.
@@ -144,47 +200,11 @@ class BotController:
                 # Create shutdown event
                 self._shutdown_event = asyncio.Event()
 
-                # Create VFSBot instance using factory or fallback to lazy import
-                if self._bot_factory:
-                    self._bot = self._bot_factory(
-                        self._config, self._db, self._notifier, shutdown_event=self._shutdown_event
-                    )
-                else:
-                    # Fallback to lazy import for backwards compatibility
-                    from src.services.bot.vfs_bot import VFSBot
-
-                    assert self._config is not None
-                    assert self._db is not None
-                    assert self._notifier is not None
-                    self._bot = VFSBot(
-                        self._config,  # type: ignore[arg-type]
-                        self._db,
-                        self._notifier,
-                        shutdown_event=self._shutdown_event,
-                    )
+                # Create VFSBot instance
+                self._bot = self._create_bot_instance()
 
                 # Initialize selector health monitoring if enabled
-                assert self._bot is not None
-                if self._config and self._config.get("selector_health_check", {}).get(
-                    "enabled", True
-                ):
-                    try:
-                        from src.selector import CountryAwareSelectorManager, SelectorHealthCheck
-
-                        selector_manager = CountryAwareSelectorManager()
-                        self._bot.health_checker = SelectorHealthCheck(
-                            selector_manager,
-                            self._notifier,
-                            check_interval=self._config.get("selector_health_check", {}).get(
-                                "interval", 3600
-                            ),
-                        )
-                        logger.info("Selector health monitoring initialized")
-                    except Exception as e:
-                        logger.warning(f"Failed to initialize selector health monitoring: {e}")
-                        self._bot.health_checker = None
-                else:
-                    self._bot.health_checker = None
+                self._init_health_checker()
 
                 # Start bot as background task
                 self._bot_task = asyncio.create_task(

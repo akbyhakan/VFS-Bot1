@@ -4,6 +4,7 @@ from typing import Optional
 
 from loguru import logger
 
+from src.services.notification.telegram_safety import safe_telegram_call
 from src.utils.decorators import retry_async
 
 
@@ -107,6 +108,7 @@ class TelegramClient:
         backoff=2.0,
         exceptions=(ConnectionError, TimeoutError, OSError),
     )
+    @safe_telegram_call("send message")
     async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
         """
         Send a text message via Telegram with automatic message splitting.
@@ -119,23 +121,15 @@ class TelegramClient:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            # Split message if it exceeds Telegram's limit
-            message_chunks = self.split_message(text, self.TELEGRAM_MESSAGE_LIMIT)
+        # Split message if it exceeds Telegram's limit
+        message_chunks = self.split_message(text, self.TELEGRAM_MESSAGE_LIMIT)
 
-            # Send all chunks
-            for chunk in message_chunks:
-                await self._bot.send_message(chat_id=chat_id, text=chunk, parse_mode=parse_mode)
+        # Send all chunks
+        for chunk in message_chunks:
+            await self._bot.send_message(chat_id=chat_id, text=chunk, parse_mode=parse_mode)
 
-            logger.debug(f"Telegram message sent successfully ({len(message_chunks)} chunk(s))")
-            return True
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to send Telegram message: {e}")
-            return False
+        logger.debug(f"Telegram message sent successfully ({len(message_chunks)} chunk(s))")
+        return True
 
     @retry_async(
         max_retries=2,
@@ -143,6 +137,7 @@ class TelegramClient:
         backoff=2.0,
         exceptions=(ConnectionError, TimeoutError, OSError),
     )
+    @safe_telegram_call("send photo")
     async def send_photo(
         self,
         chat_id: str,
@@ -162,34 +157,26 @@ class TelegramClient:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            from pathlib import Path
+        from pathlib import Path
 
-            photo_file = Path(photo_path)
-            if not photo_file.exists():
-                logger.warning(f"Photo file not found: {photo_path}")
-                return False
-
-            # Truncate caption if it exceeds limit
-            final_caption = caption
-            if caption and len(caption) > self.TELEGRAM_CAPTION_LIMIT:
-                logger.warning(f"Caption exceeds {self.TELEGRAM_CAPTION_LIMIT} chars, truncating")
-                final_caption = caption[: self.TELEGRAM_CAPTION_LIMIT - 3] + "..."
-
-            with open(photo_file, "rb") as photo:
-                await self._bot.send_photo(
-                    chat_id=chat_id,
-                    photo=photo,
-                    caption=final_caption,
-                    parse_mode=parse_mode if final_caption else None,
-                )
-
-            logger.debug("Telegram photo sent successfully")
-            return True
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
+        photo_file = Path(photo_path)
+        if not photo_file.exists():
+            logger.warning(f"Photo file not found: {photo_path}")
             return False
-        except Exception as e:
-            logger.error(f"Failed to send Telegram photo: {e}")
-            return False
+
+        # Truncate caption if it exceeds limit
+        final_caption = caption
+        if caption and len(caption) > self.TELEGRAM_CAPTION_LIMIT:
+            logger.warning(f"Caption exceeds {self.TELEGRAM_CAPTION_LIMIT} chars, truncating")
+            final_caption = caption[: self.TELEGRAM_CAPTION_LIMIT - 3] + "..."
+
+        with open(photo_file, "rb") as photo:
+            await self._bot.send_photo(
+                chat_id=chat_id,
+                photo=photo,
+                caption=final_caption,
+                parse_mode=parse_mode if final_caption else None,
+            )
+
+        logger.debug("Telegram photo sent successfully")
+        return True

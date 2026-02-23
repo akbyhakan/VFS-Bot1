@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
+from src.services.notification.telegram_safety import safe_telegram_call
 
 from .base import (  # noqa: F401
     NotificationChannel,
@@ -15,6 +16,7 @@ from .base import (  # noqa: F401
 )
 from .channels.telegram import TelegramChannel
 from .channels.websocket import WebSocketChannel
+from .message_templates import NotificationTemplates
 
 
 class NotificationService:
@@ -178,14 +180,7 @@ class NotificationService:
             date: Appointment date
             time: Appointment time
         """
-        title = "🎉 Appointment Slot Found!"
-        message = f"""
-Centre: {centre}
-Date: {date}
-Time: {time}
-
-The bot is proceeding with the booking.
-"""
+        title, message = NotificationTemplates.slot_found(centre, date, time)
         await self.send_notification(title, message, priority="high")
 
     async def notify_booking_success(
@@ -200,15 +195,7 @@ The bot is proceeding with the booking.
             time: Appointment time
             reference: Booking reference number
         """
-        title = "✅ Appointment Booked Successfully!"
-        message = f"""
-Centre: {centre}
-Date: {date}
-Time: {time}
-Reference: {reference}
-
-Your appointment has been successfully booked!
-"""
+        title, message = NotificationTemplates.booking_success(centre, date, time, reference)
         await self.send_notification(title, message, priority="high")
 
     async def notify_error(self, error_type: str, details: str) -> None:
@@ -219,30 +206,21 @@ Your appointment has been successfully booked!
             error_type: Type of error
             details: Error details
         """
-        title = f"❌ Error: {error_type}"
-        message = f"""
-An error occurred during bot execution:
-
-{details}
-
-The bot will retry automatically.
-"""
+        title, message = NotificationTemplates.error(error_type, details)
         await self.send_notification(title, message, priority="normal")
 
     async def notify_bot_started(self) -> None:
         """Send notification when bot starts."""
-        title = "🚀 VFS-Bot Started"
-        message = "The bot has started checking for appointment slots."
+        title, message = NotificationTemplates.bot_started()
         await self.send_notification(title, message, priority="low")
 
     async def notify_bot_stopped(self) -> None:
         """Send notification when bot stops."""
-        title = "🛑 VFS-Bot Stopped"
-        message = "The bot has been stopped."
+        title, message = NotificationTemplates.bot_stopped()
         await self.send_notification(title, message, priority="low")
 
     async def notify_waitlist_success(
-        self, details: dict, screenshot_path: Optional[str] = None
+        self, details: Dict[str, Any], screenshot_path: Optional[str] = None
     ) -> None:
         """
         Send notification when waitlist registration is successful.
@@ -252,41 +230,9 @@ The bot will retry automatically.
             screenshot_path: Optional path to screenshot file
         """
         try:
-            # Build people list
-            people_list = ""
-            people = details.get("people", [])
-            if people:
-                for i, person in enumerate(people, 1):
-                    people_list += f"   {i}. {person}\n"
-            else:
-                people_list = "   (Information unavailable)\n"
-
-            # Format datetime - use helper to convert UTC to local time for display
-            from src.utils.helpers import format_local_datetime
-
             # Get timezone from config, default to Europe/Istanbul
             timezone_name = getattr(self.config, "timezone", "Europe/Istanbul")
-            dt_str = format_local_datetime(tz_name=timezone_name)
-
-            # Build message
-            title = "✅ BEKLEME LİSTESİNE KAYIT BAŞARILI!"
-            message = f"""
-📧 Giriş Yapılan Hesap: {details.get('login_email', 'N/A')}
-📋 Referans: {details.get('reference_number', 'N/A')}
-
-👥 Kayıt Yapılan Kişiler:
-{people_list}
-🌍 Ülke: {details.get('country', 'N/A')}
-📍 Merkez: {details.get('centre', 'N/A')}
-📂 Kategori: {details.get('category', 'N/A')}
-📁 Alt Kategori: {details.get('subcategory', 'N/A')}
-
-💰 Toplam Ücret: {details.get('total_amount', 'N/A')}
-
-📅 Tarih: {dt_str}
-
-ℹ️ Bekleme listesi durumunuz güncellendiğinde bilgilendirileceksiniz.
-"""
+            title, message = NotificationTemplates.waitlist_success(details, timezone_name)
 
             # Send notification with screenshot if available
             if self.telegram_enabled and screenshot_path:
@@ -297,6 +243,7 @@ The bot will retry automatically.
         except Exception as e:
             logger.error(f"Failed to send waitlist success notification: {e}")
 
+    @safe_telegram_call("notification with photo")
     async def _send_telegram_with_photo(self, title: str, message: str, photo_path: str) -> bool:
         """
         Send Telegram notification with photo attachment.
@@ -309,52 +256,44 @@ The bot will retry automatically.
         Returns:
             True if successful
         """
-        try:
-            from pathlib import Path
+        from pathlib import Path
 
-            if not self._telegram_channel:
-                logger.error("Telegram channel not initialized")
-                return False
-
-            chat_id = self.config.telegram.chat_id
-
-            if not chat_id:
-                logger.error("Telegram chat_id missing")
-                return False
-
-            photo_file = Path(photo_path)
-            if not photo_file.exists():
-                logger.warning(f"Screenshot file not found: {photo_path}")
-                # Fall back to text-only message
-                return await self._telegram_channel.send(title, message)
-
-            # Get client from channel
-            client = self._telegram_channel._get_or_create_client()
-            if client is None:
-                return False
-
-            # Escape markdown special characters to prevent injection
-            escaped_title = TelegramClient.escape_markdown(title)
-            escaped_message = TelegramClient.escape_markdown(message)
-            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
-
-            # Send photo with caption (client handles truncation)
-            success = await client.send_photo(
-                chat_id=chat_id, photo_path=photo_path, caption=full_message
-            )
-
-            # If caption was truncated, send remaining text as separate message
-            if success and len(full_message) > TelegramClient.TELEGRAM_CAPTION_LIMIT:
-                remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT - 3 :]
-                await client.send_message(chat_id=chat_id, text=remaining_text)
-
-            if success:
-                logger.info("Telegram notification with photo sent successfully")
-            return success
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
+        if not self._telegram_channel:
+            logger.error("Telegram channel not initialized")
             return False
-        except Exception as e:
-            logger.error(f"Telegram notification with photo failed: {e}")
+
+        chat_id = self.config.telegram.chat_id
+
+        if not chat_id:
+            logger.error("Telegram chat_id missing")
             return False
+
+        photo_file = Path(photo_path)
+        if not photo_file.exists():
+            logger.warning(f"Screenshot file not found: {photo_path}")
+            # Fall back to text-only message
+            return await self._telegram_channel.send(title, message)
+
+        # Get client from channel
+        client = self._telegram_channel._get_or_create_client()
+        if client is None:
+            return False
+
+        # Escape markdown special characters to prevent injection
+        escaped_title = TelegramClient.escape_markdown(title)
+        escaped_message = TelegramClient.escape_markdown(message)
+        full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
+
+        # Send photo with caption (client handles truncation)
+        success = await client.send_photo(
+            chat_id=chat_id, photo_path=photo_path, caption=full_message
+        )
+
+        # If caption was truncated, send remaining text as separate message
+        if success and len(full_message) > TelegramClient.TELEGRAM_CAPTION_LIMIT:
+            remaining_text = full_message[TelegramClient.TELEGRAM_CAPTION_LIMIT - 3 :]
+            await client.send_message(chat_id=chat_id, text=remaining_text)
+
+        if success:
+            logger.info("Telegram notification with photo sent successfully")
+        return success
