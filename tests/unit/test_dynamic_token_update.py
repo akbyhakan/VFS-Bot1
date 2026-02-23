@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+from multidict import CIMultiDict
 
 from src.core.rate_limiting import EndpointRateLimiter
 from src.services.vfs.auth import VFSAuth
@@ -46,7 +47,7 @@ class TestVFSAuthTokenUpdate:
         """Test that method returns False when no session exists."""
         auth.session = None
         data = {"accessToken": "new-token"}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
         assert result is False
@@ -54,7 +55,7 @@ class TestVFSAuthTokenUpdate:
     def test_update_from_response_body_access_token(self, auth):
         """Test updating token from response body with accessToken key."""
         data = {"accessToken": "new-token", "refreshToken": "new-refresh", "expiresIn": 60}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -67,7 +68,7 @@ class TestVFSAuthTokenUpdate:
     def test_update_from_response_body_snake_case(self, auth):
         """Test updating token from response body with access_token key."""
         data = {"access_token": "new-snake-token", "refresh_token": "new-refresh-snake"}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -78,7 +79,7 @@ class TestVFSAuthTokenUpdate:
     def test_update_from_set_cookie_header(self, auth):
         """Test updating token from Set-Cookie header."""
         data = {}
-        headers = {"Set-Cookie": "accesstoken=cookie-token; Path=/; HttpOnly"}
+        headers = CIMultiDict([("Set-Cookie", "accesstoken=cookie-token; Path=/; HttpOnly")])
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -88,7 +89,7 @@ class TestVFSAuthTokenUpdate:
     def test_no_update_when_token_same(self, auth):
         """Test that no update occurs when token is the same."""
         data = {"accessToken": "old-token"}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -97,7 +98,7 @@ class TestVFSAuthTokenUpdate:
     def test_no_update_when_no_token_in_response(self, auth):
         """Test that no update occurs when response has no token."""
         data = {"someOtherField": "value"}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -106,7 +107,7 @@ class TestVFSAuthTokenUpdate:
     def test_data_is_list(self, auth):
         """Test handling when data is a list instead of dict."""
         data = [{"id": "1", "name": "Test"}]
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -116,7 +117,7 @@ class TestVFSAuthTokenUpdate:
         """Test that expiry time is updated when expiresIn is provided."""
         before = datetime.now(timezone.utc)
         data = {"accessToken": "new-token", "expiresIn": 120}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -128,7 +129,7 @@ class TestVFSAuthTokenUpdate:
         """Test that default expiry is used when expiresIn is not provided."""
         before = datetime.now(timezone.utc)
         data = {"accessToken": "new-token"}
-        headers = {}
+        headers = CIMultiDict()
 
         result = auth.check_and_update_token_from_data(data, headers)
 
@@ -138,8 +139,6 @@ class TestVFSAuthTokenUpdate:
 
     def test_update_from_multiple_set_cookie_headers(self, auth):
         """Test updating token when accesstoken is in the second Set-Cookie header."""
-        from multidict import CIMultiDict
-
         data = {}
         headers = CIMultiDict(
             [
