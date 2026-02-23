@@ -308,9 +308,9 @@ async def run_both_mode(config: BotConfigDict) -> None:
         # Start the bot via controller
         logger.info("Starting bot via BotController...")
         start_result = await controller.start_bot()
-        if start_result["status"] != "success":
+        if start_result.get("status") != "success":
             logger.error(
-                f"Bot failed to start: {start_result['message']}. "
+                f"Bot failed to start: {start_result.get('message', 'unknown error')}. "
                 f"Web dashboard will start in degraded mode."
             )
         else:

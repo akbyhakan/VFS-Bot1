@@ -49,8 +49,29 @@ class BookingValidator:
         Returns:
             Dict with match status and details
         """
-        required_capacity = reservation["person_count"]
-        preferred_dates = [self.normalize_date(d) for d in reservation["preferred_dates"]]
+        required_capacity = reservation.get("person_count")
+        if required_capacity is None:
+            logger.error("Missing 'person_count' in reservation data")
+            return {
+                "match": False,
+                "capacity_match": False,
+                "date_match": False,
+                "found_capacity": 0,
+                "found_date": None,
+                "message": "Missing person_count in reservation data",
+            }
+        preferred_dates_raw = reservation.get("preferred_dates")
+        if not preferred_dates_raw:
+            logger.error("Missing 'preferred_dates' in reservation data")
+            return {
+                "match": False,
+                "capacity_match": False,
+                "date_match": False,
+                "found_capacity": 0,
+                "found_date": None,
+                "message": "Missing preferred_dates in reservation data",
+            }
+        preferred_dates = [self.normalize_date(d) for d in preferred_dates_raw]
 
         page_content = await page.content()
 

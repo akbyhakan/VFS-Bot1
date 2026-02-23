@@ -101,7 +101,8 @@ class PasswordEncryption:
             return True
         except InvalidToken:
             return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Unexpected error in can_decrypt: {e}")
             return False
 
     def needs_migration(self, encrypted_data: str) -> bool:
@@ -132,9 +133,11 @@ class PasswordEncryption:
             except InvalidToken:
                 # Cannot be decrypted at all
                 return False
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Unexpected error checking old key decryption: {e}")
                 return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Unexpected error in needs_migration: {e}")
             return False
 
     def migrate_to_new_key(self, encrypted_data: str) -> str:

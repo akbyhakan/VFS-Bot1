@@ -2,6 +2,7 @@
 
 from typing import List
 
+from loguru import logger
 from playwright.async_api import Page
 
 from src.constants import DOUBLE_MATCH_PATTERNS, TURKISH_MONTHS  # noqa: F401
@@ -29,8 +30,8 @@ def resolve_selector(selector_key: str) -> List[str]:
         all_selectors = manager.get_all(path)
         if all_selectors:
             return all_selectors
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Selector resolution failed for '{path}': {e}")
 
     # Fallback: try the key as-is (direct CSS/XPath selector)
     return [selector_key]
