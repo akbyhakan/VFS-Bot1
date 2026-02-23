@@ -658,15 +658,47 @@ VFS-Bot1/
 │   ├── repositories/                # Repository pattern
 │   │   ├── base.py                  # Base CRUD operations
 │   │   ├── user_repository.py       # User operations
+│   │   ├── user_entity.py           # User entity model
+│   │   ├── user_read_repository.py  # User read operations (CQRS)
+│   │   ├── user_write_repository.py # User write operations (CQRS)
 │   │   ├── account_pool_repository.py  # Account pool
 │   │   ├── appointment_repository.py   # Appointment operations
+│   │   ├── appointment_request_repository.py  # Appointment request operations
+│   │   ├── appointment_history_repository.py  # Appointment history tracking
 │   │   ├── audit_log_repository.py  # Audit logs
+│   │   ├── dropdown_cache_repository.py  # Dropdown cache management
+│   │   ├── log_repository.py        # Log operations
 │   │   ├── payment_repository.py    # Payment card management
 │   │   ├── proxy_repository.py      # Proxy management
+│   │   ├── token_blacklist_repository.py  # Token blacklist management
 │   │   └── webhook_repository.py    # Webhook management
 │   ├── selector/                    # Adaptive selector system
 │   ├── services/
 │   │   ├── bot/                     # VFS bot core logic
+│   │   │   ├── vfs_bot.py           # Main bot orchestrator
+│   │   │   ├── browser_manager.py   # Browser lifecycle management
+│   │   │   ├── auth_service.py      # Authentication & OTP
+│   │   │   ├── slot_checker.py      # Slot availability checking
+│   │   │   ├── circuit_breaker_service.py  # Fault tolerance
+│   │   │   ├── error_handler.py     # Error capture & screenshots
+│   │   │   ├── booking_workflow.py  # Main booking workflow orchestrator
+│   │   │   ├── booking_executor.py  # Booking execution and confirmation
+│   │   │   ├── reservation_builder.py  # Reservation data structure builder
+│   │   │   ├── mission_processor.py # Multi-mission appointment processing
+│   │   │   ├── page_state_detector.py  # Page state detection service
+│   │   │   ├── waitlist_handler.py  # Waitlist management service
+│   │   │   └── service_context.py   # Service dependency injection contexts
+│   │   ├── booking/                 # Booking orchestration
+│   │   │   ├── booking_orchestrator.py  # Booking flow coordinator
+│   │   │   ├── form_filler.py       # Form filling automation
+│   │   │   ├── slot_selector.py     # Slot selection logic
+│   │   │   ├── payment_handler.py   # Payment processing
+│   │   │   ├── booking_validator.py # Booking validation
+│   │   │   └── selector_utils.py    # Selector utilities
+│   │   ├── session/                 # Session management & recovery
+│   │   ├── scheduling/              # Scheduling & cleanup
+│   │   │   ├── adaptive_scheduler.py  # Adaptive scheduling
+│   │   │   └── cleanup_service.py   # Cleanup service
 │   │   ├── notification/            # Telegram/Email notifications
 │   │   ├── data_sync/               # Dropdown synchronization
 │   │   ├── otp_manager/             # OTP management (Email/SMS)
@@ -674,6 +706,9 @@ VFS-Bot1/
 │   │   ├── payment_service.py       # Payment processing
 │   │   ├── slot_analyzer.py         # Slot pattern analysis
 │   │   └── appointment_deduplication.py  # Duplicate prevention
+│   ├── middleware/                  # Request tracking & correlation
+│   ├── types/                       # TypedDict definitions
+│   ├── constants/                   # Application constants
 │   └── utils/                       # Utility modules
 │       ├── anti_detection/          # TLS, fingerprint, human simulation
 │       ├── security/                # Rate limiting, session, proxy
@@ -867,68 +902,6 @@ pytest tests/ --cov=src --cov-report=html
 
 # Run specific test file
 pytest tests/test_bot.py -v
-```
-
-## 📁 Project Structure
-
-```
-VFS-Bot1/
-├── src/
-│   ├── core/                  # Framework (config, auth, infra, exceptions)
-│   │   ├── config/            # Configuration management
-│   │   │   ├── config_loader.py   # YAML config loader
-│   │   │   ├── config_validator.py
-│   │   │   └── env_validator.py   # Environment validation
-│   │   ├── infra/             # Infrastructure modules
-│   │   │   ├── runners.py     # Application run modes
-│   │   │   ├── shutdown.py    # Graceful shutdown
-│   │   │   ├── startup.py     # Environment & dependency validation
-│   │   │   ├── startup_validator.py  # Security warnings
-│   │   │   └── retry.py       # Retry strategies
-│   │   ├── logger.py          # Structured logging (Loguru)
-│   │   ├── auth.py            # JWT authentication
-│   │   ├── security.py        # API key management
-│   │   ├── environment.py     # Environment detection
-│   │   ├── bot_controller.py  # Bot lifecycle control
-│   │   └── exceptions.py      # Custom exception hierarchy
-│   ├── models/                # Database interface & Pydantic schemas
-│   │   └── database.py        # PostgreSQL operations
-│   ├── repositories/          # Data access layer (Repository pattern)
-│   ├── services/              # Business logic
-│   │   ├── bot/               # Main bot logic (modular)
-│   │   ├── booking/           # Booking orchestration
-│   │   ├── session/           # Session management & recovery
-│   │   ├── notification/      # Telegram & Email notifications
-│   │   ├── data_sync/         # Dropdown sync & centre fetcher
-│   │   ├── captcha_solver.py  # Captcha solving
-│   │   └── slot_analyzer.py   # Slot pattern analysis
-│   ├── selector/              # Adaptive CSS/semantic selector system
-│   ├── constants/             # Application constants
-│   ├── middleware/            # Request tracking & correlation
-│   ├── types/                 # TypedDict definitions
-│   └── utils/                 # Utilities (anti-detection, security, helpers)
-├── web/                       # Web dashboard
-│   ├── app.py                 # FastAPI application
-│   ├── routes/                # API route modules
-│   ├── models/                # Web-specific models
-│   ├── state/                 # Bot state management
-│   ├── websocket/             # WebSocket manager
-│   ├── static/                # CSS, JavaScript, frontend build
-│   └── templates/             # HTML templates
-├── frontend/                  # React + TypeScript + Vite SPA
-├── config/                    # Configuration files (YAML, selectors)
-├── tests/                     # Test suite (unit, integration, e2e, load)
-├── alembic/                   # Database migrations
-├── monitoring/                # Prometheus/Grafana configs
-├── docs/                      # Documentation (20+ guides)
-├── scripts/                   # Helper scripts
-├── logs/                      # Log files (gitignored)
-├── screenshots/               # Screenshots (gitignored)
-├── main.py                    # Entry point (4-phase startup)
-├── pyproject.toml             # Project metadata, dependencies & tool config
-├── requirements.lock          # Pinned dependencies (generated from pyproject.toml)
-├── Dockerfile                 # Multi-stage Docker build
-└── docker-compose.yml         # Docker Compose setup
 ```
 
 ## 💳 Payment Security (PCI-DSS Compliant)

@@ -212,21 +212,21 @@ npm run build  # Outputs to ../web/static/dist
 ## 🌐 API Integration
 
 ### Implemented Endpoints
-- ✅ `POST /api/auth/login` - Authentication
-- ✅ `GET /api/status` - Bot status
-- ✅ `POST /api/bot/start` - Start bot
-- ✅ `POST /api/bot/stop` - Stop bot
-- ✅ `GET /api/logs` - Fetch logs
-- ✅ `GET /api/metrics` - Bot metrics
+- ✅ `POST /api/v1/auth/login` - Authentication
+- ✅ `GET /api/status` - Bot status (non-versioned)
+- ✅ `POST /api/v1/bot/start` - Start bot
+- ✅ `POST /api/v1/bot/stop` - Stop bot
+- ✅ `GET /api/v1/bot/logs` - Fetch logs
+- ✅ `GET /api/metrics` - Bot metrics (non-versioned)
 - ✅ `GET /health` - Health check
 - ✅ `WS /ws` - WebSocket connection
 
 ### New User Management Endpoints
-- ✅ `GET /api/users` - List all users
-- ✅ `POST /api/users` - Create user
-- ✅ `PUT /api/users/{id}` - Update user
-- ✅ `DELETE /api/users/{id}` - Delete user
-- ✅ `PATCH /api/users/{id}` - Toggle user status
+- ✅ `GET /api/v1/users` - List all users
+- ✅ `POST /api/v1/users` - Create user
+- ✅ `PUT /api/v1/users/{id}` - Update user
+- ✅ `DELETE /api/v1/users/{id}` - Delete user
+- ✅ `PATCH /api/v1/users/{id}` - Toggle user status
 
 ## 🔄 Real-time Features
 
@@ -296,19 +296,19 @@ npm run build  # Outputs to ../web/static/dist
 # New routes
 GET /                   → React SPA
 GET /{path}            → React SPA (client-side routing)
-GET /api/users         → List users
-POST /api/users        → Create user
-PUT /api/users/{id}    → Update user
-DELETE /api/users/{id} → Delete user
-PATCH /api/users/{id}  → Toggle user status
+GET /api/v1/users      → List users
+POST /api/v1/users     → Create user
+PUT /api/v1/users/{id} → Update user
+DELETE /api/v1/users/{id} → Delete user
+PATCH /api/v1/users/{id}  → Toggle user status
 
 # Existing routes (unchanged)
-POST /api/auth/login   → JWT login
-GET /api/status        → Bot status
-POST /api/bot/start    → Start bot
-POST /api/bot/stop     → Stop bot
-GET /api/logs          → Get logs
-WS /ws                 → WebSocket
+POST /api/v1/auth/login → JWT login
+GET /api/status         → Bot status
+POST /api/v1/bot/start  → Start bot
+POST /api/v1/bot/stop   → Stop bot
+GET /api/v1/bot/logs    → Get logs
+WS /ws                  → WebSocket
 ```
 
 ## 📝 Documentation

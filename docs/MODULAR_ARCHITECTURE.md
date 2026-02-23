@@ -14,7 +14,14 @@ src/services/bot/
 ├── auth_service.py                # Authentication & OTP (~157 lines)
 ├── slot_checker.py                # Slot availability (~133 lines)
 ├── circuit_breaker_service.py     # Fault tolerance (~141 lines)
-└── error_handler.py               # Error capture & screenshots (~131 lines)
+├── error_handler.py               # Error capture & screenshots (~131 lines)
+├── booking_workflow.py            # Main booking workflow orchestrator
+├── booking_executor.py            # Booking execution and confirmation
+├── reservation_builder.py         # Reservation data structure builder
+├── mission_processor.py           # Multi-mission appointment processing
+├── page_state_detector.py         # Page state detection
+├── waitlist_handler.py            # Waitlist handling
+└── service_context.py             # Service context and dependency factories
 ```
 
 ## 🎯 Component Responsibilities
