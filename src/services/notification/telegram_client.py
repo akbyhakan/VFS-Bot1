@@ -5,7 +5,7 @@ from typing import Optional
 from loguru import logger
 
 from src.services.notification.telegram_safety import safe_telegram_call
-from src.utils.decorators import retry_async
+from src.core.infra.retry import get_telegram_retry
 
 
 class TelegramClient:
@@ -102,12 +102,7 @@ class TelegramClient:
 
         return chunks
 
-    @retry_async(
-        max_retries=2,
-        delay=1.0,
-        backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError),
-    )
+    @get_telegram_retry()
     @safe_telegram_call("send message")
     async def send_message(self, chat_id: str, text: str, parse_mode: str = "Markdown") -> bool:
         """
@@ -131,12 +126,7 @@ class TelegramClient:
         logger.debug(f"Telegram message sent successfully ({len(message_chunks)} chunk(s))")
         return True
 
-    @retry_async(
-        max_retries=2,
-        delay=1.0,
-        backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError),
-    )
+    @get_telegram_retry()
     @safe_telegram_call("send photo")
     async def send_photo(
         self,

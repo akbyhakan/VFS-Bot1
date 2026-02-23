@@ -3,7 +3,7 @@
 import asyncio
 import functools
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
+from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 from loguru import logger
 
@@ -101,60 +101,6 @@ def handle_errors(
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
-
-    return decorator
-
-
-def retry_async(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-    exceptions: Tuple[Type[BaseException], ...] = (ConnectionError, TimeoutError, OSError),
-) -> Callable[[F], F]:
-    """
-    Decorator to retry async functions with exponential backoff.
-
-    Args:
-        max_retries: Maximum number of retry attempts
-        delay: Initial delay between retries
-        backoff: Backoff multiplier
-        exceptions: Tuple of exceptions to catch and retry (default: network/IO errors)
-
-    Example:
-        @retry_async(max_retries=3, delay=1.0)
-        async def flaky_operation():
-            ...
-    """
-
-    def decorator(func: F) -> F:
-        @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception: Optional[BaseException] = None
-            current_delay = delay
-
-            for attempt in range(max_retries + 1):
-                try:
-                    return await func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    if attempt < max_retries:
-                        logger.warning(
-                            f"{func.__name__} failed "
-                            f"(attempt {attempt + 1}/{max_retries + 1}): {e}. "
-                            f"Retrying in {current_delay:.1f}s..."
-                        )
-                        await asyncio.sleep(current_delay)
-                        current_delay *= backoff
-                    else:
-                        logger.error(
-                            f"{func.__name__} failed after {max_retries + 1} attempts: {e}"
-                        )
-
-            if last_exception:
-                raise last_exception
-            raise RuntimeError("Unexpected error in retry logic")
-
-        return wrapper  # type: ignore[return-value]
 
     return decorator
 

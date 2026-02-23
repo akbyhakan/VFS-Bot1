@@ -8,6 +8,7 @@ from .retry import (
     get_network_retry,
     get_rate_limit_retry,
     get_slot_check_retry,
+    get_telegram_retry,
 )
 from .shutdown import (
     SHUTDOWN_TIMEOUT,
@@ -30,6 +31,7 @@ __all__ = [
     "get_slot_check_retry",
     "get_network_retry",
     "get_rate_limit_retry",
+    "get_telegram_retry",
     "validate_environment",
     "verify_critical_dependencies",
     "log_security_warnings",

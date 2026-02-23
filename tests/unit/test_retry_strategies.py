@@ -15,6 +15,7 @@ from src.core.infra.retry import (
     get_network_retry,
     get_rate_limit_retry,
     get_slot_check_retry,
+    get_telegram_retry,
 )
 
 
@@ -176,3 +177,28 @@ class TestRetryStrategies:
         result = test_func()
         assert result == "success"
         assert counter["calls"] == 1
+
+    def test_get_telegram_retry_returns_decorator(self):
+        """Test that get_telegram_retry returns a retry decorator."""
+        retry_decorator = get_telegram_retry()
+        assert retry_decorator is not None
+        assert callable(retry_decorator)
+
+    def test_telegram_retry_decorator_usage(self):
+        """Test using telegram retry decorator with ConnectionError."""
+        from unittest.mock import patch
+
+        retry_decorator = get_telegram_retry()
+        counter = {"calls": 0}
+
+        @retry_decorator
+        def test_func():
+            counter["calls"] += 1
+            if counter["calls"] < 2:
+                raise ConnectionError("Connection failed")
+            return "sent"
+
+        with patch("time.sleep"):
+            result = test_func()
+        assert result == "sent"
+        assert counter["calls"] == 2
