@@ -17,18 +17,6 @@ from src.utils.helpers import (
 
 
 @pytest.fixture
-def mock_page():
-    """Create a mock Playwright page."""
-    page = AsyncMock()
-    page.fill = AsyncMock()
-    page.click = AsyncMock()
-    page.wait_for_selector = AsyncMock()
-    page.goto = AsyncMock()
-    page.screenshot = AsyncMock()
-    return page
-
-
-@pytest.fixture
 def mock_human_sim():
     """Create a mock HumanSimulator."""
     human_sim = MagicMock()

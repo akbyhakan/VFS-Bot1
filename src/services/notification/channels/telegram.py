@@ -80,11 +80,9 @@ class TelegramChannel(NotificationChannel):
         if client is None:
             return False
 
-        escaped_title = TelegramClient.escape_markdown(title)
-        escaped_message = TelegramClient.escape_markdown(message)
-        full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
-
-        success = await client.send_message(chat_id=self._config.chat_id, text=full_message)
+        success = await client.format_and_send(
+            chat_id=self._config.chat_id, title=title, message=message
+        )
 
         if success:
             logger.info("Telegram notification sent successfully")

@@ -225,3 +225,44 @@ def test_telegram_retry_os_error():
         result = always_os_errors()
     assert result == "success"
     assert attempt_count[0] == 2
+
+
+def test_make_retry_factory_produces_callable():
+    """Test that _make_retry factory returns a callable decorator."""
+    from src.core.infra.retry import _make_retry
+    from tenacity import wait_fixed
+
+    decorator = _make_retry(
+        attempts=2,
+        wait_strategy=wait_fixed(0),
+        exception_types=ValueError,
+    )
+    assert decorator is not None
+    assert callable(decorator)
+
+
+def test_make_retry_factory_reraises_after_max_attempts():
+    """Test that _make_retry reraises after exhausting all attempts."""
+    from unittest.mock import patch
+
+    from src.core.infra.retry import _make_retry
+    from tenacity import wait_fixed
+
+    decorator = _make_retry(
+        attempts=2,
+        wait_strategy=wait_fixed(0),
+        exception_types=ValueError,
+    )
+
+    attempt_count = [0]
+
+    @decorator
+    def always_fails():
+        attempt_count[0] += 1
+        raise ValueError("always fails")
+
+    with patch("time.sleep"):
+        with pytest.raises(ValueError):
+            always_fails()
+
+    assert attempt_count[0] == 2

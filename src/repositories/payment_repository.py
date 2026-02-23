@@ -55,15 +55,6 @@ class PaymentCard:
 class PaymentRepository(BaseRepository[PaymentCard]):
     """Repository for payment card CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize payment repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     async def get_by_id(self, id: int) -> Optional[PaymentCard]:
         """
         Get payment card by ID with decrypted card number.

@@ -55,15 +55,6 @@ class AuditLogEntry:
 class AuditLogRepository(BaseRepository[AuditLogEntry]):
     """Repository for audit log CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize audit log repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_entry(self, row: Any) -> AuditLogEntry:
         """
         Convert database row to AuditLogEntry entity.

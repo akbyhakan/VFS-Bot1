@@ -46,15 +46,6 @@ class Webhook:
 class WebhookRepository(BaseRepository[Webhook]):
     """Repository for webhook CRUD operations."""
 
-    def __init__(self, database: "Database"):
-        """
-        Initialize webhook repository.
-
-        Args:
-            database: Database instance
-        """
-        super().__init__(database)
-
     def _row_to_webhook(self, row: Any) -> Webhook:
         """
         Convert database row to Webhook entity.

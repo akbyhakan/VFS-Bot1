@@ -411,3 +411,40 @@ class TestXForwardedFor:
         proxies2 = _get_trusted_proxies()
         assert "10.0.0.1" in proxies2
         assert "192.168.1.1" not in proxies2
+
+
+class TestAuthServiceSanitizeError:
+    """Tests for AuthService._sanitize_error static method."""
+
+    def test_sanitize_error_redacts_password(self):
+        """Test _sanitize_error replaces password with [REDACTED]."""
+        from src.services.bot.auth_service import AuthService
+
+        error = Exception("Login failed with password mysecret123")
+        result = AuthService._sanitize_error(error, "mysecret123")
+        assert "mysecret123" not in result
+        assert "[REDACTED]" in result
+
+    def test_sanitize_error_no_password_match(self):
+        """Test _sanitize_error returns unchanged message when password absent."""
+        from src.services.bot.auth_service import AuthService
+
+        error = Exception("Network timeout occurred")
+        result = AuthService._sanitize_error(error, "somepassword")
+        assert result == "Network timeout occurred"
+
+    def test_sanitize_error_empty_password(self):
+        """Test _sanitize_error handles empty password gracefully."""
+        from src.services.bot.auth_service import AuthService
+
+        error = Exception("Something went wrong")
+        result = AuthService._sanitize_error(error, "")
+        assert result == "Something went wrong"
+
+    def test_sanitize_error_preserves_message_without_password(self):
+        """Test _sanitize_error doesn't alter messages that don't contain password."""
+        from src.services.bot.auth_service import AuthService
+
+        error = Exception("Connection refused to host example.com")
+        result = AuthService._sanitize_error(error, "hunter2")
+        assert result == "Connection refused to host example.com"

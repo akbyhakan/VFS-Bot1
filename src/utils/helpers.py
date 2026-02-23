@@ -47,6 +47,57 @@ def mask_sensitive_data(text: str) -> str:
     return text
 
 
+async def _smart_action(
+    page: Page,
+    selector: str,
+    primary_action,
+    healed_action,
+    action_name: str,
+    delay: Optional[float] = None,
+    self_healing: Any = None,
+    selector_path: Optional[str] = None,
+    element_description: Optional[str] = None,
+) -> None:
+    """
+    Common self-healing action helper for smart_fill and smart_click.
+
+    Args:
+        page: Playwright page object
+        selector: Element selector
+        primary_action: Async callable for the primary action
+        healed_action: Async callable accepting new_selector for the healed action
+        action_name: Human-readable action name for error messages
+        delay: Optional delay before action (seconds)
+        self_healing: Optional SelectorSelfHealing instance
+        selector_path: Optional selector path for self-healing
+        element_description: Optional description for self-healing
+    """
+    if delay:
+        await asyncio.sleep(delay)
+
+    try:
+        await primary_action()
+    except Exception as e:
+        if self_healing and selector_path and element_description:
+            logger.info(f"Selector failed: {selector}, attempting self-healing...")
+            try:
+                new_selector = await self_healing.attempt_heal(
+                    page=page,
+                    selector_path=selector_path,
+                    failed_selector=selector,
+                    element_description=element_description,
+                )
+                if new_selector:
+                    logger.info(f"Self-healing found new selector: {new_selector}")
+                    await healed_action(new_selector)
+                    return
+            except Exception as heal_error:
+                logger.warning(f"Self-healing failed: {heal_error}")
+
+        logger.error(f"Failed to {action_name} selector '{selector}': {e}")
+        raise
+
+
 async def smart_fill(
     page: Page,
     selector: str,
@@ -70,40 +121,33 @@ async def smart_fill(
         selector_path: Optional selector path for self-healing (e.g., "login.email")
         element_description: Optional description for self-healing (e.g., "email input field")
     """
-    if delay:
-        await asyncio.sleep(delay)
+    if human_sim and hasattr(human_sim, "human_type"):
 
-    try:
-        if human_sim and hasattr(human_sim, "human_type"):
+        async def primary():
             await human_sim.human_type(page, selector, text)
-        else:
+
+        async def healed(new_sel):
+            await human_sim.human_type(page, new_sel, text)
+
+    else:
+
+        async def primary():
             await page.fill(selector, text)
-    except Exception as e:
-        # Try self-healing if available
-        if self_healing and selector_path and element_description:
-            logger.info(f"Selector failed: {selector}, attempting self-healing...")
-            try:
-                new_selector = await self_healing.attempt_heal(
-                    page=page,
-                    selector_path=selector_path,
-                    failed_selector=selector,
-                    element_description=element_description,
-                )
 
-                if new_selector:
-                    logger.info(f"Self-healing found new selector: {new_selector}")
-                    # Retry with healed selector
-                    if human_sim and hasattr(human_sim, "human_type"):
-                        await human_sim.human_type(page, new_selector, text)
-                    else:
-                        await page.fill(new_selector, text)
-                    return
-            except Exception as heal_error:
-                logger.warning(f"Self-healing failed: {heal_error}")
+        async def healed(new_sel):
+            await page.fill(new_sel, text)
 
-        # Re-raise original error if healing didn't work
-        logger.error(f"Failed to fill selector '{selector}': {e}")
-        raise
+    await _smart_action(
+        page=page,
+        selector=selector,
+        primary_action=primary,
+        healed_action=healed,
+        action_name="fill",
+        delay=delay,
+        self_healing=self_healing,
+        selector_path=selector_path,
+        element_description=element_description,
+    )
 
 
 async def smart_click(
@@ -127,40 +171,33 @@ async def smart_click(
         selector_path: Optional selector path for self-healing (e.g., "login.submit_button")
         element_description: Optional description for self-healing (e.g., "submit button")
     """
-    if delay:
-        await asyncio.sleep(delay)
+    if human_sim and hasattr(human_sim, "human_click"):
 
-    try:
-        if human_sim and hasattr(human_sim, "human_click"):
+        async def primary():
             await human_sim.human_click(page, selector)
-        else:
+
+        async def healed(new_sel):
+            await human_sim.human_click(page, new_sel)
+
+    else:
+
+        async def primary():
             await page.click(selector)
-    except Exception as e:
-        # Try self-healing if available
-        if self_healing and selector_path and element_description:
-            logger.info(f"Selector failed: {selector}, attempting self-healing...")
-            try:
-                new_selector = await self_healing.attempt_heal(
-                    page=page,
-                    selector_path=selector_path,
-                    failed_selector=selector,
-                    element_description=element_description,
-                )
 
-                if new_selector:
-                    logger.info(f"Self-healing found new selector: {new_selector}")
-                    # Retry with healed selector
-                    if human_sim and hasattr(human_sim, "human_click"):
-                        await human_sim.human_click(page, new_selector)
-                    else:
-                        await page.click(new_selector)
-                    return
-            except Exception as heal_error:
-                logger.warning(f"Self-healing failed: {heal_error}")
+        async def healed(new_sel):
+            await page.click(new_sel)
 
-        # Re-raise original error if healing didn't work
-        logger.error(f"Failed to click selector '{selector}': {e}")
-        raise
+    await _smart_action(
+        page=page,
+        selector=selector,
+        primary_action=primary,
+        healed_action=healed,
+        action_name="click",
+        delay=delay,
+        self_healing=self_healing,
+        selector_path=selector_path,
+        element_description=element_description,
+    )
 
 
 async def wait_for_selector_smart(

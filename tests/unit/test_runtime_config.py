@@ -155,3 +155,26 @@ def test_runtime_config_persistence_across_gets():
     assert RuntimeConfig.get("retries.max_login") == 8
     assert RuntimeConfig.get("retries.max_login") == 8
     assert RuntimeConfig.get("retries.max_login") == 8
+
+
+def test_get_typed_env_int_from_env():
+    """Test _get_typed_env reads integer env var correctly via RuntimeConfig."""
+    with patch.dict(os.environ, {"RETRIES_MAX_LOGIN": "42"}):
+        RuntimeConfig.reset()
+        assert RuntimeConfig.get("retries.max_login") == 42
+
+
+def test_get_typed_env_float_from_env():
+    """Test _get_typed_env reads float env var correctly via RuntimeConfig."""
+    with patch.dict(os.environ, {"CIRCUIT_BREAKER_TIMEOUT_SECONDS": "99.5"}):
+        RuntimeConfig.reset()
+        assert RuntimeConfig.get("circuit_breaker.timeout_seconds") == 99.5
+
+
+def test_get_typed_env_invalid_falls_back_to_default():
+    """Test _get_typed_env returns default on invalid env value via RuntimeConfig."""
+    with patch.dict(os.environ, {"RETRIES_MAX_LOGIN": "not_a_number"}):
+        RuntimeConfig.reset()
+        from src.constants import Retries
+        assert RuntimeConfig.get("retries.max_login") == Retries.MAX_LOGIN
+

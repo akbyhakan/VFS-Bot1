@@ -46,6 +46,23 @@ class AuthService:
         self.error_capture = error_capture or ErrorCapture()
         self.otp_service = otp_service
 
+    @staticmethod
+    def _sanitize_error(error: Exception, password: str) -> str:
+        """
+        Sanitize an error message by redacting any password that appears in it.
+
+        Args:
+            error: The original exception
+            password: Password string to redact
+
+        Returns:
+            Sanitized error string
+        """
+        safe = str(error)
+        if password and password in safe:
+            safe = safe.replace(password, "[REDACTED]")
+        return safe
+
     async def login(self, page: Page, email: str, password: str) -> bool:
         """
         Login to VFS website with automatic OTP verification handling.
@@ -110,9 +127,7 @@ class AuthService:
                 await smart_fill(page, 'input[name="password"]', password, self.human_sim)
             except Exception as e:
                 # Sanitize error message to prevent password leakage
-                safe_error = str(e)
-                if password and password in safe_error:
-                    safe_error = safe_error.replace(password, "[REDACTED]")
+                safe_error = self._sanitize_error(e, password)
 
                 # Create sanitized exception for error capture
                 sanitized_exception = LoginError(f"Login form error: {safe_error}")
@@ -171,9 +186,7 @@ class AuthService:
             raise
         except Exception as e:
             # Sanitize password in error message before logging
-            safe_error = str(e)
-            if password and password in safe_error:
-                safe_error = safe_error.replace(password, "[REDACTED]")
+            safe_error = self._sanitize_error(e, password)
             logger.error(f"Login error: {safe_error}")
             return False
 
