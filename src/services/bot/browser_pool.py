@@ -162,9 +162,10 @@ class BrowserPool:
             for session_id, browser in list(self._browsers.items()):
                 try:
                     await browser.close()
-                    self._semaphore.release()
                 except Exception as e:
                     logger.error(f"Error closing browser for session {session_id}: {e}")
+                finally:
+                    self._semaphore.release()
 
             self._browsers.clear()
             logger.info("All browsers closed")
