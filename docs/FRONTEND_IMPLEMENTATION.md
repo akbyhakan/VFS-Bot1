@@ -324,6 +324,8 @@ WS /ws                 → WebSocket
 ### User Management
 The user management API endpoints are currently **mock implementations** using in-memory storage. This was done to enable frontend development and testing.
 
+> ⚠️ **Note**: The TODO items below remain open and must be addressed before going to production.
+
 **TODO for Production**:
 1. Implement database integration
 2. Connect to existing `users` and `personal_details` tables
@@ -355,7 +357,7 @@ Backend requires:
 - [x] Notification management UI - **PLACEHOLDER** (backend-managed)
 - [x] Statistics/Charts - **COMPLETE** (stats cards)
 - [x] Responsive design - **COMPLETE**
-- [x] PWA support - **PARTIAL** (manifest ready, needs service worker)
+- [x] PWA support - **COMPLETE** (VitePWA plugin implemented, service worker active)
 
 #### Technology Requirements
 - [x] React 18.x ✅
@@ -396,7 +398,7 @@ This implementation delivers a **complete, production-ready modern frontend** th
 **Next Steps**:
 1. Test the application with real backend
 2. Replace mock user API with database integration
-3. Add service worker for offline PWA functionality
+3. ~~Add service worker for offline PWA functionality~~ ✅ Done (VitePWA)
 4. Gather user feedback and iterate
 
 ---

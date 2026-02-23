@@ -30,8 +30,10 @@ Common cross-cutting concerns are handled in the following locations:
 
 | Concern | Location | Module/Class |
 |---------|----------|--------------|
-| Rate Limiting (In-Memory) | `src/utils/security/` | `RateLimiter` |
-| Rate Limiting (Redis-backed) | `src/core/auth.py` | `AuthRateLimiter` |
+| Rate Limiting (In-Memory) | `src/core/rate_limiting/` | `RateLimiter` (sliding_window) |
+| Rate Limiting (Redis-backed) | `src/core/rate_limiting/` | `AuthRateLimiter` (auth_limiter) |
+| Rate Limiting (Adaptive) | `src/core/rate_limiting/` | `AdaptiveRateLimiter` (adaptive) |
+| Rate Limiting (Endpoint) | `src/core/rate_limiting/` | `EndpointRateLimiter` (endpoint) |
 | Circuit Breaker | `src/core/infra/circuit_breaker.py` | `CircuitBreaker` |
 | Request Retry Logic | `src/utils/anti_detection/` | `TLSHandler.make_request()` |
 | Authentication | `src/core/auth.py` | `AuthManager` |
@@ -70,7 +72,7 @@ def add_cors_middleware(app, origins):
 ### ✅ Correct: Rate Limiting Utility
 
 ```python
-# src/utils/security/rate_limiter.py
+# src/core/rate_limiting/sliding_window.py
 class RateLimiter:
     """Token bucket rate limiter for API calls."""
     
