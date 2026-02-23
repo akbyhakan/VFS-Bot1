@@ -120,3 +120,46 @@ def test_migrate_to_new_key(new_key, old_key, monkeypatch):
     enc_old_only = PasswordEncryption(old_key)
     with pytest.raises(ValueError, match="Invalid encryption key or corrupted password"):
         enc_old_only.decrypt_password(migrated)
+
+
+def test_can_decrypt_with_invalid_format_data(new_key, monkeypatch):
+    """Test that can_decrypt returns False for non-base64 data and logs warning."""
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    enc = PasswordEncryption()
+
+    # Non-base64 data should return False (not raise)
+    assert enc.can_decrypt("not_valid_base64!!!") is False
+    assert enc.can_decrypt("") is False
+
+
+def test_needs_migration_with_invalid_format_data(new_key, old_key, monkeypatch):
+    """Test that needs_migration returns False for non-base64 data and logs warning."""
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    monkeypatch.setenv("ENCRYPTION_KEY_OLD", old_key)
+    enc = PasswordEncryption()
+
+    # Non-base64 data should return False (not raise)
+    assert enc.needs_migration("not_valid_base64!!!") is False
+    assert enc.needs_migration("") is False
+
+
+def test_can_decrypt_valid_data(new_key, monkeypatch):
+    """Test that can_decrypt returns True for correctly encrypted data."""
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    enc = PasswordEncryption()
+
+    encrypted = enc.encrypt_password("test_password")
+    assert enc.can_decrypt(encrypted) is True
+
+
+def test_can_decrypt_wrong_key(new_key, old_key, monkeypatch):
+    """Test that can_decrypt returns False for data encrypted with a different key."""
+    enc_old = PasswordEncryption(old_key)
+    encrypted_with_old = enc_old.encrypt_password("test_password")
+
+    monkeypatch.setenv("ENCRYPTION_KEY", new_key)
+    # No old key configured - only new key
+    monkeypatch.delenv("ENCRYPTION_KEY_OLD", raising=False)
+    enc_new = PasswordEncryption()
+
+    assert enc_new.can_decrypt(encrypted_with_old) is False
