@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { logger } from '@/utils/logger';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Upload, FileText, Download, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
@@ -105,7 +106,7 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
       } else {
         toast.error(error instanceof Error ? error.message : 'CSV yüklenirken hata oluştu');
       }
-      console.error('CSV import error:', error);
+      logger.error('CSV import error:', error);
     } finally {
       setIsUploading(false);
     }

@@ -77,7 +77,6 @@ dev = [
     "safety>=3.2.14",
     "packaging>=22.0",
     "bandit==1.8.3",
-    "httpx>=0.28.1",
     "mkdocs==1.6.1",
     "mkdocs-material==9.5.50",
 ]
@@ -164,7 +163,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Coverage threshold is configured via --cov-fail-under=68 in addopts above.
+# Coverage threshold is configured via --cov-fail-under=70 in addopts above.
 # This was moved from [tool.coverage.report] fail_under to avoid conflicts,
 # as pytest.ini previously took precedence and ignored pyproject.toml settings.
 exclude_lines = [

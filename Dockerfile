@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy lockfile and install pinned dependencies for reproducible builds
+# Production uses requirements.lock for deterministic, reproducible builds.
+# If dependencies change, regenerate with: make lock
+# See also: Dockerfile.dev (uses pyproject.toml for dev builds)
 COPY requirements.lock .
 RUN pip install --no-cache-dir --user -r requirements.lock
 

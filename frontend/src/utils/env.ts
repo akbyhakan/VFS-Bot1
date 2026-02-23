@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from './logger';
 
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url().optional().or(z.literal('')),
@@ -23,7 +24,7 @@ const parseEnv = (): EnvType => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Environment validation failed:', error.errors);
+      logger.error('Environment validation failed:', error.errors);
       throw new Error(`Invalid environment configuration: ${error.errors.map(e => e.message).join(', ')}`);
     }
     throw error;
@@ -75,7 +76,7 @@ export function validateEnv(): void {
     if (isProd()) {
       throw new Error(message);
     } else {
-      console.warn(message);
+      logger.warn(message);
     }
   }
 }

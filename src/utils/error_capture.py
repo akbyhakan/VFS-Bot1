@@ -51,7 +51,7 @@ class ErrorCapture:
         Returns:
             Error record with all captured data
         """
-        from ..constants import ErrorCapture as ErrorCaptureConstants
+        from ..constants import ErrorCaptureConfig as ErrorCaptureConstants
 
         timestamp = datetime.now(timezone.utc)
         error_id = timestamp.strftime("%Y%m%d_%H%M%S_%f")
@@ -149,7 +149,7 @@ class ErrorCapture:
 
     async def _cleanup_old_errors(self) -> None:
         """Clean up error files older than cleanup_days and enforce max file count."""
-        from ..constants import ErrorCapture as ErrorCaptureConstants
+        from ..constants import ErrorCaptureConfig as ErrorCaptureConstants
 
         current_time = time.time()
 

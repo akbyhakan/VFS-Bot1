@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { logger } from '@/utils/logger';
 import { useAuditLogs, useAuditLogDetail, useAuditStats } from '@/hooks/useAuditLogs';
 import type { AuditLog } from '@/hooks/useAuditLogs';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -114,7 +115,7 @@ export default function AuditLogs() {
       toast.success('Denetim logları başarıyla dışa aktarıldı');
     } catch (error) {
       toast.error('Denetim logları dışa aktarılamadı');
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
     }
   };
 
@@ -139,7 +140,7 @@ export default function AuditLogs() {
       toast.success('Denetim logları başarıyla dışa aktarıldı');
     } catch (error) {
       toast.error('Denetim logları dışa aktarılamadı');
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
     }
   };
 
