@@ -304,7 +304,7 @@ class BotController:
 
         # Stop the bot
         stop_result = await self.stop_bot()
-        if stop_result["status"] == "error" and "not running" not in stop_result["message"]:
+        if stop_result.get("status") == "error" and "not running" not in stop_result.get("message", ""):
             return stop_result
 
         # Small delay

@@ -194,10 +194,16 @@ class AuditLogger:
         """Write audit entry to JSONL file."""
         try:
             if self.log_file is not None:
-                with open(self.log_file, "a", encoding="utf-8") as f:
-                    f.write(entry.to_json() + "\n")
+                line = entry.to_json() + "\n"
+                await asyncio.to_thread(self._sync_write_to_file, line)
         except Exception as e:
             logger.error(f"Failed to write audit entry to file: {e}")
+
+    def _sync_write_to_file(self, line: str) -> None:
+        """Synchronous file write helper for audit entries."""
+        if self.log_file is not None:
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(line)
 
     async def _persist(self, entry: AuditEntry) -> None:
         """Persist audit entry to database."""

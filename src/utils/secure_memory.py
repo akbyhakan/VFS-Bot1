@@ -44,7 +44,8 @@ def secure_zero_memory(data: Union[bytearray, bytes, str]) -> None:
                 0,
                 len(data),
             )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"ctypes memset failed, using fallback: {e}")
             # Fallback: manually zero each byte
             for i in range(len(data)):
                 data[i] = 0
