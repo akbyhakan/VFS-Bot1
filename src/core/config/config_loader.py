@@ -271,20 +271,42 @@ def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> 
     return value
 
 
-# TTL-based cache for selectors (configurable via environment variable)
-# Note: TTL is read once at module load time and cached for application lifetime
-try:
-    _SELECTORS_CACHE_TTL = int(os.getenv("SELECTORS_CACHE_TTL", "60"))  # seconds, default 60
-    if _SELECTORS_CACHE_TTL <= 0:
-        raise ValueError(f"SELECTORS_CACHE_TTL must be positive, got: {_SELECTORS_CACHE_TTL}")
-except ValueError as e:
-    logger.warning(
-        f"Invalid SELECTORS_CACHE_TTL value: {os.getenv('SELECTORS_CACHE_TTL')}. "
-        f"Must be a positive integer (seconds). Error: {e}. Using default: 60"
-    )
-    _SELECTORS_CACHE_TTL = 60
+_SELECTORS_CACHE_TTL: Optional[int] = None  # Lazy-loaded on first use
 _selectors_cache: Optional[Tuple[float, Dict[str, Dict[str, Any]]]] = None
 _selectors_cache_lock = threading.Lock()  # Thread-safe cache access
+
+
+def _get_selectors_cache_ttl() -> int:
+    """
+    Get the selectors cache TTL, reading from environment on first call.
+
+    This is lazy-loaded to ensure .env variables are available
+    (load_env_variables() may not have been called at module import time).
+
+    Returns:
+        Cache TTL in seconds (default: 60)
+    """
+    global _SELECTORS_CACHE_TTL
+    if _SELECTORS_CACHE_TTL is not None:
+        return _SELECTORS_CACHE_TTL
+    try:
+        ttl = int(os.getenv("SELECTORS_CACHE_TTL", "60"))
+        if ttl <= 0:
+            raise ValueError(f"SELECTORS_CACHE_TTL must be positive, got: {ttl}")
+        _SELECTORS_CACHE_TTL = ttl
+    except ValueError as e:
+        logger.warning(
+            f"Invalid SELECTORS_CACHE_TTL value: {os.getenv('SELECTORS_CACHE_TTL')}. "
+            f"Must be a positive integer (seconds). Error: {e}. Using default: 60"
+        )
+        _SELECTORS_CACHE_TTL = 60
+    return _SELECTORS_CACHE_TTL
+
+
+def _reset_selectors_cache_ttl() -> None:
+    """Reset cached TTL value (for testing only)."""
+    global _SELECTORS_CACHE_TTL
+    _SELECTORS_CACHE_TTL = None
 
 
 def invalidate_selectors_cache() -> None:
@@ -306,8 +328,8 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
     """
     Load selectors from YAML config file with TTL-based caching.
 
-    Cache expires after _SELECTORS_CACHE_TTL seconds to allow AI Auto-Repair
-    system to update selectors at runtime and have changes picked up.
+    Cache expires after SELECTORS_CACHE_TTL seconds (lazy-loaded from env) to allow
+    AI Auto-Repair system to update selectors at runtime and have changes picked up.
 
     Thread-safe: Uses lock to prevent race conditions during cache updates.
 
@@ -328,7 +350,7 @@ def load_selectors(config_path: str = "config/selectors.yaml") -> Dict[str, Dict
         current_time = time.time()
         if _selectors_cache is not None:
             cache_time, cached_data = _selectors_cache
-            if current_time - cache_time < _SELECTORS_CACHE_TTL:
+            if current_time - cache_time < _get_selectors_cache_ttl():
                 return cached_data
 
         # Cache expired or not set, reload from disk

@@ -234,14 +234,8 @@ class DatabaseConnectionManager:
             True if reconnection successful, False otherwise
         """
         try:
-            # Close existing pool if it exists
-            if self.pool is not None:
-                await self.pool.close()
-                self.pool = None
-
-            # Attempt to reconnect
-            await self.connect()
-
+            await self.close()       # uses _pool_lock
+            await self.connect()     # uses _pool_lock
             logger.info("Database reconnection successful")
             return True
         except Exception as e:

@@ -75,21 +75,20 @@ async def test_load_accounts(account_pool, mock_account_pool_repo, sample_accoun
 @pytest.mark.asyncio
 async def test_acquire_account_success(account_pool, mock_account_pool_repo, sample_account_dict):
     """Test successfully acquiring an account."""
-    mock_account_pool_repo.get_available_accounts.return_value = [sample_account_dict]
-    mock_account_pool_repo.mark_account_in_use.return_value = True
+    mock_account_pool_repo.acquire_next_available_account.return_value = sample_account_dict
 
     account = await account_pool.acquire_account()
 
     assert account is not None
     assert account.id == 1
     assert account.email == "test@example.com"
-    mock_account_pool_repo.mark_account_in_use.assert_called_once_with(1)
+    mock_account_pool_repo.acquire_next_available_account.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_acquire_account_no_available(account_pool, mock_account_pool_repo):
     """Test acquiring when no accounts available."""
-    mock_account_pool_repo.get_available_accounts.return_value = []
+    mock_account_pool_repo.acquire_next_available_account.return_value = None
 
     account = await account_pool.acquire_account()
 
@@ -101,14 +100,14 @@ async def test_acquire_account_lru_ordering(account_pool, mock_account_pool_repo
     """Test that LRU account is selected (least recently used first)."""
     now = datetime.now(timezone.utc)
 
-    # Create accounts with different last_used_at times
+    # The atomic DB method returns the LRU account directly (already marked in_use)
     account1 = {
         "id": 1,
         "email": "old@example.com",
         "password": "pass1",
         "phone": "+1111111111",
-        "status": "available",
-        "last_used_at": now - timedelta(hours=5),  # Oldest
+        "status": "in_use",  # Atomic UPDATE returns the row after changing status to in_use
+        "last_used_at": now - timedelta(hours=5),  # Oldest (selected by LRU)
         "cooldown_until": None,
         "quarantine_until": None,
         "consecutive_failures": 0,
@@ -118,25 +117,8 @@ async def test_acquire_account_lru_ordering(account_pool, mock_account_pool_repo
         "updated_at": now,
     }
 
-    account2 = {
-        "id": 2,
-        "email": "recent@example.com",
-        "password": "pass2",
-        "phone": "+2222222222",
-        "status": "available",
-        "last_used_at": now - timedelta(hours=1),  # Recent
-        "cooldown_until": None,
-        "quarantine_until": None,
-        "consecutive_failures": 0,
-        "total_uses": 2,
-        "is_active": True,
-        "created_at": now - timedelta(days=1),
-        "updated_at": now,
-    }
-
-    # Repository should return accounts in LRU order (oldest first)
-    mock_account_pool_repo.get_available_accounts.return_value = [account1, account2]
-    mock_account_pool_repo.mark_account_in_use.return_value = True
+    # Repository's atomic method returns the LRU account (oldest last_used_at)
+    mock_account_pool_repo.acquire_next_available_account.return_value = account1
 
     account = await account_pool.acquire_account()
 
@@ -278,8 +260,7 @@ async def test_acquire_release_thread_safety(
 ):
     """Test thread safety of acquire and release operations."""
     # Simulate concurrent acquire/release
-    mock_account_pool_repo.get_available_accounts.return_value = [sample_account_dict]
-    mock_account_pool_repo.mark_account_in_use.return_value = True
+    mock_account_pool_repo.acquire_next_available_account.return_value = sample_account_dict
     mock_account_pool_repo.release_account.return_value = True
 
     # Create multiple concurrent acquire tasks
@@ -294,7 +275,7 @@ async def test_acquire_release_thread_safety(
 
     # Verify all operations completed without errors
     # Lock should have prevented race conditions
-    assert mock_account_pool_repo.mark_account_in_use.call_count == 5
+    assert mock_account_pool_repo.acquire_next_available_account.call_count == 5
 
 
 @pytest.mark.asyncio
