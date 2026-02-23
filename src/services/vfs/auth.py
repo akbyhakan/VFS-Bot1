@@ -245,16 +245,9 @@ class VFSAuth:
 
         # 1. Check Set-Cookie header for accesstoken
         try:
-            # aiohttp CIMultiDictProxy → getall(); plain dict (tests) → get() fallback
-            if hasattr(response_headers, "getall"):
-                set_cookie_list = response_headers.getall("Set-Cookie", [])
-            else:
-                raw = response_headers.get("Set-Cookie", "")
-                set_cookie_list = [raw] if raw else []
-
+            set_cookie_list = response_headers.getall("Set-Cookie", [])
             for set_cookie in set_cookie_list:
                 if set_cookie and "accesstoken=" in set_cookie.lower():
-                    # Parse cookie value (simple extraction)
                     for cookie_part in set_cookie.split(";"):
                         cookie_part = cookie_part.strip()
                         if cookie_part.lower().startswith("accesstoken="):
