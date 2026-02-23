@@ -1,5 +1,7 @@
 """Message templates for NotificationService — separates formatting from transport."""
 
+from typing import Any, Dict
+
 
 class NotificationTemplates:
     """Static message templates for each notification event type."""
@@ -55,7 +57,7 @@ The bot will retry automatically.
         return "🛑 VFS-Bot Stopped", "The bot has been stopped."
 
     @staticmethod
-    def waitlist_success(details: dict, timezone_name: str = "Europe/Istanbul") -> tuple[str, str]:
+    def waitlist_success(details: Dict[str, Any], timezone_name: str = "Europe/Istanbul") -> tuple[str, str]:
         """Template for waitlist registration success event."""
         from src.utils.helpers import format_local_datetime
 

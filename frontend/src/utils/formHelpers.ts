@@ -3,6 +3,11 @@ import type { Dispatch, SetStateAction } from 'react';
 /**
  * Creates a field change handler that updates formData and clears the
  * associated error key from formErrors.
+ *
+ * @param transform - Optional transformation/validation function applied to
+ *   the raw input value before updating state. Return the processed string to
+ *   accept the change, or return `null` to reject it (the state update is
+ *   skipped entirely).
  */
 export function createFieldChangeHandler<T extends Record<string, string>>(
   setFormData: Dispatch<SetStateAction<T>>,

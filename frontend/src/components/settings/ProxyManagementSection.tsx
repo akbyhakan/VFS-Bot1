@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,13 +9,9 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
-interface ProxyManagementSectionProps {
-  initialStats?: ProxyStats | null;
-}
-
-export function ProxyManagementSection({ initialStats = null }: ProxyManagementSectionProps) {
+export function ProxyManagementSection() {
   const { t } = useTranslation();
-  const [proxyStats, setProxyStats] = useState<ProxyStats | null>(initialStats);
+  const [proxyStats, setProxyStats] = useState<ProxyStats | null>(null);
   const [proxyUploading, setProxyUploading] = useState(false);
   const [proxyFileName, setProxyFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -30,6 +26,10 @@ export function ProxyManagementSection({ initialStats = null }: ProxyManagementS
       logger.error('Failed to load proxy stats:', error);
     }
   };
+
+  useEffect(() => {
+    loadProxyStats();
+  }, []);
 
   const uploadProxyFile = async (file: File) => {
     try {

@@ -220,7 +220,7 @@ class NotificationService:
         await self.send_notification(title, message, priority="low")
 
     async def notify_waitlist_success(
-        self, details: dict, screenshot_path: Optional[str] = None
+        self, details: Dict[str, Any], screenshot_path: Optional[str] = None
     ) -> None:
         """
         Send notification when waitlist registration is successful.
