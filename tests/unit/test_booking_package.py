@@ -151,10 +151,24 @@ class TestComponentIntegration:
 
         validator = BookingValidator()
 
-        # Test date normalization
+        # DD-MM-YYYY → DD/MM/YYYY (existing behavior)
         assert validator.normalize_date("01-01-2024") == "01/01/2024"
         assert validator.normalize_date("15-06-2024") == "15/06/2024"
         assert validator.normalize_date("31-12-2024") == "31/12/2024"
+
+        # YYYY-MM-DD → DD/MM/YYYY (ISO format fix)
+        assert validator.normalize_date("2024-02-23") == "23/02/2024"
+        assert validator.normalize_date("2026-01-01") == "01/01/2026"
+
+        # DD.MM.YYYY → DD/MM/YYYY (dot separator fix)
+        assert validator.normalize_date("23.02.2026") == "23/02/2026"
+        assert validator.normalize_date("01.12.2024") == "01/12/2024"
+
+        # DD/MM/YYYY → DD/MM/YYYY (already correct)
+        assert validator.normalize_date("23/02/2026") == "23/02/2026"
+
+        # YYYY.MM.DD → DD/MM/YYYY (ISO with dots)
+        assert validator.normalize_date("2026.02.23") == "23/02/2026"
 
 
 class TestSelectorUtils:

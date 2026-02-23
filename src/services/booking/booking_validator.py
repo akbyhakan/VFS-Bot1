@@ -19,15 +19,23 @@ class BookingValidator:
 
     def normalize_date(self, date_str: str) -> str:
         """
-        Normalize date format (DD-MM-YYYY -> DD/MM/YYYY).
+        Normalize date format to DD/MM/YYYY.
+
+        Handles:
+        - DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY  → DD/MM/YYYY
+        - YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD  → DD/MM/YYYY
 
         Args:
             date_str: Date string
 
         Returns:
-            Normalized date string
+            Normalized date string in DD/MM/YYYY format
         """
-        return date_str.replace("-", "/")
+        normalized = date_str.strip().replace("-", "/").replace(".", "/")
+        parts = normalized.split("/")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[2]}/{parts[1]}/{parts[0]}"
+        return normalized
 
     async def check_double_match(self, page: Page, reservation: Dict[str, Any]) -> Dict[str, Any]:
         """

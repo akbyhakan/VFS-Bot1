@@ -156,19 +156,37 @@ class BrowserManager:
 
     async def close(self) -> None:
         """Clean up browser resources."""
+        errors = []
+
         if self.context:
-            await self.context.close()
-            self.context = None
-            logger.debug("Browser context closed")
+            try:
+                await self.context.close()
+                logger.debug("Browser context closed")
+            except Exception as e:
+                errors.append(f"context.close() failed: {e}")
+            finally:
+                self.context = None
 
         if self.browser:
-            await self.browser.close()
-            self.browser = None
-            logger.debug("Browser closed")
+            try:
+                await self.browser.close()
+                logger.debug("Browser closed")
+            except Exception as e:
+                errors.append(f"browser.close() failed: {e}")
+            finally:
+                self.browser = None
 
         if self.playwright:
-            await self.playwright.stop()
-            self.playwright = None
+            try:
+                await self.playwright.stop()
+            except Exception as e:
+                errors.append(f"playwright.stop() failed: {e}")
+            finally:
+                self.playwright = None
+
+        if errors:
+            for err in errors:
+                logger.warning(f"Error during browser cleanup: {err}")
 
         logger.info("Browser resources cleaned up")
 
