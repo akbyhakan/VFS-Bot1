@@ -10,6 +10,7 @@ import aiohttp
 from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
+from src.services.notification.telegram_safety import safe_telegram_call
 
 
 class AlertSeverity(Enum):
@@ -126,45 +127,38 @@ class AlertService:
 
         return True
 
+    @safe_telegram_call("alert")
     async def _send_telegram(self, alert_data: Dict[str, Any]) -> bool:
         """Send alert via Telegram."""
         if not self.config.telegram_bot_token or not self.config.telegram_chat_id:
             logger.debug("Telegram not configured, skipping")
             return False
 
-        try:
-            # Get or create client instance
-            if not self._telegram_client:
-                self._telegram_client = TelegramClient(bot_token=self.config.telegram_bot_token)
+        # Get or create client instance
+        if not self._telegram_client:
+            self._telegram_client = TelegramClient(bot_token=self.config.telegram_bot_token)
 
-            severity = alert_data["severity"]
-            message = alert_data["message"]
-            timestamp = alert_data["timestamp"]
+        severity = alert_data["severity"]
+        message = alert_data["message"]
+        timestamp = alert_data["timestamp"]
 
-            emoji_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "critical": "🚨"}
+        emoji_map = {"info": "ℹ️", "warning": "⚠️", "error": "❌", "critical": "🚨"}
 
-            emoji = emoji_map.get(severity, "📢")
-            # Escape markdown to prevent injection
-            escaped_message = TelegramClient.escape_markdown(message)
-            text = (
-                f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
-            )
+        emoji = emoji_map.get(severity, "📢")
+        # Escape markdown to prevent injection
+        escaped_message = TelegramClient.escape_markdown(message)
+        text = (
+            f"{emoji} *ALERT [{severity.upper()}]*\n\n{escaped_message}\n\n_Time: {timestamp}_"
+        )
 
-            # Send message (client handles splitting automatically)
-            success = await self._telegram_client.send_message(
-                chat_id=self.config.telegram_chat_id, text=text
-            )
+        # Send message (client handles splitting automatically)
+        success = await self._telegram_client.send_message(
+            chat_id=self.config.telegram_chat_id, text=text
+        )
 
-            if success:
-                logger.debug("Alert sent via Telegram")
-            return success
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to send Telegram alert: {e}")
-            return False
+        if success:
+            logger.debug("Alert sent via Telegram")
+        return success
 
     async def _send_webhook(self, alert_data: Dict[str, Any]) -> bool:
         """Send alert via webhook."""

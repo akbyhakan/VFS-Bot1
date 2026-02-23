@@ -5,6 +5,7 @@ from typing import Optional
 from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
+from src.services.notification.telegram_safety import safe_telegram_call
 from src.utils.decorators import retry_async
 
 from ..base import NotificationChannel, TelegramConfig
@@ -66,6 +67,7 @@ class TelegramChannel(NotificationChannel):
         backoff=2.0,
         exceptions=(ConnectionError, TimeoutError, OSError),
     )
+    @safe_telegram_call("notification")
     async def send(self, title: str, message: str) -> bool:
         """
         Send Telegram notification.
@@ -77,28 +79,20 @@ class TelegramChannel(NotificationChannel):
         Returns:
             True if successful
         """
-        try:
-            if not self._config.chat_id:
-                logger.error("Telegram chat_id missing")
-                return False
-
-            client = self._get_or_create_client()
-            if client is None:
-                return False
-
-            escaped_title = TelegramClient.escape_markdown(title)
-            escaped_message = TelegramClient.escape_markdown(message)
-            full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
-
-            success = await client.send_message(chat_id=self._config.chat_id, text=full_message)
-
-            if success:
-                logger.info("Telegram notification sent successfully")
-            return success
-
-        except ImportError:
-            logger.warning("python-telegram-bot not installed")
+        if not self._config.chat_id:
+            logger.error("Telegram chat_id missing")
             return False
-        except Exception as e:
-            logger.error(f"Telegram notification failed: {e}")
+
+        client = self._get_or_create_client()
+        if client is None:
             return False
+
+        escaped_title = TelegramClient.escape_markdown(title)
+        escaped_message = TelegramClient.escape_markdown(message)
+        full_message = f"🤖 *{escaped_title}*\n\n{escaped_message}"
+
+        success = await client.send_message(chat_id=self._config.chat_id, text=full_message)
+
+        if success:
+            logger.info("Telegram notification sent successfully")
+        return success

@@ -38,6 +38,7 @@ from .base import (
 )
 from .channels.telegram import TelegramChannel
 from .channels.websocket import WebSocketChannel
+from .message_templates import NotificationTemplates
 from .service import NotificationService
 from .telegram_client import TelegramClient
 
@@ -49,6 +50,7 @@ __all__ = [
     "TelegramChannel",
     "WebSocketChannel",
     "TelegramClient",
+    "NotificationTemplates",
     "AlertService",
     "AlertConfig",
     "AlertSeverity",
