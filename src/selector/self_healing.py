@@ -154,6 +154,10 @@ class SelectorSelfHealing:
             with open(self.selectors_file, "r", encoding="utf-8") as f:
                 selectors = yaml.safe_load(f)
 
+            if not isinstance(selectors, dict):
+                logger.warning("Selectors file is empty or invalid")
+                return
+
             # Parse path (e.g., "login.email_input")
             parts = selector_path.split(".")
 

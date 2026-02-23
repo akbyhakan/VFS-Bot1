@@ -19,7 +19,8 @@ class CountryProfileLoader:
         if self.config_path.exists():
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
-                self._profiles = data.get("country_profiles", {})
+                if isinstance(data, dict):
+                    self._profiles = data.get("country_profiles", {})
 
     def get_profile(self, country_code: str) -> Optional[Dict[str, Any]]:
         """Ülke profilini getir."""

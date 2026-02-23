@@ -46,6 +46,10 @@ def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
+        if not isinstance(data, dict):
+            logger.warning("country_profiles.yaml contains invalid data, returning empty list")
+            return tuple()
+
         countries = []
         for code, profile in data.get("country_profiles", {}).items():
             countries.append(
