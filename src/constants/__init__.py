@@ -29,8 +29,8 @@ from .database import (
     Pools,
 )
 
-# Error capture
-from .error_capture import ErrorCapture
+# Error capture config
+from .error_capture import ErrorCaptureConfig
 
 # Locale
 from .locale import (
@@ -101,7 +101,7 @@ __all__ = [
     # Logging
     "LogEmoji",
     # Error capture
-    "ErrorCapture",
+    "ErrorCaptureConfig",
     # Countries
     "MissionCode",
     "CountryInfo",

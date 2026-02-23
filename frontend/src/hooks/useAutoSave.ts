@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
 interface UseAutoSaveOptions<T> {
@@ -64,9 +65,9 @@ export function useAutoSave<T>({
         try {
           // Draft is available but we don't auto-load it
           // Instead, we just make it available
-          console.log('Draft available in localStorage:', storageKey);
+          logger.log('Draft available in localStorage:', storageKey);
         } catch (error) {
-          console.error('Failed to parse draft:', error);
+          logger.error('Failed to parse draft:', error);
         }
       }
     }
@@ -78,7 +79,7 @@ export function useAutoSave<T>({
       try {
         localStorage.setItem(storageKey, JSON.stringify(data));
       } catch (error) {
-        console.error('Failed to save draft to localStorage:', error);
+        logger.error('Failed to save draft to localStorage:', error);
       }
     }
   }, [storageKey]);
@@ -127,7 +128,7 @@ export function useAutoSave<T>({
           });
         }
       } catch (error) {
-        console.error('Auto-save failed:', error);
+        logger.error('Auto-save failed:', error);
         if (showToast) {
           toast.error('Otomatik kaydetme başarısız');
         }
@@ -158,7 +159,7 @@ export function useAutoSave<T>({
         try {
           return JSON.parse(draft);
         } catch (error) {
-          console.error('Failed to parse draft:', error);
+          logger.error('Failed to parse draft:', error);
         }
       }
     }

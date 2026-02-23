@@ -43,3 +43,12 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
+
+  - repo: local
+    hooks:
+      - id: verify-version-sync
+        name: Verify version synchronization
+        entry: python3 scripts/verify_version_sync.py
+        language: system
+        files: '(pyproject\.toml|frontend/package\.json)$'
+        pass_filenames: false

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { logger } from '@/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleUserStatus } from '@/hooks/useApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -50,7 +51,7 @@ export function Users() {
             }
           } catch (error) {
             // Silently ignore errors for individual webhook fetches
-            console.error(`Failed to load webhook for user ${user.id}:`, error);
+            logger.error(`Failed to load webhook for user ${user.id}:`, error);
           }
         }
       };

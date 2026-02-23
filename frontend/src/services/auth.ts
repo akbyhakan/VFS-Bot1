@@ -1,5 +1,6 @@
 import { api } from './api';
 import { REMEMBER_ME_KEY } from '@/utils/constants';
+import { logger } from '@/utils/logger';
 import type { LoginRequest, TokenResponse } from '@/types/api';
 
 export class AuthService {
@@ -26,7 +27,7 @@ export class AuthService {
     } catch (error) {
       // Log error with context for debugging authentication flow issues
       // In production, this should be sent to a proper error tracking service
-      console.error('Logout API call failed - continuing with local cleanup:', {
+      logger.error('Logout API call failed - continuing with local cleanup:', {
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
       });

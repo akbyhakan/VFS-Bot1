@@ -34,6 +34,8 @@ RUN useradd -m -u 1000 vfsbot
 WORKDIR /app
 
 # Copy project files for installation
+# Dev uses pyproject.toml directly for latest compatible dependency resolution.
+# Production uses requirements.lock for deterministic builds (see Dockerfile).
 COPY pyproject.toml README.md ./
 RUN mkdir -p src && touch src/__init__.py
 

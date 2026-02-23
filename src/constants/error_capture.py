@@ -3,7 +3,7 @@
 from typing import Final
 
 
-class ErrorCapture:
+class ErrorCaptureConfig:
     """Error capture configuration."""
 
     MAX_IN_MEMORY: Final[int] = 100

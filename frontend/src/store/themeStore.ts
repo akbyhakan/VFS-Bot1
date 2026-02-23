@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { logger } from '@/utils/logger';
 
 type Theme = 'dark' | 'light';
 
@@ -79,7 +80,7 @@ export function initializeTheme() {
       const { state } = JSON.parse(savedTheme);
       updateDocumentTheme(state.theme);
     } catch (error) {
-      console.error('Failed to parse saved theme:', error);
+      logger.error('Failed to parse saved theme:', error);
     }
   } else {
     // Check system preference

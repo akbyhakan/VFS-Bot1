@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock verify-version security
+.PHONY: help install install-dev lint format test test-cov clean docker-test pre-commit db-init db-migrate db-upgrade db-downgrade db-history db-current lock verify-lock verify-version bump-version security
 
 help:
 	@echo "Available commands:"
@@ -20,6 +20,7 @@ help:
 	@echo "  make lock                - Generate requirements.lock for reproducible deployments"
 	@echo "  make verify-lock         - Verify requirements.lock is consistent with pyproject.toml"
 	@echo "  make verify-version      - Verify version sync between pyproject.toml and frontend"
+	@echo "  make bump-version        - Bump version across all files (usage: make bump-version v=2.3.0)"
 	@echo "  make security            - Run security scans (bandit + safety)"
 
 install:
@@ -102,6 +103,10 @@ verify-lock:  ## Verify requirements.lock consistency with pyproject.toml
 verify-version:  ## Verify version sync between pyproject.toml and frontend
 	@echo "🔍 Verifying version synchronization..."
 	@python3 scripts/verify_version_sync.py
+
+bump-version:  ## Bump version in pyproject.toml and frontend/package.json (usage: make bump-version v=2.3.0 or make bump-version v=patch)
+	@echo "📦 Bumping version..."
+	@python3 scripts/bump_version.py $(v)
 
 security:  ## Run security scans (bandit + safety)
 	@echo "🔒 Running security scans..."
