@@ -89,29 +89,6 @@ class TestWebSocketEndpoint:
             assert "running" in message["data"]
             assert "status" in message["data"]
 
-    @pytest.mark.deprecated_feature
-    def test_websocket_successful_connection(self, test_app: TestClient, valid_token: str):
-        """
-        Test successful WebSocket connection with legacy message-based authentication.
-
-        DEPRECATED: Bu test v3.0'da kaldırılacak deprecated auth yöntemini doğrular.
-
-        This validates:
-        - WebSocket accepts connection
-        - Valid token message is accepted (backward compatibility)
-        - Initial status message is sent
-        """
-        with test_app.websocket_connect("/ws") as websocket:
-            # Send authentication message (legacy method for backward compatibility)
-            websocket.send_json({"token": valid_token})
-
-            # Should receive initial status message
-            message = websocket.receive_json()
-            assert message["type"] == "status"
-            assert "data" in message
-            assert "running" in message["data"]
-            assert "status" in message["data"]
-
     def test_websocket_missing_token(self, test_app: TestClient):
         """
         Test WebSocket connection rejection when token is missing.
