@@ -7,7 +7,7 @@ import pytest
 
 from src.core.rate_limiting import AdaptiveRateLimiter
 from src.utils.audit_logger import AuditAction, AuditLogger
-from src.utils.decorators import handle_errors, retry_async, timed_async
+from src.utils.decorators import handle_errors, timed_async
 from src.utils.webhook_utils import generate_webhook_signature, verify_webhook_signature
 
 
@@ -173,36 +173,90 @@ class TestAuditLogger:
 class TestDecorators:
     @pytest.mark.asyncio
     async def test_retry_decorator_success(self):
-        """Test retry decorator with eventual success."""
+        """Test tenacity retry decorator with eventual success."""
+        from unittest.mock import patch
+
+        from src.core.infra.retry import get_telegram_retry
+
         call_count = 0
 
-        @retry_async(max_retries=3, delay=0.01, exceptions=(ValueError,))
+        @get_telegram_retry()
         async def flaky_func():
             nonlocal call_count
             call_count += 1
             if call_count < 3:
-                raise ValueError("Temporary error")
+                raise ConnectionError("Temporary error")
             return "success"
 
-        result = await flaky_func()
+        with patch("asyncio.sleep"):
+            result = await flaky_func()
         assert result == "success"
         assert call_count == 3
 
     @pytest.mark.asyncio
     async def test_retry_decorator_failure(self):
-        """Test retry decorator with permanent failure."""
+        """Test tenacity retry decorator with permanent failure."""
+        from unittest.mock import patch
+
+        from src.core.infra.retry import get_telegram_retry
+
         call_count = 0
 
-        @retry_async(max_retries=2, delay=0.01, exceptions=(ValueError,))
+        @get_telegram_retry()
         async def failing_func():
             nonlocal call_count
             call_count += 1
-            raise ValueError("Permanent error")
+            raise ConnectionError("Permanent error")
 
-        with pytest.raises(ValueError):
-            await failing_func()
+        with patch("asyncio.sleep"):
+            with pytest.raises(ConnectionError):
+                await failing_func()
 
-        assert call_count == 3  # Initial + 2 retries
+        assert call_count == 3  # stop_after_attempt(3)
+
+    @pytest.mark.asyncio
+    async def test_retry_with_specific_exceptions(self):
+        """Test tenacity retry decorator with specific exception types."""
+        from unittest.mock import patch
+
+        from src.core.infra.retry import get_telegram_retry
+
+        call_count = 0
+
+        @get_telegram_retry()
+        async def func_with_os_error():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise OSError("Temporary OS error")
+            return "success"
+
+        with patch("asyncio.sleep"):
+            result = await func_with_os_error()
+        assert result == "success"
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_retry_ignores_other_exceptions(self):
+        """Test that tenacity retry decorator doesn't catch non-specified exceptions."""
+        from unittest.mock import patch
+
+        from src.core.infra.retry import get_telegram_retry
+
+        call_count = 0
+
+        @get_telegram_retry()
+        async def func_with_runtime_error():
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("Different error")
+
+        with patch("asyncio.sleep"):
+            with pytest.raises(RuntimeError):
+                await func_with_runtime_error()
+
+        # Should fail immediately without retries
+        assert call_count == 1
 
     @pytest.mark.asyncio
     async def test_handle_errors_no_wrap_reraise(self):
@@ -250,36 +304,3 @@ class TestDecorators:
         with pytest.raises(ValueError):
             await failing_func()
 
-    @pytest.mark.asyncio
-    async def test_retry_with_specific_exceptions(self):
-        """Test retry decorator with specific exception types."""
-        call_count = 0
-
-        @retry_async(max_retries=2, delay=0.01, exceptions=(ValueError,))
-        async def func_with_value_error():
-            nonlocal call_count
-            call_count += 1
-            if call_count < 2:
-                raise ValueError("Temporary error")
-            return "success"
-
-        result = await func_with_value_error()
-        assert result == "success"
-        assert call_count == 2
-
-    @pytest.mark.asyncio
-    async def test_retry_ignores_other_exceptions(self):
-        """Test that retry decorator doesn't catch non-specified exceptions."""
-        call_count = 0
-
-        @retry_async(max_retries=3, delay=0.01, exceptions=(ValueError,))
-        async def func_with_runtime_error():
-            nonlocal call_count
-            call_count += 1
-            raise RuntimeError("Different error")
-
-        with pytest.raises(RuntimeError):
-            await func_with_runtime_error()
-
-        # Should fail immediately without retries
-        assert call_count == 1

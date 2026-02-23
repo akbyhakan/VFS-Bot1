@@ -6,7 +6,6 @@ from loguru import logger
 
 from src.services.notification.telegram_client import TelegramClient
 from src.services.notification.telegram_safety import safe_telegram_call
-from src.utils.decorators import retry_async
 
 from ..base import NotificationChannel, TelegramConfig
 
@@ -61,12 +60,6 @@ class TelegramChannel(NotificationChannel):
             logger.error(f"Failed to create Telegram client: {e}")
             return None
 
-    @retry_async(
-        max_retries=2,
-        delay=1.0,
-        backoff=2.0,
-        exceptions=(ConnectionError, TimeoutError, OSError),
-    )
     @safe_telegram_call("notification")
     async def send(self, title: str, message: str) -> bool:
         """

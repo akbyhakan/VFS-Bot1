@@ -102,3 +102,14 @@ def get_rate_limit_retry():
         before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
         reraise=True,
     )
+
+
+def get_telegram_retry():
+    """Get retry strategy for Telegram API operations."""
+    return retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8) + wait_random(0, 1),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError, OSError)),
+        before_sleep=before_sleep_log(_stdlib_logger, stdlib_logging.WARNING),
+        reraise=True,
+    )
