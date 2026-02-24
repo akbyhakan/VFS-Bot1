@@ -46,6 +46,11 @@
     "statusRunning": "Çalışıyor",
     "statusStopped": "Durduruldu",
     "statusIdle": "Beklemede",
+    "statusError": "Hata",
+    "statusStarting": "Başlatılıyor...",
+    "statusRestarting": "Yeniden Başlatılıyor...",
+    "statusNotConfigured": "Yapılandırılmadı",
+    "statusRateLimited": "Rate Limit",
     "connected": "Bağlı",
     "disconnected": "Bağlantı Yok",
     "unreadNotifications": "{{count}} okunmamış bildirim"

@@ -8,9 +8,19 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export type BotStatusType =
+  | 'running'
+  | 'stopped'
+  | 'idle'
+  | 'error'
+  | 'starting'
+  | 'restarting'
+  | 'not_configured'
+  | 'rate_limited';
+
 export interface BotStatus {
   running: boolean;
-  status: 'running' | 'stopped' | 'idle';
+  status: BotStatusType;
   last_check: string | null;
   stats: {
     slots_found: number;

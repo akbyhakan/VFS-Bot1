@@ -46,6 +46,11 @@
     "statusRunning": "Running",
     "statusStopped": "Stopped",
     "statusIdle": "Idle",
+    "statusError": "Error",
+    "statusStarting": "Starting...",
+    "statusRestarting": "Restarting...",
+    "statusNotConfigured": "Not Configured",
+    "statusRateLimited": "Rate Limited",
     "connected": "Connected",
     "disconnected": "Disconnected",
     "unreadNotifications": "{{count}} unread notifications"
