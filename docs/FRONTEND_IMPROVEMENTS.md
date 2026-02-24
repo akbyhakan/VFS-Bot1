@@ -68,7 +68,7 @@ VitePWA({
 **Akış:**
 1. API çağrısı 401 döner
 2. İlk istek retry işaretlenir
-3. Token refresh denenir (`/api/auth/refresh`)
+3. Token refresh denenir (`/api/v1/auth/refresh`)
 4. Başarılıysa, yeni token ile retry edilir
 5. Başarısızsa, kullanıcı login'e yönlendirilir
 

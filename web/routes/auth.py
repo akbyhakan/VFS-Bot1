@@ -194,6 +194,54 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
     return TokenResponse(access_token=access_token)
 
 
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def refresh_token(
+    request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+) -> TokenResponse:
+    """
+    Refresh JWT token endpoint - issues a new HttpOnly cookie with a fresh token.
+
+    Requires authentication (valid existing token) to prevent unauthorized use.
+
+    Args:
+        request: FastAPI request object (required for rate limiter)
+        response: FastAPI response object (for setting new cookie)
+        token_data: JWT token payload (dependency for authentication)
+
+    Returns:
+        New JWT access token (also set as HttpOnly cookie)
+    """
+    from src.core.config.settings import get_settings
+
+    # Create a new access token using data from the current token
+    access_token = create_access_token(
+        data={"sub": token_data.get("sub", ""), "name": token_data.get("name", "")}
+    )
+
+    # Set new HttpOnly cookie (same settings as login endpoint)
+    settings = get_settings()
+    is_production = settings.is_production()
+
+    # Calculate cookie max_age from JWT expiry (dynamically)
+    max_age = get_token_expire_hours() * 3600  # Convert hours to seconds
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Prevents JavaScript access (XSS protection)
+        secure=is_production,  # HTTPS only in production
+        samesite="strict",  # CSRF protection
+        max_age=max_age,  # Dynamically set from JWT expiry
+        path="/",
+    )
+
+    logger.info(f"Token refreshed for user: {token_data.get('sub', 'unknown')}")
+
+    # Also return token in response body for backward compatibility
+    return TokenResponse(access_token=access_token)
+
+
 @router.post("/logout")
 async def logout(
     request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)

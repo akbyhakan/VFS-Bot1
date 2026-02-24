@@ -169,6 +169,12 @@ class TestAPIFlow:
         # Should return 405 (method not allowed) or other error, not 404
         assert response.status_code != 404
 
+    def test_refresh_endpoint_exists(self, client):
+        """Test that auth refresh endpoint is registered and routable."""
+        response = client.post("/api/v1/auth/refresh")
+        # Should return 401 (unauthorized), not 404 (not found)
+        assert response.status_code != 404
+
     def test_security_headers_present(self, client):
         """Test that security headers are added by middleware."""
         response = client.get("/health")
@@ -229,3 +235,8 @@ class TestAuthenticationFlow:
         assert response.status_code == 401
         data = response.json()
         assert "detail" in data
+
+    def test_refresh_endpoint_requires_auth(self, client):
+        """Test that refresh endpoint requires authentication."""
+        response = client.post("/api/v1/auth/refresh")
+        assert response.status_code == 401

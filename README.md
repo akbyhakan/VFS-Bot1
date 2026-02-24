@@ -545,6 +545,7 @@ The web dashboard exposes a REST API with versioned endpoints:
 **Authentication:**
 - `POST /api/v1/auth/login` - User login (creates HttpOnly cookie)
 - `POST /api/v1/auth/logout` - User logout (clears HttpOnly cookie)
+- `POST /api/v1/auth/refresh` - Refresh JWT token (issues new HttpOnly cookie)
 - `POST /api/v1/auth/generate-key` - Generate API key (one-time use)
 
 **User Management:**
