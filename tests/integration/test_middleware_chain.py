@@ -364,3 +364,15 @@ class TestHTTPSRedirectMiddleware:
         # Should NOT redirect (already HTTPS via proxy)
         # Will fail auth but should reach the endpoint
         assert response.status_code in [401, 404, 422]
+
+    def test_hsts_preload_in_production(self, production_client):
+        """Test that HSTS header includes preload directive in production."""
+        response = production_client.get(
+            "/health",
+            headers={"X-Forwarded-Proto": "https"},
+            follow_redirects=False,
+        )
+        hsts = response.headers.get("Strict-Transport-Security", "")
+        assert "max-age=63072000" in hsts
+        assert "includeSubDomains" in hsts
+        assert "preload" in hsts

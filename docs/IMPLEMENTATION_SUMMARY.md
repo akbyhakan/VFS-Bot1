@@ -179,13 +179,13 @@ def get_validated_environment() -> str:
 **Solution Implemented**:
 - Consolidated all pytest configuration into `pyproject.toml` (`[tool.pytest.ini_options]`)
 - Removed conflicting `pytest.ini` file
-- Set `--cov-fail-under` to 70 (now actually enforced)
+- Set `--cov-fail-under` to 80 (now actually enforced)
 - Added `--cov-branch` for branch coverage analysis
 
 **Code Changes**:
 ```toml
 [tool.pytest.ini_options]
-addopts = "-ra --verbose --strict-markers --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml --cov-fail-under=70 --cov-branch -m \"not integration and not e2e\""
+addopts = "-ra --verbose --strict-markers --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml --cov-fail-under=80 --cov-branch -m \"not integration and not e2e\""
 ```
 
 ---
