@@ -20,12 +20,12 @@ export interface BotSettingsUpdateResponse {
  * Get current bot settings
  */
 export async function getBotSettings(): Promise<BotSettingsResponse> {
-  return api.get<BotSettingsResponse>('/api/bot/settings');
+  return api.get<BotSettingsResponse>('/api/v1/bot/settings');
 }
 
 /**
  * Update bot settings
  */
 export async function updateBotSettings(settings: BotSettingsUpdate): Promise<BotSettingsUpdateResponse> {
-  return api.put<BotSettingsUpdateResponse>('/api/bot/settings', settings);
+  return api.put<BotSettingsUpdateResponse>('/api/v1/bot/settings', settings);
 }

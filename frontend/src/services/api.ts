@@ -82,7 +82,7 @@ class ApiClient {
   private async refreshToken(): Promise<void> {
     try {
       // Refresh endpoint will set new HttpOnly cookie automatically
-      await this.client.post('/api/auth/refresh');
+      await this.client.post('/api/v1/auth/refresh');
     } catch (error) {
       throw new Error('Token refresh failed');
     }
