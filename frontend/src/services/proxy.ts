@@ -40,7 +40,7 @@ export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
 
   // Use cookie-based authentication (HttpOnly cookie sent automatically)
   const response = await axios.post<UploadProxyResponse>(
-    `${API_BASE_URL}/api/proxy/upload`,
+    `${API_BASE_URL}/api/v1/proxy/upload`,
     formData,
     {
       headers: {
@@ -57,21 +57,21 @@ export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
  * Get proxy list with statistics
  */
 export async function getProxyList(): Promise<ProxyListResponse> {
-  return api.get<ProxyListResponse>('/api/proxy/list');
+  return api.get<ProxyListResponse>('/api/v1/proxy/list');
 }
 
 /**
  * Get proxy statistics
  */
 export async function getProxyStats(): Promise<ProxyStats> {
-  return api.get<ProxyStats>('/api/proxy/stats');
+  return api.get<ProxyStats>('/api/v1/proxy/stats');
 }
 
 /**
  * Clear all proxies
  */
 export async function clearProxies(): Promise<void> {
-  await api.delete('/api/proxy/clear');
+  await api.delete('/api/v1/proxy/clear-all');
 }
 
 export const proxyApi = {

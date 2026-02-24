@@ -10,7 +10,7 @@ import type {
 export function useCountries() {
   return useQuery<Country[]>({
     queryKey: ['countries'],
-    queryFn: () => api.get<Country[]>('/api/countries'),
+    queryFn: () => api.get<Country[]>('/api/v1/appointments/countries'),
     staleTime: 3600000, // 1 hour - countries don't change often
   });
 }
@@ -19,7 +19,7 @@ export function useCountries() {
 export function useCentres(countryCode: string) {
   return useQuery<string[]>({
     queryKey: ['centres', countryCode],
-    queryFn: () => api.get<string[]>(`/api/countries/${countryCode}/centres`),
+    queryFn: () => api.get<string[]>(`/api/v1/appointments/countries/${countryCode}/centres`),
     enabled: !!countryCode, // Only run if countryCode is provided
     staleTime: 3600000, // 1 hour
   });
@@ -29,7 +29,7 @@ export function useCentres(countryCode: string) {
 export function useCategories(countryCode: string, centreName: string) {
   return useQuery<string[]>({
     queryKey: ['categories', countryCode, centreName],
-    queryFn: () => api.get<string[]>(`/api/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories`),
+    queryFn: () => api.get<string[]>(`/api/v1/appointments/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories`),
     enabled: !!countryCode && !!centreName,
     staleTime: 3600000, // 1 hour
   });
@@ -39,7 +39,7 @@ export function useCategories(countryCode: string, centreName: string) {
 export function useSubcategories(countryCode: string, centreName: string, categoryName: string) {
   return useQuery<string[]>({
     queryKey: ['subcategories', countryCode, centreName, categoryName],
-    queryFn: () => api.get<string[]>(`/api/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories/${encodeURIComponent(categoryName)}/subcategories`),
+    queryFn: () => api.get<string[]>(`/api/v1/appointments/countries/${countryCode}/centres/${encodeURIComponent(centreName)}/categories/${encodeURIComponent(categoryName)}/subcategories`),
     enabled: !!countryCode && !!centreName && !!categoryName,
     staleTime: 3600000, // 1 hour
   });
@@ -51,8 +51,8 @@ export function useAppointmentRequests(status?: string) {
     queryKey: ['appointment-requests', status],
     queryFn: () => {
       const url = status
-        ? `/api/appointment-requests?status=${status}`
-        : '/api/appointment-requests';
+        ? `/api/v1/appointments/appointment-requests?status=${status}`
+        : '/api/v1/appointments/appointment-requests';
       return api.get<AppointmentRequestResponse[]>(url);
     },
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -63,7 +63,7 @@ export function useAppointmentRequests(status?: string) {
 export function useAppointmentRequest(requestId: number) {
   return useQuery<AppointmentRequestResponse>({
     queryKey: ['appointment-request', requestId],
-    queryFn: () => api.get<AppointmentRequestResponse>(`/api/appointment-requests/${requestId}`),
+    queryFn: () => api.get<AppointmentRequestResponse>(`/api/v1/appointments/appointment-requests/${requestId}`),
     enabled: !!requestId,
   });
 }
@@ -76,7 +76,7 @@ export function useCreateAppointmentRequest() {
     Error,
     AppointmentRequest
   >({
-    mutationFn: (data) => api.post('/api/appointment-requests', data),
+    mutationFn: (data) => api.post('/api/v1/appointments/appointment-requests', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-requests'] });
     },
@@ -87,7 +87,7 @@ export function useCreateAppointmentRequest() {
 export function useDeleteAppointmentRequest() {
   const queryClient = useQueryClient();
   return useMutation<{ success: boolean; message: string }, Error, number>({
-    mutationFn: (requestId) => api.delete(`/api/appointment-requests/${requestId}`),
+    mutationFn: (requestId) => api.delete(`/api/v1/appointments/appointment-requests/${requestId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-requests'] });
     },
@@ -103,7 +103,7 @@ export function useUpdateAppointmentRequestStatus() {
     { requestId: number; status: string }
   >({
     mutationFn: ({ requestId, status }) =>
-      api.patch(`/api/appointment-requests/${requestId}/status`, { status }),
+      api.patch(`/api/v1/appointments/appointment-requests/${requestId}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-requests'] });
     },

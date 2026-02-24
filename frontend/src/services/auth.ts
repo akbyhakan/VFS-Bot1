@@ -5,7 +5,7 @@ import type { LoginRequest, TokenResponse } from '@/types/api';
 
 export class AuthService {
   async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<TokenResponse> {
-    const response = await api.post<TokenResponse>('/api/auth/login', credentials);
+    const response = await api.post<TokenResponse>('/api/v1/auth/login', credentials);
     
     // HttpOnly cookie is automatically set by the server
     // Cookie-based authentication handles all token management
@@ -23,7 +23,7 @@ export class AuthService {
   async logout(): Promise<void> {
     // Call logout endpoint to clear HttpOnly cookie
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/api/v1/auth/logout');
     } catch (error) {
       // Log error with context for debugging authentication flow issues
       // In production, this should be sent to a proper error tracking service

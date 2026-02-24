@@ -12,7 +12,7 @@ export const paymentCardApi = {
    */
   async getPaymentCard(): Promise<PaymentCard | null> {
     try {
-      const card = await api.get<PaymentCard>('/api/payment-card');
+      const card = await api.get<PaymentCard>('/api/v1/payment/payment-card');
       return card;
     } catch (error: unknown) {
       // Return null if no card exists (404) or if card is explicitly null
@@ -32,7 +32,7 @@ export const paymentCardApi = {
     cardData: PaymentCardRequest
   ): Promise<{ success: boolean; card_id: number; message: string }> {
     try {
-      return await api.post('/api/payment-card', cardData);
+      return await api.post('/api/v1/payment/payment-card', cardData);
     } catch (error: unknown) {
       // Handle 422 validation errors from Pydantic
       if (isApiError(error) && error.response?.status === 422) {
@@ -56,7 +56,7 @@ export const paymentCardApi = {
    * Delete the saved payment card
    */
   async deletePaymentCard(): Promise<{ success: boolean; message: string }> {
-    return await api.delete('/api/payment-card');
+    return await api.delete('/api/v1/payment/payment-card');
   },
 };
 
@@ -65,6 +65,6 @@ export const webhookApi = {
    * Get webhook URLs for SMS forwarding
    */
   async getWebhookUrls(): Promise<WebhookUrls> {
-    return await api.get<WebhookUrls>('/api/settings/webhook-urls');
+    return await api.get<WebhookUrls>('/api/v1/appointments/settings/webhook-urls');
   },
 };
