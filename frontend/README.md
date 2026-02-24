@@ -162,7 +162,7 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `GET /api/v1/bot/logs` - Fetch logs
 - `GET /api/v1/bot/settings` - Get bot settings
 - `PUT /api/v1/bot/settings` - Update bot settings
-- `GET /api/metrics` - Bot metrics (non-versioned health endpoint)
+- `GET /metrics` - Bot metrics (non-versioned health endpoint)
 - `GET /health` - Health check (non-versioned)
 - `GET /api/v1/users` - User management
 - `POST /api/v1/users` - Create user

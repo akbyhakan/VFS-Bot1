@@ -78,6 +78,14 @@ export function getStatusColor(status: string): string {
       return 'text-yellow-500';
     case 'error':
       return 'text-red-600';
+    case 'starting':
+      return 'text-blue-500';
+    case 'restarting':
+      return 'text-yellow-500';
+    case 'not_configured':
+      return 'text-dark-400';
+    case 'rate_limited':
+      return 'text-orange-500';
     case 'healthy':
       return 'text-primary-500';
     case 'degraded':

@@ -55,7 +55,7 @@ export function useCheckNow() {
 export function useMetrics() {
   return useQuery<Metrics>({
     queryKey: ['metrics'],
-    queryFn: () => api.get<Metrics>('/api/metrics'),
+    queryFn: () => api.get<Metrics>('/metrics'),
     refetchInterval: 30000,
   });
 }

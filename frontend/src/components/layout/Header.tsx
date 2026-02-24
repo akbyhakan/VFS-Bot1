@@ -9,6 +9,11 @@ import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-reac
 import { cn, getStatusColor } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
 import { useRef } from 'react';
+import type { BotStatusType } from '@/types/api';
+
+const KNOWN_STATUSES: BotStatusType[] = [
+  'running', 'stopped', 'idle', 'error', 'starting', 'restarting', 'not_configured', 'rate_limited',
+];
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -53,13 +58,25 @@ export function Header({ onMenuClick, isSidebarOpen = false }: HeaderProps) {
               'w-2 h-2 rounded-full',
               status === 'running' && 'bg-primary-500 animate-pulse',
               status === 'stopped' && 'bg-red-500',
-              status === 'idle' && 'bg-yellow-500'
+              status === 'idle' && 'bg-yellow-500',
+              status === 'error' && 'bg-red-600',
+              status === 'starting' && 'bg-blue-500 animate-pulse',
+              status === 'restarting' && 'bg-yellow-500 animate-pulse',
+              status === 'not_configured' && 'bg-dark-500',
+              status === 'rate_limited' && 'bg-orange-500 animate-pulse',
+              !KNOWN_STATUSES.includes(status) && 'bg-dark-400'
             )}
           />
           <span className={cn('text-sm font-medium', getStatusColor(status))}>
             {status === 'running' && t('header.statusRunning')}
             {status === 'stopped' && t('header.statusStopped')}
             {status === 'idle' && t('header.statusIdle')}
+            {status === 'error' && t('header.statusError')}
+            {status === 'starting' && t('header.statusStarting')}
+            {status === 'restarting' && t('header.statusRestarting')}
+            {status === 'not_configured' && t('header.statusNotConfigured')}
+            {status === 'rate_limited' && t('header.statusRateLimited')}
+            {!KNOWN_STATUSES.includes(status) && status}
           </span>
           
           {/* System Health Indicator */}
