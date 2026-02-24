@@ -77,6 +77,37 @@ services:
       retries: 3
       start_period: 40s
 
+  db-backup:
+    image: postgres:16-alpine
+    container_name: vfs-bot-db-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: vfs_bot
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
+      PGDATABASE: vfs_bot
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/db-backup.sh:/usr/local/bin/db-backup.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        chmod +x /usr/local/bin/db-backup.sh
+        echo "🔄 Starting backup scheduler (daily at 03:00)..."
+        while true; do
+          CURRENT_HOUR=$$(date +%H)
+          CURRENT_MIN=$$(date +%M)
+          if [ "$$CURRENT_HOUR" = "03" ] && [ "$$CURRENT_MIN" = "00" ]; then
+            /usr/local/bin/db-backup.sh
+          fi
+          sleep 60
+        done
+
 volumes:
   postgres-data:
   redis-data:

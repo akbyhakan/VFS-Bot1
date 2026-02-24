@@ -81,6 +81,8 @@ dev = [
     "mkdocs-material==9.5.50",
 ]
 
+vault = ["hvac>=2.1.0"]
+
 [tool.black]
 line-length = 100
 target-version = ['py312']
@@ -117,7 +119,7 @@ addopts = [
     "--cov-report=html",
     "--cov-report=term-missing",
     "--cov-report=xml",
-    "--cov-fail-under=70",
+    "--cov-fail-under=80",
     "--cov-branch",
     "-m",
     "not integration and not e2e",
@@ -163,7 +165,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Coverage threshold is configured via --cov-fail-under=70 in addopts above.
+# Coverage threshold is configured via --cov-fail-under=80 in addopts above.
 # This was moved from [tool.coverage.report] fail_under to avoid conflicts,
 # as pytest.ini previously took precedence and ignored pyproject.toml settings.
 exclude_lines = [

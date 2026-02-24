@@ -43,7 +43,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "form-action 'self'; "
                 "upgrade-insecure-requests;"
             )
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         else:
             csp_policy = (
                 "default-src 'self'; "
