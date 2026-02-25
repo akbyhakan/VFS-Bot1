@@ -6,7 +6,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import UserRepository, WebhookRepository
+from src.repositories import WebhookRepository
 
 
 @pytest.fixture
@@ -29,18 +29,21 @@ async def db():
 
 @pytest.fixture
 async def test_user(db):
-    """Create a test user."""
-    user_repo = UserRepository(db)
-    user_id = await user_repo.create(
-        {
-            "email": "test@example.com",
-            "password": "testpass123",
-            "center_name": "Test Centre",
-            "visa_category": "Tourist",
-            "visa_subcategory": "Normal",
-        }
-    )
-    return user_id
+    """Create a test user via direct SQL insert (FK compatibility with user_webhooks)."""
+    async with db.get_connection() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO users (email, password, centre, category, subcategory)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
+            """,
+            "test@example.com",
+            "encrypted_test_pass",
+            "Test Centre",
+            "Tourist",
+            "Normal",
+        )
+    return row["id"]
 
 
 @pytest.mark.asyncio
@@ -140,7 +143,6 @@ async def test_get_user_by_invalid_token(db):
 async def test_webhook_cascade_delete(db, test_user):
     """Test that webhook is deleted when user is deleted."""
     webhook_repo = WebhookRepository(db)
-    user_repo = UserRepository(db)
     # Create webhook
     await webhook_repo.create(test_user)
 
@@ -148,8 +150,9 @@ async def test_webhook_cascade_delete(db, test_user):
     webhook = await webhook_repo.get_by_user(test_user)
     assert webhook is not None
 
-    # Delete user
-    await user_repo.hard_delete(test_user)
+    # Delete user via direct SQL
+    async with db.get_connection() as conn:
+        await conn.execute("DELETE FROM users WHERE id = $1", test_user)
 
     # Verify user is deleted
     async with db.get_connection() as conn:
@@ -166,26 +169,24 @@ async def test_webhook_cascade_delete(db, test_user):
 @pytest.mark.integration
 async def test_webhook_token_uniqueness(db):
     """Test that webhook tokens are unique."""
-    # Create two users
-    user_repo = UserRepository(db)
-    user1 = await user_repo.create(
-        {
-            "email": "user1@example.com",
-            "password": "pass1",
-            "center_name": "Centre 1",
-            "visa_category": "Tourist",
-            "visa_subcategory": "Normal",
-        }
-    )
-    user2 = await user_repo.create(
-        {
-            "email": "user2@example.com",
-            "password": "pass2",
-            "center_name": "Centre 2",
-            "visa_category": "Tourist",
-            "visa_subcategory": "Normal",
-        }
-    )
+    # Create two users via direct SQL insert
+    async with db.get_connection() as conn:
+        row1 = await conn.fetchrow(
+            """
+            INSERT INTO users (email, password, centre, category, subcategory)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id
+            """,
+            "user1@example.com", "pass1", "Centre 1", "Tourist", "Normal",
+        )
+        row2 = await conn.fetchrow(
+            """
+            INSERT INTO users (email, password, centre, category, subcategory)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id
+            """,
+            "user2@example.com", "pass2", "Centre 2", "Tourist", "Normal",
+        )
+    user1 = row1["id"]
+    user2 = row2["id"]
 
     webhook_repo = WebhookRepository(db)
     # Create webhooks for both

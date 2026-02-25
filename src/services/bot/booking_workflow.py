@@ -61,13 +61,11 @@ class BookingWorkflow:
 
         # Repositories are injected via deps.repositories
         self.appointment_repo = deps.repositories.appointment_repo
-        self.user_repo = deps.repositories.user_repo
         self.appointment_request_repo = deps.repositories.appointment_request_repo
 
         # Initialize extracted service components
         self.reservation_builder = ReservationBuilder(
             config=config,
-            user_repo=self.user_repo,
             appointment_request_repo=self.appointment_request_repo,
         )
 
@@ -322,19 +320,10 @@ class BookingWorkflow:
             await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
 
             # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
-            details = await self.user_repo.get_personal_details(user["id"])
-            if not details:
-                logger.error(f"No personal details found for user {user['id']}")
-                return
-
-            # Use empty slot for waitlist since no specific date/time is selected
-            reservation = self.reservation_builder.build_reservation(
-                user, {"date": "", "time": ""}, details
+            logger.warning(
+                f"Waitlist personal details lookup not supported in pool mode for user {user['id']}"
             )
-            await self.deps.workflow.booking_service.form_filler.fill_all_applicants(
-                page, dict(reservation)
-            )
-            logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
+            return
 
             # Step 2: Accept all checkboxes on Review and Pay screen
             if not await self.deps.workflow.waitlist_handler.accept_review_checkboxes(page):

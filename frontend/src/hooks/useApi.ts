@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import type { BotStatus, BotCommand, Metrics, HealthCheck } from '@/types/api';
-import type { User, CreateUserRequest, UpdateUserRequest } from '@/types/user';
+import type { VFSAccount, CreateVFSAccountRequest, UpdateVFSAccountRequest } from '@/types/user';
 
 // Bot queries and mutations
 export function useBotStatus() {
@@ -76,51 +76,58 @@ export function useLogs(limit: number = 100) {
   });
 }
 
-// User queries and mutations
-export function useUsers() {
-  return useQuery<User[]>({
-    queryKey: ['users'],
-    queryFn: () => api.get<User[]>('/api/v1/users'),
+// VFS Account queries and mutations
+export function useVFSAccounts() {
+  return useQuery<VFSAccount[]>({
+    queryKey: ['vfs-accounts'],
+    queryFn: () => api.get<VFSAccount[]>('/api/v1/vfs-accounts'),
   });
 }
 
-export function useCreateUser() {
+export function useCreateVFSAccount() {
   const queryClient = useQueryClient();
-  return useMutation<User, Error, CreateUserRequest>({
-    mutationFn: (user) => api.post<User>('/api/v1/users', user),
+  return useMutation<VFSAccount, Error, CreateVFSAccountRequest>({
+    mutationFn: (account) => api.post<VFSAccount>('/api/v1/vfs-accounts', account),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['vfs-accounts'] });
     },
   });
 }
 
-export function useUpdateUser() {
+export function useUpdateVFSAccount() {
   const queryClient = useQueryClient();
-  return useMutation<User, Error, { id: number } & UpdateUserRequest>({
-    mutationFn: ({ id, ...data }) => api.put<User>(`/api/v1/users/${id}`, data),
+  return useMutation<VFSAccount, Error, { id: number } & UpdateVFSAccountRequest>({
+    mutationFn: ({ id, ...data }) => api.put<VFSAccount>(`/api/v1/vfs-accounts/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['vfs-accounts'] });
     },
   });
 }
 
-export function useDeleteUser() {
+export function useDeleteVFSAccount() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, number>({
-    mutationFn: (id) => api.delete(`/api/v1/users/${id}`),
+    mutationFn: (id) => api.delete(`/api/v1/vfs-accounts/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['vfs-accounts'] });
     },
   });
 }
 
-export function useToggleUserStatus() {
+export function useToggleVFSAccountStatus() {
   const queryClient = useQueryClient();
-  return useMutation<User, Error, { id: number; is_active: boolean }>({
+  return useMutation<VFSAccount, Error, { id: number; is_active: boolean }>({
     mutationFn: ({ id, is_active }) =>
-      api.patch<User>(`/api/v1/users/${id}`, { is_active }),
+      api.patch<VFSAccount>(`/api/v1/vfs-accounts/${id}`, { is_active }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['vfs-accounts'] });
     },
   });
 }
+
+// Backward compatibility aliases
+export const useUsers = useVFSAccounts;
+export const useCreateUser = useCreateVFSAccount;
+export const useUpdateUser = useUpdateVFSAccount;
+export const useDeleteUser = useDeleteVFSAccount;
+export const useToggleUserStatus = useToggleVFSAccountStatus;

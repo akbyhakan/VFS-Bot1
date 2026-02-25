@@ -1,5 +1,5 @@
-// VFS Account type - simplified for VFS login credentials
-export interface User {
+// VFS Account types - for VFS login credentials stored in vfs_account_pool
+export interface VFSAccount {
   id: number;
   email: string;
   phone: string;
@@ -8,28 +8,34 @@ export interface User {
   updated_at: string;
 }
 
-export interface CreateUserRequest {
+export interface CreateVFSAccountRequest {
   email: string;
   password: string;  // VFS password (required for creation)
   phone: string;
   is_active?: boolean;
 }
 
-export interface UpdateUserRequest {
+export interface UpdateVFSAccountRequest {
   email?: string;
   password?: string;  // VFS password (optional - only updated if provided)
   phone?: string;
   is_active?: boolean;
 }
 
-export interface UpdateUserPayload {
+export interface UpdateVFSAccountPayload {
   id: number;
-  data: UpdateUserRequest;
+  data: UpdateVFSAccountRequest;
 }
 
-export interface UserStats {
-  total_users: number;
-  active_users: number;
-  inactive_users: number;
-  appointments_booked: number;
+export interface VFSAccountStats {
+  total_accounts: number;
+  active_accounts: number;
+  inactive_accounts: number;
 }
+
+// Backward compatibility aliases
+export type User = VFSAccount;
+export type CreateUserRequest = CreateVFSAccountRequest;
+export type UpdateUserRequest = UpdateVFSAccountRequest;
+export type UpdateUserPayload = UpdateVFSAccountPayload;
+export type UserStats = VFSAccountStats;

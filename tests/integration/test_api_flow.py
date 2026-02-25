@@ -35,20 +35,15 @@ class TestAPIFlow:
 
     @pytest.fixture
     def mock_user_repo(self):
-        """Mock UserRepository for testing."""
+        """Mock AccountPoolRepository for testing."""
         repo = AsyncMock()
-        repo.get_all_with_details = AsyncMock(return_value=[])
-        repo.create = AsyncMock(return_value=1)
-        repo.get_by_id_with_details = AsyncMock(
+        repo.get_all_accounts = AsyncMock(return_value=[])
+        repo.create_account = AsyncMock(return_value=1)
+        repo.get_account_by_id = AsyncMock(
             return_value={
                 "id": 1,
                 "email": "test@example.com",
                 "phone": "+1234567890",
-                "first_name": "Test",
-                "last_name": "User",
-                "center_name": "TestCenter",
-                "visa_category": "Tourist",
-                "visa_subcategory": "Standard",
                 "is_active": True,
                 "created_at": "2024-01-01T00:00:00",
                 "updated_at": "2024-01-01T00:00:00",
@@ -93,7 +88,7 @@ class TestAPIFlow:
         """Test that API endpoints require authentication."""
         # Test various API endpoints without auth
         endpoints = [
-            "/api/v1/users",
+            "/api/v1/vfs-accounts",
         ]
 
         for endpoint in endpoints:
@@ -126,19 +121,14 @@ class TestAPIFlow:
     def test_user_management_flow_requires_auth(self, client, mock_user_repo):
         """Test that user management endpoints require authentication."""
         # Override dependencies
-        from web.dependencies import get_user_repository
+        from web.dependencies import get_vfs_account_repository
 
         # Try to create user without auth
         response = client.post(
-            "/api/v1/users",
+            "/api/v1/vfs-accounts",
             json={
                 "email": "newuser@example.com",
                 "password": "securepassword123",
-                "center_name": "TestCenter",
-                "visa_category": "Tourist",
-                "visa_subcategory": "Standard",
-                "first_name": "New",
-                "last_name": "User",
                 "phone": "+1234567890",
                 "is_active": True,
             },
@@ -155,7 +145,7 @@ class TestAPIFlow:
 
     def test_cors_headers_present(self, client):
         """Test that CORS headers are properly configured."""
-        response = client.options("/api/v1/users", headers={"Origin": "http://localhost:3000"})
+        response = client.options("/api/v1/vfs-accounts", headers={"Origin": "http://localhost:3000"})
 
         # CORS middleware should add appropriate headers
         # Note: TestClient might not process all middleware the same as real server
@@ -216,7 +206,7 @@ class TestAuthenticationFlow:
     def test_cookie_based_auth_fallback(self, client):
         """Test that cookie-based authentication is supported."""
         # Make request with auth cookie
-        response = client.get("/api/v1/users", cookies={"access_token": "invalid_token"})
+        response = client.get("/api/v1/vfs-accounts", cookies={"access_token": "invalid_token"})
 
         # Should attempt to validate token and fail (because it's invalid)
         # Status could be 401 (invalid token) or 500 (verification error)
@@ -224,14 +214,14 @@ class TestAuthenticationFlow:
 
     def test_bearer_token_auth_fallback(self, client):
         """Test that Bearer token authentication is supported."""
-        response = client.get("/api/v1/users", headers={"Authorization": "Bearer invalid_token"})
+        response = client.get("/api/v1/vfs-accounts", headers={"Authorization": "Bearer invalid_token"})
 
         # Should attempt to validate token and fail
         assert response.status_code in [401, 500]
 
     def test_no_auth_returns_401(self, client):
         """Test that requests without auth return 401."""
-        response = client.get("/api/v1/users")
+        response = client.get("/api/v1/vfs-accounts")
         assert response.status_code == 401
         data = response.json()
         assert "detail" in data

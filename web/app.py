@@ -206,8 +206,8 @@ API endpoints are rate-limited to prevent abuse:
                 "description": "Authentication and authorization operations",
             },
             {
-                "name": "users",
-                "description": "User management operations",
+                "name": "vfs-accounts",
+                "description": "VFS account management operations",
             },
             {
                 "name": "appointments",

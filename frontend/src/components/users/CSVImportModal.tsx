@@ -80,7 +80,7 @@ export function CSVImportModal({ isOpen, onClose, onImportComplete }: CSVImportM
 
       // Use cookie-based authentication (HttpOnly cookie sent automatically)
       const response = await axios.post<ImportResult>(
-        `${API_BASE_URL}/api/users/import`,
+        `${API_BASE_URL}/api/v1/vfs-accounts/import`,
         formData,
         {
           headers: {

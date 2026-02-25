@@ -21,6 +21,7 @@ from src.core.security import APIKeyManager
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
 from src.repositories import (
+    AccountPoolRepository,
     AppointmentHistoryRepository,
     AppointmentRepository,
     AppointmentRequestRepository,
@@ -29,7 +30,6 @@ from src.repositories import (
     PaymentRepository,
     ProxyRepository,
     TokenBlacklistRepository,
-    UserRepository,
     WebhookRepository,
 )
 from src.utils.webhook_utils import verify_webhook_signature
@@ -224,9 +224,9 @@ async def broadcast_message(message: Dict[str, Any]) -> None:
 
 
 # Repository dependency functions
-async def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
-    """Get UserRepository instance."""
-    return UserRepository(db)
+async def get_vfs_account_repository(db: Database = Depends(get_db)) -> AccountPoolRepository:
+    """Get AccountPoolRepository instance for VFS account management."""
+    return AccountPoolRepository(db)
 
 
 async def get_appointment_repository(db: Database = Depends(get_db)) -> AppointmentRepository:

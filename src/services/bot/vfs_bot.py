@@ -10,7 +10,7 @@ from playwright.async_api import Page
 from ...constants import AccountPoolConfig, CircuitBreakerConfig, Intervals, Timeouts
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
-from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
+from ...repositories import AppointmentRepository, AppointmentRequestRepository
 from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
 from ..session.account_pool import AccountPool
@@ -168,7 +168,6 @@ class VFSBot:
 
         repository_services = RepositoryServices(
             appointment_repo=AppointmentRepository(db),
-            user_repo=UserRepository(db),
             appointment_request_repo=AppointmentRequestRepository(db),
         )
 

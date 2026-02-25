@@ -10,12 +10,12 @@ from .health import router as health_router
 from .payment import router as payment_router
 from .proxy import router as proxy_router
 from .sms_webhook import router as sms_webhook_router
-from .users import router as users_router
+from .vfs_accounts import router as vfs_accounts_router
 from .webhook import router as webhook_router
 
 __all__ = [
     "auth_router",
-    "users_router",
+    "vfs_accounts_router",
     "appointments_router",
     "audit_router",
     "payment_router",

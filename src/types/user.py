@@ -1,24 +1,30 @@
-"""Type definitions for user data structures."""
+"""Type definitions for VFS account data structures.
+
+Note: UserDict and UserDictWithOptionals are kept for backward compatibility
+with bot services that use them internally. New code should use VFSAccountDict.
+"""
 
 from typing_extensions import TypedDict
 
 
-class UserDict(TypedDict):
-    """Type-safe dictionary for user data from database."""
+class VFSAccountDict(TypedDict):
+    """Type-safe dictionary for VFS account data from vfs_account_pool table."""
 
     id: int
     email: str
     password: str
-    centre: str
-    category: str
-    subcategory: str
-
-
-class UserDictWithOptionals(UserDict, total=False):
-    """Extended user dict with optional fields."""
-
-    country: str
-    active: bool
     phone: str
+
+
+class VFSAccountDictWithOptionals(VFSAccountDict, total=False):
+    """Extended VFS account dict with optional fields."""
+
+    status: str
+    is_active: bool
     created_at: str
     updated_at: str
+
+
+# Backward compatibility aliases for bot services
+UserDict = VFSAccountDict
+UserDictWithOptionals = VFSAccountDictWithOptionals

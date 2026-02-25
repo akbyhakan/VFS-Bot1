@@ -10,7 +10,6 @@ from .types import PersonDict, ReservationDict
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories.appointment_request_repository import AppointmentRequestRepository
-    from ...repositories.user_repository import UserRepository
     from ...types.user import UserDict
     from .slot_checker import SlotInfo
 
@@ -21,7 +20,6 @@ class ReservationBuilder:
     def __init__(
         self,
         config: "BotConfigDict",
-        user_repo: "UserRepository",
         appointment_request_repo: "AppointmentRequestRepository",
     ):
         """
@@ -29,40 +27,29 @@ class ReservationBuilder:
 
         Args:
             config: Bot configuration dictionary
-            user_repo: User repository instance
             appointment_request_repo: Appointment request repository instance
         """
         self.config = config
-        self.user_repo = user_repo
         self.appointment_request_repo = appointment_request_repo
 
     async def build_reservation_for_user(
         self, user: "UserDict", slot: "SlotInfo"
     ) -> Optional[ReservationDict]:
         """
-        Build reservation for user using appropriate strategy.
-
-        Tries get_pending_appointment_request_for_user first (multi-person support),
-        falls back to get_personal_details (legacy single-person).
+        Build reservation for user using appointment request data.
 
         Args:
-            user: User dictionary from database
+            user: User/account dictionary
             slot: SlotInfo with date and time
 
         Returns:
-            Reservation dict or None if no data available
+            Reservation dict or None if no appointment request available
         """
-        # Try multi-person flow first
         appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if appointment_request:
             return self.build_reservation_from_request(appointment_request.to_dict(), slot)
 
-        # Fallback: legacy single-person flow
-        details = await self.user_repo.get_personal_details(user["id"])
-        if details:
-            return self.build_reservation(user, slot, details)
-
-        logger.error(f"No personal details or appointment request found for user {user['id']}")
+        logger.error(f"No appointment request found for user {user['id']}")
         return None
 
     def build_reservation_from_request(

@@ -33,12 +33,14 @@ class AccountPoolRepository(BaseRepository):
 
     async def update(self, id: int, data: Dict[str, Any]) -> bool:
         """Update an account."""
+        if "is_active" in data or "email" in data or "password" in data or "phone" in data:
+            return await self.update_account(id, data)
         status = data.get("status", "available")
         return await self.update_account_status(id, status)
 
     async def delete(self, id: int) -> bool:
-        """Delete an account (not supported - use update_account_status instead)."""
-        raise NotImplementedError("Account deletion not supported; use update_account_status")
+        """Soft-delete an account (set is_active=FALSE)."""
+        return await self.deactivate_account(id)
 
     async def get_available_accounts(self) -> List[Dict[str, Any]]:
         """
@@ -458,3 +460,85 @@ class AccountPoolRepository(BaseRepository):
                 phone,
             )
             return row["id"] if row else 0
+
+    async def get_all_accounts(self) -> List[Dict[str, Any]]:
+        """Get all accounts (active and inactive) for dashboard listing."""
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT id, email, phone, status, is_active,
+                       last_used_at, created_at, updated_at
+                FROM vfs_account_pool
+                ORDER BY created_at DESC
+                """)
+            return [dict(row) for row in rows]
+
+    async def update_account(self, account_id: int, data: Dict[str, Any]) -> bool:
+        """
+        Update account fields (email, password, phone, is_active).
+
+        Args:
+            account_id: Account ID
+            data: Fields to update
+
+        Returns:
+            True if update successful, False otherwise
+        """
+        updates: List[str] = []
+        params: List[Any] = [account_id]
+        param_idx = 2
+
+        if "email" in data and data["email"] is not None:
+            updates.append(f"email = ${param_idx}")
+            params.append(data["email"])
+            param_idx += 1
+
+        if "password" in data and data["password"] is not None:
+            updates.append(f"password = ${param_idx}")
+            params.append(encrypt_password(data["password"]))
+            param_idx += 1
+
+        if "phone" in data and data["phone"] is not None:
+            updates.append(f"phone = ${param_idx}")
+            params.append(data["phone"])
+            param_idx += 1
+
+        if "is_active" in data and data["is_active"] is not None:
+            updates.append(f"is_active = ${param_idx}")
+            params.append(data["is_active"])
+            param_idx += 1
+
+        if not updates:
+            return False
+
+        updates.append("updated_at = NOW()")
+
+        query = f"""
+            UPDATE vfs_account_pool
+            SET {', '.join(updates)}
+            WHERE id = $1
+        """
+
+        async with self.db.get_connection() as conn:
+            result = await conn.execute(query, *params)
+            return bool(result == "UPDATE 1")
+
+    async def deactivate_account(self, account_id: int) -> bool:
+        """
+        Soft-delete an account by setting is_active = FALSE.
+
+        Args:
+            account_id: Account ID
+
+        Returns:
+            True if successful, False otherwise
+        """
+        async with self.db.get_connection() as conn:
+            result = await conn.execute(
+                """
+                UPDATE vfs_account_pool
+                SET is_active = FALSE, updated_at = NOW()
+                WHERE id = $1
+                """,
+                account_id,
+            )
+            return bool(result == "UPDATE 1")

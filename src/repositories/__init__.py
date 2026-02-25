@@ -11,20 +11,16 @@ from .log_repository import LogEntry, LogRepository
 from .payment_repository import PaymentCard, PaymentRepository
 from .proxy_repository import Proxy, ProxyRepository
 from .token_blacklist_repository import TokenBlacklistEntry, TokenBlacklistRepository
-from .user_entity import User
-from .user_read_repository import UserReadRepository
-from .user_repository import UserRepository
-from .user_write_repository import UserWriteRepository
 from .webhook_repository import Webhook, WebhookRepository
+
+from .user_repository import User, UserRepository
 
 __all__ = [
     "AccountPoolRepository",
-    "BaseRepository",
-    "DropdownCacheRepository",
     "UserRepository",
     "User",
-    "UserReadRepository",
-    "UserWriteRepository",
+    "BaseRepository",
+    "DropdownCacheRepository",
     "Appointment",
     "AppointmentRepository",
     "LogEntry",

@@ -6,7 +6,7 @@ export const REMEMBER_ME_KEY = 'vfs_bot_remember';
 export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/',
-  USERS: '/users',
+  USERS: '/vfs-accounts',
   SETTINGS: '/settings',
   LOGS: '/logs',
   APPOINTMENTS: '/appointments',
