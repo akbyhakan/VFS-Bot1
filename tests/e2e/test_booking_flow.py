@@ -7,7 +7,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import AppointmentRepository, UserRepository
+from src.repositories import AppointmentRepository, AccountPoolRepository
 
 
 class TestBookingFlow:
@@ -22,7 +22,7 @@ class TestBookingFlow:
 
         try:
             # Create test user
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             user_id = await user_repo.create(
                 {
                     "email": "e2e_test@example.com",
@@ -105,7 +105,7 @@ class TestBookingFlow:
 
         try:
             # Create test user
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             user_id = await user_repo.create(
                 {
                     "email": "no_slots@example.com",
@@ -198,7 +198,7 @@ class TestBookingFlow:
 
         try:
             # Create multiple users
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             user_ids = []
             for i in range(3):
                 user_id = await user_repo.create(

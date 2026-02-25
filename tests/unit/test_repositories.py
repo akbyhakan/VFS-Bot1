@@ -7,7 +7,7 @@ import pytest
 
 from src.core.exceptions import RecordNotFoundError, ValidationError
 from src.models.database import Database
-from src.repositories.user_repository import User, UserRepository
+from src.repositories import AccountPoolRepository
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ def sample_user_data():
 @pytest.mark.asyncio
 async def test_user_repository_get_by_id(mock_db, sample_user_data):
     """Test getting user by ID."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -70,7 +70,7 @@ async def test_user_repository_get_by_id(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_get_by_id_not_found(mock_db):
     """Test getting non-existent user."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response - no user found
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -85,7 +85,7 @@ async def test_user_repository_get_by_id_not_found(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_get_by_email(mock_db, sample_user_data):
     """Test getting user by email."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -101,7 +101,7 @@ async def test_user_repository_get_by_email(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_get_all(mock_db, sample_user_data):
     """Test getting all users."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -117,7 +117,7 @@ async def test_user_repository_get_all(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_create_valid(mock_db):
     """Test creating a user with valid data."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response for insert
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -144,7 +144,7 @@ async def test_user_repository_create_valid(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_create_missing_email(mock_db):
     """Test creating user without email."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     data = {
         "center_name": "Istanbul",
@@ -160,7 +160,7 @@ async def test_user_repository_create_missing_email(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_create_invalid_email(mock_db):
     """Test creating user with invalid email."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     data = {
         "email": "invalid-email",  # No @ symbol
@@ -177,7 +177,7 @@ async def test_user_repository_create_invalid_email(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_update_valid(mock_db, sample_user_data):
     """Test updating user with valid data."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -199,7 +199,7 @@ async def test_user_repository_update_valid(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_update_not_found(mock_db):
     """Test updating non-existent user."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock get_by_id to return None
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -215,7 +215,7 @@ async def test_user_repository_update_not_found(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_update_invalid_email(mock_db, sample_user_data):
     """Test updating user with invalid email."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -231,7 +231,7 @@ async def test_user_repository_update_invalid_email(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_delete(mock_db, sample_user_data):
     """Test soft deleting a user."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock get_by_id to return existing user
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -248,7 +248,7 @@ async def test_user_repository_delete(mock_db, sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_hard_delete(mock_db):
     """Test hard deleting a user."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -264,7 +264,7 @@ async def test_user_repository_hard_delete(mock_db):
 @pytest.mark.asyncio
 async def test_user_repository_get_active_count(mock_db):
     """Test getting active user count."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response - fetchrow returns a Record-like object that can be indexed
     mock_conn = await mock_db.get_connection().__aenter__()
@@ -292,7 +292,7 @@ async def test_user_to_dict(sample_user_data):
 @pytest.mark.asyncio
 async def test_user_repository_get_all_active_only(mock_db, sample_user_data):
     """Test getting only active users."""
-    repo = UserRepository(mock_db)
+    repo = AccountPoolRepository(mock_db)
 
     # Mock database response
     mock_conn = await mock_db.get_connection().__aenter__()

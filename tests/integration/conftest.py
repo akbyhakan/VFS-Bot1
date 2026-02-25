@@ -10,7 +10,7 @@ import pytest_asyncio
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
 from src.repositories.appointment_repository import AppointmentRepository
-from src.repositories.user_repository import UserRepository
+from src.repositories.account_pool_repository import AccountPoolRepository
 
 logger = logging.getLogger(__name__)
 
@@ -106,17 +106,17 @@ async def test_db() -> AsyncGenerator[Database, None]:
 
 
 @pytest_asyncio.fixture
-async def user_repo(test_db: Database) -> UserRepository:
+async def user_repo(test_db: Database) -> AccountPoolRepository:
     """
-    Provide a UserRepository connected to the test database.
+    Provide a AccountPoolRepository connected to the test database.
 
     Args:
         test_db: Test database fixture
 
     Returns:
-        UserRepository instance
+        AccountPoolRepository instance
     """
-    return UserRepository(test_db)
+    return AccountPoolRepository(test_db)
 
 
 @pytest_asyncio.fixture
@@ -134,12 +134,12 @@ async def appointment_repo(test_db: Database) -> AppointmentRepository:
 
 
 @pytest_asyncio.fixture
-async def test_user(user_repo: UserRepository) -> Dict[str, Any]:
+async def test_user(user_repo: AccountPoolRepository) -> Dict[str, Any]:
     """
     Create a test user in the database for reuse across tests.
 
     Args:
-        user_repo: UserRepository fixture
+        user_repo: AccountPoolRepository fixture
 
     Returns:
         Dictionary containing test user data including ID

@@ -72,9 +72,9 @@ class BookingExecutor:
         Raises:
             Exception: Any exception from booking flow is propagated to caller
         """
-        # Use provided category/subcategory or fallback to user table
-        final_category = category or user["category"]
-        final_subcategory = subcategory or user["subcategory"]
+        # Use provided category/subcategory or fallback to user dict
+        final_category = category or user.get("category", "")
+        final_subcategory = subcategory or user.get("subcategory", "")
 
         success = await self.deps.workflow.booking_service.run_booking_flow(page, dict(reservation))
 

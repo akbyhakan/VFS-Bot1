@@ -43,7 +43,11 @@ class TestWebDependenciesModularStructure:
         from web.models.common import CountryResponse, WebhookUrlsResponse
         from web.models.payment import PaymentCardRequest, PaymentCardResponse
         from web.models.proxy import ProxyCreateRequest, ProxyResponse
-        from web.models.users import UserCreateRequest, UserModel, UserUpdateRequest
+        from web.models.vfs_accounts import (
+            VFSAccountCreateRequest,
+            VFSAccountModel,
+            VFSAccountUpdateRequest,
+        )
 
         assert all(
             [
@@ -51,8 +55,8 @@ class TestWebDependenciesModularStructure:
                 TokenResponse,
                 BotCommand,
                 StatusUpdate,
-                UserCreateRequest,
-                UserModel,
+                VFSAccountCreateRequest,
+                VFSAccountModel,
                 PaymentCardRequest,
                 ProxyCreateRequest,
                 CountryResponse,

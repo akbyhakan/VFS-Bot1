@@ -70,8 +70,8 @@ class MissionProcessor:
         person_count = appointment_request.person_count or len(appointment_request.persons or [])
         preferred_dates = appointment_request.preferred_dates or []
         centres = appointment_request.centres
-        category = appointment_request.visa_category or user["category"]
-        subcategory = appointment_request.visa_subcategory or user["subcategory"]
+        category = appointment_request.visa_category or user.get("category", "")
+        subcategory = appointment_request.visa_subcategory or user.get("subcategory", "")
 
         logger.info(
             f"Processing AppointmentRequest #{appointment_request.id}: "

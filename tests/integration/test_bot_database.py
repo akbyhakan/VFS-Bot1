@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 
 from src.models.database import Database
-from src.repositories import AppointmentRepository, UserRepository
+from src.repositories import AppointmentRepository, AccountPoolRepository
 from src.services.bot.vfs_bot import VFSBot
 from src.services.notification.notification import NotificationService
 
@@ -50,7 +50,7 @@ async def test_database_connection(database):
 @pytest.mark.asyncio
 async def test_add_user(database):
     """Test adding a user to database."""
-    user_repo = UserRepository(database)
+    user_repo = AccountPoolRepository(database)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -67,7 +67,7 @@ async def test_add_user(database):
 @pytest.mark.asyncio
 async def test_get_active_users(database):
     """Test retrieving active users."""
-    user_repo = UserRepository(database)
+    user_repo = AccountPoolRepository(database)
     await user_repo.create(
         {
             "email": "test@example.com",
@@ -87,7 +87,7 @@ async def test_get_active_users(database):
 @pytest.mark.asyncio
 async def test_add_personal_details(database):
     """Test adding personal details."""
-    user_repo = UserRepository(database)
+    user_repo = AccountPoolRepository(database)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -116,7 +116,7 @@ async def test_add_personal_details(database):
 @pytest.mark.asyncio
 async def test_add_appointment(database):
     """Test adding an appointment."""
-    user_repo = UserRepository(database)
+    user_repo = AccountPoolRepository(database)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
