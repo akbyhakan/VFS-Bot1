@@ -181,7 +181,8 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `POST /api/v1/proxy/upload` - Upload proxy file
 - `GET /api/v1/config/runtime` - Get runtime configuration
 - `PUT /api/v1/config/runtime` - Update runtime configuration
-- `POST /api/v1/dropdown-sync/trigger` - Trigger dropdown synchronization
+- `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
+- `POST /api/v1/dropdown-sync/all` - Trigger dropdown sync for all countries
 - `WS /ws` - WebSocket for real-time updates
 
 ### WebSocket Messages
