@@ -302,62 +302,20 @@ class BookingWorkflow:
         """
         Process waitlist flow for a user.
 
+        Note: Waitlist flow is not supported in account pool mode because
+        it requires personal details lookup which is not available for
+        pooled accounts. This method logs a warning and returns early.
+
         Args:
             page: Playwright page object
             user: User dictionary from database
         """
         masked_email = mask_email(user["email"])
-        logger.info(f"Starting waitlist flow for {masked_email}")
-
-        try:
-            # Step 1: Join waitlist
-            if not await self.deps.workflow.waitlist_handler.join_waitlist(page):
-                logger.error("Failed to join waitlist")
-                return
-
-            # Click Continue button
-            await smart_click(page, get_selector("continue_button"), self.deps.infra.human_sim)
-            await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
-
-            # Step 2: Build reservation from AppointmentRequest
-            reservation = await self.reservation_builder.build_reservation_for_user(
-                user, {"date": "", "time": ""}
-            )
-            if not reservation:
-                logger.error(
-                    f"No appointment request found for user {user['id']} in waitlist flow"
-                )
-                return
-
-            # Step 3: Fill applicant forms
-            await self.deps.workflow.booking_service.form_filler.fill_all_applicants(
-                page, dict(reservation)
-            )
-            logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
-
-            # Step 4: Accept review checkboxes
-            if not await self.deps.workflow.waitlist_handler.accept_review_checkboxes(page):
-                logger.error("Failed to accept review checkboxes")
-                return
-
-            # Step 5: Click Confirm button
-            if not await self.deps.workflow.waitlist_handler.click_confirm_button(page):
-                logger.error("Failed to click confirm button")
-                return
-
-            # Step 6: Detect waitlist confirmation
-            confirmed = await self.deps.workflow.waitlist_handler.detect_waitlist_confirmation(page)
-            if confirmed:
-                logger.success(f"✅ Waitlist registration confirmed for {masked_email}")
-                await self.notifier.notify_waitlist_joined(user.get("email", ""))
-            else:
-                logger.warning(f"Waitlist confirmation not detected for {masked_email}")
-
-        except Exception as e:
-            logger.error(f"Error in waitlist flow: {e}", exc_info=True)
-            await self._capture_error_safe(
-                page, e, "waitlist_flow", user["id"], mask_email(user["email"])
-            )
+        logger.warning(
+            f"Waitlist flow not supported in account pool mode for {masked_email}. "
+            f"Skipping waitlist enrollment."
+        )
+        return
 
     async def _handle_workflow_exception(
         self,
