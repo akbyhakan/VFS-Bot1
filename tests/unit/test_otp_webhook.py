@@ -166,3 +166,57 @@ class TestOTPWebhookService:
         # All results should be either None or a valid OTP (no exceptions)
         for result in results:
             assert result is None or isinstance(result, str), f"Unexpected result: {result}"
+
+    @pytest.mark.asyncio
+    async def test_process_appointment_sms(self):
+        """Test that process_appointment_sms stores OTP in the appointment queue."""
+        service = OTPWebhookService()
+        otp = await service.process_appointment_sms("+905551234567", "Your VFS code is 111222")
+        assert otp == "111222"
+
+        # Should be retrievable from the appointment queue
+        result = await service.wait_for_appointment_otp(timeout=1)
+        assert result == "111222"
+
+    @pytest.mark.asyncio
+    async def test_process_payment_sms(self):
+        """Test that process_payment_sms stores OTP in the payment queue."""
+        service = OTPWebhookService()
+        otp = await service.process_payment_sms("+905551234567", "Your bank code is 333444")
+        assert otp == "333444"
+
+        # Should be retrievable from the payment queue
+        result = await service.wait_for_payment_otp(timeout=1)
+        assert result == "333444"
+
+    @pytest.mark.asyncio
+    async def test_wait_for_appointment_otp(self):
+        """Test waiting for OTP from the appointment queue."""
+        service = OTPWebhookService()
+
+        await service.process_appointment_sms("+905551234567", "Code: 555666")
+        otp = await service.wait_for_appointment_otp(timeout=1)
+        assert otp == "555666"
+
+    @pytest.mark.asyncio
+    async def test_wait_for_payment_otp(self):
+        """Test waiting for OTP from the payment queue."""
+        service = OTPWebhookService()
+
+        await service.process_payment_sms("+905551234567", "Code: 777888")
+        otp = await service.wait_for_payment_otp(timeout=1)
+        assert otp == "777888"
+
+    @pytest.mark.asyncio
+    async def test_appointment_payment_queue_isolation(self):
+        """Test that appointment and payment queues are isolated from each other."""
+        service = OTPWebhookService()
+
+        await service.process_appointment_sms("+905551234567", "Appointment code: 111111")
+        await service.process_payment_sms("+905551234567", "Payment code: 222222")
+
+        payment_otp = await service.wait_for_payment_otp(timeout=1)
+        appointment_otp = await service.wait_for_appointment_otp(timeout=1)
+
+        assert payment_otp == "222222"
+        assert appointment_otp == "111111"

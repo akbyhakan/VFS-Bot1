@@ -6,6 +6,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from src.core.environment import Environment
 from src.utils.webhook_utils import verify_webhook_signature
@@ -13,6 +15,9 @@ from src.utils.webhook_utils import verify_webhook_signature
 from .otp_webhook import OTPWebhookService, get_otp_service
 
 router = APIRouter(prefix="/api/webhook", tags=["webhook-sms"])
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 
 class SMSWebhookPayload(BaseModel):
@@ -94,7 +99,9 @@ async def get_verified_otp_service() -> OTPWebhookService:
 
 
 @router.post("/sms/appointment", response_model=OTPResponse)
+@limiter.limit("60/minute")
 async def receive_appointment_sms(
+    request: Request,
     payload: SMSWebhookPayload,
     otp_service: OTPWebhookService = Depends(get_verified_otp_service),
     _: None = Depends(verify_webhook_signature_local),
@@ -129,7 +136,9 @@ async def receive_appointment_sms(
 
 
 @router.post("/sms/payment", response_model=OTPResponse)
+@limiter.limit("60/minute")
 async def receive_payment_sms(
+    request: Request,
     payload: SMSWebhookPayload,
     otp_service: OTPWebhookService = Depends(get_verified_otp_service),
     _: None = Depends(verify_webhook_signature_local),
@@ -164,10 +173,13 @@ async def receive_payment_sms(
 
 
 @router.get("/otp/wait")
+@limiter.limit("10/minute")
 async def wait_for_otp(
+    request: Request,
     phone: Optional[str] = None,
     timeout: int = 120,
     otp_service: OTPWebhookService = Depends(get_verified_otp_service),
+    _: None = Depends(verify_webhook_signature_local),
 ) -> OTPResponse:
     """
     Wait for OTP to arrive (long polling).
@@ -182,6 +194,6 @@ async def wait_for_otp(
     otp = await otp_service.wait_for_otp(phone_number=phone, timeout=timeout)
 
     if otp:
-        return OTPResponse(success=True, otp=otp, message="OTP retrieved")
+        return OTPResponse(success=True, otp=f"{otp[:2]}****", message="OTP retrieved")
     else:
         return OTPResponse(success=False, message="OTP wait timeout")
