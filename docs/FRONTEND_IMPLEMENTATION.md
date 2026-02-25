@@ -217,7 +217,7 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `POST /api/v1/bot/start` - Start bot
 - ✅ `POST /api/v1/bot/stop` - Stop bot
 - ✅ `GET /api/v1/bot/logs` - Fetch logs
-- ✅ `GET /api/metrics` - Bot metrics (non-versioned)
+- ✅ `GET /metrics` - Bot metrics (non-versioned)
 - ✅ `GET /health` - Health check
 - ✅ `WS /ws` - WebSocket connection
 
