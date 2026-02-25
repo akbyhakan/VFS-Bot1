@@ -30,6 +30,7 @@ class AppointmentRequest:
         created_at: str,
         updated_at: Optional[str] = None,
         completed_at: Optional[str] = None,
+        booked_date: Optional[str] = None,
         persons: Optional[List[Dict[str, Any]]] = None,
     ):
         """Initialize appointment request entity."""
@@ -44,6 +45,7 @@ class AppointmentRequest:
         self.created_at = created_at
         self.updated_at = updated_at
         self.completed_at = completed_at
+        self.booked_date = booked_date
         self.persons = persons or []
 
     def to_dict(self) -> Dict[str, Any]:
@@ -60,6 +62,7 @@ class AppointmentRequest:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "completed_at": self.completed_at,
+            "booked_date": self.booked_date,
             "persons": self.persons,
         }
 
@@ -89,6 +92,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             created_at=data["created_at"],
             updated_at=data.get("updated_at"),
             completed_at=data.get("completed_at"),
+            booked_date=data.get("booked_date"),
             persons=data.get("persons", []),
         )
 
@@ -360,7 +364,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         param_num = 1
 
         for key, value in data.items():
-            if key in ["country_code", "visa_category", "visa_subcategory", "person_count"]:
+            if key in ["country_code", "visa_category", "visa_subcategory", "person_count", "booked_date"]:
                 update_fields.append(f"{key} = ${param_num}")
                 values.append(value)
                 param_num += 1
@@ -383,7 +387,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             result = await conn.execute(query, *values)
             return bool(result != "UPDATE 0")
 
-    async def update_status(self, id: int, status: str, completed_at: Any = None) -> bool:
+    async def update_status(self, id: int, status: str, completed_at: Any = None, booked_date: Optional[str] = None) -> bool:
         """
         Update appointment request status.
 
@@ -391,12 +395,25 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             id: Request ID
             status: New status
             completed_at: Optional completion timestamp
+            booked_date: Optional booked appointment date
 
         Returns:
             True if updated, False otherwise
         """
         async with self.db.get_connection() as conn:
-            if completed_at:
+            if completed_at and booked_date:
+                result = await conn.execute(
+                    """
+                    UPDATE appointment_requests
+                    SET status = $1, completed_at = $2, booked_date = $3, updated_at = NOW()
+                    WHERE id = $4
+                    """,
+                    status,
+                    completed_at,
+                    booked_date,
+                    id,
+                )
+            elif completed_at:
                 result = await conn.execute(
                     """
                     UPDATE appointment_requests
@@ -405,6 +422,17 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
                     """,
                     status,
                     completed_at,
+                    id,
+                )
+            elif booked_date:
+                result = await conn.execute(
+                    """
+                    UPDATE appointment_requests
+                    SET status = $1, booked_date = $2, updated_at = NOW()
+                    WHERE id = $3
+                    """,
+                    status,
+                    booked_date,
                     id,
                 )
             else:

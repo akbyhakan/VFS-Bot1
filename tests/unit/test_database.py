@@ -384,6 +384,54 @@ async def test_get_appointment_request(test_db):
     assert request["status"] == "pending"
     assert len(request["persons"]) == 1
     assert request["persons"][0]["first_name"] == "John"
+    assert request["booked_date"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_appointment_request_booked_date(test_db):
+    """Test updating appointment request status to booked with booked_date."""
+    persons = [
+        {
+            "first_name": "John",
+            "last_name": "Doe",
+            "gender": "male",
+            "nationality": "Turkey",
+            "birth_date": "15/01/1990",
+            "passport_number": "U12345678",
+            "passport_issue_date": "01/01/2020",
+            "passport_expiry_date": "01/01/2030",
+            "phone_code": "90",
+            "phone_number": "5551234567",
+            "email": "john@example.com",
+            "is_child_with_parent": False,
+        },
+    ]
+
+    request_id = await AppointmentRequestRepository(test_db).create(
+        {
+            "country_code": "nld",
+            "visa_category": "Tourism",
+            "visa_subcategory": "Short Stay",
+            "centres": ["Istanbul"],
+            "preferred_dates": ["15/02/2026"],
+            "person_count": 1,
+            "persons": persons,
+        }
+    )
+
+    # Update status to booked with booked_date
+    updated = await AppointmentRequestRepository(test_db).update_status(
+        request_id, "booked", booked_date="15/02/2026"
+    )
+
+    assert updated is True
+
+    # Verify booked_date is stored
+    entity = await AppointmentRequestRepository(test_db).get_by_id(request_id)
+    request = entity.to_dict() if entity else None
+    assert request is not None
+    assert request["status"] == "booked"
+    assert request["booked_date"] == "15/02/2026"
 
 
 @pytest.mark.asyncio

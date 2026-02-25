@@ -148,7 +148,7 @@ class BookingExecutor:
                 user["id"]
             )
             if appointment_request:
-                await self.appointment_request_repo.update_status(appointment_request.id, "booked")
+                await self.appointment_request_repo.update_status(appointment_request.id, "booked", booked_date=slot["date"])
 
             # Clear recovery checkpoint after successful booking
             self.deps.workflow.session_recovery.clear_checkpoint()

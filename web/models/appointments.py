@@ -65,4 +65,5 @@ class AppointmentRequestResponse(BaseModel):
     status: str
     created_at: str
     completed_at: Optional[str] = None
+    booked_date: Optional[str] = None
     persons: List[AppointmentPersonResponse]
