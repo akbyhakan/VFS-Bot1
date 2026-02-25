@@ -8,7 +8,7 @@ import pytest
 
 from src.models.database import Database
 from src.repositories.appointment_repository import AppointmentRepository
-from src.repositories.user_repository import UserRepository
+from src.repositories import AccountPoolRepository
 from src.services.appointment_deduplication import AppointmentDeduplication
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class TestUserAppointmentFlow:
 
     @pytest.mark.asyncio
     async def test_create_user_add_details_book_appointment(
-        self, test_db: Database, user_repo: UserRepository, appointment_repo: AppointmentRepository
+        self, test_db: Database, user_repo: AccountPoolRepository, appointment_repo: AppointmentRepository
     ):
         """
         Test complete user flow: Create user → Add personal details → Create
@@ -100,7 +100,7 @@ class TestUserAppointmentFlow:
 
     @pytest.mark.asyncio
     async def test_duplicate_appointment_prevention(
-        self, test_db: Database, user_repo: UserRepository, appointment_repo: AppointmentRepository
+        self, test_db: Database, user_repo: AccountPoolRepository, appointment_repo: AppointmentRepository
     ):
         """
         Test deduplication service prevents duplicate appointments.
@@ -170,7 +170,7 @@ class TestUserAppointmentFlow:
         assert is_dup_3 is False, "Different appointment should not be duplicate"
 
     @pytest.mark.asyncio
-    async def test_concurrent_user_creation(self, test_db: Database, user_repo: UserRepository):
+    async def test_concurrent_user_creation(self, test_db: Database, user_repo: AccountPoolRepository):
         """
         Test concurrent user creation to detect race conditions.
 
@@ -209,7 +209,7 @@ class TestUserAppointmentFlow:
             assert user.id == user_id
 
     @pytest.mark.asyncio
-    async def test_user_cascade_delete(self, test_db: Database, user_repo: UserRepository):
+    async def test_user_cascade_delete(self, test_db: Database, user_repo: AccountPoolRepository):
         """
         Test cascade delete: deleting user also deletes personal_details.
 

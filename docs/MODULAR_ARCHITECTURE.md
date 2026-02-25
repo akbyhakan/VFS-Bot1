@@ -72,7 +72,7 @@ stop()
 - **Dataclasses**:
   - `WorkflowServices` — Core workflow services (auth, slots, booking, waitlist, error handling, page state, slot analysis, session recovery, alerts)
   - `InfraServices` — Infrastructure services (browser, proxy, headers, anti-detection, error capture)
-  - `RepositoryServices` — Data access repositories (appointment, user, appointment request)
+  - `RepositoryServices` — Data access repositories (appointment, appointment request)
   - `BookingDependencies` — Top-level container grouping `WorkflowServices`, `InfraServices`, and `RepositoryServices`
 
 ### 3. **BookingWorkflow** (Workflow Orchestrator)
@@ -232,7 +232,6 @@ from src.services.bot.booking_workflow import BookingWorkflow
 from src.repositories import (
     AppointmentRepository,
     AppointmentRequestRepository,
-    UserRepository,
 )
 
 # Repositories are injected, not created internally
@@ -241,7 +240,6 @@ deps = BookingDependencies(
     infra=infra_services,
     repositories=RepositoryServices(
         appointment_repo=AppointmentRepository(db),
-        user_repo=UserRepository(db),
         appointment_request_repo=AppointmentRequestRepository(db),
     ),
 )

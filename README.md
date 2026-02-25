@@ -658,10 +658,6 @@ VFS-Bot1/
 │   │   └── db_factory.py            # Database factory pattern
 │   ├── repositories/                # Repository pattern
 │   │   ├── base.py                  # Base CRUD operations
-│   │   ├── user_repository.py       # User operations
-│   │   ├── user_entity.py           # User entity model
-│   │   ├── user_read_repository.py  # User read operations (CQRS)
-│   │   ├── user_write_repository.py # User write operations (CQRS)
 │   │   ├── account_pool_repository.py  # Account pool
 │   │   ├── appointment_repository.py   # Appointment operations
 │   │   ├── appointment_request_repository.py  # Appointment request operations

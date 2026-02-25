@@ -8,7 +8,7 @@ import pytest_asyncio
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import UserRepository
+from src.repositories import AccountPoolRepository
 
 # Try to import testcontainers
 try:
@@ -116,7 +116,7 @@ class TestDatabaseIntegration:
 
         async def create_user(i: int) -> int:
             """Create a single user."""
-            user_repo = UserRepository(integration_db)
+            user_repo = AccountPoolRepository(integration_db)
             return await user_repo.create(
                 {
                     "email": f"user{i}@test.com",
@@ -193,7 +193,7 @@ class TestDatabaseIntegration:
         """Test transaction isolation between connections."""
 
         # Create a user
-        user_repo = UserRepository(integration_db)
+        user_repo = AccountPoolRepository(integration_db)
         user_id = await user_repo.create(
             {
                 "email": "test@example.com",
@@ -231,7 +231,7 @@ class TestDatabaseIntegration:
         """Test concurrent read and write operations."""
 
         # Create initial users
-        user_repo = UserRepository(integration_db)
+        user_repo = AccountPoolRepository(integration_db)
         user_ids = []
         for i in range(5):
             user_id = await user_repo.create(
@@ -245,7 +245,7 @@ class TestDatabaseIntegration:
             )
             user_ids.append(user_id)
 
-        user_repo = UserRepository(integration_db)
+        user_repo = AccountPoolRepository(integration_db)
 
         async def read_users() -> list:
             """Read all users."""
@@ -253,7 +253,7 @@ class TestDatabaseIntegration:
 
         async def add_personal_details(user_id: int) -> None:
             """Add personal details for a user."""
-            await UserRepository(integration_db).add_personal_details(
+            await AccountPoolRepository(integration_db).add_personal_details(
                 user_id=user_id,
                 details={
                     "first_name": f"User{user_id}",
@@ -292,7 +292,7 @@ class TestDatabaseIntegration:
         """Test batch retrieval of personal details."""
 
         # Create users with personal details
-        user_repo = UserRepository(integration_db)
+        user_repo = AccountPoolRepository(integration_db)
         user_ids = []
         for i in range(5):
             user_id = await user_repo.create(
@@ -306,7 +306,7 @@ class TestDatabaseIntegration:
             )
             user_ids.append(user_id)
 
-            await UserRepository(integration_db).add_personal_details(
+            await AccountPoolRepository(integration_db).add_personal_details(
                 user_id=user_id,
                 details={
                     "first_name": f"User{i}",
@@ -317,7 +317,7 @@ class TestDatabaseIntegration:
             )
 
         # Retrieve all at once (batch operation)
-        details_map = await UserRepository(integration_db).get_personal_details_batch(user_ids)
+        details_map = await AccountPoolRepository(integration_db).get_personal_details_batch(user_ids)
 
         # Verify all details retrieved
         assert len(details_map) == 5, "Should retrieve all personal details"
@@ -339,7 +339,7 @@ class TestDatabaseContextManager:
             assert db.pool is not None
 
             # Should be able to use the database
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             user_id = await user_repo.create(
                 {
                     "email": "context@test.com",

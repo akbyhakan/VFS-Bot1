@@ -10,7 +10,7 @@ import pytest
 from src.constants import Database as DbConstants
 from src.core.rate_limiting import RateLimiter, reset_rate_limiter
 from src.models.database import Database
-from src.repositories import UserRepository
+from src.repositories import AccountPoolRepository
 
 
 class TestConcurrentLoad:
@@ -90,7 +90,7 @@ class TestConcurrentLoad:
             write_count = 50
             start_time = time.time()
 
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
 
             async def write_user(user_id: int) -> int:
                 """Write a user to database."""
@@ -134,7 +134,7 @@ class TestConcurrentLoad:
                 await conn.execute("TRUNCATE users RESTART IDENTITY CASCADE")
 
             # Create some test data
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             for i in range(10):
                 await user_repo.create(
                     {
@@ -150,7 +150,7 @@ class TestConcurrentLoad:
             read_count = 100
             start_time = time.time()
 
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
 
             async def read_users() -> list:
                 """Read all users."""
@@ -181,7 +181,7 @@ class TestConcurrentLoad:
 
         try:
             # Create initial data
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             for i in range(5):
                 await user_repo.create(
                     {
@@ -196,7 +196,7 @@ class TestConcurrentLoad:
             write_count = 25
             read_count = 75
 
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
 
             async def write_user(user_id: int) -> int:
                 """Write operation."""
@@ -298,7 +298,7 @@ class TestConcurrentLoad:
 
             async def continuous_operations():
                 """Perform operations continuously."""
-                user_repo = UserRepository(db)
+                user_repo = AccountPoolRepository(db)
                 for i in range(operations_per_second):
                     await user_repo.create(
                         {
@@ -325,7 +325,7 @@ class TestConcurrentLoad:
             assert execution_time <= 2  # But not more than 2 seconds
 
             # Verify data was created
-            user_repo = UserRepository(db)
+            user_repo = AccountPoolRepository(db)
             users = await user_repo.get_all_active()
             assert len(users) >= total_operations * 0.9  # Allow 10% variance
 

@@ -11,7 +11,7 @@ from src.repositories import (
     AppointmentRequestRepository,
     LogRepository,
     TokenBlacklistRepository,
-    UserRepository,
+    AccountPoolRepository,
 )
 from src.utils.encryption import PasswordEncryption, reset_encryption
 
@@ -74,7 +74,7 @@ async def test_add_user_encrypts_password(test_db, unique_encryption_key):
     email = "test@example.com"
     password = "MyPassword123"
 
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": email,
@@ -109,7 +109,7 @@ async def test_get_user_with_decrypted_password(test_db):
     email = "test@example.com"
     password = "MyPassword123"
 
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": email,
@@ -138,7 +138,7 @@ async def test_get_active_users_with_decrypted_passwords(test_db):
         ("user3@example.com", "password3"),
     ]
 
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     for email, password in users_data:
         await user_repo.create(
             {
@@ -177,7 +177,7 @@ async def test_concurrent_database_operations(test_db):
     """Test concurrent database operations with connection pool."""
     import asyncio
 
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
 
     async def add_user(i):
         await user_repo.create(
@@ -202,7 +202,7 @@ async def test_concurrent_database_operations(test_db):
 @pytest.mark.asyncio
 async def test_add_personal_details(test_db):
     """Test adding personal details for a user."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -220,11 +220,11 @@ async def test_add_personal_details(test_db):
         "email": "test@example.com",
     }
 
-    details_id = await UserRepository(test_db).add_personal_details(user_id, details)
+    details_id = await AccountPoolRepository(test_db).add_personal_details(user_id, details)
     assert details_id > 0
 
     # Get details back
-    retrieved = await UserRepository(test_db).get_personal_details(user_id)
+    retrieved = await AccountPoolRepository(test_db).get_personal_details(user_id)
     assert retrieved is not None
     assert retrieved["first_name"] == "John"
     assert retrieved["last_name"] == "Doe"
@@ -233,7 +233,7 @@ async def test_add_personal_details(test_db):
 @pytest.mark.asyncio
 async def test_add_appointment(test_db):
     """Test adding an appointment."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -268,7 +268,7 @@ async def test_add_appointment(test_db):
 @pytest.mark.asyncio
 async def test_add_log(test_db):
     """Test adding log entries."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -534,7 +534,7 @@ async def test_delete_appointment_request(test_db):
 async def test_get_pending_appointment_request_for_user(test_db):
     """Test getting pending appointment request for a user by email."""
     # Create a user
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "testuser@example.com",
@@ -590,7 +590,7 @@ async def test_get_pending_appointment_request_for_user(test_db):
 async def test_get_pending_appointment_request_for_user_multi_person(test_db):
     """Test getting pending appointment request with multiple persons."""
     # Create a user
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "mainuser@example.com",
@@ -661,7 +661,7 @@ async def test_get_pending_appointment_request_for_user_multi_person(test_db):
 async def test_get_pending_appointment_request_for_user_no_request(test_db):
     """Test getting pending appointment request when none exists."""
     # Create a user
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "noappointment@example.com",
@@ -683,7 +683,7 @@ async def test_get_pending_appointment_request_for_user_no_request(test_db):
 async def test_get_pending_appointment_request_for_user_completed_status(test_db):
     """Test that completed requests are not returned."""
     # Create a user
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user_id = await user_repo.create(
         {
             "email": "completed@example.com",

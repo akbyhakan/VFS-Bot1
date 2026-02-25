@@ -13,12 +13,8 @@ from .proxy_repository import Proxy, ProxyRepository
 from .token_blacklist_repository import TokenBlacklistEntry, TokenBlacklistRepository
 from .webhook_repository import Webhook, WebhookRepository
 
-from .user_repository import User, UserRepository
-
 __all__ = [
     "AccountPoolRepository",
-    "UserRepository",
-    "User",
     "BaseRepository",
     "DropdownCacheRepository",
     "Appointment",

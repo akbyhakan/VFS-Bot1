@@ -5,7 +5,7 @@ import os
 import pytest
 
 from src.core.config.env_validator import EnvValidator
-from src.repositories import UserRepository
+from src.repositories import AccountPoolRepository
 
 
 def test_production_requires_hashed_password():
@@ -153,7 +153,7 @@ async def test_password_encryption_in_database(database):
 
     # Add user with password
     plaintext_password = "my_secure_password"
-    user_repo = UserRepository(db)
+    user_repo = AccountPoolRepository(db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",

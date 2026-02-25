@@ -16,7 +16,7 @@ from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_VFS_ACCOUNT_U
 from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 from src.core.security import APIKeyManager
 from src.models.database import Database
-from src.repositories import AuditLogRepository, UserRepository
+from src.repositories import AuditLogRepository, AccountPoolRepository
 from src.utils.encryption import reset_encryption
 from web.state.bot_state import ThreadSafeBotState
 
@@ -155,7 +155,7 @@ async def test_get_audit_logs(test_db):
 @pytest.mark.integration
 async def test_get_audit_logs_with_user_filter(test_db):
     """Test filtering audit logs by user_id."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     audit_repo = AuditLogRepository(test_db)
     # Create users
     user1_id = await user_repo.create(

@@ -52,9 +52,9 @@ async def test_connection_pool_timeout():
 async def test_concurrent_writes(database):
     """Test concurrent write operations don't cause corruption."""
     db = database
-    from src.repositories import UserRepository
+    from src.repositories import AccountPoolRepository
 
-    user_repo = UserRepository(db)
+    user_repo = AccountPoolRepository(db)
 
     async def add_user(i: int):
         await user_repo.create(

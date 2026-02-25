@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import UserRepository
+from src.repositories import AccountPoolRepository
 
 
 @pytest.fixture(scope="function")
@@ -51,7 +51,7 @@ async def test_db(unique_encryption_key):
         pass
 
     # Add a test user
-    user_repo = UserRepository(db)
+    user_repo = AccountPoolRepository(db)
     await user_repo.create(
         {
             "email": "test@example.com",
@@ -79,7 +79,7 @@ async def test_db(unique_encryption_key):
 @pytest.mark.integration
 async def test_get_user_with_invalid_user_id_negative(test_db):
     """Test that negative user_id raises ValueError."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.get_by_id_with_password(-1)
 
@@ -88,7 +88,7 @@ async def test_get_user_with_invalid_user_id_negative(test_db):
 @pytest.mark.integration
 async def test_get_user_with_invalid_user_id_zero(test_db):
     """Test that zero user_id raises ValueError."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.get_by_id_with_password(0)
 
@@ -97,7 +97,7 @@ async def test_get_user_with_invalid_user_id_zero(test_db):
 @pytest.mark.integration
 async def test_get_user_with_invalid_user_id_string(test_db):
     """Test that string user_id raises ValueError."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.get_by_id_with_password("not_an_int")  # type: ignore
 
@@ -106,7 +106,7 @@ async def test_get_user_with_invalid_user_id_string(test_db):
 @pytest.mark.integration
 async def test_get_personal_details_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in get_personal_details."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.get_personal_details(-1)
 
@@ -122,7 +122,7 @@ async def test_add_personal_details_with_invalid_user_id(test_db):
         "email": "john@example.com",
     }
 
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.add_personal_details(0, details)
 
@@ -131,7 +131,7 @@ async def test_add_personal_details_with_invalid_user_id(test_db):
 @pytest.mark.integration
 async def test_delete_user_with_invalid_user_id(test_db):
     """Test that invalid user_id raises ValueError in hard_delete."""
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     with pytest.raises(ValueError, match="Invalid user_id.*Must be a positive integer"):
         await user_repo.hard_delete(-5)
 
@@ -141,7 +141,7 @@ async def test_delete_user_with_invalid_user_id(test_db):
 async def test_valid_user_id_passes_validation(test_db):
     """Test that valid user_id passes validation."""
     # This should not raise an error
-    user_repo = UserRepository(test_db)
+    user_repo = AccountPoolRepository(test_db)
     user = await user_repo.get_by_id_with_password(1)
     assert user is not None
     assert user["id"] == 1

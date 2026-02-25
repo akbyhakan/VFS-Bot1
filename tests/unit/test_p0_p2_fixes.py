@@ -501,9 +501,9 @@ class TestDatabaseBatchOperations:
             ]
 
             with pytest.raises(ValidationError):
-                from src.repositories.user_repository import UserRepository
+                from src.repositories import AccountPoolRepository
 
-                await UserRepository(db).create_batch(users)
+                await AccountPoolRepository(db).create_batch(users)
         finally:
             await db.close()
 

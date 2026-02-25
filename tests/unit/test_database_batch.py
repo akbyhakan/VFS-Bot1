@@ -4,7 +4,7 @@ import pytest
 
 from src.constants import Database as DatabaseConfig
 from src.models.database import Database
-from src.repositories import UserRepository
+from src.repositories import AccountPoolRepository
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ async def temp_db():
 @pytest.mark.integration
 async def test_get_personal_details_batch_empty(temp_db):
     """Test batch query with empty list."""
-    user_repo = UserRepository(temp_db)
+    user_repo = AccountPoolRepository(temp_db)
     result = await user_repo.get_personal_details_batch([])
     assert result == {}
 
@@ -41,7 +41,7 @@ async def test_get_personal_details_batch_empty(temp_db):
 async def test_get_personal_details_batch_single(temp_db):
     """Test batch query with single user."""
     # Create a user
-    user_repo = UserRepository(temp_db)
+    user_repo = AccountPoolRepository(temp_db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -59,7 +59,7 @@ async def test_get_personal_details_batch_single(temp_db):
         "passport_number": "A12345678",
         "email": "test@example.com",
     }
-    user_repo_write = UserRepository(temp_db)
+    user_repo_write = AccountPoolRepository(temp_db)
     await user_repo_write.add_personal_details(user_id, details)
 
     # Batch query
@@ -76,7 +76,7 @@ async def test_get_personal_details_batch_single(temp_db):
 async def test_get_personal_details_batch_multiple(temp_db):
     """Test batch query with multiple users."""
     # Create multiple users
-    user_repo = UserRepository(temp_db)
+    user_repo = AccountPoolRepository(temp_db)
     user1_id = await user_repo.create(
         {
             "email": "user1@example.com",
@@ -108,7 +108,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
     )
 
     # Add personal details
-    user_repo_write = UserRepository(temp_db)
+    user_repo_write = AccountPoolRepository(temp_db)
     await user_repo_write.add_personal_details(
         user1_id,
         {
@@ -153,7 +153,7 @@ async def test_get_personal_details_batch_multiple(temp_db):
 async def test_get_personal_details_batch_missing_users(temp_db):
     """Test batch query with some non-existent users."""
     # Create one user
-    user_repo = UserRepository(temp_db)
+    user_repo = AccountPoolRepository(temp_db)
     user_id = await user_repo.create(
         {
             "email": "test@example.com",
@@ -192,7 +192,7 @@ async def test_get_personal_details_batch_invalid_ids():
     await db.connect()
 
     try:
-        user_repo = UserRepository(db)
+        user_repo = AccountPoolRepository(db)
         # Test with invalid IDs (negative, zero)
         with pytest.raises(ValueError, match="Invalid user_id"):
             await user_repo.get_personal_details_batch([0])
