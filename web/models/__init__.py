@@ -12,7 +12,7 @@ from .bot import BotCommand, StatusUpdate
 from .common import CountryResponse, WebhookUrlsResponse
 from .payment import PaymentCardRequest, PaymentCardResponse
 from .proxy import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest
-from .users import UserCreateRequest, UserModel, UserUpdateRequest
+from .vfs_accounts import VFSAccountCreateRequest, VFSAccountModel, VFSAccountUpdateRequest
 
 __all__ = [
     # Auth models
@@ -21,10 +21,10 @@ __all__ = [
     # Bot models
     "BotCommand",
     "StatusUpdate",
-    # User models
-    "UserCreateRequest",
-    "UserUpdateRequest",
-    "UserModel",
+    # VFS Account models
+    "VFSAccountCreateRequest",
+    "VFSAccountUpdateRequest",
+    "VFSAccountModel",
     # Appointment models
     "AppointmentPersonRequest",
     "AppointmentRequestCreate",
