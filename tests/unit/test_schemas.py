@@ -1,7 +1,5 @@
 """Tests for Pydantic schemas."""
 
-from datetime import datetime
-
 import pytest
 from pydantic import ValidationError
 
@@ -10,93 +8,156 @@ from src.core.config.config_models import (
     NotificationConfig,
     TelegramConfig,
 )
-from src.core.enums import AppointmentStatus
-from src.models.schemas import (
-    AppointmentCreate,
-    AppointmentResponse,
-    UserCreate,
-    UserResponse,
+from web.models.appointments import (
+    AppointmentPersonRequest,
+    AppointmentRequestCreate,
+    AppointmentRequestResponse,
 )
+from web.models.vfs_accounts import VFSAccountCreateRequest, VFSAccountModel
 
 
-def test_user_create_valid():
-    """Test valid UserCreate schema."""
-    user = UserCreate(
+def _make_person(**kwargs):
+    defaults = dict(
+        first_name="Jane",
+        last_name="Doe",
+        gender="female",
+        nationality="Turkey",
+        birth_date="01/01/1990",
+        passport_number="A1234567",
+        passport_issue_date="01/01/2020",
+        passport_expiry_date="01/01/2030",
+        phone_code="90",
+        phone_number="5001234567",
+        email="jane@example.com",
+    )
+    defaults.update(kwargs)
+    return AppointmentPersonRequest(**defaults)
+
+
+def test_vfs_account_create_valid():
+    """Test valid VFSAccountCreateRequest schema."""
+    account = VFSAccountCreateRequest(
         email="test@example.com",
         password="securepass123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
+        phone="5001234567",
     )
 
-    assert user.email == "test@example.com"
-    assert user.password == "securepass123"
-    assert user.centre == "Istanbul"
+    assert account.email == "test@example.com"
+    assert account.password == "securepass123"
+    assert account.is_active is True
 
 
-def test_user_create_short_password():
-    """Test UserCreate with password too short."""
+def test_vfs_account_create_invalid_email():
+    """Test VFSAccountCreateRequest with invalid email."""
     with pytest.raises(ValidationError):
-        UserCreate(
-            email="test@example.com",
-            password="short",  # Less than 8 characters
-            centre="Istanbul",
-            category="Tourism",
-            subcategory="Short Stay",
+        VFSAccountCreateRequest(
+            email="not-an-email",
+            password="securepass123",
+            phone="5001234567",
         )
 
 
-def test_user_response_valid():
-    """Test valid UserResponse schema."""
-    now = datetime.now()
-    user = UserResponse(
-        id=1, email="test@example.com", centre="Istanbul", active=True, created_at=now
-    )
-
-    assert user.id == 1
-    assert user.email == "test@example.com"
-    assert user.active is True
-
-
-def test_appointment_create_valid():
-    """Test valid AppointmentCreate schema."""
-    appt = AppointmentCreate(
-        user_id=1,
-        centre="Istanbul",
-        category="Tourism",
-        appointment_date="2024-01-15",
-        appointment_time="10:00",
-    )
-
-    assert appt.user_id == 1
-    assert appt.centre == "Istanbul"
-    assert appt.appointment_date == "2024-01-15"
-
-
-def test_appointment_create_optional_fields():
-    """Test AppointmentCreate with optional fields as None."""
-    appt = AppointmentCreate(user_id=1, centre="Istanbul", category="Tourism")
-
-    assert appt.appointment_date is None
-    assert appt.appointment_time is None
-
-
-def test_appointment_response_valid():
-    """Test valid AppointmentResponse schema."""
-    now = datetime.now()
-    appt = AppointmentResponse(
+def test_vfs_account_model_valid():
+    """Test valid VFSAccountModel schema."""
+    account = VFSAccountModel(
         id=1,
-        user_id=1,
-        centre="Istanbul",
-        category="Tourism",
-        appointment_date="2024-01-15",
-        appointment_time="10:00",
-        status=AppointmentStatus.CONFIRMED.value,
-        created_at=now,
+        email="test@example.com",
+        phone="5001234567",
+        is_active=True,
+        created_at="2024-01-15T10:00:00",
+        updated_at="2024-01-15T10:00:00",
+    )
+
+    assert account.id == 1
+    assert account.email == "test@example.com"
+    assert account.is_active is True
+
+
+def test_vfs_account_create_model_dump():
+    """Test VFSAccountCreateRequest model_dump method."""
+    account = VFSAccountCreateRequest(
+        email="test@example.com",
+        password="securepass123",
+        phone="5001234567",
+    )
+
+    data = account.model_dump()
+
+    assert isinstance(data, dict)
+    assert data["email"] == "test@example.com"
+    assert data["password"] == "securepass123"
+
+
+def test_appointment_request_create_valid():
+    """Test valid AppointmentRequestCreate schema."""
+    appt = AppointmentRequestCreate(
+        country_code="TR",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul"],
+        preferred_dates=["15/01/2024"],
+        person_count=1,
+        persons=[_make_person()],
+    )
+
+    assert appt.country_code == "TR"
+    assert appt.centres == ["Istanbul"]
+    assert appt.preferred_dates == ["15/01/2024"]
+
+
+def test_appointment_request_create_optional_fields():
+    """Test AppointmentRequestCreate with multiple centres and dates."""
+    appt = AppointmentRequestCreate(
+        country_code="TR",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul", "Ankara"],
+        preferred_dates=[],
+        person_count=1,
+        persons=[_make_person()],
+    )
+
+    assert appt.preferred_dates == []
+    assert len(appt.centres) == 2
+
+
+def test_appointment_request_response_valid():
+    """Test valid AppointmentRequestResponse schema."""
+    appt = AppointmentRequestResponse(
+        id=1,
+        country_code="TR",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul"],
+        preferred_dates=["15/01/2024"],
+        person_count=1,
+        status="pending",
+        created_at="2024-01-15T10:00:00",
+        persons=[],
     )
 
     assert appt.id == 1
-    assert appt.status == AppointmentStatus.CONFIRMED.value
+    assert appt.status == "pending"
+    assert appt.completed_at is None
+
+
+def test_appointment_request_response_completed_at():
+    """Test AppointmentRequestResponse with completed_at set."""
+    appt = AppointmentRequestResponse(
+        id=2,
+        country_code="TR",
+        visa_category="Tourism",
+        visa_subcategory="Short Stay",
+        centres=["Istanbul"],
+        preferred_dates=["15/01/2024"],
+        person_count=1,
+        status="confirmed",
+        created_at="2024-01-15T10:00:00",
+        completed_at="2024-01-16T10:00:00",
+        persons=[],
+    )
+
+    assert appt.completed_at == "2024-01-16T10:00:00"
 
 
 def test_bot_config_defaults():
@@ -158,48 +219,3 @@ def test_notification_config_custom_values():
     assert config.webhook_enabled is True
     assert config.webhook_url == "https://example.com/webhook"
 
-
-def test_user_create_model_dump():
-    """Test UserCreate model_dump method."""
-    user = UserCreate(
-        email="test@example.com",
-        password="securepass123",
-        centre="Istanbul",
-        category="Tourism",
-        subcategory="Short Stay",
-    )
-
-    data = user.model_dump()
-
-    assert isinstance(data, dict)
-    assert data["email"] == "test@example.com"
-    assert data["password"] == "securepass123"
-
-
-def test_user_response_config():
-    """Test UserResponse Config settings."""
-    now = datetime.now()
-    user = UserResponse(
-        id=1, email="test@example.com", centre="Istanbul", active=True, created_at=now
-    )
-
-    # Config should allow from_attributes
-    assert user.model_config.get("from_attributes") is True
-
-
-def test_appointment_response_config():
-    """Test AppointmentResponse Config settings."""
-    now = datetime.now()
-    appt = AppointmentResponse(
-        id=1,
-        user_id=1,
-        centre="Istanbul",
-        category="Tourism",
-        appointment_date="2024-01-15",
-        appointment_time="10:00",
-        status=AppointmentStatus.CONFIRMED.value,
-        created_at=now,
-    )
-
-    # Config should allow from_attributes
-    assert appt.model_config.get("from_attributes") is True
