@@ -548,12 +548,13 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `POST /api/v1/auth/refresh` - Refresh JWT token (issues new HttpOnly cookie)
 - `POST /api/v1/auth/generate-key` - Generate API key (one-time use)
 
-**User Management:**
-- `GET /api/v1/users` - List all users
-- `POST /api/v1/users` - Create new user
-- `PUT /api/v1/users/{id}` - Update user
-- `DELETE /api/v1/users/{id}` - Delete user
-- `POST /api/v1/users/upload-csv` - Bulk upload users from CSV
+**VFS Account Management:**
+- `GET /api/v1/vfs-accounts` - List all VFS accounts
+- `POST /api/v1/vfs-accounts` - Create new VFS account
+- `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
+- `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
+- `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
+- `POST /api/v1/vfs-accounts/import` - Bulk upload VFS accounts from CSV
 
 **Bot Control:**
 - `POST /api/v1/bot/start` - Start the bot

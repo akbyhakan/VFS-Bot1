@@ -221,12 +221,12 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `GET /health` - Health check
 - ✅ `WS /ws` - WebSocket connection
 
-### New User Management Endpoints
-- ✅ `GET /api/v1/users` - List all users
-- ✅ `POST /api/v1/users` - Create user
-- ✅ `PUT /api/v1/users/{id}` - Update user
-- ✅ `DELETE /api/v1/users/{id}` - Delete user
-- ✅ `PATCH /api/v1/users/{id}` - Toggle user status
+### New VFS Account Management Endpoints
+- ✅ `GET /api/v1/vfs-accounts` - List all VFS accounts
+- ✅ `POST /api/v1/vfs-accounts` - Create VFS account
+- ✅ `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
+- ✅ `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
+- ✅ `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
 
 ## 🔄 Real-time Features
 
@@ -296,11 +296,11 @@ npm run build  # Outputs to ../web/static/dist
 # New routes
 GET /                   → React SPA
 GET /{path}            → React SPA (client-side routing)
-GET /api/v1/users      → List users
-POST /api/v1/users     → Create user
-PUT /api/v1/users/{id} → Update user
-DELETE /api/v1/users/{id} → Delete user
-PATCH /api/v1/users/{id}  → Toggle user status
+GET /api/v1/vfs-accounts      → List VFS accounts
+POST /api/v1/vfs-accounts     → Create VFS account
+PUT /api/v1/vfs-accounts/{id} → Update VFS account
+DELETE /api/v1/vfs-accounts/{id} → Delete VFS account
+PATCH /api/v1/vfs-accounts/{id}  → Toggle VFS account active status
 
 # Existing routes (unchanged)
 POST /api/v1/auth/login → JWT login
