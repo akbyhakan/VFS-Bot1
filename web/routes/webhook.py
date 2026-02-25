@@ -15,7 +15,7 @@ from web.dependencies import (
     verify_webhook_request,
 )
 
-router = APIRouter(prefix="/api/webhook", tags=["webhook"])
+router = APIRouter(prefix="/api/webhook", tags=["webhook-accounts"])
 
 # OTP field priority order for webhook payloads
 OTP_FIELD_PRIORITY = ["message", "otp", "body", "text"]

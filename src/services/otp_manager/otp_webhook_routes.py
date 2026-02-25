@@ -12,7 +12,7 @@ from src.utils.webhook_utils import verify_webhook_signature
 
 from .otp_webhook import OTPWebhookService, get_otp_service
 
-router = APIRouter(prefix="/api/webhook", tags=["webhook"])
+router = APIRouter(prefix="/api/webhook", tags=["webhook-sms"])
 
 
 class SMSWebhookPayload(BaseModel):
@@ -34,6 +34,9 @@ class OTPResponse(BaseModel):
     message: str
 
 
+# WARNING: This function is a deliberate duplicate of web.dependencies.verify_webhook_request
+# due to circular import constraints. Any security changes to webhook signature verification
+# MUST be applied to BOTH locations. See also: web/dependencies.py -> verify_webhook_request
 async def verify_webhook_signature_local(request: Request) -> None:
     """
     Local webhook signature verification dependency.
@@ -88,41 +91,6 @@ async def get_verified_otp_service() -> OTPWebhookService:
     This function now only returns the OTP service.
     """
     return get_otp_service()
-
-
-@router.post("/sms", response_model=OTPResponse)
-async def receive_sms(
-    payload: SMSWebhookPayload,
-    otp_service: OTPWebhookService = Depends(get_verified_otp_service),
-    _: None = Depends(verify_webhook_signature_local),
-) -> OTPResponse:
-    """
-    Receive SMS webhook from provider (legacy endpoint - routes to appointment).
-
-    Expected payload format:
-    {
-        "from": "+905551234567",
-        "text": "Your VFS verification code is 123456",
-        "timestamp": "2024-01-15T10:30:00Z"
-    }
-    """
-    try:
-        otp = await otp_service.process_appointment_sms(
-            phone_number=payload.phone_number, message=payload.message
-        )
-
-        if otp:
-            return OTPResponse(
-                success=True,
-                otp=f"{otp[:2]}****",  # Partially masked for logging
-                message="OTP extracted successfully",
-            )
-        else:
-            return OTPResponse(success=False, message="No OTP found in message")
-
-    except Exception as e:
-        logger.error(f"SMS webhook processing error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to process SMS")
 
 
 @router.post("/sms/appointment", response_model=OTPResponse)
