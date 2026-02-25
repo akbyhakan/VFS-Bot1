@@ -315,54 +315,11 @@ class BookingWorkflow:
                 logger.error("Failed to join waitlist")
                 return
 
-            # Click Continue button to proceed to next step
-            await smart_click(page, get_selector("continue_button"), self.deps.infra.human_sim)
-            await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
-
-            # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
+            # Waitlist personal details lookup not supported in pool mode
             logger.warning(
-                f"Waitlist personal details lookup not supported in pool mode for user {user['id']}"
+                f"Waitlist flow not supported in account pool mode for user {user['id']}"
             )
             return
-
-            # Step 2: Accept all checkboxes on Review and Pay screen
-            if not await self.deps.workflow.waitlist_handler.accept_review_checkboxes(page):
-                logger.error("Failed to accept review checkboxes")
-                return
-
-            # Step 3: Click Confirm button
-            if not await self.deps.workflow.waitlist_handler.click_confirm_button(page):
-                logger.error("Failed to click confirm button")
-                return
-
-            # Step 4: Handle success screen
-            waitlist_details = await self.deps.workflow.waitlist_handler.handle_waitlist_success(
-                page, user["email"]
-            )
-
-            if waitlist_details:
-                # Send notification with screenshot
-                screenshot_path: Optional[str] = waitlist_details.get("screenshot_path")
-                await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
-                logger.info(f"Waitlist registration successful for {masked_email}")
-
-                # Send alert for waitlist success (INFO severity)
-                await send_alert_safe(
-                    self.deps.workflow.alert_service,
-                    message=f"✅ Waitlist registration successful for {masked_email}",
-                    severity=AlertSeverity.INFO,
-                    metadata={"user_email": masked_email, "details": waitlist_details},
-                )
-            else:
-                logger.error("Failed to handle waitlist success screen")
-
-                # Send alert for waitlist failure (ERROR severity)
-                await send_alert_safe(
-                    self.deps.workflow.alert_service,
-                    message=f"❌ Failed to handle waitlist success for {masked_email}",
-                    severity=AlertSeverity.ERROR,
-                    metadata={"user_email": masked_email},
-                )
 
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)
