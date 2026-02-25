@@ -586,7 +586,8 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `PUT /api/v1/config/runtime` - Update runtime configuration
 
 **Dropdown Sync:**
-- `POST /api/v1/dropdown-sync/trigger` - Trigger dropdown synchronization
+- `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
+- `POST /api/v1/dropdown-sync/all` - Trigger dropdown sync for all countries
 
 #### Non-Versioned Endpoints
 
