@@ -154,6 +154,7 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 
 - `POST /api/v1/auth/login` - User login
 - `POST /api/v1/auth/logout` - User logout (clears HttpOnly cookie)
+- `POST /api/v1/auth/refresh` - Refresh JWT token
 - `GET /api/status` - Bot status (non-versioned health endpoint)
 - `POST /api/v1/bot/start` - Start bot
 - `POST /api/v1/bot/stop` - Stop bot

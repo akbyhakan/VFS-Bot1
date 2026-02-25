@@ -162,14 +162,14 @@ export ENCRYPTION_KEY="your_generated_key_here"
 
 All proxy management endpoints require JWT authentication:
 
-- `POST /api/proxy/add` - Add single proxy
-- `GET /api/proxy/list` - List all proxies (passwords excluded)
-- `GET /api/proxy/{id}` - Get specific proxy details
-- `PUT /api/proxy/{id}` - Update proxy
-- `DELETE /api/proxy/{id}` - Delete proxy
-- `DELETE /api/proxy/clear-all` - Delete all proxies
-- `POST /api/proxy/reset-failures` - Reset failure counters
-- `POST /api/proxy/upload` - Upload CSV file (max 10MB)
+- `POST /api/v1/proxy/add` - Add single proxy
+- `GET /api/v1/proxy/list` - List all proxies (passwords excluded)
+- `GET /api/v1/proxy/{id}` - Get specific proxy details
+- `PUT /api/v1/proxy/{id}` - Update proxy
+- `DELETE /api/v1/proxy/{id}` - Delete proxy
+- `DELETE /api/v1/proxy/clear-all` - Delete all proxies
+- `POST /api/v1/proxy/reset-failures` - Reset failure counters
+- `POST /api/v1/proxy/upload` - Upload CSV file (max 10MB)
 
 ### Password Masking in Logs
 
