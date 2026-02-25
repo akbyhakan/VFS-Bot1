@@ -289,6 +289,7 @@ async def get_appointment_requests(
                     status=req["status"],
                     created_at=req["created_at"],
                     completed_at=req.get("completed_at"),
+                    booked_date=req.get("booked_date"),
                     persons=persons,
                 )
             )
@@ -339,6 +340,7 @@ async def get_appointment_request(
             status=req["status"],
             created_at=req["created_at"],
             completed_at=req.get("completed_at"),
+            booked_date=req.get("booked_date"),
             persons=persons,
         )
     except HTTPException:
@@ -420,8 +422,11 @@ async def update_appointment_request_status(
             datetime.now(timezone.utc) if status == AppointmentRequestStatus.COMPLETED else None
         )
 
+        # Capture booked_date when status becomes 'booked'
+        booked_date = status_update.get("booked_date") if status == AppointmentRequestStatus.BOOKED else None
+
         updated = await appt_req_repo.update_status(
-            request_id=request_id, status=status, completed_at=completed_at
+            request_id=request_id, status=status, completed_at=completed_at, booked_date=booked_date
         )
 
         if not updated:

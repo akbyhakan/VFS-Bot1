@@ -9,6 +9,7 @@ class AppointmentRequestStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
+    BOOKED = "booked"
     FAILED = "failed"
 
     @classmethod
