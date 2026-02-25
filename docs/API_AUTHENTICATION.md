@@ -62,10 +62,11 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 The following endpoints require JWT authentication:
 
-- `GET /api/v1/users` - Retrieve users
-- `POST /api/v1/users` - Create user
-- `PUT /api/v1/users/{id}` - Update user
-- `DELETE /api/v1/users/{id}` - Delete user
+- `GET /api/v1/vfs-accounts` - Retrieve VFS accounts
+- `POST /api/v1/vfs-accounts` - Create VFS account
+- `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
+- `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
+- `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
 - `GET /api/v1/audit-logs` - View audit logs
 - `GET /api/v1/payments` - View payments
 

@@ -165,11 +165,12 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `PUT /api/v1/bot/settings` - Update bot settings
 - `GET /metrics` - Bot metrics (non-versioned health endpoint)
 - `GET /health` - Health check (non-versioned)
-- `GET /api/v1/users` - User management
-- `POST /api/v1/users` - Create user
-- `PUT /api/v1/users/{id}` - Update user
-- `DELETE /api/v1/users/{id}` - Delete user
-- `POST /api/v1/users/upload-csv` - CSV bulk upload
+- `GET /api/v1/vfs-accounts` - VFS account management
+- `POST /api/v1/vfs-accounts` - Create VFS account
+- `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
+- `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
+- `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
+- `POST /api/v1/vfs-accounts/import` - CSV bulk upload
 - `GET /api/v1/appointments` - List appointments
 - `GET /api/v1/audit/logs` - Audit logs
 - `GET /api/v1/audit/stats` - Audit statistics
