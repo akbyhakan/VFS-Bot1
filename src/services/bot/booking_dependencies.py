@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from ...repositories import AppointmentRepository, AppointmentRequestRepository, UserRepository
+    from ...repositories import AppointmentRepository, AppointmentRequestRepository
     from ...utils.anti_detection.human_simulator import HumanSimulator
     from ...utils.error_capture import ErrorCapture
     from ...utils.security.header_manager import HeaderManager
@@ -55,7 +55,6 @@ class RepositoryServices:
     """Repository dependencies for data access."""
 
     appointment_repo: "AppointmentRepository"
-    user_repo: "UserRepository"
     appointment_request_repo: "AppointmentRequestRepository"
 
 

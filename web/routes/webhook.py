@@ -5,10 +5,11 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 
-from src.repositories import UserRepository, WebhookRepository
+from src.repositories import WebhookRepository
+from src.repositories.account_pool_repository import AccountPoolRepository
 from src.services.otp_manager.otp_webhook import get_otp_service
 from web.dependencies import (
-    get_user_repository,
+    get_vfs_account_repository,
     get_webhook_repository,
     verify_jwt_token,
     verify_webhook_request,
@@ -26,27 +27,27 @@ async def create_webhook(
     user_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     webhook_repo: WebhookRepository = Depends(get_webhook_repository),
-    user_repo: UserRepository = Depends(get_user_repository),
+    account_repo: AccountPoolRepository = Depends(get_vfs_account_repository),
 ):
     """
-    Create a unique webhook for a user.
+    Create a unique webhook for a VFS account.
 
     Args:
-        user_id: User ID
+        user_id: VFS Account ID (kept as user_id for URL backward compatibility)
         token_data: Verified token data
         webhook_repo: WebhookRepository instance
-        user_repo: UserRepository instance
+        account_repo: AccountPoolRepository instance
 
     Returns:
         Webhook token and URL
 
     Raises:
-        HTTPException: If user already has a webhook or creation fails
+        HTTPException: If account already has a webhook or creation fails
     """
     try:
-        # Verify user exists using UserRepository
-        user = await user_repo.get_by_id_with_details(user_id)
-        if not user:
+        # Verify account exists using AccountPoolRepository
+        account = await account_repo.get_account_by_id(user_id, decrypt=False)
+        if not account:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Check if webhook already exists

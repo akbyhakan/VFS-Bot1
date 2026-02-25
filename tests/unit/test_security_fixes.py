@@ -12,7 +12,7 @@ from typing import Any, Dict
 import pytest
 from cryptography.fernet import Fernet
 
-from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS
+from src.constants import ALLOWED_PERSONAL_DETAILS_FIELDS, ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS
 from src.core.auth import _get_jwt_settings, invalidate_jwt_settings_cache
 from src.core.security import APIKeyManager
 from src.models.database import Database
@@ -76,108 +76,8 @@ async def test_db(unique_encryption_key):
 
 @pytest.mark.asyncio
 @pytest.mark.security
-@pytest.mark.integration
-async def test_update_personal_details_allows_whitelisted_fields(
-    test_db, unique_encryption_key, caplog
-):
-    """Test that update_personal_details allows whitelisted fields."""
-    # Create a user first
-    user_id = await UserRepository(test_db).create(
-        {
-            "email": "test@example.com",
-            "password": "password123",
-            "center_name": "Istanbul",
-            "visa_category": "Tourism",
-            "visa_subcategory": "Short Stay",
-        }
-    )
-
-    # Add personal details
-    await UserRepository(test_db).add_personal_details(
-        user_id,
-        {
-            "first_name": "John",
-            "last_name": "Doe",
-            "passport_number": "AB123456",
-            "email": "test@example.com",
-            "mobile_number": "1234567890",
-        },
-    )
-
-    # Update with allowed fields
-    updated = await UserRepository(test_db).update_personal_details(
-        user_id,
-        first_name="Jane",
-        passport_number="CD789012",
-        email="jane@example.com",
-    )
-
-    assert updated is True
-
-    # Verify update
-    details = await UserRepository(test_db).get_personal_details(user_id)
-    assert details["first_name"] == "Jane"
-    assert details["passport_number"] == "CD789012"
-    assert details["email"] == "jane@example.com"
-
-
-@pytest.mark.asyncio
-@pytest.mark.security
-@pytest.mark.integration
-async def test_update_personal_details_blocks_disallowed_fields(test_db, unique_encryption_key):
-    """Test that update_personal_details blocks disallowed fields and logs warning."""
-    from unittest.mock import patch
-
-    # Create a user first
-    user_id = await UserRepository(test_db).create(
-        {
-            "email": "test@example.com",
-            "password": "password123",
-            "center_name": "Istanbul",
-            "visa_category": "Tourism",
-            "visa_subcategory": "Short Stay",
-        }
-    )
-
-    # Add personal details
-    await UserRepository(test_db).add_personal_details(
-        user_id,
-        {
-            "first_name": "John",
-            "last_name": "Doe",
-            "passport_number": "AB123456",
-            "email": "test@example.com",
-            "mobile_number": "1234567890",
-        },
-    )
-
-    # Try to update with a disallowed field (SQL injection attempt)
-    with patch("src.repositories.user_write_repository.logger.warning") as mock_warning:
-        updated = await UserRepository(test_db).update_personal_details(
-            user_id,
-            first_name="Jane",
-            malicious_field="DROP TABLE users;",  # SQL injection attempt
-        )
-
-    # Should still return True (update succeeded for allowed fields)
-    assert updated is True
-
-    # Check that warning was logged
-    mock_warning.assert_called_once()
-    warning_message = str(mock_warning.call_args.args[0])
-    assert "disallowed field" in warning_message.lower()
-    assert "malicious_field" in warning_message
-
-    # Verify only allowed field was updated
-    details = await UserRepository(test_db).get_personal_details(user_id)
-    assert details["first_name"] == "Jane"
-    assert "malicious_field" not in details
-
-
-@pytest.mark.asyncio
-@pytest.mark.security
 async def test_allowed_fields_whitelist_is_frozen():
-    """Test that ALLOWED_PERSONAL_DETAILS_FIELDS is a frozenset (immutable)."""
+    """Test that field whitelists are frozensets (immutable)."""
     assert isinstance(ALLOWED_PERSONAL_DETAILS_FIELDS, frozenset)
 
     # Verify it contains expected fields
@@ -199,6 +99,10 @@ async def test_allowed_fields_whitelist_is_frozen():
         "postcode",
     }
     assert ALLOWED_PERSONAL_DETAILS_FIELDS == expected_fields
+
+    # Verify VFS account update fields whitelist
+    assert isinstance(ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS, frozenset)
+    assert ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS == frozenset({"email", "password", "phone", "is_active"})
 
 
 # ==============================================================================

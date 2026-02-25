@@ -6,16 +6,16 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
-// VFS Account schema - simplified for VFS login credentials
-export const userSchema = z.object({
+// VFS Account schema - for VFS login credentials
+export const vfsAccountSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin'),
-  password: z.string().optional(), // Optional for updates, required for creation (see createUserSchema)
+  password: z.string().optional(), // Optional for updates, required for creation
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
   is_active: z.boolean().default(true),
 });
 
 // Schema for creating new VFS accounts - password is required
-export const createUserSchema = userSchema.extend({
+export const createVFSAccountSchema = vfsAccountSchema.extend({
   password: z.string().min(6, 'Şifre en az 6 karakter olmalı'),
 });
 
@@ -23,5 +23,11 @@ export const createUserSchema = userSchema.extend({
 // Frontend only manages user-facing bot settings through API endpoints.
 
 export type LoginFormData = z.infer<typeof loginSchema>;
-export type UserFormData = z.infer<typeof userSchema>;
-export type CreateUserFormData = z.infer<typeof createUserSchema>;
+export type VFSAccountFormData = z.infer<typeof vfsAccountSchema>;
+export type CreateVFSAccountFormData = z.infer<typeof createVFSAccountSchema>;
+
+// Backward compatibility aliases
+export const userSchema = vfsAccountSchema;
+export const createUserSchema = createVFSAccountSchema;
+export type UserFormData = VFSAccountFormData;
+export type CreateUserFormData = CreateVFSAccountFormData;

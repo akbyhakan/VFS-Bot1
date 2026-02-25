@@ -29,13 +29,13 @@ def setup_versioned_routes(app: FastAPI) -> None:
         dropdown_sync_router,
         payment_router,
         proxy_router,
-        users_router,
+        vfs_accounts_router,
     )
     from web.routes.config import router as config_router
 
     # Include all API routers under v1
     api_v1_router.include_router(auth_router)
-    api_v1_router.include_router(users_router)
+    api_v1_router.include_router(vfs_accounts_router)
     api_v1_router.include_router(appointments_router)
     api_v1_router.include_router(audit_router)
     api_v1_router.include_router(payment_router)

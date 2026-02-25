@@ -61,13 +61,11 @@ class BookingWorkflow:
 
         # Repositories are injected via deps.repositories
         self.appointment_repo = deps.repositories.appointment_repo
-        self.user_repo = deps.repositories.user_repo
         self.appointment_request_repo = deps.repositories.appointment_request_repo
 
         # Initialize extracted service components
         self.reservation_builder = ReservationBuilder(
             config=config,
-            user_repo=self.user_repo,
             appointment_request_repo=self.appointment_request_repo,
         )
 
@@ -317,63 +315,11 @@ class BookingWorkflow:
                 logger.error("Failed to join waitlist")
                 return
 
-            # Click Continue button to proceed to next step
-            await smart_click(page, get_selector("continue_button"), self.deps.infra.human_sim)
-            await asyncio.sleep(Delays.AFTER_CONTINUE_CLICK)
-
-            # Step 1.5: Fill applicant forms (reuses existing booking flow logic)
-            details = await self.user_repo.get_personal_details(user["id"])
-            if not details:
-                logger.error(f"No personal details found for user {user['id']}")
-                return
-
-            # Use empty slot for waitlist since no specific date/time is selected
-            reservation = self.reservation_builder.build_reservation(
-                user, {"date": "", "time": ""}, details
+            # Waitlist personal details lookup not supported in pool mode
+            logger.warning(
+                f"Waitlist flow not supported in account pool mode for user {user['id']}"
             )
-            await self.deps.workflow.booking_service.form_filler.fill_all_applicants(
-                page, dict(reservation)
-            )
-            logger.info(f"Applicant forms filled for waitlist flow ({masked_email})")
-
-            # Step 2: Accept all checkboxes on Review and Pay screen
-            if not await self.deps.workflow.waitlist_handler.accept_review_checkboxes(page):
-                logger.error("Failed to accept review checkboxes")
-                return
-
-            # Step 3: Click Confirm button
-            if not await self.deps.workflow.waitlist_handler.click_confirm_button(page):
-                logger.error("Failed to click confirm button")
-                return
-
-            # Step 4: Handle success screen
-            waitlist_details = await self.deps.workflow.waitlist_handler.handle_waitlist_success(
-                page, user["email"]
-            )
-
-            if waitlist_details:
-                # Send notification with screenshot
-                screenshot_path: Optional[str] = waitlist_details.get("screenshot_path")
-                await self.notifier.notify_waitlist_success(waitlist_details, screenshot_path)
-                logger.info(f"Waitlist registration successful for {masked_email}")
-
-                # Send alert for waitlist success (INFO severity)
-                await send_alert_safe(
-                    self.deps.workflow.alert_service,
-                    message=f"✅ Waitlist registration successful for {masked_email}",
-                    severity=AlertSeverity.INFO,
-                    metadata={"user_email": masked_email, "details": waitlist_details},
-                )
-            else:
-                logger.error("Failed to handle waitlist success screen")
-
-                # Send alert for waitlist failure (ERROR severity)
-                await send_alert_safe(
-                    self.deps.workflow.alert_service,
-                    message=f"❌ Failed to handle waitlist success for {masked_email}",
-                    severity=AlertSeverity.ERROR,
-                    metadata={"user_email": masked_email},
-                )
+            return
 
         except Exception as e:
             logger.error(f"Error in waitlist flow: {e}", exc_info=True)

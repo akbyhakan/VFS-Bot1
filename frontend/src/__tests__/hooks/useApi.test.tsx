@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useBotStatus, useStartBot, useStopBot, useUsers } from '@/hooks/useApi';
+import { useBotStatus, useStartBot, useStopBot, useVFSAccounts } from '@/hooks/useApi';
 import { api } from '@/services/api';
 import { type ReactNode } from 'react';
 
@@ -96,20 +96,20 @@ describe('useApi hooks', () => {
     });
   });
 
-  describe('useUsers', () => {
-    it('should fetch users successfully', async () => {
-      const mockUsers = [
-        { id: 1, username: 'user1', email: 'user1@test.com', is_active: true },
-        { id: 2, username: 'user2', email: 'user2@test.com', is_active: false },
+  describe('useVFSAccounts', () => {
+    it('should fetch VFS accounts successfully', async () => {
+      const mockAccounts = [
+        { id: 1, email: 'account1@test.com', phone: '5551234567', is_active: true },
+        { id: 2, email: 'account2@test.com', phone: '5559876543', is_active: false },
       ];
-      vi.mocked(api.get).mockResolvedValue(mockUsers);
+      vi.mocked(api.get).mockResolvedValue(mockAccounts);
 
-      const { result } = renderHook(() => useUsers(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => useVFSAccounts(), { wrapper: createWrapper() });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(result.current.data).toEqual(mockUsers);
-      expect(api.get).toHaveBeenCalledWith('/api/v1/users');
+      expect(result.current.data).toEqual(mockAccounts);
+      expect(api.get).toHaveBeenCalledWith('/api/v1/vfs-accounts');
     });
   });
 });

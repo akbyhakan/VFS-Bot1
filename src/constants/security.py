@@ -39,14 +39,15 @@ ALLOWED_PERSONAL_DETAILS_FIELDS = frozenset(
     }
 )
 
-# Allowed fields for users table update (SQL injection prevention)
-ALLOWED_USER_UPDATE_FIELDS = frozenset(
+# Allowed fields for vfs_account_pool table update (SQL injection prevention)
+ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS = frozenset(
     {
         "email",
         "password",
-        "centre",
-        "category",
-        "subcategory",
-        "active",
+        "phone",
+        "is_active",
     }
 )
+
+# Backward compatibility alias
+ALLOWED_USER_UPDATE_FIELDS = ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS

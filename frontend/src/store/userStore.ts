@@ -1,50 +1,50 @@
 import { create } from 'zustand';
-import type { User } from '@/types/user';
+import type { VFSAccount } from '@/types/user';
 
-interface UserState {
-  users: User[];
-  selectedUser: User | null;
+interface VFSAccountState {
+  accounts: VFSAccount[];
+  selectedAccount: VFSAccount | null;
   isLoading: boolean;
   error: string | null;
-  setUsers: (users: User[]) => void;
-  addUser: (user: User) => void;
-  updateUser: (user: User) => void;
-  deleteUser: (id: number) => void;
-  setSelectedUser: (user: User | null) => void;
+  setAccounts: (accounts: VFSAccount[]) => void;
+  addAccount: (account: VFSAccount) => void;
+  updateAccount: (account: VFSAccount) => void;
+  deleteAccount: (id: number) => void;
+  setSelectedAccount: (account: VFSAccount | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
-  users: [],
-  selectedUser: null,
+export const useVFSAccountStore = create<VFSAccountState>((set) => ({
+  accounts: [],
+  selectedAccount: null,
   isLoading: false,
   error: null,
 
-  setUsers: (users) => set({ users }),
+  setAccounts: (accounts) => set({ accounts }),
 
-  addUser: (user) =>
+  addAccount: (account) =>
     set((state) => ({
-      users: [...state.users, user],
+      accounts: [...state.accounts, account],
     })),
 
-  updateUser: (updatedUser) =>
+  updateAccount: (updatedAccount) =>
     set((state) => ({
-      users: state.users.map((user) =>
-        user.id === updatedUser.id ? updatedUser : user
+      accounts: state.accounts.map((account) =>
+        account.id === updatedAccount.id ? updatedAccount : account
       ),
-      selectedUser:
-        state.selectedUser?.id === updatedUser.id ? updatedUser : state.selectedUser,
+      selectedAccount:
+        state.selectedAccount?.id === updatedAccount.id ? updatedAccount : state.selectedAccount,
     })),
 
-  deleteUser: (id) =>
+  deleteAccount: (id) =>
     set((state) => ({
-      users: state.users.filter((user) => user.id !== id),
-      selectedUser: state.selectedUser?.id === id ? null : state.selectedUser,
+      accounts: state.accounts.filter((account) => account.id !== id),
+      selectedAccount: state.selectedAccount?.id === id ? null : state.selectedAccount,
     })),
 
-  setSelectedUser: (user) => set({ selectedUser: user }),
+  setSelectedAccount: (account) => set({ selectedAccount: account }),
 
   setLoading: (loading) => set({ isLoading: loading }),
 
@@ -52,3 +52,6 @@ export const useUserStore = create<UserState>((set) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+// Backward compatibility alias
+export const useUserStore = useVFSAccountStore;

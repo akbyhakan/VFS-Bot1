@@ -59,6 +59,7 @@ from .resilience import (
 from .security import (
     ALLOWED_PERSONAL_DETAILS_FIELDS,
     ALLOWED_USER_UPDATE_FIELDS,
+    ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS,
     Security,
 )
 
@@ -87,6 +88,7 @@ __all__ = [
     "Security",
     "ALLOWED_PERSONAL_DETAILS_FIELDS",
     "ALLOWED_USER_UPDATE_FIELDS",
+    "ALLOWED_VFS_ACCOUNT_UPDATE_FIELDS",
     # Captcha
     "CaptchaConfig",
     # OTP

@@ -1,80 +1,73 @@
-"""Tests for user type definitions."""
+"""Tests for VFS account type definitions."""
 
 import pytest
 
-from src.types.user import UserDict, UserDictWithOptionals
+from src.types.user import VFSAccountDict, VFSAccountDictWithOptionals, UserDict, UserDictWithOptionals
 
 
-def test_user_dict_basic():
-    """Test that UserDict can be instantiated with required fields."""
-    user: UserDict = {
+def test_vfs_account_dict_basic():
+    """Test that VFSAccountDict can be instantiated with required fields."""
+    account: VFSAccountDict = {
         "id": 1,
         "email": "test@example.com",
         "password": "secret",
-        "centre": "Istanbul",
-        "category": "Tourist",
-        "subcategory": "Tourist Visa",
-    }
-
-    assert user["id"] == 1
-    assert user["email"] == "test@example.com"
-    assert user["centre"] == "Istanbul"
-
-
-def test_user_dict_with_optionals():
-    """Test that UserDictWithOptionals can include optional fields."""
-    user: UserDictWithOptionals = {
-        "id": 2,
-        "email": "user@example.com",
-        "password": "secret123",
-        "centre": "Ankara",
-        "category": "Business",
-        "subcategory": "Business Visa",
-        "country": "Turkey",
-        "active": True,
         "phone": "+905551234567",
     }
 
-    assert user["id"] == 2
-    assert user.get("country") == "Turkey"
-    assert user.get("active") is True
-    assert user.get("phone") == "+905551234567"
+    assert account["id"] == 1
+    assert account["email"] == "test@example.com"
+    assert account["phone"] == "+905551234567"
 
 
-def test_user_dict_with_optionals_partial():
-    """Test that UserDictWithOptionals works with only some optional fields."""
-    user: UserDictWithOptionals = {
+def test_vfs_account_dict_with_optionals():
+    """Test that VFSAccountDictWithOptionals can include optional fields."""
+    account: VFSAccountDictWithOptionals = {
+        "id": 2,
+        "email": "user@example.com",
+        "password": "secret123",
+        "phone": "+905559876543",
+        "status": "available",
+        "is_active": True,
+    }
+
+    assert account["id"] == 2
+    assert account.get("status") == "available"
+    assert account.get("is_active") is True
+
+
+def test_vfs_account_dict_with_optionals_partial():
+    """Test that VFSAccountDictWithOptionals works with only some optional fields."""
+    account: VFSAccountDictWithOptionals = {
         "id": 3,
         "email": "partial@example.com",
         "password": "pass",
-        "centre": "Izmir",
-        "category": "Student",
-        "subcategory": "Student Visa",
-        "country": "Turkey",  # Only one optional field
+        "phone": "+905554567890",
+        "is_active": True,
     }
 
-    assert user["id"] == 3
-    assert user.get("country") == "Turkey"
-    assert user.get("active") is None  # Not set
-    assert user.get("phone") is None  # Not set
+    assert account["id"] == 3
+    assert account.get("is_active") is True
+    assert account.get("status") is None
 
 
-def test_user_dict_structure_compatibility():
-    """Test that dict literals are structurally compatible with UserDict."""
+def test_vfs_account_dict_structure_compatibility():
+    """Test that dict literals are structurally compatible with VFSAccountDict."""
     from typing import cast
 
-    # This is how user dicts are created from database queries
     db_row = {
         "id": 4,
         "email": "db@example.com",
         "password": "dbpass",
-        "centre": "Bursa",
-        "category": "Work",
-        "subcategory": "Work Permit",
+        "phone": "+905551111111",
     }
 
-    # Cast demonstrates runtime compatibility - dict from DB can be used as UserDict
-    user: UserDict = cast(UserDict, db_row)
+    account: VFSAccountDict = cast(VFSAccountDict, db_row)
 
-    assert user["id"] == 4
-    assert user["category"] == "Work"
+    assert account["id"] == 4
+    assert account["email"] == "db@example.com"
+
+
+def test_user_dict_backward_compat():
+    """Test that UserDict is a backward-compatible alias for VFSAccountDict."""
+    assert UserDict is VFSAccountDict
+    assert UserDictWithOptionals is VFSAccountDictWithOptionals
