@@ -36,7 +36,7 @@ class TestWebhookFlow:
         """Test that OTP webhook requires signature in production."""
         # Without signature header
         response = client.post(
-            "/api/webhook/sms", json={"from": "+1234567890", "text": "Your OTP is: 123456"}
+            "/api/webhook/sms/appointment", json={"from": "+1234567890", "text": "Your OTP is: 123456"}
         )
 
         # In testing environment, should either require signature or accept without
@@ -48,7 +48,7 @@ class TestWebhookFlow:
         payload = {"from": "+1234567890", "text": "Your OTP is: 123456"}
 
         response = client.post(
-            "/api/webhook/sms", json=payload, headers={"X-Webhook-Signature": "invalid_signature"}
+            "/api/webhook/sms/appointment", json=payload, headers={"X-Webhook-Signature": "invalid_signature"}
         )
 
         # Should reject invalid signature if signature verification is enabled
@@ -65,7 +65,7 @@ class TestWebhookFlow:
 
         with patch.dict("os.environ", {"SMS_WEBHOOK_SECRET": webhook_secret}):
             response = client.post(
-                "/api/webhook/sms", json=payload, headers={"X-Webhook-Signature": signature}
+                "/api/webhook/sms/appointment", json=payload, headers={"X-Webhook-Signature": signature}
             )
 
             # Should process the webhook (may require auth or error based on state)
@@ -86,7 +86,7 @@ class TestWebhookFlow:
             mock_service.return_value = mock_otp_service
 
             response = client.post(
-                "/api/webhook/sms",
+                "/api/webhook/sms/appointment",
                 json={"from": "+1234567890", "text": "Your verification code is 123456"},
             )
 
@@ -110,7 +110,7 @@ class TestWebhookFlow:
     def test_sms_webhook_endpoint_exists(self, client):
         """Test that SMS webhook endpoint is available."""
         response = client.post(
-            "/api/webhook/sms", json={"from": "+1234567890", "text": "Test message"}
+            "/api/webhook/sms/appointment", json={"from": "+1234567890", "text": "Test message"}
         )
 
         # Should not return 404 (endpoint exists)
@@ -119,7 +119,7 @@ class TestWebhookFlow:
     def test_webhook_payload_validation(self, client):
         """Test that webhook validates payload format."""
         # Send malformed payload
-        response = client.post("/api/webhook/sms", json={})  # Missing required fields
+        response = client.post("/api/webhook/sms/appointment", json={})  # Missing required fields
 
         # Should return validation or server error
         assert response.status_code in [422, 401, 500]  # 422 = validation error, 401 = auth error
@@ -155,7 +155,7 @@ class TestOTPDeliveryFlow:
             "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
         ):
             response = client.post(
-                "/api/webhook/sms", json={"from": "+1234567890", "text": "Your code is 123456"}
+                "/api/webhook/sms/appointment", json={"from": "+1234567890", "text": "Your code is 123456"}
             )
 
             # Response depends on signature verification
@@ -175,7 +175,7 @@ class TestOTPDeliveryFlow:
         ):
             for message in test_messages:
                 response = client.post(
-                    "/api/webhook/sms", json={"from": "+1234567890", "text": message}
+                    "/api/webhook/sms/appointment", json={"from": "+1234567890", "text": message}
                 )
 
                 # Should process each message
@@ -189,8 +189,8 @@ class TestOTPDeliveryFlow:
             "src.services.otp_manager.otp_webhook.get_otp_service", return_value=mock_otp_service
         ):
             # Send same OTP twice
-            response1 = client.post("/api/webhook/sms", json=message)
-            response2 = client.post("/api/webhook/sms", json=message)
+            response1 = client.post("/api/webhook/sms/appointment", json=message)
+            response2 = client.post("/api/webhook/sms/appointment", json=message)
 
             # Both should be processed (deduplication is internal)
             assert response1.status_code in [200, 401, 422, 500]
@@ -223,7 +223,7 @@ class TestWebhookSecurity:
 
         with patch.dict("os.environ", {"SMS_WEBHOOK_SECRET": secret}):
             response = client.post(
-                "/api/webhook/sms", json=payload, headers={"X-Webhook-Signature": signature}
+                "/api/webhook/sms/appointment", json=payload, headers={"X-Webhook-Signature": signature}
             )
 
             # Signature verification should pass (status depends on other factors)
@@ -241,7 +241,7 @@ class TestWebhookSecurity:
             "timestamp": str(int(time.time())),
         }
 
-        response = client.post("/api/webhook/sms", json=payload)
+        response = client.post("/api/webhook/sms/appointment", json=payload)
 
         # Should process webhook
         assert response.status_code in [200, 401, 422, 500]
@@ -252,7 +252,7 @@ class TestWebhookSecurity:
         responses = []
         for _ in range(10):
             response = client.post(
-                "/api/webhook/sms", json={"from": "+1234567890", "text": "Test message"}
+                "/api/webhook/sms/appointment", json={"from": "+1234567890", "text": "Test message"}
             )
             responses.append(response)
 

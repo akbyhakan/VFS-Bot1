@@ -15,7 +15,7 @@ from src.services.otp_manager.webhook_token_manager import SMSPayloadParser, Web
 from web.dependencies import verify_webhook_request
 
 # Initialize router
-router = APIRouter(prefix="/webhook/sms", tags=["SMS Webhook"])
+router = APIRouter(prefix="/webhook/sms", tags=["webhook-sms-forwarder"])
 
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)

@@ -230,12 +230,16 @@ API endpoints are rate-limited to prevent abuse:
                 "description": "Proxy server management",
             },
             {
-                "name": "webhooks",
-                "description": "Webhook configuration and OTP delivery",
+                "name": "webhook-sms",
+                "description": "SMS OTP webhook endpoints for appointment and payment verification",
             },
             {
-                "name": "SMS Webhook",
-                "description": "Dynamic SMS webhook endpoints for VFS accounts",
+                "name": "webhook-accounts",
+                "description": "Per-user webhook token management (CRUD)",
+            },
+            {
+                "name": "webhook-sms-forwarder",
+                "description": "Dynamic SMS webhook endpoints via SMS Forwarder app",
             },
             {
                 "name": "health",
@@ -282,7 +286,7 @@ API endpoints are rate-limited to prevent abuse:
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=[
             "Accept",
             "Accept-Language",
