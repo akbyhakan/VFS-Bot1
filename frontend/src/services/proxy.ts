@@ -13,11 +13,15 @@ export interface ProxyStats {
 }
 
 export interface ProxyInfo {
-  endpoint: string;
-  host: string;
+  id: number;
+  server: string;
   port: number;
   username: string;
-  status: 'active' | 'failed';
+  is_active: boolean;
+  failure_count: number;
+  last_used: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProxyListResponse {

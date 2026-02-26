@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { WebhookUrls } from '@/types/payment';
 
 interface WebhookResponse {
   token: string;
@@ -38,5 +39,12 @@ export const webhookApi = {
    */
   deleteWebhook: async (userId: number): Promise<DeleteWebhookResponse> => {
     return await api.delete<DeleteWebhookResponse>(`/api/webhook/users/${userId}`);
+  },
+
+  /**
+   * Get webhook URLs for SMS forwarding
+   */
+  getWebhookUrls: async (): Promise<WebhookUrls> => {
+    return await api.get<WebhookUrls>('/api/v1/appointments/settings/webhook-urls');
   },
 };

@@ -3,7 +3,7 @@
  */
 
 import { api } from './api';
-import type { PaymentCard, PaymentCardRequest, WebhookUrls } from '@/types/payment';
+import type { PaymentCard, PaymentCardRequest } from '@/types/payment';
 import { isApiError } from '@/utils/typeGuards';
 
 export const paymentCardApi = {
@@ -57,14 +57,5 @@ export const paymentCardApi = {
    */
   async deletePaymentCard(): Promise<{ success: boolean; message: string }> {
     return await api.delete('/api/v1/payment/payment-card');
-  },
-};
-
-export const webhookApi = {
-  /**
-   * Get webhook URLs for SMS forwarding
-   */
-  async getWebhookUrls(): Promise<WebhookUrls> {
-    return await api.get<WebhookUrls>('/api/v1/appointments/settings/webhook-urls');
   },
 };

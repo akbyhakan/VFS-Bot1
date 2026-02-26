@@ -2,10 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Settings } from '@/pages/Settings';
 import { usePaymentCard } from '@/hooks/usePaymentCard';
-import { webhookApi } from '@/services/paymentCard';
+import { webhookApi } from '@/services/webhook';
 
 vi.mock('@/hooks/usePaymentCard');
-vi.mock('@/services/paymentCard', () => ({
+vi.mock('@/services/webhook', () => ({
   webhookApi: {
     getWebhookUrls: vi.fn(),
   },

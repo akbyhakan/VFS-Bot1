@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Webhook, Copy, Check, Zap } from 'lucide-react';
-import { webhookApi } from '@/services/paymentCard';
+import { webhookApi } from '@/services/webhook';
 import { api } from '@/services/api';
 import type { WebhookUrls } from '@/types/payment';
 import { logger } from '@/utils/logger';
