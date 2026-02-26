@@ -95,7 +95,7 @@ export function useAppKeyboardShortcuts(options?: {
       key: 'u',
       ctrl: true,
       action: () => navigate(ROUTES.USERS),
-      description: 'Kullanıcılar sayfasına git',
+      description: 'VFS Hesaplar sayfasına git',
       category: 'Navigasyon',
     },
     {
