@@ -11,8 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 
 from src import __version__
 from src.core.auth import get_token_blacklist, init_token_blacklist
@@ -25,10 +23,7 @@ from src.models.db_factory import DatabaseFactory
 from src.services.otp_manager.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
-from web.ip_utils import get_real_client_ip
 from web.middleware import (
-    HTTPSRedirectMiddleware,
-    RateLimitHeadersMiddleware,
     SecurityHeadersMiddleware,
 )
 from web.routes import (
@@ -258,11 +253,6 @@ API endpoints are rate-limited to prevent abuse:
 
     # Configure middleware (order matters!)
 
-    # 0. HTTPS redirect - must be FIRST (before any other middleware)
-    # Only active in production environments
-    if not _is_dev:
-        app.add_middleware(HTTPSRedirectMiddleware)
-
     # 1. Error handling middleware (catches all errors)
     app.add_middleware(ErrorHandlerMiddleware)
 
@@ -278,14 +268,6 @@ API endpoints are rate-limited to prevent abuse:
     )
     allowed_origins = validate_cors_origins(allowed_origins_str)
 
-    if not allowed_origins:
-        if env not in ("development", "dev", "local", "testing", "test"):
-            raise RuntimeError(
-                "CRITICAL: No valid CORS origins configured for production. "
-                "Set CORS_ALLOWED_ORIGINS in .env (e.g., 'https://yourdomain.com'). "
-                "Application cannot start without valid CORS configuration in production."
-            )
-
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
@@ -297,34 +279,17 @@ API endpoints are rate-limited to prevent abuse:
             "Content-Type",
             "Authorization",
             "X-Requested-With",
-            "X-CSRF-Token",
         ],
         expose_headers=[
             "X-Total-Count",
             "X-Page",
             "X-Per-Page",
-            "X-RateLimit-Limit",
-            "X-RateLimit-Remaining",
-            "X-RateLimit-Reset",
         ],
         max_age=3600,  # Cache preflight requests for 1 hour
     )
 
     # 5. Add request tracking middleware
     app.add_middleware(RequestTrackingMiddleware)
-
-    # 6. Add rate limit headers middleware
-    app.add_middleware(RateLimitHeadersMiddleware)
-
-    # Initialize rate limiter with improved IP detection
-    limiter = Limiter(key_func=get_real_client_ip)
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-    # Initialize custom rate limiter for rate limit headers
-    from src.core.rate_limiting import get_rate_limiter
-
-    app.state.custom_rate_limiter = get_rate_limiter()
 
     # Mount static files
     static_dir = Path(__file__).parent / "static"

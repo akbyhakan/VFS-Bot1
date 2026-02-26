@@ -1,12 +1,10 @@
 """Authentication routes for VFS-Bot web application."""
 
-import hmac
 import os
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from loguru import logger
-from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.auth import create_access_token, revoke_token
@@ -17,11 +15,6 @@ from web.dependencies import extract_raw_token, get_db, verify_jwt_token
 from web.models.auth import LoginRequest, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
-
-# Dummy bcrypt hash for timing attack protection
-# Used when username is invalid to maintain constant-time behavior
-_DUMMY_BCRYPT_HASH = "$2b$12$LJ3m4ys3Lg7E16OlByBg6eKDoYkBWKJkG1VyNlITNYDR8xPz.k9hK"
 
 
 async def _is_admin_secret_consumed(db: Database) -> bool:
@@ -55,7 +48,6 @@ async def _mark_admin_secret_consumed(db: Database) -> None:
 
 
 @router.post("/generate-key")
-@limiter.limit("3/hour")
 async def create_api_key_endpoint(
     request: Request,
     x_admin_secret: str = Header(..., alias="X-Admin-Secret"),
@@ -91,8 +83,7 @@ async def create_api_key_endpoint(
     if not admin_secret:
         raise HTTPException(status_code=500, detail="Server configuration error")
 
-    # Use constant-time comparison to prevent timing attacks
-    if not hmac.compare_digest(x_admin_secret, admin_secret):
+    if x_admin_secret != admin_secret:
         raise HTTPException(status_code=403, detail="Invalid admin secret")
 
     new_key = generate_api_key()
@@ -111,7 +102,6 @@ async def create_api_key_endpoint(
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/minute")
 async def login(request: Request, response: Response, credentials: LoginRequest) -> TokenResponse:
     """
     Login endpoint - returns JWT token and sets HttpOnly cookie.
@@ -140,13 +130,9 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
             detail="Server configuration error: ADMIN_USERNAME and ADMIN_PASSWORD must be set",
         )
 
-    # Constant-time username comparison to prevent timing attacks
-    username_valid = hmac.compare_digest(credentials.username, admin_username)
-
-    # Validate bcrypt format only when username is valid (skip if username is wrong)
     # Check password - ONLY accept bcrypt hashed passwords
     # Security requirement: Plaintext passwords are not allowed in ANY environment
-    if username_valid and not admin_password.startswith(("$2b$", "$2a$", "$2y$")):
+    if not admin_password.startswith(("$2b$", "$2a$", "$2y$")):
         raise HTTPException(
             status_code=500,
             detail="Server configuration error: ADMIN_PASSWORD must be bcrypt hashed. "
@@ -154,13 +140,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
             "print(CryptContext(schemes=['bcrypt']).hash('your-password'))\"",
         )
 
-    # ALWAYS run password verification to prevent timing attack
-    # Use a dummy hash when username is wrong to maintain constant execution time
-    password_hash_to_check = admin_password if username_valid else _DUMMY_BCRYPT_HASH
-    password_valid = verify_password(credentials.password, password_hash_to_check)
-
-    # Only consider password valid if username was also valid
-    if not username_valid or not password_valid:
+    if credentials.username != admin_username or not verify_password(credentials.password, admin_password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
@@ -195,7 +175,6 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-@limiter.limit("10/minute")
 async def refresh_token(
     request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> TokenResponse:
