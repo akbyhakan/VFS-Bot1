@@ -8,7 +8,7 @@ from playwright.async_api import Page
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories import AppointmentRequestRepository
-    from ...types.user import UserDict
+    from ...types.user import VFSAccountDict
     from ..notification.notification import NotificationService
     from .booking_dependencies import BookingDependencies
     from .booking_executor import BookingExecutor
@@ -46,7 +46,7 @@ class MissionProcessor:
         self.booking_executor = booking_executor
 
     async def process_single_request(
-        self, page: Page, user: "UserDict", appointment_request: Any, dedup_service: Any
+        self, page: Page, user: "VFSAccountDict", appointment_request: Any, dedup_service: Any
     ) -> bool:
         """
         Process a single appointment request (slot checking and booking).

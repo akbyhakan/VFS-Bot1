@@ -22,8 +22,7 @@ class TestConfigVersionChecker:
         assert CURRENT_CONFIG_VERSION == "2.0"
 
     def test_supported_versions_contains_expected(self):
-        """Test that supported versions include all expected versions."""
-        assert "1.0" in SUPPORTED_CONFIG_VERSIONS
+        """Test that supported versions include current version."""
         assert "2.0" in SUPPORTED_CONFIG_VERSIONS
 
     def test_check_version_current_version(self, caplog):
@@ -31,17 +30,22 @@ class TestConfigVersionChecker:
         config = {"config_version": "2.0", "vfs": {}}
         check_config_version(config)  # Should not raise
 
-    def test_check_version_supported_old_version(self, caplog):
-        """Test validation passes for old but supported version with warning."""
+    def test_check_version_unsupported_old_version(self):
+        """Test validation raises error for old version 1.0 (no longer supported)."""
         config = {"config_version": "1.0", "vfs": {}}
-        check_config_version(config)  # Should not raise
-        assert "outdated" in caplog.text.lower()
+        with pytest.raises(ConfigurationError) as exc_info:
+            check_config_version(config)
 
-    def test_check_version_missing_field(self, caplog):
-        """Test validation handles missing version field gracefully."""
+        error = exc_info.value
+        assert "Unsupported configuration version: 1.0" in str(error)
+
+    def test_check_version_missing_field(self):
+        """Test validation raises ConfigurationError for missing version field."""
         config = {"vfs": {}, "notification": {}}
-        check_config_version(config)  # Should not raise
-        assert "does not have a 'config_version' field" in caplog.text
+        with pytest.raises(ConfigurationError) as exc_info:
+            check_config_version(config)
+
+        assert "missing the required 'config_version' field" in str(exc_info.value)
 
     def test_check_version_unsupported_version(self):
         """Test validation raises error for unsupported version."""
@@ -62,17 +66,21 @@ class TestConfigVersionChecker:
         error = exc_info.value
         assert "must be a string" in str(error)
 
-    def test_check_version_none_value(self, caplog):
-        """Test validation handles None value gracefully."""
+    def test_check_version_none_value(self):
+        """Test validation raises ConfigurationError for None value."""
         config = {"config_version": None, "vfs": {}}
-        check_config_version(config)  # Should not raise
-        assert "does not have a 'config_version' field" in caplog.text
+        with pytest.raises(ConfigurationError) as exc_info:
+            check_config_version(config)
 
-    def test_check_version_empty_config(self, caplog):
-        """Test validation handles empty config gracefully."""
+        assert "missing the required 'config_version' field" in str(exc_info.value)
+
+    def test_check_version_empty_config(self):
+        """Test validation raises ConfigurationError for empty config."""
         config = {}
-        check_config_version(config)  # Should not raise
-        assert "does not have a 'config_version' field" in caplog.text
+        with pytest.raises(ConfigurationError) as exc_info:
+            check_config_version(config)
+
+        assert "missing the required 'config_version' field" in str(exc_info.value)
 
     def test_error_details_for_unsupported_version(self):
         """Test error details are properly populated."""

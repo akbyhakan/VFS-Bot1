@@ -456,7 +456,7 @@ class VFSBot:
         db_state = self.db.state
 
         if db_state in (DatabaseState.DEGRADED, DatabaseState.DISCONNECTED):
-            logger.warning(f"Database in {db_state} state - attempting reconnection")
+            logger.warning(f"Database in {db_state.value} state - attempting reconnection")
 
             try:
                 reconnected = await self.db.reconnect()
@@ -466,7 +466,7 @@ class VFSBot:
                         alert_service=self.services.workflow.alert_service,
                         message="Database connection restored",
                         severity=AlertSeverity.INFO,
-                        metadata={"previous_state": db_state, "new_state": self.db.state},
+                        metadata={"previous_state": db_state.value, "new_state": self.db.state.value},
                     )
                     return True
                 else:
@@ -576,7 +576,7 @@ class VFSBot:
                         alert_service=self.services.workflow.alert_service,
                         message="Database connection unavailable - waiting before retry",
                         severity=AlertSeverity.WARNING,
-                        metadata={"db_state": str(self.db.state)},
+                        metadata={"db_state": self.db.state.value},
                     )
                     if await self._wait_or_shutdown(Intervals.ERROR_RECOVERY):
                         break

@@ -14,7 +14,7 @@ from tenacity import (
 
 from ...constants import Delays, Retries
 from ...core.exceptions import BannedError, LoginError, VFSBotError
-from ...types.user import UserDict
+from ...types.user import VFSAccountDict
 from ...utils.helpers import smart_click
 from ...utils.masking import mask_email
 from ..appointment_deduplication import get_deduplication_service
@@ -298,7 +298,7 @@ class BookingWorkflow:
         else:
             return "no_slot"
 
-    async def process_waitlist_flow(self, page: Page, user: UserDict) -> None:
+    async def process_waitlist_flow(self, page: Page, user: VFSAccountDict) -> None:
         """
         Process waitlist flow for a user.
 

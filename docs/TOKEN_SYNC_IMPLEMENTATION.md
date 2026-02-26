@@ -70,7 +70,6 @@ session_manager.sync_from_api_client(vfs_session)
 
 ### VFSBot
 - Removed misleading `is_token_expired()` check that always returned True
-- Added `token_sync` property for backward compatibility
 - Ready for future VFSApiClient integration
 
 ## Usage Examples
@@ -140,14 +139,6 @@ All 118 related tests pass successfully.
    - Track proactive vs reactive token refreshes
    - Monitor token sync failures
    - Alert on repeated refresh failures
-
-## Backward Compatibility
-
-All changes are backward compatible:
-- Existing code continues to work unchanged
-- New features are opt-in
-- SessionManager behavior unchanged (except for new sync method)
-- VFSBot behavior unchanged (removed useless check, no functional change)
 
 ## Security Considerations
 

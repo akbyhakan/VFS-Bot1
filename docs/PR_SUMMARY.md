@@ -21,7 +21,6 @@ This PR implements 6 coordinated improvements to enhance code quality, security,
 1. **src/core/retry.py**: Uses `import logging as stdlib_logging` because tenacity's `before_sleep_log()` requires a stdlib logger
 
 **Documentation**:
-- Updated `src/core/logger.py` docstrings to note backward compatibility for `CorrelationIdFilter` and `JSONFormatter`
 - Created `MIGRATION_SUMMARY.md` with migration guide
 - Created `FINAL_VERIFICATION.md` with verification report
 - Created `verify_migration.py` automated verification script
@@ -30,7 +29,6 @@ This PR implements 6 coordinated improvements to enhance code quality, security,
 - Cleaner, more consistent logging across 23 files
 - Reduced ~67 lines of boilerplate code
 - Better logging features (structured logs, rotation, compression)
-- Maintained backward compatibility with stdlib consumers
 
 ---
 
@@ -161,7 +159,6 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 
 ## Breaking Changes
 
-**None** - All changes maintain backward compatibility:
 - Logging migration uses same API (`logger.info()`, `logger.error()`, etc.)
 - Startup validator only adds new checks
 - Docker changes are security improvements
@@ -230,7 +227,6 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 ## Checklist
 
 - [x] All 6 improvements implemented
-- [x] Backward compatibility maintained
 - [x] Documentation updated
 - [x] Tests added for new functionality
 - [x] Code review passed (2 minor issues fixed)

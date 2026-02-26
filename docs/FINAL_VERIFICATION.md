@@ -129,7 +129,6 @@
 #### 77. ✅ src/core/logger.py
 - **Status**: No migration needed
 - **Reason**: Legacy backward-compat classes (`CorrelationIdFilter`, `JSONFormatter`)
-- **Implementation**: Kept as-is for backward compatibility
 
 ---
 
@@ -209,7 +208,6 @@ def func():
 ### Compatibility
 - All existing logger.info/debug/error/warning calls work identically
 - No API changes required
-- Backward compatible
 
 ---
 

@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### ⚙️ CONFIGURATION
 - New environment variable: `GEMINI_API_KEY` (optional)
 - New data file: `data/selector_metrics.json` (auto-created)
-- Updated `config/selectors.yaml` structure with `semantic` field (backward compatible)
+- Updated `config/selectors.yaml` structure with `semantic` field
 
 ### 📚 DOCUMENTATION
 - Added "Adaptive Selector Strategy" section to README.md
@@ -79,7 +79,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added comprehensive test coverage for new features
 
 ### ⚠️ BREAKING CHANGES
-- None - All changes are backward compatible
 - Existing `config/selectors.yaml` files will continue to work
 - New features are opt-in
 
