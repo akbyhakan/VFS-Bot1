@@ -13,7 +13,7 @@ from src.core.exceptions import (
     ValidationError,
     VFSBotError,
 )
-from src.middleware.error_handler import ErrorHandlerMiddleware
+from web.middleware.error_handler import ErrorHandlerMiddleware
 
 
 class TestErrorHandlerMiddleware:

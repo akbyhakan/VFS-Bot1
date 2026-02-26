@@ -337,7 +337,7 @@ class TestRFC7807ErrorResponses:
         from fastapi.testclient import TestClient
 
         from src.core.exceptions import ValidationError
-        from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.middleware.error_handler import ErrorHandlerMiddleware
 
         # Create a minimal app without catch-all routes
         app = FastAPI()
@@ -359,7 +359,7 @@ class TestRFC7807ErrorResponses:
         from fastapi.testclient import TestClient
 
         from src.core.exceptions import ValidationError
-        from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.middleware.error_handler import ErrorHandlerMiddleware
 
         app = FastAPI()
         app.add_middleware(ErrorHandlerMiddleware)
@@ -390,7 +390,7 @@ class TestRFC7807ErrorResponses:
         from fastapi.testclient import TestClient
 
         from src.core.exceptions import RateLimitError
-        from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.middleware.error_handler import ErrorHandlerMiddleware
 
         app = FastAPI()
         app.add_middleware(ErrorHandlerMiddleware)
@@ -418,7 +418,7 @@ class TestRFC7807ErrorResponses:
         from fastapi.testclient import TestClient
 
         from src.core.exceptions import ValidationError
-        from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.middleware.error_handler import ErrorHandlerMiddleware
 
         app = FastAPI()
         app.add_middleware(ErrorHandlerMiddleware)
@@ -441,7 +441,7 @@ class TestRFC7807ErrorResponses:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from src.middleware.error_handler import ErrorHandlerMiddleware
+        from web.middleware.error_handler import ErrorHandlerMiddleware
 
         app = FastAPI()
         app.add_middleware(ErrorHandlerMiddleware)

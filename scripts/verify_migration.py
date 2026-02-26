@@ -34,7 +34,7 @@ FULLY_MIGRATED = [
     "src/core/config_validator.py",
     # Problem 4.3: Loguru migration (9 files)
     "web/routes/health/__init__.py",
-    "src/middleware/error_handler.py",
+    "web/middleware/error_handler.py",
     "src/utils/db_helpers.py",
     "src/services/payment_service.py",
     "src/selector/self_healing.py",

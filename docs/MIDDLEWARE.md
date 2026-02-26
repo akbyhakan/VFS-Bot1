@@ -10,11 +10,8 @@ This document clarifies the middleware architecture and separation of concerns i
 
 The `web/middleware/` directory contains **HTTP-specific middleware** for the FastAPI web application:
 
-- **HTTPS Redirect** (`web/middleware/https_redirect.py`) - Redirects HTTP to HTTPS in production (excludes health checks)
-- **CORS Middleware** (`web/middleware/cors.py`) - Cross-Origin Resource Sharing configuration
-- **CSP Middleware** (`web/middleware/security_headers.py`) - Content Security Policy headers
-- **Security Headers** (`web/middleware/security_headers.py`) - HSTS, X-Frame-Options, etc.
-- **Rate Limit Headers** - HTTP rate limiting response headers
+- **Error Handler** (`web/middleware/error_handler.py`) - Global error handling with RFC 7807 JSON responses
+- **Security Headers** (`web/middleware/security_headers.py`) - X-Frame-Options, X-Content-Type-Options, etc.
 
 **Purpose**: These middleware components operate at the HTTP request/response layer and are specific to the web API.
 
@@ -23,6 +20,14 @@ The `web/middleware/` directory contains **HTTP-specific middleware** for the Fa
 ❌ **IMPORTANT**: Do NOT create a `src/middleware/` directory.
 
 General cross-cutting concerns should be implemented as services or utilities, not as a separate middleware layer.
+
+## Middleware Stack
+
+The application uses three middleware components (in registration order):
+
+1. **`ErrorHandlerMiddleware`** (`web/middleware/error_handler.py`) — Catches all unhandled exceptions and returns structured RFC 7807 JSON error responses.
+2. **`SecurityHeadersMiddleware`** (`web/middleware/security_headers.py`) — Adds security headers (X-Frame-Options, X-Content-Type-Options, etc.) to all responses.
+3. **`CORSMiddleware`** (FastAPI built-in) — Cross-Origin Resource Sharing configuration.
 
 ## Cross-Cutting Concerns Mapping
 
