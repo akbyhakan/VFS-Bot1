@@ -47,5 +47,8 @@ python -c "from src.core.env_validator import EnvValidator; EnvValidator.validat
 |----------|------------|
 | ADMIN_PASSWORD | Bcrypt in production |
 | API_SECRET_KEY | ≥32 characters |
+| ENCRYPTION_KEY | Valid 44-character Fernet key |
+| DATABASE_URL | PostgreSQL connection URL |
+| VFS_EMAIL | Valid email address format |
 | VFS_PASSWORD | ≥8 characters (Fernet-encrypted when using setup script) |
 | VFS_PASSWORD_ENCRYPTED | true if password is encrypted, false otherwise |

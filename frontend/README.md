@@ -149,7 +149,7 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 3. Cookie-based authentication is used for all API requests (no manual token handling)
 4. Token expires after configured time (default 24h)
 5. "Remember Me" preference is stored locally to persist login intent across sessions
-6. Logout clears the HttpOnly cookie via the `/api/auth/logout` endpoint
+6. Logout clears the HttpOnly cookie via the `/api/v1/auth/logout` endpoint
 
 ## 🌐 API Integration
 

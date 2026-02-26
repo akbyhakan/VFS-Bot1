@@ -49,6 +49,8 @@ Response:
 }
 ```
 
+> **Note**: Login also sets an **HttpOnly cookie** (`access_token`) automatically. This cookie is used for browser-based authentication without any manual token handling.
+
 ### Using JWT Token
 
 Include the token in the Authorization header for protected endpoints:
@@ -137,12 +139,11 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 
 **POST** `/api/v1/auth/generate-key`
 
-Requires admin secret (one-time use):
+Requires admin secret sent as a header (one-time use):
 
 ```bash
 curl -X POST \
-     -H "Content-Type: application/json" \
-     -d '{"secret": "YOUR_ADMIN_SECRET"}' \
+     -H "X-Admin-Secret: YOUR_ADMIN_SECRET" \
      http://localhost:8000/api/v1/auth/generate-key
 ```
 
@@ -160,7 +161,8 @@ These endpoints do not require authentication:
 - `GET /health` - Health check
 - `GET /api/status` - Bot status
 - `GET /metrics` - Metrics endpoint
-- `WS /ws` - WebSocket connection
+
+> **Note**: `WS /ws` (WebSocket) requires authentication. It accepts either an HttpOnly cookie (`access_token`) set during login, or a legacy message-based authentication token sent as the first WebSocket message. It is **not** a public endpoint.
 
 ## Webhook Security
 
@@ -248,22 +250,26 @@ print(logs.json())
 
 ## Example: JavaScript/Node.js Client
 
+The primary authentication method is **HttpOnly cookie**. After login, the server sets a cookie automatically — subsequent requests from the browser will include it automatically.
+
 ```javascript
-// Login and get JWT token
+// Login - server sets HttpOnly cookie automatically
 const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
+  credentials: 'include', // Required for cookie handling
   body: JSON.stringify({ username: 'admin', password: 'your-password' })
 });
-const { access_token } = await loginResponse.json();
 
-// Use token to access protected endpoint
+// Subsequent requests automatically include the HttpOnly cookie
 const logsResponse = await fetch('http://localhost:8000/api/v1/bot/logs', {
-  headers: { 'Authorization': `Bearer ${access_token}` }
+  credentials: 'include' // Required for cookie handling
 });
 const logs = await logsResponse.json();
 console.log(logs);
 ```
+
+> **Note for API clients**: Bearer token authentication is still valid for non-browser API clients (e.g., server-to-server calls or scripts). Pass the token in the `Authorization: Bearer <token>` header as before.
 
 ## Troubleshooting
 
