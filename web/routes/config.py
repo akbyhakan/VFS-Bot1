@@ -7,7 +7,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
 from src.core.config.runtime_config import RuntimeConfig
-from web.dependencies import verify_admin_token
+from web.dependencies import verify_jwt_token
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -37,7 +37,7 @@ class ConfigResponse(BaseModel):
 
 @router.get("/runtime", response_model=ConfigResponse, summary="Get runtime configuration")
 async def get_runtime_config(
-    _: Dict[str, Any] = Depends(verify_admin_token),
+    _: Dict[str, Any] = Depends(verify_jwt_token),
 ) -> ConfigResponse:
     """
     Get all runtime configuration values.
@@ -63,7 +63,7 @@ async def get_runtime_config(
 @router.put("/runtime", response_model=ConfigResponse, summary="Update runtime configuration")
 async def update_runtime_config(
     request: ConfigUpdateRequest,
-    _: Dict[str, Any] = Depends(verify_admin_token),
+    _: Dict[str, Any] = Depends(verify_jwt_token),
 ) -> ConfigResponse:
     """
     Update a runtime configuration value.
@@ -105,7 +105,7 @@ async def update_runtime_config(
 )
 async def get_runtime_config_value(
     key: str,
-    _: Dict[str, Any] = Depends(verify_admin_token),
+    _: Dict[str, Any] = Depends(verify_jwt_token),
 ) -> Dict[str, Any]:
     """
     Get a specific runtime configuration value.

@@ -4,6 +4,7 @@ from .appointments import router as appointments_router
 from .audit import router as audit_router
 from .auth import router as auth_router
 from .bot import router as bot_router
+from .config import router as config_router
 from .dashboard import router as dashboard_router
 from .dropdown_sync import router as dropdown_sync_router
 from .health import router as health_router
@@ -26,4 +27,5 @@ __all__ = [
     "proxy_router",
     "webhook_router",
     "sms_webhook_router",
+    "config_router",
 ]

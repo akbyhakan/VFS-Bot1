@@ -566,7 +566,15 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `PUT /api/v1/bot/settings` - Update bot settings
 
 **Appointments:**
-- `GET /api/v1/appointments` - List appointments
+- `GET /api/v1/appointments/appointment-requests` - List appointment requests
+- `GET /api/v1/appointments/appointment-requests/{id}` - Get specific appointment request
+- `POST /api/v1/appointments/appointment-requests` - Create appointment request
+- `DELETE /api/v1/appointments/appointment-requests/{id}` - Delete appointment request
+- `PATCH /api/v1/appointments/appointment-requests/{id}/status` - Update request status
+- `GET /api/v1/appointments/countries` - List available countries
+- `GET /api/v1/appointments/countries/{code}/centres` - List centres for country
+- `GET /api/v1/appointments/countries/{code}/centres/{name}/categories` - List visa categories
+- `GET /api/v1/appointments/countries/{code}/centres/{name}/categories/{cat}/subcategories` - List subcategories
 
 **Audit:**
 - `GET /api/v1/audit/logs` - Get audit logs
