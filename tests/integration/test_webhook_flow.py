@@ -317,7 +317,7 @@ class TestWebhookSecurity:
         signature = hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
 
         with patch.dict("os.environ", {"SMS_WEBHOOK_SECRET": secret, "ENV": "production"}):
-            with patch("web.routes.webhook.get_webhook_repository", return_value=mock_webhook_repo):
+            with patch("web.routes.webhook_otp.get_webhook_repository", return_value=mock_webhook_repo):
                 # Request without signature should be rejected
                 response = client.post("/api/webhook/otp/test-token-123", json=payload)
                 assert response.status_code == 401

@@ -611,8 +611,8 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `WS /ws` - Real-time updates (logs, status, stats)
 
 **OTP Webhooks:**
-- `POST /api/webhook/users/{user_id}/create` - Create webhook for user
-- `GET /api/webhook/users/{user_id}` - Get webhook info
+- `POST /api/v1/webhook/users/{user_id}/create` - Create webhook for user
+- `GET /api/v1/webhook/users/{user_id}` - Get webhook info
 - `POST /webhook/sms/{token}` - SMS OTP receiver endpoint
 
 #### Example Usage

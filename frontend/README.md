@@ -194,9 +194,9 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `DELETE /api/v1/proxy/clear-all` - Clear all proxies
 - `POST /api/v1/proxy/upload` - Upload proxy file
 - `GET /api/v1/appointments/settings/webhook-urls` - Get webhook URLs for SMS forwarding
-- `POST /api/webhook/users/{id}/create` - Create user webhook
-- `GET /api/webhook/users/{id}` - Get user webhook info
-- `DELETE /api/webhook/users/{id}` - Delete user webhook
+- `POST /api/v1/webhook/users/{id}/create` - Create user webhook
+- `GET /api/v1/webhook/users/{id}` - Get user webhook info
+- `DELETE /api/v1/webhook/users/{id}` - Delete user webhook
 - `GET /api/v1/config/runtime` - Get runtime configuration
 - `PUT /api/v1/config/runtime` - Update runtime configuration
 - `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
