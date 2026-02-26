@@ -222,28 +222,6 @@ class TestSessionRecovery:
         assert checkpoint is not None
         assert checkpoint["step"] == "logged_in"
 
-    def test_backward_compat_naive_checkpoint(self, temp_checkpoint_file):
-        """Test backward compatibility with old timezone-naive checkpoints."""
-        recovery = SessionRecovery(str(temp_checkpoint_file))
-
-        # Manually create an old-style naive checkpoint (without timezone)
-        old_checkpoint = {
-            "step": "logged_in",
-            "step_index": 1,
-            "user_id": 123,
-            "timestamp": "2024-01-01T12:00:00",  # No timezone info
-            "context": {"test": "old_data"},
-        }
-
-        with open(temp_checkpoint_file, "w") as f:
-            json.dump(old_checkpoint, f)
-
-        # Should still be able to load (will be very old and likely ignored)
-        # This tests that the code doesn't crash on old naive timestamps
-        checkpoint = recovery.load_checkpoint()
-        # Will be None because it's > 1 hour old, but shouldn't raise exception
-        assert checkpoint is None or checkpoint["step"] == "logged_in"
-
     def test_encrypted_checkpoint_save_and_load(self, temp_checkpoint_file, monkeypatch):
         """Test saving and loading encrypted checkpoints."""
         from cryptography.fernet import Fernet

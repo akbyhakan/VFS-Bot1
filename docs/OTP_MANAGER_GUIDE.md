@@ -28,7 +28,6 @@ src/services/otp_manager/
 └── manager.py            # OTPManager class + get_otp_manager() singleton
 ```
 
-**Backward Compatibility:** `__init__.py` dosyası tüm public API'yi re-export eder, bu nedenle mevcut `from src.services.otp_manager import X` şeklindeki import'lar hiçbir değişiklik gerektirmez.
 
 ### Temel Bileşenler
 
@@ -433,7 +432,6 @@ otp_manager.start()
 
 # SMS webhook geldiğinde
 async def handle_sms_webhook(phone_number: str, message: str):
-    # Eski sisteme de gönder (backward compatibility)
     otp_service = get_otp_service()
     await otp_service.process_sms(phone_number, message)
     

@@ -157,7 +157,7 @@ stop()
   - `reset()` - Close circuit breaker
   - `get_wait_time()` - Exponential backoff calculation
   - `get_stats()` - Current circuit state
-- **Note**: Thin wrapper around `src.core.circuit_breaker.CircuitBreaker` for backward compatibility
+- **Note**: Thin wrapper around `src.core.circuit_breaker.CircuitBreaker`
 - **Features**:
   - Thread-safe operation
   - Consecutive error tracking

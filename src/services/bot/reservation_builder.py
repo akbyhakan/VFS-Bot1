@@ -10,7 +10,7 @@ from .types import PersonDict, ReservationDict
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories.appointment_request_repository import AppointmentRequestRepository
-    from ...types.user import UserDict
+    from ...types.user import VFSAccountDict
     from .slot_checker import SlotInfo
 
 
@@ -33,7 +33,7 @@ class ReservationBuilder:
         self.appointment_request_repo = appointment_request_repo
 
     async def build_reservation_for_user(
-        self, user: "UserDict", slot: "SlotInfo"
+        self, user: "VFSAccountDict", slot: "SlotInfo"
     ) -> Optional[ReservationDict]:
         """
         Build reservation for user using appointment request data.
@@ -94,7 +94,7 @@ class ReservationBuilder:
         return reservation
 
     def build_reservation(
-        self, user: "UserDict", slot: "SlotInfo", details: Dict[str, Any]
+        self, user: "VFSAccountDict", slot: "SlotInfo", details: Dict[str, Any]
     ) -> ReservationDict:
         """
         Build reservation data structure from user, slot, and personal details.

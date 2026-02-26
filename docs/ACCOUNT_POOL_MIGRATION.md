@@ -176,12 +176,6 @@ GROUP BY a.email
 ORDER BY total_uses DESC;
 ```
 
-## Backward Compatibility
-
-The old `process_user()` method is still available but NOT used by the main bot loop. If you have custom code that calls `process_user()` directly, it will continue to work.
-
-The `users` table and user management web API are unchanged. Users are now for appointment request management, not VFS login credentials.
-
 ## Troubleshooting
 
 ### No available accounts

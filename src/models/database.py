@@ -13,7 +13,6 @@ from src.core.exceptions import (
 from src.models.db_connection import DatabaseConnectionManager
 from src.models.db_state import DatabaseState
 
-# Re-export DatabaseState for backward compatibility
 __all__ = ["Database", "DatabaseState"]
 
 
@@ -62,7 +61,7 @@ class Database:
         return self._connection_manager.require_migrations
 
     @property
-    def state(self) -> str:
+    def state(self) -> DatabaseState:
         """
         Get current database state.
 

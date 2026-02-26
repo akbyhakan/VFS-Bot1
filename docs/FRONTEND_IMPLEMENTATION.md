@@ -289,7 +289,6 @@ npm run build  # Outputs to ../web/static/dist
    - ✅ Added user management endpoints (database-backed)
    - ✅ Updated static file serving for React
    - ✅ Added catch-all route for SPA routing
-   - ✅ Maintained backward compatibility
 
 ### Route Changes
 ```python

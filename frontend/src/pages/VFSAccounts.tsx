@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { logger } from '@/utils/logger';
 import { useTranslation } from 'react-i18next';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleUserStatus } from '@/hooks/useApi';
+import { useVFSAccounts, useCreateVFSAccount, useUpdateVFSAccount, useDeleteVFSAccount, useToggleVFSAccountStatus } from '@/hooks/useApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';
@@ -14,9 +14,9 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload, Link2, Copy, Check } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { userSchema, createUserSchema, type UserFormData } from '@/utils/validators';
+import { vfsAccountSchema, createVFSAccountSchema, type VFSAccountFormData } from '@/utils/validators';
 import { toast } from 'sonner';
-import type { User, CreateUserRequest } from '@/types/user';
+import type { VFSAccount, CreateVFSAccountRequest } from '@/types/user';
 import { cn, formatDate } from '@/utils/helpers';
 import { webhookApi } from '@/services/webhook';
 
@@ -24,7 +24,7 @@ export function VFSAccounts() {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCSVImportModalOpen, setIsCSVImportModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<VFSAccount | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [webhooks, setWebhooks] = useState<Record<number, string>>({});
@@ -33,11 +33,11 @@ export function VFSAccounts() {
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
-  const { data: users, isLoading, refetch } = useUsers();
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
-  const deleteUser = useDeleteUser();
-  const toggleStatus = useToggleUserStatus();
+  const { data: users, isLoading, refetch } = useVFSAccounts();
+  const createUser = useCreateVFSAccount();
+  const updateUser = useUpdateVFSAccount();
+  const deleteUser = useDeleteVFSAccount();
+  const toggleStatus = useToggleVFSAccountStatus();
 
   // Load webhooks for all users
   useEffect(() => {
@@ -75,8 +75,8 @@ export function VFSAccounts() {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<UserFormData>({
-    resolver: zodResolver(editingUser ? userSchema : createUserSchema),
+  } = useForm<VFSAccountFormData>({
+    resolver: zodResolver(editingUser ? vfsAccountSchema : createVFSAccountSchema),
   });
 
   const openCreateModal = () => {
@@ -91,7 +91,7 @@ export function VFSAccounts() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (user: User) => {
+  const openEditModal = (user: VFSAccount) => {
     setEditingUser(user);
     setShowPassword(false);
     reset({ ...user, password: '' }); // Don't populate password field
@@ -105,7 +105,7 @@ export function VFSAccounts() {
     reset();
   };
 
-  const onSubmit = async (data: UserFormData) => {
+  const onSubmit = async (data: VFSAccountFormData) => {
     try {
       if (editingUser) {
         // Only include password if it was filled in
@@ -116,7 +116,7 @@ export function VFSAccounts() {
         await updateUser.mutateAsync({ id: editingUser.id, ...updateData });
         toast.success(t('users.accountUpdated'));
       } else {
-        await createUser.mutateAsync(data as CreateUserRequest);
+        await createUser.mutateAsync(data as CreateVFSAccountRequest);
         toast.success(t('users.accountCreated'));
       }
       closeModal();
@@ -125,7 +125,7 @@ export function VFSAccounts() {
     }
   };
 
-  const handleDelete = async (user: User) => {
+  const handleDelete = async (user: VFSAccount) => {
     const confirmed = await confirm({
       title: t('users.deleteAccountTitle'),
       message: t('users.deleteAccountMessage', { email: user.email }),
@@ -144,7 +144,7 @@ export function VFSAccounts() {
     }
   };
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = async (user: VFSAccount) => {
     try {
       await toggleStatus.mutateAsync({ id: user.id, is_active: !user.is_active });
       toast.success(user.is_active ? t('users.accountDeactivated') : t('users.accountActivated'));

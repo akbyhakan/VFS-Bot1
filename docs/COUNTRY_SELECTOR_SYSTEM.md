@@ -11,7 +11,6 @@ The VFS Bot now supports country-specific CSS selectors, allowing different sele
 - **Combined Fallbacks**: Merges country-specific and global fallback selectors (no duplicates)
 - **Separate Metrics**: Each country tracks selector performance independently
 - **Factory Pattern**: Efficient instance caching per country
-- **Backward Compatible**: Existing code works without modification
 
 ## Configuration
 
@@ -107,21 +106,6 @@ class VFSService:
         self.selector_manager = get_selector_manager(self.country_code)
 ```
 
-### Backward Compatibility
-
-The old API still works:
-
-```python
-from src.selector import SelectorManager
-
-# This still works (uses default country)
-manager = SelectorManager()
-selector = manager.get("login.email_input")
-
-# This also works (loads from custom file)
-manager = SelectorManager("path/to/selectors.yaml")
-```
-
 ## Selector Priority
 
 When retrieving a selector, the system follows this priority order:
@@ -183,39 +167,6 @@ Now when using `get_selector_manager("fra")`, these France-specific selectors wi
 ### For Development
 - **Easy Testing**: Test with different countries easily
 - **Gradual Migration**: Add country overrides as needed, not all at once
-- **Backward Compatible**: No breaking changes to existing code
-
-## Migration Guide
-
-### For Existing Code
-
-No changes needed! The system is fully backward compatible:
-
-```python
-# Old code still works
-from src.selector import SelectorManager
-manager = SelectorManager()
-```
-
-### To Use Country-Specific Selectors
-
-Update your service initialization:
-
-```python
-# Old
-manager = get_selector_manager()
-
-# New
-country = config["vfs"]["mission"]  # e.g., "fra", "nld"
-manager = get_selector_manager(country)
-```
-
-### To Add Country Overrides
-
-1. Identify which selectors differ for a specific country
-2. Add them under `countries.{country_code}` in `selectors.yaml`
-3. Test with the country-specific bot configuration
-4. The learning system will automatically track performance
 
 ## Testing
 
@@ -227,7 +178,6 @@ pytest tests/test_selectors.py -v
 
 All 23 tests should pass, including:
 - 10 country-aware specific tests
-- 13 backward compatibility tests
 
 ## Performance
 

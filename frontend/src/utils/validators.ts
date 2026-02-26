@@ -25,9 +25,3 @@ export const createVFSAccountSchema = vfsAccountSchema.extend({
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type VFSAccountFormData = z.infer<typeof vfsAccountSchema>;
 export type CreateVFSAccountFormData = z.infer<typeof createVFSAccountSchema>;
-
-// Backward compatibility aliases
-export const userSchema = vfsAccountSchema;
-export const createUserSchema = createVFSAccountSchema;
-export type UserFormData = VFSAccountFormData;
-export type CreateUserFormData = CreateVFSAccountFormData;

@@ -32,10 +32,3 @@ export interface VFSAccountStats {
   active_accounts: number;
   inactive_accounts: number;
 }
-
-// Backward compatibility aliases
-export type User = VFSAccount;
-export type CreateUserRequest = CreateVFSAccountRequest;
-export type UpdateUserRequest = UpdateVFSAccountRequest;
-export type UpdateUserPayload = UpdateVFSAccountPayload;
-export type UserStats = VFSAccountStats;

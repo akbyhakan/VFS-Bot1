@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.types.user import VFSAccountDict, VFSAccountDictWithOptionals, UserDict, UserDictWithOptionals
+from src.types.user import VFSAccountDict, VFSAccountDictWithOptionals
 
 
 def test_vfs_account_dict_basic():
@@ -65,9 +65,3 @@ def test_vfs_account_dict_structure_compatibility():
 
     assert account["id"] == 4
     assert account["email"] == "db@example.com"
-
-
-def test_user_dict_backward_compat():
-    """Test that UserDict is a backward-compatible alias for VFSAccountDict."""
-    assert UserDict is VFSAccountDict
-    assert UserDictWithOptionals is VFSAccountDictWithOptionals

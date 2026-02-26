@@ -22,10 +22,9 @@ from src.core.exceptions import ConfigurationError
 # This is independent of __version__ (app SemVer) in src/__init__.py.
 CURRENT_CONFIG_VERSION: Final[str] = "2.0"
 
-# Supported configuration versions (backward compatibility)
+# Supported configuration versions
 SUPPORTED_CONFIG_VERSIONS: Final[frozenset[str]] = frozenset(
     {
-        "1.0",
         "2.0",
     }
 )
@@ -37,13 +36,13 @@ def check_config_version(config: Dict[str, Any]) -> None:
 
     Checks if the config version is supported and logs appropriate warnings
     for old but supported versions. Raises ConfigurationError for unsupported
-    versions.
+    versions or missing version field.
 
     Args:
         config: Configuration dictionary loaded from YAML
 
     Raises:
-        ConfigurationError: If config version is not supported
+        ConfigurationError: If config version is not supported or missing
 
     Example:
         >>> config = {"config_version": "2.0", "vfs": {...}}
@@ -54,14 +53,13 @@ def check_config_version(config: Dict[str, Any]) -> None:
     """
     config_version = config.get("config_version")
 
-    # Handle missing version field gracefully
+    # Require version field to be present
     if config_version is None:
-        logger.warning(
-            "Configuration file does not have a 'config_version' field. "
-            f"Please add 'config_version: {CURRENT_CONFIG_VERSION}' to your config.yaml. "
-            "Continuing with backward compatibility mode."
+        raise ConfigurationError(
+            f"Configuration file is missing the required 'config_version' field. "
+            f"Please add 'config_version: {CURRENT_CONFIG_VERSION}' to your config.yaml.",
+            details={"current_version": CURRENT_CONFIG_VERSION},
         )
-        return
 
     # Ensure version is a string
     if not isinstance(config_version, str):
@@ -84,12 +82,4 @@ def check_config_version(config: Dict[str, Any]) -> None:
             },
         )
 
-    # Warn about old but supported versions
-    if config_version != CURRENT_CONFIG_VERSION:
-        logger.warning(
-            f"Configuration version {config_version} is supported but outdated. "
-            f"Current version is {CURRENT_CONFIG_VERSION}. "
-            "Consider updating your config.yaml to the latest schema."
-        )
-    else:
-        logger.debug(f"Configuration version {config_version} is current.")
+    logger.debug(f"Configuration version {config_version} is current.")

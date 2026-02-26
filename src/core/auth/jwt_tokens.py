@@ -189,11 +189,7 @@ async def _check_token_blacklist(payload: Dict[str, Any]) -> None:
 
 async def verify_token(token: str) -> Dict[str, Any]:
     """
-    Verify and decode JWT token with key rotation support.
-
-    First tries to verify with current API_SECRET_KEY.
-    If that fails, falls back to API_SECRET_KEY_PREVIOUS for backward compatibility
-    during key rotation periods.
+    Verify and decode JWT token.
 
     Args:
         token: JWT token to verify
@@ -207,7 +203,6 @@ async def verify_token(token: str) -> Dict[str, Any]:
     secret_key = get_secret_key()
     algorithm = get_algorithm()
 
-    # Try current key first
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
 
@@ -216,40 +211,6 @@ async def verify_token(token: str) -> Dict[str, Any]:
 
         return cast(dict[str, Any], payload)
     except JWTError as primary_error:
-        # Try previous key for rotation support
-        previous_key = os.getenv("API_SECRET_KEY_PREVIOUS")
-        if previous_key:
-            try:
-                logger.debug("Attempting token verification with previous key")
-                payload = jwt.decode(token, previous_key, algorithms=[algorithm])
-
-                # Check blacklist for old key tokens too using helper
-                await _check_token_blacklist(payload)
-
-                # Check if token exceeds rotation max age
-                rotation_max_hours = int(os.getenv("API_SECRET_KEY_ROTATION_MAX_HOURS", "72"))
-                if "iat" in payload:
-                    issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
-                    age = datetime.now(timezone.utc) - issued_at
-                    max_age = timedelta(hours=rotation_max_hours)
-
-                    if age > max_age:
-                        logger.warning(
-                            f"Token verified with previous key but exceeds rotation max age "
-                            f"({age.total_seconds()/3600:.1f}h > {rotation_max_hours}h), rejecting"
-                        )
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Token too old for previous key verification",
-                            headers={"WWW-Authenticate": "Bearer"},
-                        )
-
-                logger.info("Token verified with previous key - consider refreshing token")
-                return cast(dict[str, Any], payload)
-            except JWTError:
-                # Both keys failed, raise original error
-                pass
-
         # Production: Don't expose internal error details for security
         if Environment.is_production():
             detail = "Could not validate credentials"

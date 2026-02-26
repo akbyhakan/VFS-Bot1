@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from .core.config.env_validator import EnvValidator as EnvValidator
     from .core.logger import setup_structured_logging as setup_structured_logging
     from .models.database import Database as Database
-    from .selector import SelectorManager as SelectorManager
+    from .selector import CountryAwareSelectorManager as CountryAwareSelectorManager
     from .selector import get_selector_manager as get_selector_manager
     from .services.bot.vfs_bot import VFSBot as VFSBot
     from .services.captcha_solver import CaptchaSolver as CaptchaSolver
@@ -49,7 +49,7 @@ _LAZY_MODULE_MAP = {
     "CentreFetcher": ("src.services.data_sync.centre_fetcher", "CentreFetcher"),
     "NotificationService": ("src.services.notification.notification", "NotificationService"),
     # Utils
-    "SelectorManager": ("src.selector", "SelectorManager"),
+    "CountryAwareSelectorManager": ("src.selector", "CountryAwareSelectorManager"),
     "get_selector_manager": ("src.selector", "get_selector_manager"),
     # Anti-detection
     "CloudflareHandler": ("src.utils.anti_detection", "CloudflareHandler"),

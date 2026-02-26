@@ -117,36 +117,6 @@ class TestSessionEncryption:
         assert manager2.access_token == "encrypted_token"
         assert manager2.refresh_token == "refresh_token"
 
-    def test_session_backward_compatibility(self, tmp_path, monkeypatch):
-        """Test that old unencrypted sessions can still be loaded."""
-        session_file = tmp_path / "session.json"
-
-        # Ensure encryption key is set
-        from cryptography.fernet import Fernet
-
-        if not os.getenv("ENCRYPTION_KEY"):
-            monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
-
-        # Create old-style unencrypted session file
-        old_data = {
-            "access_token": "old_token",
-            "refresh_token": "old_refresh",
-            "token_expiry": None,
-        }
-        with open(session_file, "w") as f:
-            json.dump(old_data, f)
-
-        # Load old session
-        with patch("src.utils.security.session_manager.logger") as mock_logger:
-            manager = SessionManager(str(session_file))
-            assert manager.access_token == "old_token"
-            # Verify warning was logged via loguru
-            mock_logger.warning.assert_called()
-            any_warning_has_unencrypted = any(
-                "unencrypted" in str(call).lower() for call in mock_logger.warning.call_args_list
-            )
-            assert any_warning_has_unencrypted
-
 
 class TestDatabaseConnectionConfig:
     """Test database connection configuration (PostgreSQL)."""

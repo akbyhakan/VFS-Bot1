@@ -12,12 +12,8 @@ from src.selector.manager import CountryAwareSelectorManager, get_selector_manag
 from src.selector.self_healing import SelectorSelfHealing
 from src.selector.watcher import SelectorHealthCheck
 
-# Alias for backward compatibility
-SelectorManager = CountryAwareSelectorManager
-
 __all__ = [
     "CountryAwareSelectorManager",
-    "SelectorManager",
     "get_selector_manager",
     "SelectorLearner",
     "SelectorHealthCheck",

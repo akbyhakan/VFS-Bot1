@@ -124,10 +124,3 @@ export function useToggleVFSAccountStatus() {
     },
   });
 }
-
-// Backward compatibility aliases
-export const useUsers = useVFSAccounts;
-export const useCreateUser = useCreateVFSAccount;
-export const useUpdateUser = useUpdateVFSAccount;
-export const useDeleteUser = useDeleteVFSAccount;
-export const useToggleUserStatus = useToggleVFSAccountStatus;

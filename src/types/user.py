@@ -1,8 +1,4 @@
-"""Type definitions for VFS account data structures.
-
-Note: UserDict and UserDictWithOptionals are kept for backward compatibility
-with bot services that use them internally. New code should use VFSAccountDict.
-"""
+"""Type definitions for VFS account data structures."""
 
 from typing_extensions import TypedDict
 
@@ -23,8 +19,3 @@ class VFSAccountDictWithOptionals(VFSAccountDict, total=False):
     is_active: bool
     created_at: str
     updated_at: str
-
-
-# Backward compatibility aliases for bot services
-UserDict = VFSAccountDict
-UserDictWithOptionals = VFSAccountDictWithOptionals

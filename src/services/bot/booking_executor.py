@@ -10,7 +10,7 @@ from .types import ReservationDict
 
 if TYPE_CHECKING:
     from ...repositories import AppointmentRepository, AppointmentRequestRepository
-    from ...types.user import UserDict
+    from ...types.user import VFSAccountDict
     from ..notification.notification import NotificationService
     from .booking_dependencies import BookingDependencies
     from .slot_checker import SlotInfo
@@ -44,7 +44,7 @@ class BookingExecutor:
         self,
         page: Page,
         reservation: ReservationDict,
-        user: "UserDict",
+        user: "VFSAccountDict",
         centre: str,
         slot: "SlotInfo",
         dedup_service: Any,
@@ -156,7 +156,7 @@ class BookingExecutor:
     async def process_single_request(
         self,
         page: Page,
-        user: "UserDict",
+        user: "VFSAccountDict",
         centre: str,
         category: str,
         subcategory: str,
