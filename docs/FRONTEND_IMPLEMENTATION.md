@@ -136,7 +136,7 @@ This implementation successfully transforms the basic HTML/CSS/JS frontend into 
 ### Backend Integration
 - ✅ JWT authentication endpoint integration
 - ✅ WebSocket real-time updates
-- ✅ User management API (mock endpoints)
+- ✅ User management API (VFS accounts)
 - ✅ Bot control endpoints
 - ✅ Metrics and health endpoints
 
@@ -207,7 +207,7 @@ npm run build  # Outputs to ../web/static/dist
 ✅ Manifest.json configured
 ✅ Icons defined
 ✅ Offline-ready structure
-⏳ Service worker (future enhancement)
+✅ Service worker (VitePWA plugin)
 
 ## 🌐 API Integration
 
@@ -286,7 +286,7 @@ npm run build  # Outputs to ../web/static/dist
 
 ### Updated Files
 1. `web/app.py`:
-   - ✅ Added user management endpoints (mock)
+   - ✅ Added user management endpoints (database-backed)
    - ✅ Updated static file serving for React
    - ✅ Added catch-all route for SPA routing
    - ✅ Maintained backward compatibility
@@ -307,7 +307,11 @@ POST /api/v1/auth/login → JWT login
 GET /api/status         → Bot status
 POST /api/v1/bot/start  → Start bot
 POST /api/v1/bot/stop   → Stop bot
+POST /api/v1/bot/restart → Restart bot
+POST /api/v1/bot/check-now → Trigger immediate check
 GET /api/v1/bot/logs    → Get logs
+GET /metrics            → Bot metrics (JSON)
+GET /health             → Health check
 WS /ws                  → WebSocket
 ```
 
@@ -322,15 +326,7 @@ WS /ws                  → WebSocket
 ## ⚠️ Important Notes
 
 ### User Management
-The user management API endpoints are currently **mock implementations** using in-memory storage. This was done to enable frontend development and testing.
-
-> ⚠️ **Note**: The TODO items below remain open and must be addressed before going to production.
-
-**TODO for Production**:
-1. Implement database integration
-2. Connect to existing `users` and `personal_details` tables
-3. Add proper validation and error handling
-4. Implement pagination for large user lists
+The user management API endpoints use VFS account management with full database integration via PostgreSQL and the Repository pattern (`web/routes/vfs_accounts.py`).
 
 ### Environment Variables
 Frontend uses:

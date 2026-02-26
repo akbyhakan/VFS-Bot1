@@ -595,7 +595,9 @@ The web dashboard exposes a REST API with versioned endpoints:
 **Health & Status:**
 - `GET /health` - Health check
 - `GET /api/status` - Bot status
-- `GET /api/metrics` - Prometheus metrics
+- `GET /metrics` - Bot metrics (JSON)
+- `GET /api/metrics` - Detailed bot metrics
+- `GET /metrics/prometheus` - Prometheus text format metrics
 
 **WebSocket:**
 - `WS /ws` - Real-time updates (logs, status, stats)
