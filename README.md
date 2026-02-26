@@ -588,6 +588,8 @@ The web dashboard exposes a REST API with versioned endpoints:
 **Proxy Management:**
 - `POST /api/v1/proxy/add` - Add proxy
 - `GET /api/v1/proxy/list` - List proxies
+- `GET /api/v1/proxy/stats` - Get proxy statistics
+- `DELETE /api/v1/proxy/clear-all` - Clear all proxies
 - `POST /api/v1/proxy/upload` - Upload proxy file
 
 **Runtime Configuration:**
@@ -608,7 +610,7 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `GET /metrics/prometheus` - Prometheus text format metrics
 
 **WebSocket:**
-- `WS /ws` - Real-time updates (logs, status, stats)
+- `WS /ws` - Real-time updates (logs, status, stats) — requires authentication via HttpOnly cookie or legacy message-based token
 
 **OTP Webhooks:**
 - `POST /api/v1/webhook/users/{user_id}/create` - Create webhook for user

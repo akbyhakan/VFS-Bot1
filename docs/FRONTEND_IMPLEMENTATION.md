@@ -34,8 +34,9 @@ This implementation successfully transforms the basic HTML/CSS/JS frontend into 
 
 ### 4. Token Management ✅
 **Status**: COMPLETE
-- JWT token storage
-- Automatic token injection in API calls
+- JWT token is managed server-side via **HttpOnly cookie** (set automatically on login)
+- No client-side token storage — the browser handles the cookie transparently
+- Automatic token injection via `credentials: 'include'` on all API calls
 - Token expiration handling
 - Auto-redirect on 401
 - **Location**: `frontend/src/services/auth.ts`, `frontend/src/services/api.ts`
@@ -198,7 +199,7 @@ npm run build  # Outputs to ../web/static/dist
 2. ✅ Protected routes
 3. ✅ Token auto-refresh handling
 4. ✅ XSS protection (React built-in)
-5. ✅ CSRF protection (token-based)
+5. ✅ CSRF protection (via `SameSite=strict` cookie attribute — no separate CSRF token)
 6. ✅ Input validation (Zod schemas)
 7. ✅ Secure password fields
 
@@ -213,20 +214,52 @@ npm run build  # Outputs to ../web/static/dist
 
 ### Implemented Endpoints
 - ✅ `POST /api/v1/auth/login` - Authentication
+- ✅ `POST /api/v1/auth/logout` - Logout (clears HttpOnly cookie)
+- ✅ `POST /api/v1/auth/refresh` - Refresh JWT token
 - ✅ `GET /api/status` - Bot status (non-versioned)
 - ✅ `POST /api/v1/bot/start` - Start bot
 - ✅ `POST /api/v1/bot/stop` - Stop bot
+- ✅ `POST /api/v1/bot/restart` - Restart bot
+- ✅ `POST /api/v1/bot/check-now` - Manual check trigger
 - ✅ `GET /api/v1/bot/logs` - Fetch logs
+- ✅ `GET /api/v1/bot/settings` - Get bot settings
+- ✅ `PUT /api/v1/bot/settings` - Update bot settings
 - ✅ `GET /metrics` - Bot metrics (non-versioned)
 - ✅ `GET /health` - Health check
-- ✅ `WS /ws` - WebSocket connection
-
-### New VFS Account Management Endpoints
-- ✅ `GET /api/v1/vfs-accounts` - List all VFS accounts
+- ✅ `GET /api/v1/vfs-accounts` - List VFS accounts
 - ✅ `POST /api/v1/vfs-accounts` - Create VFS account
 - ✅ `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
-- ✅ `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
 - ✅ `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
+- ✅ `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
+- ✅ `POST /api/v1/vfs-accounts/import` - CSV bulk upload
+- ✅ `GET /api/v1/appointments/appointment-requests` - List appointment requests
+- ✅ `GET /api/v1/appointments/appointment-requests/{id}` - Get specific appointment request
+- ✅ `POST /api/v1/appointments/appointment-requests` - Create appointment request
+- ✅ `DELETE /api/v1/appointments/appointment-requests/{id}` - Delete appointment request
+- ✅ `PATCH /api/v1/appointments/appointment-requests/{id}/status` - Update request status
+- ✅ `GET /api/v1/appointments/countries` - List available countries
+- ✅ `GET /api/v1/appointments/countries/{code}/centres` - List centres for country
+- ✅ `GET /api/v1/appointments/countries/{code}/centres/{name}/categories` - List visa categories
+- ✅ `GET /api/v1/appointments/countries/{code}/centres/{name}/categories/{cat}/subcategories` - List subcategories
+- ✅ `GET /api/v1/audit/logs` - Audit logs
+- ✅ `GET /api/v1/audit/stats` - Audit statistics
+- ✅ `POST /api/v1/payment/payment-card` - Save payment card
+- ✅ `GET /api/v1/payment/payment-card` - Get payment card
+- ✅ `DELETE /api/v1/payment/payment-card` - Delete payment card
+- ✅ `POST /api/v1/proxy/add` - Add proxy
+- ✅ `GET /api/v1/proxy/list` - List proxies
+- ✅ `GET /api/v1/proxy/stats` - Get proxy statistics
+- ✅ `DELETE /api/v1/proxy/clear-all` - Clear all proxies
+- ✅ `POST /api/v1/proxy/upload` - Upload proxy file
+- ✅ `GET /api/v1/appointments/settings/webhook-urls` - Get webhook URLs for SMS forwarding
+- ✅ `POST /api/v1/webhook/users/{id}/create` - Create user webhook
+- ✅ `GET /api/v1/webhook/users/{id}` - Get user webhook info
+- ✅ `DELETE /api/v1/webhook/users/{id}` - Delete user webhook
+- ✅ `GET /api/v1/config/runtime` - Get runtime configuration
+- ✅ `PUT /api/v1/config/runtime` - Update runtime configuration
+- ✅ `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
+- ✅ `POST /api/v1/dropdown-sync/all` - Trigger dropdown sync for all countries
+- ✅ `WS /ws` - WebSocket for real-time updates (requires authentication via HttpOnly cookie)
 
 ## 🔄 Real-time Features
 
@@ -285,33 +318,55 @@ npm run build  # Outputs to ../web/static/dist
 ## 🔨 Backend Changes
 
 ### Updated Files
-1. `web/app.py`:
-   - ✅ Added user management endpoints (database-backed)
-   - ✅ Updated static file serving for React
-   - ✅ Added catch-all route for SPA routing
+1. `web/app.py` - Main FastAPI application
+2. `web/routes/auth.py` - Authentication endpoints (login, logout, refresh, generate-key)
+3. `web/routes/bot.py` - Bot control endpoints (start, stop, restart, check-now, logs, settings)
+4. `web/routes/vfs_accounts.py` - VFS account CRUD and CSV import
+5. `web/routes/appointments.py` - Appointment request CRUD and dropdown data
+6. `web/routes/audit.py` - Audit logs and statistics
+7. `web/routes/payment.py` - Payment card management
+8. `web/routes/proxy.py` - Proxy management (add, list, stats, clear-all, upload)
+9. `web/routes/config.py` - Runtime configuration
+10. `web/routes/dropdown_sync.py` - Dropdown sync triggers
+11. `web/routes/webhook_accounts.py` - User webhook management
 
 ### Route Changes
 ```python
-# New routes
-GET /                   → React SPA
-GET /{path}            → React SPA (client-side routing)
-GET /api/v1/vfs-accounts      → List VFS accounts
-POST /api/v1/vfs-accounts     → Create VFS account
-PUT /api/v1/vfs-accounts/{id} → Update VFS account
-DELETE /api/v1/vfs-accounts/{id} → Delete VFS account
-PATCH /api/v1/vfs-accounts/{id}  → Toggle VFS account active status
+# Authentication routes
+POST /api/v1/auth/login          → JWT login (sets HttpOnly cookie)
+POST /api/v1/auth/logout         → Logout (clears HttpOnly cookie)
+POST /api/v1/auth/refresh        → Refresh JWT (issues new HttpOnly cookie)
+POST /api/v1/auth/generate-key   → Generate API key (X-Admin-Secret header required)
 
-# Existing routes (unchanged)
-POST /api/v1/auth/login → JWT login
-GET /api/status         → Bot status
-POST /api/v1/bot/start  → Start bot
-POST /api/v1/bot/stop   → Stop bot
-POST /api/v1/bot/restart → Restart bot
-POST /api/v1/bot/check-now → Trigger immediate check
-GET /api/v1/bot/logs    → Get logs
-GET /metrics            → Bot metrics (JSON)
-GET /health             → Health check
-WS /ws                  → WebSocket
+# Bot control routes
+POST /api/v1/bot/start           → Start bot
+POST /api/v1/bot/stop            → Stop bot
+POST /api/v1/bot/restart         → Restart bot
+POST /api/v1/bot/check-now       → Trigger immediate check
+GET  /api/v1/bot/logs            → Get logs
+GET  /api/v1/bot/settings        → Get bot settings
+PUT  /api/v1/bot/settings        → Update bot settings
+
+# VFS account routes
+GET    /api/v1/vfs-accounts           → List VFS accounts
+POST   /api/v1/vfs-accounts          → Create VFS account
+PUT    /api/v1/vfs-accounts/{id}     → Update VFS account
+PATCH  /api/v1/vfs-accounts/{id}     → Toggle VFS account active status
+DELETE /api/v1/vfs-accounts/{id}     → Delete VFS account
+POST   /api/v1/vfs-accounts/import   → CSV bulk upload
+
+# Appointment routes
+GET    /api/v1/appointments/appointment-requests               → List requests
+POST   /api/v1/appointments/appointment-requests               → Create request
+GET    /api/v1/appointments/appointment-requests/{id}          → Get request
+DELETE /api/v1/appointments/appointment-requests/{id}          → Delete request
+PATCH  /api/v1/appointments/appointment-requests/{id}/status   → Update status
+
+# Non-versioned routes
+GET  /api/status   → Bot status
+GET  /metrics      → Bot metrics (JSON)
+GET  /health       → Health check
+WS   /ws           → WebSocket (requires auth via HttpOnly cookie)
 ```
 
 ## 📝 Documentation

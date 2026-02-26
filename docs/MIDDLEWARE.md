@@ -36,7 +36,7 @@ Common cross-cutting concerns are handled in the following locations:
 | Rate Limiting (Endpoint) | `src/core/rate_limiting/` | `EndpointRateLimiter` (endpoint) |
 | Circuit Breaker | `src/core/infra/circuit_breaker.py` | `CircuitBreaker` |
 | Request Retry Logic | `src/utils/anti_detection/` | `TLSHandler.make_request()` |
-| Authentication | `src/core/auth.py` | `AuthManager` |
+| Authentication | `src/core/auth/` | `AuthManager` (`__init__.py`, `jwt_tokens.py`, `password.py`, `token_blacklist.py`) |
 | Session Management | `src/utils/security/` | `SessionManager` |
 | Header Management | `src/utils/security/` | `HeaderManager` |
 | Proxy Management | `src/utils/security/` | `ProxyManager` |
