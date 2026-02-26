@@ -66,7 +66,7 @@ class Database:
         Get current database state.
 
         Returns:
-            Current state (CONNECTED, DEGRADED, or DISCONNECTED)
+            DatabaseState enum (CONNECTED, DEGRADED, or DISCONNECTED)
         """
         if self.pool is None:
             return DatabaseState.DISCONNECTED
