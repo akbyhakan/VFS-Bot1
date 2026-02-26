@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { BotStatus, LogEntry } from '@/types/api';
+import { BOT_STATUS } from '@/utils/constants';
 
 interface BotState extends BotStatus {
   logs: LogEntry[];
@@ -16,7 +17,7 @@ const MAX_LOGS = 500;
 
 export const useBotStore = create<BotState>((set) => ({
   running: false,
-  status: 'stopped',
+  status: BOT_STATUS.STOPPED,
   last_check: null,
   stats: {
     slots_found: 0,

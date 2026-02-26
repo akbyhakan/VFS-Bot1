@@ -9,11 +9,10 @@ import { LogOut, Menu, Wifi, WifiOff, Sun, Moon, Bell, Globe } from 'lucide-reac
 import { cn, getStatusColor } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
 import { useRef } from 'react';
+import { BOT_STATUS } from '@/utils/constants';
 import type { BotStatusType } from '@/types/api';
 
-const KNOWN_STATUSES: BotStatusType[] = [
-  'running', 'stopped', 'idle', 'error', 'starting', 'restarting', 'not_configured', 'rate_limited',
-];
+const KNOWN_STATUSES = Object.values(BOT_STATUS) as BotStatusType[];
 
 interface HeaderProps {
   onMenuClick?: () => void;

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useBotStore } from '@/store/botStore';
+import { BOT_STATUS } from '@/utils/constants';
 
 // Mock the websocket service
 vi.mock('@/services/websocket', () => ({
@@ -23,7 +24,7 @@ describe('useWebSocket', () => {
       logs: [],
       isConnected: false,
       running: false,
-      status: 'stopped',
+      status: BOT_STATUS.STOPPED,
       last_check: null,
       stats: {
         slots_found: 0,
