@@ -15,7 +15,7 @@ import '@/styles/globals.css';
 
 // Lazy load pages for code splitting
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const Users = lazy(() => import('@/pages/Users'));
+const VFSAccounts = lazy(() => import('@/pages/VFSAccounts'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Logs = lazy(() => import('@/pages/Logs'));
 const AppointmentRequest = lazy(() => import('@/pages/AppointmentRequest'));
@@ -72,7 +72,7 @@ function App() {
                 }
               >
                 <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
-                <Route path={ROUTES.USERS} element={<Users />} />
+                <Route path={ROUTES.USERS} element={<VFSAccounts />} />
                 <Route path={ROUTES.SETTINGS} element={<Settings />} />
                 <Route path={ROUTES.LOGS} element={<Logs />} />
                 <Route path={ROUTES.APPOINTMENTS} element={<AppointmentRequest />} />

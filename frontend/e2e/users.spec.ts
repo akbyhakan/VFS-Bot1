@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Users Management', () => {
+test.describe('VFS Accounts Management', () => {
   test.beforeEach(async ({ page }) => {
     // Login önce yapılmalı
     await page.goto('/login');
@@ -13,13 +13,13 @@ test.describe('Users Management', () => {
     await page.goto('/users');
   });
 
-  test('users listesi görünmeli', async ({ page }) => {
+  test('VFS accounts listesi görünmeli', async ({ page }) => {
     // Tablo veya liste görünmeli
     const usersTable = page.locator('table, [role="table"]');
     await expect(usersTable).toBeVisible({ timeout: 10000 });
   });
 
-  test('yeni kullanıcı ekleme modalı açılmalı', async ({ page }) => {
+  test('yeni VFS hesap ekleme modalı açılmalı', async ({ page }) => {
     // "Ekle" veya "Create" butonu varsa
     const createButton = page.locator('button').filter({ hasText: /Ekle|Oluştur|Create|Add/i });
     
@@ -32,7 +32,7 @@ test.describe('Users Management', () => {
     }
   });
 
-  test('kullanıcı arama çalışmalı', async ({ page }) => {
+  test('VFS hesap arama çalışmalı', async ({ page }) => {
     // Arama inputu varsa
     const searchInput = page.locator('input[type="search"], input[placeholder*="ara" i], input[placeholder*="search" i]');
     

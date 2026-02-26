@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/common/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { CSVImportModal } from '@/components/users/CSVImportModal';
+import { CSVImportModal } from '@/components/vfs-accounts/CSVImportModal';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload, Link2, Copy, Check } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -20,7 +20,7 @@ import type { User, CreateUserRequest } from '@/types/user';
 import { cn, formatDate } from '@/utils/helpers';
 import { webhookApi } from '@/services/webhook';
 
-export function Users() {
+export function VFSAccounts() {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCSVImportModalOpen, setIsCSVImportModalOpen] = useState(false);
@@ -483,4 +483,4 @@ export function Users() {
   );
 }
 
-export default Users;
+export default VFSAccounts;

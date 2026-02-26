@@ -100,7 +100,7 @@ export function CommandPalette({ isOpen, onClose, onBotToggle }: CommandPaletteP
               />
               <CommandItem
                 icon={Users}
-                label="Kullanıcılar"
+                label="VFS Hesaplar"
                 shortcut="Ctrl+U"
                 onSelect={() => handleSelect(() => navigate(ROUTES.USERS))}
               />
