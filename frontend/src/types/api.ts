@@ -24,7 +24,7 @@ export interface BotStatus {
 }
 
 export interface BotCommand {
-  action: 'start' | 'stop';
+  action: 'start' | 'stop' | 'restart' | 'check_now';
   config?: Record<string, unknown>;
 }
 
