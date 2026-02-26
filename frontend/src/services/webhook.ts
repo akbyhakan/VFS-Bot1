@@ -24,21 +24,21 @@ export const webhookApi = {
    * Create a webhook for a VFS account
    */
   createWebhook: async (userId: number): Promise<WebhookResponse> => {
-    return await api.post<WebhookResponse>(`/api/webhook/users/${userId}/create`);
+    return await api.post<WebhookResponse>(`/api/v1/webhook/users/${userId}/create`);
   },
 
   /**
    * Get webhook information for a VFS account
    */
   getWebhook: async (userId: number): Promise<WebhookInfoResponse> => {
-    return await api.get<WebhookInfoResponse>(`/api/webhook/users/${userId}`);
+    return await api.get<WebhookInfoResponse>(`/api/v1/webhook/users/${userId}`);
   },
 
   /**
    * Delete a VFS account's webhook
    */
   deleteWebhook: async (userId: number): Promise<DeleteWebhookResponse> => {
-    return await api.delete<DeleteWebhookResponse>(`/api/webhook/users/${userId}`);
+    return await api.delete<DeleteWebhookResponse>(`/api/v1/webhook/users/${userId}`);
   },
 
   /**

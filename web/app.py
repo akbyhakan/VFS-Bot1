@@ -35,7 +35,7 @@ from web.routes import (
     dashboard_router,
     health_router,
     sms_webhook_router,
-    webhook_router,
+    webhook_otp_router,
 )
 from web.routes.dashboard import serve_react_app
 from web.websocket.handler import websocket_endpoint
@@ -238,6 +238,10 @@ API endpoints are rate-limited to prevent abuse:
                 "description": "Per-user webhook token management (CRUD)",
             },
             {
+                "name": "webhook-otp",
+                "description": "Per-user OTP receiver via unique webhook token",
+            },
+            {
                 "name": "webhook-sms-forwarder",
                 "description": "Dynamic SMS webhook endpoints via SMS Forwarder app",
             },
@@ -331,11 +335,8 @@ API endpoints are rate-limited to prevent abuse:
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
     # Include non-versioned routers
-    app.include_router(otp_router)       # External: SMS OTP webhooks (/api/webhook/sms/*)
-    app.include_router(webhook_router)   # Per-user webhook CRUD + OTP receiver (/api/webhook/*)
-                                         # Note: CRUD endpoints use JWT auth but are kept under
-                                         # /api/webhook/ (not /api/v1/) for URL consistency
-                                         # with the OTP receiver endpoint
+    app.include_router(otp_router)          # External: SMS OTP webhooks (/api/webhook/sms/*)
+    app.include_router(webhook_otp_router)  # External: Per-user OTP receiver (/api/webhook/otp/*)
     app.include_router(sms_webhook_router)  # External: SMS Forwarder webhooks (/webhook/sms/*)
     app.include_router(health_router)    # /health, /ready, /metrics
     app.include_router(dashboard_router) # /errors.html

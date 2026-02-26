@@ -12,7 +12,8 @@ from .payment import router as payment_router
 from .proxy import router as proxy_router
 from .sms_webhook import router as sms_webhook_router
 from .vfs_accounts import router as vfs_accounts_router
-from .webhook import router as webhook_router
+from .webhook_accounts import router as webhook_accounts_router
+from .webhook_otp import router as webhook_otp_router
 
 __all__ = [
     "auth_router",
@@ -25,7 +26,8 @@ __all__ = [
     "dashboard_router",
     "dropdown_sync_router",
     "proxy_router",
-    "webhook_router",
+    "webhook_accounts_router",
+    "webhook_otp_router",
     "sms_webhook_router",
     "config_router",
 ]

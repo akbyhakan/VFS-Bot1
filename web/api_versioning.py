@@ -31,6 +31,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
         payment_router,
         proxy_router,
         vfs_accounts_router,
+        webhook_accounts_router,
     )
 
     # Include all API routers under v1
@@ -43,6 +44,7 @@ def setup_versioned_routes(app: FastAPI) -> None:
     api_v1_router.include_router(bot_router)
     api_v1_router.include_router(dropdown_sync_router)
     api_v1_router.include_router(config_router)
+    api_v1_router.include_router(webhook_accounts_router)
 
     # Register the v1 router with the app
     app.include_router(api_v1_router)
