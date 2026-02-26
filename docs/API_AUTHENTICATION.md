@@ -67,8 +67,8 @@ The following endpoints require JWT authentication:
 - `PUT /api/v1/vfs-accounts/{id}` - Update VFS account
 - `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
 - `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
-- `GET /api/v1/audit-logs` - View audit logs
-- `GET /api/v1/payments` - View payments
+- `GET /api/v1/audit/logs` - View audit logs
+- `GET /api/v1/payment/payment-card` - View payment card
 
 ## Hybrid Authentication
 
@@ -143,7 +143,7 @@ Requires admin secret (one-time use):
 curl -X POST \
      -H "Content-Type: application/json" \
      -d '{"secret": "YOUR_ADMIN_SECRET"}' \
-     http://localhost:8000/api/auth/generate-key
+     http://localhost:8000/api/v1/auth/generate-key
 ```
 
 Configure the admin secret:
@@ -235,14 +235,14 @@ import requests
 
 # Login and get JWT token
 response = requests.post(
-    "http://localhost:8000/api/auth/login",
+    "http://localhost:8000/api/v1/auth/login",
     json={"username": "admin", "password": "your-password"}
 )
 token = response.json()["access_token"]
 
 # Use token to access protected endpoint
 headers = {"Authorization": f"Bearer {token}"}
-logs = requests.get("http://localhost:8000/api/logs", headers=headers)
+logs = requests.get("http://localhost:8000/api/v1/bot/logs", headers=headers)
 print(logs.json())
 ```
 
@@ -250,7 +250,7 @@ print(logs.json())
 
 ```javascript
 // Login and get JWT token
-const loginResponse = await fetch('http://localhost:8000/api/auth/login', {
+const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ username: 'admin', password: 'your-password' })
@@ -258,7 +258,7 @@ const loginResponse = await fetch('http://localhost:8000/api/auth/login', {
 const { access_token } = await loginResponse.json();
 
 // Use token to access protected endpoint
-const logsResponse = await fetch('http://localhost:8000/api/logs', {
+const logsResponse = await fetch('http://localhost:8000/api/v1/bot/logs', {
   headers: { 'Authorization': `Bearer ${access_token}` }
 });
 const logs = await logsResponse.json();
