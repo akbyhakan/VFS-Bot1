@@ -28,6 +28,10 @@ export const BOT_STATUS = {
   STOPPED: 'stopped',
   IDLE: 'idle',
   ERROR: 'error',
+  STARTING: 'starting',
+  RESTARTING: 'restarting',
+  NOT_CONFIGURED: 'not_configured',
+  RATE_LIMITED: 'rate_limited',
 } as const;
 
 export const REFRESH_INTERVALS = {

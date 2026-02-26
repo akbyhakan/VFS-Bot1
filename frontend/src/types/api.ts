@@ -1,3 +1,5 @@
+import { BOT_STATUS } from '@/utils/constants';
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -8,15 +10,7 @@ export interface TokenResponse {
   token_type: string;
 }
 
-export type BotStatusType =
-  | 'running'
-  | 'stopped'
-  | 'idle'
-  | 'error'
-  | 'starting'
-  | 'restarting'
-  | 'not_configured'
-  | 'rate_limited';
+export type BotStatusType = (typeof BOT_STATUS)[keyof typeof BOT_STATUS];
 
 export interface BotStatus {
   running: boolean;

@@ -5,7 +5,7 @@ import { useNotificationStore } from '@/store/notificationStore';
 import type { WebSocketMessage, LogEntry } from '@/types/api';
 import { isBotStatusData, isLogEntry, isStatsData } from '@/utils/typeGuards';
 import { logger } from '@/utils/logger';
-import { WEBSOCKET_THROTTLE } from '@/utils/constants';
+import { WEBSOCKET_THROTTLE, BOT_STATUS } from '@/utils/constants';
 import { useTranslation } from 'react-i18next';
 
 const { LOG_BUFFER_TIME, STATUS_THROTTLE_TIME } = WEBSOCKET_THROTTLE;
@@ -83,32 +83,32 @@ export function useWebSocket() {
             
             // Create notifications for status changes
             const status = message.data.status;
-            if (status === 'running') {
+            if (status === BOT_STATUS.RUNNING) {
               addNotificationRef.current({
                 title: tRef.current('notifications.botStarted'),
                 message: tRef.current('notifications.botStartedMessage'),
                 type: 'success',
               });
-            } else if (status === 'stopped') {
+            } else if (status === BOT_STATUS.STOPPED) {
               addNotificationRef.current({
                 title: tRef.current('notifications.botStopped'),
                 message: tRef.current('notifications.botStoppedMessage'),
                 type: 'info',
               });
-            } else if (status === 'error') {
+            } else if (status === BOT_STATUS.ERROR) {
               const errorMessage = getErrorMessage(message.data);
               addNotificationRef.current({
                 title: tRef.current('notifications.botError'),
                 message: errorMessage || tRef.current('notifications.botErrorMessage'),
                 type: 'error',
               });
-            } else if (status === 'restarting') {
+            } else if (status === BOT_STATUS.RESTARTING) {
               addNotificationRef.current({
                 title: tRef.current('notifications.botRestarting'),
                 message: tRef.current('notifications.botRestartingMessage'),
                 type: 'warning',
               });
-            } else if (status === 'rate_limited') {
+            } else if (status === BOT_STATUS.RATE_LIMITED) {
               addNotificationRef.current({
                 title: tRef.current('notifications.rateLimitWarning'),
                 message: tRef.current('notifications.rateLimitMessage'),
