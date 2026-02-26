@@ -53,12 +53,7 @@ async def serve_react_app(request: Request, full_path: str = ""):
     index_file = dist_dir / "index.html"
 
     if index_file.exists():
-        # Read HTML and inject CSP nonce
         html_content = index_file.read_text(encoding="utf-8")
-        nonce = getattr(request.state, "csp_nonce", "")
-        if nonce:
-            # Replace nonce placeholder with actual nonce from middleware
-            html_content = html_content.replace("{{CSP_NONCE}}", nonce)
         return HTMLResponse(content=html_content, media_type="text/html")
     else:
         raise HTTPException(

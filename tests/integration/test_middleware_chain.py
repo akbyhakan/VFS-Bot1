@@ -100,25 +100,22 @@ class TestSecurityHeadersMiddleware:
                 yield TestClient(app)
 
     def test_security_headers_csp_present(self, client):
-        """Test that Content-Security-Policy header is present."""
+        """Test that Content-Security-Policy header is not present (removed)."""
         response = client.get("/health")
 
-        assert "Content-Security-Policy" in response.headers
+        assert "Content-Security-Policy" not in response.headers
 
     def test_security_headers_xss_protection(self, client):
-        """Test that X-XSS-Protection header is present."""
+        """Test that X-XSS-Protection header is not present (removed)."""
         response = client.get("/health")
 
-        assert "X-XSS-Protection" in response.headers
+        assert "X-XSS-Protection" not in response.headers
 
     def test_security_headers_hsts_in_production(self, client):
-        """Test that HSTS header is added in production mode."""
-        # Note: Test environment may not include HSTS
+        """Test that HSTS header is not present (removed)."""
         response = client.get("/health")
 
-        # In test environment, HSTS might not be present
-        # This documents expected production behavior
-        assert response.status_code == 200
+        assert "Strict-Transport-Security" not in response.headers
 
     def test_security_headers_frame_options(self, client):
         """Test that X-Frame-Options prevents clickjacking."""
@@ -308,71 +305,3 @@ class TestMiddlewareIntegration:
 
         # Should fail auth, but request data should be processed
         assert response.status_code in [401, 422]
-
-
-@pytest.mark.integration
-class TestHTTPSRedirectMiddleware:
-    """Test HTTPS redirect middleware."""
-
-    @pytest.fixture
-    def production_client(self):
-        """Create test client with production settings (HTTPS redirect active)."""
-        app = create_app(run_security_validation=False, env_override="production")
-        with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
-            with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
-                yield TestClient(app, base_url="http://testserver")
-
-    @pytest.fixture
-    def dev_client(self):
-        """Create test client with development settings (no HTTPS redirect)."""
-        app = create_app(run_security_validation=False, env_override="testing")
-        with patch("web.app.DatabaseFactory.ensure_connected", new_callable=AsyncMock):
-            with patch("web.app.DatabaseFactory.close_instance", new_callable=AsyncMock):
-                yield TestClient(app)
-
-    def test_https_redirect_in_production(self, production_client):
-        """Test that HTTP requests are redirected to HTTPS in production."""
-        response = production_client.get("/api/v1/users", follow_redirects=False)
-        # Should redirect to HTTPS
-        assert response.status_code == 301
-        assert "https://" in response.headers.get("location", "")
-
-    def test_https_redirect_excludes_health(self, production_client):
-        """Test that health endpoints are excluded from HTTPS redirect."""
-        response = production_client.get("/health", follow_redirects=False)
-        # Health should NOT be redirected
-        assert response.status_code == 200
-
-    def test_https_redirect_excludes_ready(self, production_client):
-        """Test that ready endpoint is excluded from HTTPS redirect."""
-        response = production_client.get("/ready", follow_redirects=False)
-        # Ready should NOT be redirected
-        assert response.status_code in [200, 503]
-
-    def test_no_redirect_in_development(self, dev_client):
-        """Test that no redirect happens in development."""
-        response = dev_client.get("/health")
-        assert response.status_code == 200
-
-    def test_no_redirect_when_forwarded_proto_https(self, production_client):
-        """Test that requests with X-Forwarded-Proto: https are not redirected."""
-        response = production_client.get(
-            "/api/v1/users",
-            headers={"X-Forwarded-Proto": "https"},
-            follow_redirects=False,
-        )
-        # Should NOT redirect (already HTTPS via proxy)
-        # Will fail auth but should reach the endpoint
-        assert response.status_code in [401, 404, 422]
-
-    def test_hsts_preload_in_production(self, production_client):
-        """Test that HSTS header includes preload directive in production."""
-        response = production_client.get(
-            "/health",
-            headers={"X-Forwarded-Proto": "https"},
-            follow_redirects=False,
-        )
-        hsts = response.headers.get("Strict-Transport-Security", "")
-        assert "max-age=63072000" in hsts
-        assert "includeSubDomains" in hsts
-        assert "preload" in hsts

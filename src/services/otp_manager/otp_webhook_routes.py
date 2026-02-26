@@ -1,6 +1,5 @@
 """FastAPI routes for SMS OTP webhook."""
 
-import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,9 +7,6 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-
-from src.core.environment import Environment
-from src.utils.webhook_utils import verify_webhook_signature
 
 from .otp_webhook import OTPWebhookService, get_otp_service
 
@@ -40,52 +36,12 @@ class OTPResponse(BaseModel):
 
 
 # WARNING: This function is a deliberate duplicate of web.dependencies.verify_webhook_request
-# due to circular import constraints. Any security changes to webhook signature verification
-# MUST be applied to BOTH locations. See also: web/dependencies.py -> verify_webhook_request
+# due to circular import constraints.
 async def verify_webhook_signature_local(request: Request) -> None:
     """
-    Local webhook signature verification dependency.
-
-    This is a duplicate of verify_webhook_request from web.dependencies
-    to avoid circular import issues.
-
-    - Production: SMS_WEBHOOK_SECRET required, signature required, reject on failure
-    - Development: If secret configured, signature required and verified (reject on failure)
-    - Development without secret: Warning log, bypass
-
-    Raises:
-        HTTPException: If signature verification fails or secret is not configured in production
+    Local webhook verification dependency (no-op for localhost usage).
     """
-    webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-    # Production mode: secret is REQUIRED
-    if Environment.is_production() and not webhook_secret:
-        logger.error("SMS_WEBHOOK_SECRET not configured in production")
-        raise HTTPException(
-            status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
-        )
-
-    # If secret is configured, verify signature
-    if webhook_secret:
-        signature = request.headers.get("X-Webhook-Signature")
-        if not signature:
-            logger.warning("Missing X-Webhook-Signature header")
-            raise HTTPException(status_code=401, detail="Missing webhook signature")
-
-        # Get raw body for signature verification
-        body = await request.body()
-        if not verify_webhook_signature(body, signature, webhook_secret):
-            logger.error("Invalid webhook signature")
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-        logger.debug("Webhook signature verified")
-
-    elif Environment.is_development():
-        # Development mode without secret: log warning but allow
-        logger.warning(
-            "DEVELOPMENT MODE: No SMS_WEBHOOK_SECRET configured - "
-            "signature validation disabled. DO NOT use in production!"
-        )
+    pass
 
 
 async def get_verified_otp_service() -> OTPWebhookService:

@@ -8,7 +8,6 @@ web.state/, and WebSocket management to web.websocket/. This file maintains
 re-exports of all these components.
 """
 
-import os
 from typing import Any, AsyncIterator, Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
@@ -16,7 +15,6 @@ from fastapi.security import HTTPBearer
 from loguru import logger
 
 from src.core.auth import verify_token
-from src.core.environment import Environment
 from src.core.security import APIKeyManager
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
@@ -32,7 +30,6 @@ from src.repositories import (
     TokenBlacklistRepository,
     WebhookRepository,
 )
-from src.utils.webhook_utils import verify_webhook_signature
 from web.state.bot_state import ThreadSafeBotState
 from web.state.metrics import ThreadSafeMetrics
 from web.websocket.manager import ConnectionManager
@@ -150,45 +147,9 @@ async def verify_hybrid_auth(request: Request) -> Dict[str, Any]:
 
 async def verify_webhook_request(request: Request) -> None:
     """
-    Shared webhook signature verification dependency.
-
-    - Production: SMS_WEBHOOK_SECRET required, signature required, reject on failure
-    - Development: If secret configured, signature required and verified (reject on failure)
-    - Development without secret: Warning log, bypass
-
-    Raises:
-        HTTPException: If signature verification fails or secret is not configured in production
+    Webhook verification dependency (no-op for localhost usage).
     """
-    webhook_secret = os.getenv("SMS_WEBHOOK_SECRET")
-
-    # Production mode: secret is REQUIRED
-    if Environment.is_production() and not webhook_secret:
-        logger.error("SMS_WEBHOOK_SECRET not configured in production")
-        raise HTTPException(
-            status_code=500, detail="SMS_WEBHOOK_SECRET must be configured in production"
-        )
-
-    # If secret is configured, verify signature
-    if webhook_secret:
-        signature = request.headers.get("X-Webhook-Signature")
-        if not signature:
-            logger.warning("Missing X-Webhook-Signature header")
-            raise HTTPException(status_code=401, detail="Missing webhook signature")
-
-        # Get raw body for signature verification
-        body = await request.body()
-        if not verify_webhook_signature(body, signature, webhook_secret):
-            logger.error("Invalid webhook signature")
-            raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-        logger.debug("Webhook signature verified")
-
-    elif Environment.is_development():
-        # Development mode without secret: log warning but allow
-        logger.warning(
-            "DEVELOPMENT MODE: No SMS_WEBHOOK_SECRET configured - "
-            "signature validation disabled. DO NOT use in production!"
-        )
+    pass
 
 
 async def get_db() -> AsyncIterator[Database]:
