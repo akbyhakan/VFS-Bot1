@@ -16,14 +16,12 @@ from src import __version__
 from src.core.auth import get_token_blacklist, init_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.infra.startup_validator import log_security_warnings
-from src.middleware import CorrelationMiddleware
-from src.middleware.error_handler import ErrorHandlerMiddleware
-from src.middleware.request_tracking import RequestTrackingMiddleware
 from src.models.db_factory import DatabaseFactory
 from src.services.otp_manager.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
 from web.cors import validate_cors_origins
 from web.middleware import (
+    ErrorHandlerMiddleware,
     SecurityHeadersMiddleware,
 )
 from web.routes import (
@@ -259,10 +257,7 @@ API endpoints are rate-limited to prevent abuse:
     # 2. Security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # 3. Correlation ID middleware for request tracking
-    app.add_middleware(CorrelationMiddleware)
-
-    # 4. Configure CORS
+    # 3. Configure CORS
     allowed_origins_str = os.getenv(
         "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
     )
@@ -287,9 +282,6 @@ API endpoints are rate-limited to prevent abuse:
         ],
         max_age=3600,  # Cache preflight requests for 1 hour
     )
-
-    # 5. Add request tracking middleware
-    app.add_middleware(RequestTrackingMiddleware)
 
     # Mount static files
     static_dir = Path(__file__).parent / "static"

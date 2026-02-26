@@ -181,12 +181,11 @@ class TestAPIFlow:
         # Should return error (404 or 422), not crash
         assert response.status_code in [404, 422]
 
-    def test_request_tracking_adds_headers(self, client):
-        """Test that request tracking middleware adds correlation headers."""
+    def test_health_endpoint_returns_200(self, client):
+        """Test that health endpoint returns 200."""
         response = client.get("/health")
 
-        # Request tracking should be handled by middleware
-        # Success is indicated by proper response
+        # Health endpoint should respond successfully
         assert response.status_code == 200
 
 

@@ -33,14 +33,6 @@ class TestMiddlewareChain:
         assert "X-Frame-Options" in response.headers
         assert response.headers["X-Frame-Options"] == "DENY"
 
-    def test_middleware_order_correlation_id_added(self, client):
-        """Test that CorrelationMiddleware adds correlation ID."""
-        response = client.get("/health")
-
-        # CorrelationMiddleware should process requests
-        # Correlation ID may be in headers or logged
-        assert response.status_code == 200
-
     def test_middleware_order_error_handler_catches_errors(self, client):
         """Test that ErrorHandlerMiddleware is first and catches all errors."""
         # Request non-existent endpoint
@@ -64,15 +56,6 @@ class TestMiddlewareChain:
         # CORS preflight should be handled
         # TestClient may not fully simulate CORS, but endpoint should respond
         assert response.status_code in [200, 401]
-
-    def test_request_tracking_middleware_tracks_requests(self, client):
-        """Test that RequestTrackingMiddleware tracks requests."""
-        # Make multiple requests
-        for _ in range(3):
-            response = client.get("/health")
-            assert response.status_code == 200
-
-        # Tracking should happen in background (no visible effect on response)
 
     def test_middleware_chain_performance(self, client):
         """Test that middleware chain doesn't add excessive overhead."""
