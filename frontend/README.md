@@ -174,7 +174,15 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
 - `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
 - `POST /api/v1/vfs-accounts/import` - CSV bulk upload
-- `GET /api/v1/appointments` - List appointments
+- `GET /api/v1/appointments/appointment-requests` - List appointment requests
+- `GET /api/v1/appointments/appointment-requests/{id}` - Get specific appointment request
+- `POST /api/v1/appointments/appointment-requests` - Create appointment request
+- `DELETE /api/v1/appointments/appointment-requests/{id}` - Delete appointment request
+- `PATCH /api/v1/appointments/appointment-requests/{id}/status` - Update request status
+- `GET /api/v1/appointments/countries` - List available countries
+- `GET /api/v1/appointments/countries/{code}/centres` - List centres for country
+- `GET /api/v1/appointments/countries/{code}/centres/{name}/categories` - List visa categories
+- `GET /api/v1/appointments/countries/{code}/centres/{name}/categories/{cat}/subcategories` - List subcategories
 - `GET /api/v1/audit/logs` - Audit logs
 - `GET /api/v1/audit/stats` - Audit statistics
 - `POST /api/v1/payment/payment-card` - Save payment card

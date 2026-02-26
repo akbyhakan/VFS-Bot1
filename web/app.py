@@ -330,12 +330,15 @@ API endpoints are rate-limited to prevent abuse:
         # Serve React app static assets
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
-    # Include non-versioned routers (webhooks, health, etc.)
-    app.include_router(otp_router)  # OTP webhook routes
-    app.include_router(webhook_router)  # Per-user webhook routes
-    app.include_router(sms_webhook_router)  # SMS webhook routes for VFS accounts
-    app.include_router(health_router)  # /health, /ready, /metrics
-    app.include_router(dashboard_router)  # /errors.html
+    # Include non-versioned routers
+    app.include_router(otp_router)       # External: SMS OTP webhooks (/api/webhook/sms/*)
+    app.include_router(webhook_router)   # Per-user webhook CRUD + OTP receiver (/api/webhook/*)
+                                         # Note: CRUD endpoints use JWT auth but are kept under
+                                         # /api/webhook/ (not /api/v1/) for URL consistency
+                                         # with the OTP receiver endpoint
+    app.include_router(sms_webhook_router)  # External: SMS Forwarder webhooks (/webhook/sms/*)
+    app.include_router(health_router)    # /health, /ready, /metrics
+    app.include_router(dashboard_router) # /errors.html
 
     # Setup versioned API routes (v1)
     setup_versioned_routes(app)
