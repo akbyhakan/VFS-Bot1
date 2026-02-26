@@ -60,6 +60,9 @@ frontend/
 │   ├── services/       # API and service layer
 │   │   ├── api.ts
 │   │   ├── auth.ts
+│   │   ├── paymentCard.ts
+│   │   ├── proxy.ts
+│   │   ├── webhook.ts
 │   │   └── websocket.ts
 │   ├── store/          # Zustand state stores
 │   │   ├── authStore.ts
@@ -179,7 +182,13 @@ The frontend uses JWT-based authentication with HttpOnly cookies:
 - `DELETE /api/v1/payment/payment-card` - Delete payment card
 - `POST /api/v1/proxy/add` - Add proxy
 - `GET /api/v1/proxy/list` - List proxies
+- `GET /api/v1/proxy/stats` - Get proxy statistics
+- `DELETE /api/v1/proxy/clear-all` - Clear all proxies
 - `POST /api/v1/proxy/upload` - Upload proxy file
+- `GET /api/v1/appointments/settings/webhook-urls` - Get webhook URLs for SMS forwarding
+- `POST /api/webhook/users/{id}/create` - Create user webhook
+- `GET /api/webhook/users/{id}` - Get user webhook info
+- `DELETE /api/webhook/users/{id}` - Delete user webhook
 - `GET /api/v1/config/runtime` - Get runtime configuration
 - `PUT /api/v1/config/runtime` - Update runtime configuration
 - `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country

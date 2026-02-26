@@ -123,7 +123,12 @@ async def list_proxies(
         ]
 
         # Get stats
-        stats = await proxy_repo.get_stats()
+        db_stats = await proxy_repo.get_stats()
+        stats = ProxyStats(
+            total=db_stats.get("total_proxies", 0),
+            active=db_stats.get("active_proxies", 0),
+            failed=db_stats.get("inactive_proxies", 0),
+        )
 
         return {
             "proxies": proxy_list,
@@ -486,7 +491,11 @@ async def get_proxy_stats(
     """
     try:
         db_stats = await proxy_repo.get_stats()
-        return db_stats
+        return ProxyStats(
+            total=db_stats.get("total_proxies", 0),
+            active=db_stats.get("active_proxies", 0),
+            failed=db_stats.get("inactive_proxies", 0),
+        )
 
     except Exception as e:
         logger.error(f"Failed to get stats: {e}")
