@@ -81,8 +81,8 @@ class TestBookingWorkflowMultiPerson:
 
         repository_services = RepositoryServices(
             appointment_repo=MagicMock(),
-            user_repo=MagicMock(),
             appointment_request_repo=MagicMock(),
+            payment_repo=None,
         )
 
         deps = BookingDependencies(
@@ -97,7 +97,8 @@ class TestBookingWorkflowMultiPerson:
             deps=deps,
         )
 
-    def test_build_reservation_from_request_single_person(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_build_reservation_from_request_single_person(self, mock_dependencies):
         """Test building reservation from appointment request with single person."""
         workflow = self._make_workflow(mock_dependencies)
 
@@ -123,7 +124,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(
+        reservation = await workflow.reservation_builder.build_reservation_from_request(
             appointment_request, slot
         )
 
@@ -135,7 +136,8 @@ class TestBookingWorkflowMultiPerson:
         # Card details are now wrapped in SensitiveDict
         assert reservation["payment_card"]["number"] == "1234567812345678"
 
-    def test_build_reservation_from_request_multi_person(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_build_reservation_from_request_multi_person(self, mock_dependencies):
         """Test building reservation from appointment request with multiple persons."""
         workflow = self._make_workflow(mock_dependencies)
 
@@ -185,7 +187,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "14:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(
+        reservation = await workflow.reservation_builder.build_reservation_from_request(
             appointment_request, slot
         )
 
@@ -197,7 +199,8 @@ class TestBookingWorkflowMultiPerson:
         assert reservation["persons"][2]["is_child_with_parent"] is True
         assert reservation["preferred_dates"] == ["15/02/2026", "16/02/2026"]
 
-    def test_build_reservation_from_request_no_payment_card(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_build_reservation_from_request_no_payment_card(self, mock_dependencies):
         """Test building reservation when no payment card is configured."""
         # Remove payment card from config
         mock_dependencies["config"] = {"bot": {"screenshot_on_error": True}}
@@ -226,14 +229,15 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(
+        reservation = await workflow.reservation_builder.build_reservation_from_request(
             appointment_request, slot
         )
 
         assert reservation["person_count"] == 1
         assert "payment_card" not in reservation
 
-    def test_build_reservation_from_request_field_mapping(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_build_reservation_from_request_field_mapping(self, mock_dependencies):
         """Test that field mapping is correct for appointment_persons."""
         workflow = self._make_workflow(mock_dependencies)
 
@@ -260,7 +264,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "11:30"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(
+        reservation = await workflow.reservation_builder.build_reservation_from_request(
             appointment_request, slot
         )
 
@@ -271,7 +275,8 @@ class TestBookingWorkflowMultiPerson:
         assert person["phone_code"] == "1"
         assert person["is_child_with_parent"] is False
 
-    def test_payment_card_is_sensitive_dict(self, mock_dependencies):
+    @pytest.mark.asyncio
+    async def test_payment_card_is_sensitive_dict(self, mock_dependencies):
         """Test that payment card is wrapped in SensitiveDict."""
         workflow = self._make_workflow(mock_dependencies)
 
@@ -297,7 +302,7 @@ class TestBookingWorkflowMultiPerson:
 
         slot = {"date": "15/02/2026", "time": "10:00"}
 
-        reservation = workflow.reservation_builder.build_reservation_from_request(
+        reservation = await workflow.reservation_builder.build_reservation_from_request(
             appointment_request, slot
         )
 

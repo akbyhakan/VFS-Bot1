@@ -820,7 +820,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - [Modular Architecture](docs/MODULAR_ARCHITECTURE.md) - System architecture overview
 - [Middleware](docs/MIDDLEWARE.md) - Middleware structure and usage
 - [Frontend UI Guide](docs/FRONTEND_UI_GUIDE.md) - Frontend development guide
-- [PCI-DSS Compliance](docs/PCI_DSS_COMPLIANCE.md) - Payment card security compliance
+- [Payment Security](docs/PAYMENT_SECURITY.md) - Payment card security documentation
 
 
 ## 🏥 Health & Monitoring
@@ -916,24 +916,19 @@ pytest tests/ --cov=src --cov-report=html
 pytest tests/test_bot.py -v
 ```
 
-## 💳 Payment Security (PCI-DSS Compliant)
+## 💳 Payment Security
 
 ### What We Store:
 - ✅ Card holder name (Fernet encrypted)
 - ✅ Card number (Fernet encrypted)
 - ✅ Expiry date (Fernet encrypted)
-
-### What We DO NOT Store (PCI-DSS Requirement):
-- ❌ CVV/CVC (never stored, requested at payment time)
-- ❌ PIN code
-- ❌ Magnetic stripe data
+- ✅ CVV (Fernet encrypted — for automated payments, personal use only)
 
 ### Payment Flow:
-1. Save card via dashboard (no CVV)
+1. Save card via dashboard (including optional CVV)
 2. Bot finds appointment
-3. CVV requested (SMS/Email/Dashboard)
-4. CVV used in-memory only
-5. CVV cleared after payment
+3. Bot uses stored card data for automated payment
+4. 3D Secure OTP handled automatically
 
 ---
 
@@ -1037,44 +1032,32 @@ If validation fails in strict mode, the bot will not start.
 - **Thread-safe operations** - Connection pool with proper resource management
 - **Persistent storage** - User data persists across server restarts
 
-### 💳 Payment Card Security (PCI-DSS Compliant)
+### 💳 Payment Card Security
 
-VFS-Bot implements **PCI-DSS Level 1** compliant payment card storage:
+VFS-Bot implements encrypted payment card storage for personal automated use:
 
 #### What is Stored:
 - ✅ **Card holder name** (Fernet encrypted)
 - ✅ **Card number** (Fernet encrypted with AES-128)
 - ✅ **Expiry date** (Fernet encrypted)
-
-#### What is NOT Stored:
-- ❌ **CVV/CVC** (PCI-DSS violation to store CVV - NEVER stored)
-- ❌ **3D Secure OTP codes** (one-time use only)
+- ✅ **CVV** (Fernet encrypted — optional, for automated payments)
 
 #### Payment Flow:
-1. Save card details (without CVV) via dashboard
-2. When payment is needed, CVV must be entered at transaction time
-3. CVV is used only in-memory for the transaction
-4. CVV is immediately cleared after payment completion
+1. Save card details (including optional CVV) via dashboard
+2. Bot finds appointment and retrieves card from encrypted storage
+3. Payment is processed automatically
+4. 3D Secure OTP handled automatically
 
 #### Security Features:
-- **No CVV persistence** - CVV never touches disk storage
-- **Encrypted card numbers** - AES-128 encryption at rest
+- **Encrypted card data** - All sensitive fields use Fernet (AES-128) encryption at rest
 - **TLS 1.2+** - All network communication is encrypted
 - **Webhook signature validation** - SMS OTP webhooks are cryptographically verified
-- **Runtime CVV input** - CVV requested only when needed for payment
 
 #### 3D Secure Support:
 - OTP codes received via SMS webhook
 - Automatically entered during payment
 - Configurable timeout (default 120 seconds)
 - Secure webhook signature validation
-
-⚠️ **Production Note**: For full PCI-DSS compliance in production, consider:
-- External PCI audit (required for Level 1 compliance)
-- Hardware Security Module (HSM) for key storage
-- Payment gateway tokenization
-- Network segmentation
-- Regular security audits
 
 ### Rate Limiting
 

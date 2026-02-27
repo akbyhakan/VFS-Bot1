@@ -19,13 +19,6 @@ export interface AppointmentPersonResponse extends AppointmentPerson {
   id: number;
 }
 
-export interface AppointmentPaymentInput {
-  card_number: string;
-  expiry_month: string;
-  expiry_year: string;
-  cvv: string;
-}
-
 export interface AppointmentRequest {
   country_code: string;
   visa_category: string;
@@ -34,7 +27,6 @@ export interface AppointmentRequest {
   preferred_dates: string[];
   person_count: number;
   persons: AppointmentPerson[];
-  payment_card?: AppointmentPaymentInput;
 }
 
 export interface AppointmentRequestResponse {

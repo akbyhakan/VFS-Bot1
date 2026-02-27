@@ -60,17 +60,15 @@ async def save_payment_card(
     """
     Save payment card.
 
-    Note: CVV is NOT stored per PCI-DSS Requirement 3.2.
-    Card holder must enter CVV at payment time.
-
     Validation is automatically handled by Pydantic PaymentCardRequest model:
     - Card number: 13-19 digits, Luhn algorithm validated
     - Cardholder name: 2-100 characters, letters and spaces only
     - Expiry month: 01-12 format
     - Expiry year: YY or YYYY format
+    - CVV: optional, 3-4 digits
 
     Args:
-        card_data: Payment card data (no CVV)
+        card_data: Payment card data
         token_data: Verified token data
         payment_repo: PaymentRepository instance
 
@@ -85,6 +83,8 @@ async def save_payment_card(
             "expiry_month": card_data.expiry_month,
             "expiry_year": card_data.expiry_year,
         }
+        if card_data.cvv is not None:
+            card_dict["cvv"] = card_data.cvv
 
         # Repository handles upsert logic (create or update)
         card_id = await payment_repo.create(card_dict)

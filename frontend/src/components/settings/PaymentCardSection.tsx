@@ -42,6 +42,11 @@ export function PaymentCardSection() {
     (value) => (/^\d{0,4}$/.test(value) ? value : null),
   );
 
+  const handleCvvChange = createFieldChangeHandler(
+    setFormData, setFormErrors, 'cvv', 'cvv',
+    (value) => (/^\d{0,4}$/.test(value) ? value : null),
+  );
+
   const handleEdit = () => {
     setFormData(
       card
@@ -64,7 +69,7 @@ export function PaymentCardSection() {
       return;
     }
     setFormErrors({});
-    const success = await saveCard({ ...formData, card_number: formData.card_number.replace(/\s/g, '') });
+    const success = await saveCard({ ...formData, card_number: formData.card_number.replace(/\s/g, ''), cvv: formData.cvv || undefined });
     if (success) {
       setIsEditing(false);
       setFormData({ ...EMPTY_CARD_FORM });
@@ -188,6 +193,20 @@ export function PaymentCardSection() {
                     <p className="text-red-500 text-xs mt-1">{formErrors.expiryMonth}</p>
                   </div>
                 )}
+              </div>
+              <div>
+                <label className="block text-sm text-dark-400 mb-1">{t('settings.cvv')}</label>
+                <input
+                  type="password"
+                  value={formData.cvv}
+                  onChange={(e) => handleCvvChange(e.target.value)}
+                  placeholder="123"
+                  maxLength={4}
+                  inputMode="numeric"
+                  autoComplete="cc-csc"
+                  className={`w-full px-3 py-2 border rounded bg-dark-800 text-white ${formErrors.cvv ? 'border-red-500' : 'border-dark-600'}`}
+                />
+                {formErrors.cvv && <p className="text-red-500 text-xs mt-1">{formErrors.cvv}</p>}
               </div>
               <div className="flex gap-2 mt-4">
                 <Button variant="primary" leftIcon={<Save className="w-4 h-4" />} onClick={handleSave} isLoading={saving}>

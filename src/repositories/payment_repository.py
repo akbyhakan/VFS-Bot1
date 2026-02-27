@@ -22,6 +22,7 @@ class PaymentCard:
         card_number_masked: Optional[str] = None,
         expiry_month: Optional[str] = None,
         expiry_year: Optional[str] = None,
+        cvv: Optional[str] = None,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
     ):
@@ -32,6 +33,7 @@ class PaymentCard:
         self.card_number_masked = card_number_masked
         self.expiry_month = expiry_month
         self.expiry_year = expiry_year
+        self.cvv = cvv
         self.created_at = created_at
         self.updated_at = updated_at
 
@@ -49,6 +51,8 @@ class PaymentCard:
             result["card_number"] = self.card_number
         if self.card_number_masked:
             result["card_number_masked"] = self.card_number_masked
+        if self.cvv:
+            result["cvv"] = self.cvv
         return result
 
 
@@ -79,6 +83,8 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card["card_holder_name"] = decrypt_password(card["card_holder_name_encrypted"])
                 card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
                 card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
+                if card.get("cvv_encrypted"):
+                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
             except Exception as e:
                 logger.error(f"Failed to decrypt card data: {e}")
                 raise ValueError("Failed to decrypt card data")
@@ -89,6 +95,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card_number=card.get("card_number"),
                 expiry_month=card.get("expiry_month"),
                 expiry_year=card.get("expiry_year"),
+                cvv=card.get("cvv"),
                 created_at=card.get("created_at"),
                 updated_at=card.get("updated_at"),
             )
@@ -114,6 +121,8 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card["card_holder_name"] = decrypt_password(card["card_holder_name_encrypted"])
                 card["expiry_month"] = decrypt_password(card["expiry_month_encrypted"])
                 card["expiry_year"] = decrypt_password(card["expiry_year_encrypted"])
+                if card.get("cvv_encrypted"):
+                    card["cvv"] = decrypt_password(card["cvv_encrypted"])
             except Exception as e:
                 logger.error(f"Failed to decrypt card data: {e}")
                 raise ValueError("Failed to decrypt card data")
@@ -124,6 +133,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                 card_number=card.get("card_number"),
                 expiry_month=card.get("expiry_month"),
                 expiry_year=card.get("expiry_year"),
+                cvv=card.get("cvv"),
                 created_at=card.get("created_at"),
                 updated_at=card.get("updated_at"),
             )
@@ -274,6 +284,7 @@ class PaymentRepository(BaseRepository[PaymentCard]):
         card_holder_name_encrypted = encrypt_password(data["card_holder_name"])
         expiry_month_encrypted = encrypt_password(data["expiry_month"])
         expiry_year_encrypted = encrypt_password(data["expiry_year"])
+        cvv_encrypted = encrypt_password(data["cvv"]) if data.get("cvv") else None
 
         async with self.db.get_connection() as conn:
             # Check if a card already exists
@@ -288,13 +299,15 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                         card_number_encrypted = $2,
                         expiry_month_encrypted = $3,
                         expiry_year_encrypted = $4,
+                        cvv_encrypted = $5,
                         updated_at = NOW()
-                    WHERE id = $5
+                    WHERE id = $6
                     """,
                     card_holder_name_encrypted,
                     card_number_encrypted,
                     expiry_month_encrypted,
                     expiry_year_encrypted,
+                    cvv_encrypted,
                     existing["id"],
                 )
                 logger.info("Payment card updated")
@@ -305,14 +318,15 @@ class PaymentRepository(BaseRepository[PaymentCard]):
                     """
                     INSERT INTO payment_card
                     (card_holder_name_encrypted, card_number_encrypted, expiry_month_encrypted,
-                     expiry_year_encrypted)
-                    VALUES ($1, $2, $3, $4)
+                     expiry_year_encrypted, cvv_encrypted)
+                    VALUES ($1, $2, $3, $4, $5)
                     RETURNING id
                     """,
                     card_holder_name_encrypted,
                     card_number_encrypted,
                     expiry_month_encrypted,
                     expiry_year_encrypted,
+                    cvv_encrypted,
                 )
                 if card_id is None:
                     raise RuntimeError("Failed to get inserted card ID")

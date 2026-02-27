@@ -119,8 +119,7 @@ class SensitiveDict:
         .. warning::
             Python's immutable ``str`` and ``bytes`` values cannot be reliably
             zeroed from memory.  They remain until the garbage collector
-            reclaims them.  For true secure memory erasure (e.g. PCI-DSS
-            cardholder data), store values as ``bytearray`` and use
+            reclaims them.  For true secure memory erasure,
             ``src.utils.secure_memory.secure_zero_memory()`` before clearing.
 
         Call this in a ``finally`` block after sensitive data is no longer needed.

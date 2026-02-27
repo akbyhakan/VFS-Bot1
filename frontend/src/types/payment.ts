@@ -20,7 +20,8 @@ export interface PaymentCardRequest {
   expiry_month: string;
   /** Expiry year: YY or YYYY format */
   expiry_year: string;
-  /** Note: CVV is NOT stored per PCI-DSS Requirement 3.2 */
+  /** CVV: optional, 3-4 digits — stored encrypted for automated payments */
+  cvv?: string;
 }
 
 export interface WebhookUrls {

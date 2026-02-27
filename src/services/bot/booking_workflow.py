@@ -67,6 +67,7 @@ class BookingWorkflow:
         self.reservation_builder = ReservationBuilder(
             config=config,
             appointment_request_repo=self.appointment_request_repo,
+            payment_repo=deps.repositories.payment_repo,
         )
 
         self.booking_executor = BookingExecutor(

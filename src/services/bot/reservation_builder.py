@@ -10,6 +10,7 @@ from .types import PersonDict, ReservationDict
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
     from ...repositories.appointment_request_repository import AppointmentRequestRepository
+    from ...repositories.payment_repository import PaymentRepository
     from ...types.user import VFSAccountDict
     from .slot_checker import SlotInfo
 
@@ -21,6 +22,7 @@ class ReservationBuilder:
         self,
         config: "BotConfigDict",
         appointment_request_repo: "AppointmentRequestRepository",
+        payment_repo: Optional["PaymentRepository"] = None,
     ):
         """
         Initialize reservation builder.
@@ -28,9 +30,42 @@ class ReservationBuilder:
         Args:
             config: Bot configuration dictionary
             appointment_request_repo: Appointment request repository instance
+            payment_repo: Optional PaymentRepository for loading card from DB
         """
         self.config = config
         self.appointment_request_repo = appointment_request_repo
+        self.payment_repo = payment_repo
+
+    async def _get_payment_card(self) -> Optional[SensitiveDict]:
+        """
+        Get payment card data — DB first, config fallback.
+
+        Returns:
+            SensitiveDict with card data or None if not available
+        """
+        if self.payment_repo is not None:
+            try:
+                card_entity = await self.payment_repo.get()
+                if card_entity is not None:
+                    card_data: Dict[str, Any] = {}
+                    if card_entity.card_number:
+                        card_data["card_number"] = card_entity.card_number
+                    if card_entity.expiry_month:
+                        card_data["expiry_month"] = card_entity.expiry_month
+                    if card_entity.expiry_year:
+                        card_data["expiry_year"] = card_entity.expiry_year
+                    if card_entity.cvv:
+                        card_data["cvv"] = card_entity.cvv
+                    if card_data:
+                        return SensitiveDict(card_data)
+            except Exception as e:
+                logger.warning(f"Failed to load payment card from DB, falling back to config: {e}")
+
+        # Fallback to config
+        if "payment" in self.config and "card" in self.config["payment"]:
+            return SensitiveDict(self.config["payment"]["card"])
+
+        return None
 
     async def build_reservation_for_user(
         self, user: "VFSAccountDict", slot: "SlotInfo"
@@ -47,12 +82,12 @@ class ReservationBuilder:
         """
         appointment_request = await self.appointment_request_repo.get_pending_for_user(user["id"])
         if appointment_request:
-            return self.build_reservation_from_request(appointment_request.to_dict(), slot)
+            return await self.build_reservation_from_request(appointment_request.to_dict(), slot)
 
         logger.error(f"No appointment request found for user {user['id']}")
         return None
 
-    def build_reservation_from_request(
+    async def build_reservation_from_request(
         self, request: Dict[str, Any], slot: "SlotInfo"
     ) -> ReservationDict:
         """
@@ -87,13 +122,14 @@ class ReservationBuilder:
             "persons": persons,
         }
 
-        # Add payment card from config (wrapped in SensitiveDict)
-        if "payment" in self.config and "card" in self.config["payment"]:
-            reservation["payment_card"] = SensitiveDict(self.config["payment"]["card"])
+        # Add payment card (DB first, config fallback)
+        payment_card = await self._get_payment_card()
+        if payment_card is not None:
+            reservation["payment_card"] = payment_card
 
         return reservation
 
-    def build_reservation(
+    async def build_reservation(
         self, user: "VFSAccountDict", slot: "SlotInfo", details: Dict[str, Any]
     ) -> ReservationDict:
         """
@@ -131,8 +167,9 @@ class ReservationBuilder:
             "persons": [person],
         }
 
-        # Add payment card info if available in config (wrapped in SensitiveDict)
-        if "payment" in self.config and "card" in self.config["payment"]:
-            reservation["payment_card"] = SensitiveDict(self.config["payment"]["card"])
+        # Add payment card (DB first, config fallback)
+        payment_card = await self._get_payment_card()
+        if payment_card is not None:
+            reservation["payment_card"] = payment_card
 
         return reservation

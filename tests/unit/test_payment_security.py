@@ -44,11 +44,46 @@ async def test_db(unique_encryption_key):
 
 @pytest.mark.asyncio
 @pytest.mark.security
+async def test_card_stored_with_cvv_encrypted(test_db):
+    """
+    CVV is stored encrypted for automated payment support.
+
+    This is a personal bot — CVV is encrypted at rest using Fernet.
+    """
+    # Save card WITH CVV
+    payment_repo = PaymentRepository(test_db)
+    card_id = await payment_repo.create(
+        {
+            "card_holder_name": "Test User",
+            "card_number": "4111111111111111",
+            "expiry_month": "12",
+            "expiry_year": "2025",
+            "cvv": "123",
+        }
+    )
+
+    assert card_id > 0
+
+    # Retrieve card
+    card_entity = await payment_repo.get()
+    assert card_entity is not None
+    card = card_entity.to_dict()
+    # Assert CVV is present and decrypted
+    assert "cvv" in card
+    assert card["cvv"] == "123"
+
+    # Verify card has expected fields
+    assert card["card_holder_name"] == "Test User"
+    assert card["expiry_month"] == "12"
+    assert card["expiry_year"] == "2025"
+    assert card["card_number"] == "4111111111111111"
+
+
+@pytest.mark.asyncio
+@pytest.mark.security
 async def test_card_stored_without_cvv(test_db):
     """
-    CVV should NOT be stored per PCI-DSS Requirement 3.2.
-
-    Card holder must enter CVV at payment time.
+    Card can be saved without CVV (CVV is optional).
     """
     # Save card WITHOUT CVV
     payment_repo = PaymentRepository(test_db)
@@ -67,15 +102,13 @@ async def test_card_stored_without_cvv(test_db):
     card_entity = await payment_repo.get()
     assert card_entity is not None
     card = card_entity.to_dict()
-    # Assert CVV is NOT present (PCI-DSS compliance)
+    # CVV is not present since it wasn't provided
     assert "cvv" not in card
-    assert "cvv_encrypted" not in card
 
     # Verify card has expected fields
     assert card["card_holder_name"] == "Test User"
     assert card["expiry_month"] == "12"
     assert card["expiry_year"] == "2025"
-    # Card number should be decrypted
     assert card["card_number"] == "4111111111111111"
 
 
@@ -102,7 +135,6 @@ async def test_masked_card_no_cvv(test_db):
     card = card_entity.to_dict()
     # Assert CVV is not present in masked view
     assert "cvv" not in card
-    assert "cvv_encrypted" not in card
 
     # Verify masking works
     assert card["card_number_masked"] == "**** **** **** 1111"

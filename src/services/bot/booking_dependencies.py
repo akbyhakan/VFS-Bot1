@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ...repositories import AppointmentRepository, AppointmentRequestRepository
+    from ...repositories.payment_repository import PaymentRepository
     from ...utils.anti_detection.human_simulator import HumanSimulator
     from ...utils.error_capture import ErrorCapture
     from ...utils.security.header_manager import HeaderManager
@@ -56,6 +57,7 @@ class RepositoryServices:
 
     appointment_repo: "AppointmentRepository"
     appointment_request_repo: "AppointmentRequestRepository"
+    payment_repo: Optional["PaymentRepository"] = None
 
 
 @dataclass
