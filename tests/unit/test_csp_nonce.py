@@ -45,71 +45,68 @@ def temp_dist_dir():
 
 
 class TestCSPNonceInHeaders:
-    """Tests for CSP nonce in response headers."""
+    """Tests for CSP headers."""
 
     def test_csp_header_present(self, client):
         """Test that CSP header is present in responses."""
         response = client.get("/health")
         assert "Content-Security-Policy" in response.headers
 
-    def test_csp_nonce_in_header(self, client):
-        """Test that CSP header contains nonce."""
+    def test_csp_default_src_self(self, client):
+        """Test that CSP header contains default-src 'self'."""
         response = client.get("/health")
         csp = response.headers.get("Content-Security-Policy", "")
-        assert "nonce-" in csp
+        assert "default-src 'self'" in csp
 
-    def test_csp_nonce_unique_per_request(self, client):
-        """Test that each request gets a unique nonce."""
+    def test_csp_frame_ancestors_none(self, client):
+        """Test that CSP header contains frame-ancestors 'none'."""
+        response = client.get("/health")
+        csp = response.headers.get("Content-Security-Policy", "")
+        assert "frame-ancestors 'none'" in csp
+
+    def test_csp_connect_src_includes_websocket(self, client):
+        """Test that CSP connect-src allows WebSocket connections."""
+        response = client.get("/health")
+        csp = response.headers.get("Content-Security-Policy", "")
+        assert "connect-src 'self' wss: ws:" in csp
+
+    def test_csp_consistent_across_requests(self, client):
+        """Test that CSP header is consistent across requests."""
         response1 = client.get("/health")
         response2 = client.get("/health")
 
         csp1 = response1.headers.get("Content-Security-Policy", "")
         csp2 = response2.headers.get("Content-Security-Policy", "")
 
-        # Extract nonce values
-        import re
-
-        nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-        nonces1 = re.findall(nonce_pattern, csp1)
-        nonces2 = re.findall(nonce_pattern, csp2)
-
-        # Should have nonces
-        assert len(nonces1) > 0
-        assert len(nonces2) > 0
-
-        # Nonces should be different between requests
-        assert nonces1[0] != nonces2[0]
+        # CSP should be the same for every request (no dynamic nonces)
+        assert csp1 == csp2
 
     @pytest.mark.parametrize(
-        "env_value,should_be_strict",
+        "env_value",
         [
-            ("production", True),
-            ("prod", True),
-            ("staging", True),
-            ("development", False),
-            ("dev", False),
-            ("testing", False),
-            ("test", False),
-            ("local", False),
+            "production",
+            "staging",
+            "development",
+            "dev",
+            "testing",
+            "test",
+            "local",
         ],
     )
-    def test_csp_strict_mode_based_on_env(self, monkeypatch, env_value, should_be_strict):
-        """Test that CSP strictness depends on environment."""
-        # Set environment before importing app
+    def test_csp_present_in_all_environments(self, monkeypatch, env_value):
+        """Test that CSP header is always present regardless of environment."""
         monkeypatch.setenv("ENV", env_value)
 
-        # Import fresh app module to get the env setting
         import importlib
 
         import web.middleware.security_headers
 
         importlib.reload(web.middleware.security_headers)
 
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI
 
         from web.middleware.security_headers import SecurityHeadersMiddleware
 
-        # Create a minimal app with the middleware
         test_app = FastAPI()
         test_app.add_middleware(SecurityHeadersMiddleware)
 
@@ -117,7 +114,6 @@ class TestCSPNonceInHeaders:
         async def test_endpoint():
             return {"status": "ok"}
 
-        # Create test client
         from fastapi.testclient import TestClient
 
         test_client = TestClient(test_app)
@@ -125,166 +121,60 @@ class TestCSPNonceInHeaders:
         response = test_client.get("/test")
         csp = response.headers.get("Content-Security-Policy", "")
 
-        if should_be_strict:
-            # Production mode: no unsafe-inline or unsafe-eval
-            assert "'unsafe-inline'" not in csp
-            assert "'unsafe-eval'" not in csp
-        else:
-            # Development mode: allows unsafe-inline and unsafe-eval
-            assert "'unsafe-inline'" in csp or "'unsafe-eval'" in csp
+        # CSP must be present in every environment
+        assert csp != ""
+        assert "default-src 'self'" in csp
+        # style-src includes 'unsafe-inline' as a deliberate trade-off:
+        # React and Tailwind CSS require inline styles. Nonces for stylesheets
+        # would require runtime injection per-request. For a single-user app
+        # the XSS risk is already mitigated by script-src 'self' (no unsafe-eval).
+        assert "'unsafe-inline'" in csp
 
 
-class TestCSPNonceInHTML:
-    """Tests for CSP nonce injection in HTML responses."""
+class TestCSPInHTML:
+    """Tests for CSP header in HTML responses."""
 
-    def test_errors_template_has_nonce(self, client):
-        """Test that errors.html template uses nonce."""
+    def test_errors_template_has_csp(self, client):
+        """Test that errors.html response includes CSP header."""
         response = client.get("/errors.html")
         assert response.status_code == 200
 
-        # Get the nonce from CSP header
+        # CSP header should be present
         csp = response.headers.get("Content-Security-Policy", "")
-        import re
+        assert csp != ""
+        assert "default-src 'self'" in csp
 
-        nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-        nonces = re.findall(nonce_pattern, csp)
-        assert len(nonces) > 0
-        nonce = nonces[0]
+    def test_csp_consistent_on_html_responses(self, client):
+        """Test that CSP is consistent across multiple HTML requests."""
+        responses = [client.get("/errors.html") for _ in range(3)]
+        csps = [r.headers.get("Content-Security-Policy", "") for r in responses]
 
-        # Check that HTML contains the nonce
-        html = response.text
-        assert f'nonce="{nonce}"' in html
-
-        # Should not contain placeholder
-        assert "{{CSP_NONCE}}" not in html
-
-    def test_dashboard_replaces_nonce_placeholder(self, client, monkeypatch):
-        """Test that dashboard route replaces nonce placeholder."""
-        # Create a temporary dist directory with nonce placeholder
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dist_dir = Path(tmpdir) / "dist"
-            dist_dir.mkdir(parents=True)
-
-            index_html = """<!DOCTYPE html>
-<html>
-<head>
-    <script nonce="{{CSP_NONCE}}" src="/assets/main.js"></script>
-</head>
-<body>
-    <div id="root"></div>
-</body>
-</html>"""
-            (dist_dir / "index.html").write_text(index_html)
-
-            # Mock the dist directory path
-            import web.routes.dashboard as dashboard_module
-
-            dashboard_module.Path(__file__).parent.parent / "static" / "dist"
-
-            # Temporarily patch the path
-            def mock_serve_react_app(request, full_path=""):
-                from pathlib import Path
-
-                from fastapi import HTTPException
-                from fastapi.responses import HTMLResponse
-
-                if full_path.startswith(("api/", "ws", "health", "metrics", "static/", "assets/")):
-                    raise HTTPException(status_code=404, detail="Not found")
-
-                index_file = dist_dir / "index.html"
-                if index_file.exists():
-                    html_content = index_file.read_text(encoding="utf-8")
-                    nonce = getattr(request.state, "csp_nonce", "")
-                    if nonce:
-                        html_content = html_content.replace("{{CSP_NONCE}}", nonce)
-                    return HTMLResponse(content=html_content)
-                else:
-                    # Updated: No fallback template, return 503 error
-                    raise HTTPException(
-                        status_code=503,
-                        detail="Frontend not built. Run 'cd frontend && npm run build'",
-                    )
-
-            # Test with the mock function
-            response = client.get("/")
-
-            # Get the nonce from CSP header
-            csp = response.headers.get("Content-Security-Policy", "")
-            import re
-
-            nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-            nonces = re.findall(nonce_pattern, csp)
-
-            if len(nonces) > 0:
-                html = response.text
-
-                # In development mode or with actual build, placeholders should be replaced
-                # The test verifies the logic, even if the dist dir doesn't exist yet
-                # If response contains script tags, they should have nonce
-                if "<script" in html:
-                    # Either has real nonce or is from fallback template
-                    # Should not have placeholder in production
-                    pass  # This is more of an integration test
-
-    def test_nonce_not_leaked_between_requests(self, client):
-        """Test that nonce values don't leak between requests."""
-        # Make multiple requests and ensure each gets unique nonce
-        nonces = []
-
-        for _ in range(3):
-            response = client.get("/errors.html")
-            csp = response.headers.get("Content-Security-Policy", "")
-
-            import re
-
-            nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-            found_nonces = re.findall(nonce_pattern, csp)
-
-            if found_nonces:
-                nonces.append(found_nonces[0])
-
-        # All nonces should be unique
-        assert len(nonces) == len(set(nonces))
+        # All CSP headers should be identical (no dynamic nonces)
+        assert len(set(csps)) == 1
+        assert csps[0] != ""
 
 
-class TestCSPNonceLength:
-    """Tests for CSP nonce security properties."""
+class TestCSPContent:
+    """Tests for CSP header content and security properties."""
 
-    def test_nonce_has_sufficient_entropy(self, client):
-        """Test that nonce has sufficient length/entropy."""
+    def test_csp_script_src_self_only(self, client):
+        """Test that script-src only allows 'self' (no unsafe-eval)."""
         response = client.get("/health")
         csp = response.headers.get("Content-Security-Policy", "")
+        assert "script-src 'self'" in csp
+        assert "'unsafe-eval'" not in csp
 
-        import re
-
-        nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-        nonces = re.findall(nonce_pattern, csp)
-
-        assert len(nonces) > 0
-        nonce = nonces[0]
-
-        # Nonce should be at least 16 characters (128 bits)
-        # secrets.token_urlsafe(16) produces ~22 chars
-        assert len(nonce) >= 16
-
-    def test_nonce_is_url_safe(self, client):
-        """Test that nonce uses URL-safe characters."""
+    def test_csp_base_uri_self(self, client):
+        """Test that base-uri is restricted to 'self'."""
         response = client.get("/health")
         csp = response.headers.get("Content-Security-Policy", "")
+        assert "base-uri 'self'" in csp
 
-        import re
-
-        nonce_pattern = r"nonce-([a-zA-Z0-9_-]+)"
-        nonces = re.findall(nonce_pattern, csp)
-
-        assert len(nonces) > 0
-        nonce = nonces[0]
-
-        # Should only contain URL-safe base64 characters
-        import string
-
-        allowed_chars = set(string.ascii_letters + string.digits + "-_")
-        assert all(c in allowed_chars for c in nonce)
+    def test_csp_form_action_self(self, client):
+        """Test that form-action is restricted to 'self'."""
+        response = client.get("/health")
+        csp = response.headers.get("Content-Security-Policy", "")
+        assert "form-action 'self'" in csp
 
 
 class TestViteBuildOutput:
