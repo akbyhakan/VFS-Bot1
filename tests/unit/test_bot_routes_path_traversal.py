@@ -8,12 +8,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from web.routes.bot import router
+from web.dependencies import verify_jwt_token
 
 
 def _make_app_with_error_capture(screenshots_dir: str, error_data: dict):
     """Create a FastAPI test app with mocked error_capture state."""
     app = FastAPI()
     app.include_router(router)
+
+    # Override JWT auth for testing
+    app.dependency_overrides[verify_jwt_token] = lambda: {"sub": "test_user", "name": "Test"}
 
     mock_error_capture = MagicMock()
     mock_error_capture.screenshots_dir = screenshots_dir

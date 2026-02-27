@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -18,10 +18,18 @@ router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
 
 # Error message constants
-BOT_NOT_CONFIGURED_ERROR = {
-    "status": "error",
-    "message": "Bot controller not configured. Please restart in 'both' mode.",
-}
+def _bot_not_configured_response() -> JSONResponse:
+    """Return a proper 503 response when bot controller is not configured."""
+    return JSONResponse(
+        status_code=503,
+        content={
+            "type": "urn:vfsbot:error:service-unavailable",
+            "title": "Service Unavailable",
+            "status": 503,
+            "detail": "Bot controller not configured. Please restart in 'both' mode.",
+        },
+        media_type="application/problem+json",
+    )
 
 
 async def _get_controller() -> BotController:
@@ -74,7 +82,7 @@ async def start_bot(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return BOT_NOT_CONFIGURED_ERROR
+        return _bot_not_configured_response()
 
     # Start the bot via controller
     result = await controller.start_bot()
@@ -122,7 +130,7 @@ async def stop_bot(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return BOT_NOT_CONFIGURED_ERROR
+        return _bot_not_configured_response()
 
     # Stop the bot via controller
     result = await controller.stop_bot()
@@ -170,7 +178,7 @@ async def restart_bot(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return BOT_NOT_CONFIGURED_ERROR
+        return _bot_not_configured_response()
 
     # Broadcast restarting status
     await broadcast_message(
@@ -227,7 +235,7 @@ async def check_now(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return BOT_NOT_CONFIGURED_ERROR
+        return _bot_not_configured_response()
 
     # Trigger manual check via controller
     result = await controller.trigger_check_now()
@@ -270,7 +278,10 @@ async def get_logs(
 
 
 @router.get("/selector-health")
-async def get_selector_health(request: Request) -> Dict[str, Any]:
+async def get_selector_health(
+    request: Request,
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+) -> Dict[str, Any]:
     """
     Get selector health status.
 
@@ -285,7 +296,11 @@ async def get_selector_health(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/errors")
-async def get_errors(request: Request, limit: int = 20) -> List[Dict[str, Any]]:
+async def get_errors(
+    request: Request,
+    limit: int = 20,
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+) -> List[Dict[str, Any]]:
     """
     Get recent errors with captures.
 
@@ -302,7 +317,11 @@ async def get_errors(request: Request, limit: int = 20) -> List[Dict[str, Any]]:
 
 
 @router.get("/errors/{error_id}")
-async def get_error_detail(request: Request, error_id: str) -> Dict[str, Any]:
+async def get_error_detail(
+    request: Request,
+    error_id: str,
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+) -> Dict[str, Any]:
     """
     Get detailed error information.
 
@@ -322,7 +341,12 @@ async def get_error_detail(request: Request, error_id: str) -> Dict[str, Any]:
 
 
 @router.get("/errors/{error_id}/screenshot")
-async def get_error_screenshot(request: Request, error_id: str, type: str = "full"):
+async def get_error_screenshot(
+    request: Request,
+    error_id: str,
+    type: str = "full",
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+):
     """
     Get error screenshot.
 
@@ -361,7 +385,11 @@ async def get_error_screenshot(request: Request, error_id: str, type: str = "ful
 
 
 @router.get("/errors/{error_id}/html-snapshot")
-async def get_error_html_snapshot(request: Request, error_id: str):
+async def get_error_html_snapshot(
+    request: Request,
+    error_id: str,
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+):
     """
     Get error HTML snapshot.
 
@@ -454,7 +482,7 @@ async def update_bot_settings(
     try:
         controller = await _get_controller()
     except HTTPException:
-        return BOT_NOT_CONFIGURED_ERROR
+        return _bot_not_configured_response()
 
     # Build update kwargs - only send non-None values
     update_kwargs = {"cooldown_seconds": settings.cooldown_minutes * 60}

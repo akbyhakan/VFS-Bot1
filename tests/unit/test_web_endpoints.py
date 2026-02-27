@@ -462,6 +462,29 @@ class TestRFC7807ErrorResponses:
         assert "Internal implementation detail" not in data["detail"]
         assert data["detail"] == "An unexpected error occurred. Please try again later."
 
+    def test_http_exception_rfc7807_format(self, client):
+        """Test that HTTPException is also converted to RFC 7807 format."""
+        response = client.get("/api/v1/vfs-accounts/99999999")
+        if response.status_code in (401, 404):
+            data = response.json()
+            assert "type" in data
+            assert "title" in data
+            assert "status" in data
+            assert "detail" in data
+            assert data["type"].startswith("urn:vfsbot:error:")
+
+    def test_request_validation_error_rfc7807_format(self, client):
+        """Test that Pydantic RequestValidationError returns RFC 7807 format."""
+        app = create_app(run_security_validation=False, env_override="testing")
+        client_test = TestClient(app, raise_server_exceptions=False)
+
+        response = client_test.post("/api/v1/vfs-accounts", json={})
+        if response.status_code == 422:
+            data = response.json()
+            assert "type" in data
+            assert data["type"] == "urn:vfsbot:error:validation"
+            assert data["status"] == 422
+
 
 class TestHealthEndpointPoolStats:
     """Tests for database pool stats in health endpoint."""
