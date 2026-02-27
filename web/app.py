@@ -291,14 +291,39 @@ API endpoints are rate-limited to prevent abuse:
         # Serve React app static assets
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
 
-    # Include non-versioned routers
-    app.include_router(otp_router)          # External: SMS OTP webhooks (/api/webhook/sms/*)
-    app.include_router(webhook_otp_router)  # External: Per-user OTP receiver (/api/webhook/otp/*)
-    app.include_router(sms_webhook_router)  # External: SMS Forwarder webhooks (/webhook/sms/*)
-    app.include_router(health_router)    # /health, /ready, /metrics
-    app.include_router(dashboard_router) # /errors.html
+    # ──────────────────────────────────────────────────────────────
+    # EXTERNAL WEBHOOK RECEIVERS (Unversioned — Intentional)
+    # ──────────────────────────────────────────────────────────────
+    # These routers are NOT under /api/v1 because:
+    # - They are called by external systems (SMS Forwarder, OTP providers)
+    # - Their URLs are hardcoded in 150+ field devices / external services
+    # - Versioning would break all existing integrations
+    # - Auth: Webhook HMAC signature (not JWT)
+    #
+    # Path map:
+    #   /api/webhook/sms/appointment  → otp_router          (SMS provider → appointment OTP)
+    #   /api/webhook/sms/payment      → otp_router          (SMS provider → payment OTP)
+    #   /api/webhook/otp/wait         → otp_router          (Long-polling OTP retrieval)
+    #   /api/webhook/otp/{token}      → webhook_otp_router   (Per-user OTP receiver)
+    #   /webhook/sms/{token}          → sms_webhook_router   (SMS Forwarder app)
+    #   /webhook/sms/{token}/status   → sms_webhook_router   (Webhook status check)
+    #   /webhook/sms/{token}/test     → sms_webhook_router   (Webhook connectivity test)
+    # ──────────────────────────────────────────────────────────────
+    app.include_router(otp_router)
+    app.include_router(webhook_otp_router)
+    app.include_router(sms_webhook_router)
 
-    # Setup versioned API routes (v1)
+    # ──────────────────────────────────────────────────────────────
+    # INFRASTRUCTURE (Unversioned — Standard practice)
+    # ──────────────────────────────────────────────────────────────
+    app.include_router(health_router)       # /health, /ready, /metrics
+    app.include_router(dashboard_router)    # /errors.html
+
+    # ──────────────────────────────────────────────────────────────
+    # VERSIONED API (v1) — Used by the React frontend
+    # ──────────────────────────────────────────────────────────────
+    # All frontend-facing, JWT-protected routes live under /api/v1.
+    # Includes webhook_accounts_router for CRUD (/api/v1/webhook/users/…).
     setup_versioned_routes(app)
 
     # WebSocket endpoint (must be added directly, not via router)
