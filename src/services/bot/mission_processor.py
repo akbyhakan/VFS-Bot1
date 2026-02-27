@@ -122,7 +122,7 @@ class MissionProcessor:
                     continue
 
                 # Build reservation directly from AppointmentRequest
-                reservation = self.reservation_builder.build_reservation_from_request(
+                reservation = await self.reservation_builder.build_reservation_from_request(
                     appointment_request.to_dict(), slot
                 )
 

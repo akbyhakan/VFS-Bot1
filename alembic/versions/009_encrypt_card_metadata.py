@@ -1,10 +1,10 @@
-"""Encrypt card holder name and expiry fields (PCI-DSS compliance)
+"""Encrypt card holder name and expiry fields
 
 Revision ID: 009
 Revises: 008
 Create Date: 2026-02-16 00:20:00.000000
 
-Per PCI-DSS requirements, all payment card data must be encrypted.
+All payment card data is encrypted using Fernet symmetric encryption.
 This migration renames columns to indicate encryption and migrates existing data.
 """
 
@@ -112,7 +112,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Restore plaintext columns (NOT RECOMMENDED - violates PCI-DSS).
+    """Restore plaintext columns (NOT RECOMMENDED - data may be encrypted).
 
     WARNING: This downgrade does NOT decrypt data. It simply renames columns back.
     Any data that was encrypted will remain encrypted in the "plaintext" columns,

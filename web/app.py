@@ -154,7 +154,7 @@ def create_app(run_security_validation: bool = True, env_override: Optional[str]
 * 🔐 **Secure Authentication** - JWT-based authentication with token refresh
 * 👥 **Multi-User Support** - Manage multiple user accounts and appointments
 * 🤖 **Automated Booking** - Smart bot with anti-detection features
-* 💳 **Payment Integration** - Secure payment card management (PCI-DSS compliant)
+* 💳 **Payment Integration** - Secure payment card management (encrypted storage)
 * 📧 **Notifications** - Email and webhook notifications for appointments
 * 🔌 **Webhook Support** - Real-time updates via webhooks
 * 🌐 **Proxy Support** - Rotating proxy management

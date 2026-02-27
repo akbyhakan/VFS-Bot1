@@ -39,8 +39,8 @@ class BookingOrchestrator:
             config: Bot configuration dictionary
             captcha_solver: Optional captcha solver instance
             human_sim: Optional human simulator for realistic interactions
-            payment_service: Optional PaymentService instance for PCI-DSS
-                compliant payment processing
+            payment_service: Optional PaymentService instance for
+                secure payment processing
 
         Example:
             >>> config = {'vfs': {'form_wait_seconds': 21}}
@@ -233,7 +233,7 @@ class BookingOrchestrator:
                 )
                 raise ValueError(
                     "PaymentService is required - legacy payment mode "
-                    "removed for PCI-DSS compliance"
+                    "removed"
                 )
 
             # Step 1: Double match check (capacity + date)
@@ -265,7 +265,7 @@ class BookingOrchestrator:
             # Step 5: Review and pay
             await self.handle_review_and_pay(page)
 
-            # Step 6: Process payment with PaymentService (PCI-DSS compliant)
+            # Step 6: Process payment with PaymentService
             # Use PaymentService for secure payment processing
             user_id = reservation.get("user_id", 0)
             card_details_wrapped = reservation.get("payment_card")
@@ -279,8 +279,6 @@ class BookingOrchestrator:
                     # Fallback for non-SensitiveDict (backward compatibility)
                     card_details = card_details_wrapped
 
-                # PaymentService will enforce PCI-DSS security controls
-                # It will reject automated payments in production
                 payment_success = await self.payment_service.process_payment(
                     page=page, user_id=user_id, card_details=card_details
                 )

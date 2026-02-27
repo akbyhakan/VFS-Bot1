@@ -53,11 +53,11 @@ async def test_cvv_stored_encrypted_in_database_schema(database):
     # Extract column names
     columns = [col["column_name"] for col in columns_info]
 
-    # Verify CVV was removed (PCI-DSS compliance - migration 002)
+    # Verify CVV is stored encrypted (migration 012 re-adds cvv_encrypted)
     assert "cvv" not in columns  # Plain text CVV should never exist
-    assert "cvv_encrypted" not in columns  # CVV must not be stored after authorization
+    assert "cvv_encrypted" in columns  # CVV must be stored encrypted
 
-    # Verify all card data is encrypted (PCI-DSS compliance)
+    # Verify all card data is encrypted
     assert "card_holder_name_encrypted" in columns
     assert "card_number_encrypted" in columns
     assert "expiry_month_encrypted" in columns

@@ -11,6 +11,7 @@ from ...constants import AccountPoolConfig, CircuitBreakerConfig, Intervals, Tim
 from ...core.infra.circuit_breaker import CircuitBreaker, CircuitState
 from ...models.database import Database, DatabaseState
 from ...repositories import AppointmentRepository, AppointmentRequestRepository
+from ...repositories.payment_repository import PaymentRepository
 from ..notification.alert_service import AlertSeverity, send_alert_safe
 from ..notification.notification import NotificationService
 from ..session.account_pool import AccountPool
@@ -169,6 +170,7 @@ class VFSBot:
         repository_services = RepositoryServices(
             appointment_repo=AppointmentRepository(db),
             appointment_request_repo=AppointmentRequestRepository(db),
+            payment_repo=PaymentRepository(db),
         )
 
         return BookingDependencies(

@@ -312,14 +312,14 @@ class BotServiceFactory:
         """
         # Cast to Dict[str, Any] for flexible key access
         config_dict = cast(Dict[str, Any], config)
-        # Initialize PaymentService with PCI-DSS security controls
+        # Initialize PaymentService
         payment_config = config_dict.get("payment", {})
         payment_service = None
         try:
             from ..payment_service import PaymentService
 
             payment_service = PaymentService(payment_config)
-            logger.info("PaymentService initialized with PCI-DSS security controls")
+            logger.info("PaymentService initialized")
         except (ImportError, ValueError) as e:
             # PaymentService is optional - bot can work without it (manual payment mode)
             logger.warning(f"PaymentService not available: {e}")

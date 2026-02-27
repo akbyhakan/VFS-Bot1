@@ -3,6 +3,7 @@ export const EMPTY_CARD_FORM = {
   card_number: '',
   expiry_month: '',
   expiry_year: '',
+  cvv: '',
 } as const;
 
 export type CardFormData = {
@@ -10,4 +11,5 @@ export type CardFormData = {
   card_number: string;
   expiry_month: string;
   expiry_year: string;
+  cvv: string;
 };
