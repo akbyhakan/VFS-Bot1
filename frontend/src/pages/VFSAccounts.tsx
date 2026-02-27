@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { logger } from '@/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { useVFSAccounts, useCreateVFSAccount, useUpdateVFSAccount, useDeleteVFSAccount, useToggleVFSAccountStatus } from '@/hooks/useApi';
+import { useCreateWebhook, useDeleteWebhook } from '@/hooks/useWebhook';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';
@@ -29,7 +30,6 @@ export function VFSAccounts() {
   const [showPassword, setShowPassword] = useState(false);
   const [webhooks, setWebhooks] = useState<Record<number, string>>({});
   const [copiedWebhook, setCopiedWebhook] = useState<number | null>(null);
-  const [creatingWebhook, setCreatingWebhook] = useState<number | null>(null);
 
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
@@ -38,6 +38,8 @@ export function VFSAccounts() {
   const updateUser = useUpdateVFSAccount();
   const deleteUser = useDeleteVFSAccount();
   const toggleStatus = useToggleVFSAccountStatus();
+  const createWebhookMutation = useCreateWebhook();
+  const deleteWebhookMutation = useDeleteWebhook();
 
   // Load webhooks for all users
   useEffect(() => {
@@ -178,9 +180,8 @@ export function VFSAccounts() {
   };
 
   const handleCreateWebhook = async (userId: number) => {
-    setCreatingWebhook(userId);
     try {
-      const data = await webhookApi.createWebhook(userId);
+      const data = await createWebhookMutation.mutateAsync(userId);
       setWebhooks(prev => ({ ...prev, [userId]: data.webhook_url }));
       
       // Show success toast with full URL
@@ -195,8 +196,6 @@ export function VFSAccounts() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('users.webhookCreateFailed');
       toast.error(errorMessage);
-    } finally {
-      setCreatingWebhook(null);
     }
   };
 
@@ -210,7 +209,7 @@ export function VFSAccounts() {
 
   const handleDeleteWebhook = async (userId: number) => {
     try {
-      await webhookApi.deleteWebhook(userId);
+      await deleteWebhookMutation.mutateAsync(userId);
       setWebhooks(prev => {
         const newWebhooks = { ...prev };
         delete newWebhooks[userId];
@@ -322,11 +321,11 @@ export function VFSAccounts() {
                     return (
                       <button
                         onClick={() => handleCreateWebhook(user.id)}
-                        disabled={creatingWebhook === user.id}
+                        disabled={createWebhookMutation.isPending}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 transition-colors"
                       >
                         <Link2 className="w-3 h-3" />
-                        {creatingWebhook === user.id ? t('users.creatingWebhook') : t('users.createWebhook')}
+                        {createWebhookMutation.isPending ? t('users.creatingWebhook') : t('users.createWebhook')}
                       </button>
                     );
                   }

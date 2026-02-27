@@ -4,7 +4,7 @@
 
 import { api } from './api';
 import type { PaymentCard, PaymentCardRequest } from '@/types/payment';
-import { isApiError } from '@/utils/typeGuards';
+import { isAppError } from '@/utils/AppError';
 
 export const paymentCardApi = {
   /**
@@ -16,8 +16,8 @@ export const paymentCardApi = {
       return card;
     } catch (error: unknown) {
       // Return null if no card exists (404) or if card is explicitly null
-      if (isApiError(error)) {
-        if (error.response?.status === 404 || error.response?.data === null) {
+      if (isAppError(error)) {
+        if (error.status === 404) {
           return null;
         }
       }
@@ -35,17 +35,15 @@ export const paymentCardApi = {
       return await api.post('/api/v1/payment/payment-card', cardData);
     } catch (error: unknown) {
       // Handle 422 validation errors from Pydantic
-      if (isApiError(error) && error.response?.status === 422) {
-        const detail = error.response.data?.detail;
-        if (Array.isArray(detail)) {
-          // Extract field-specific validation errors
-          const fieldErrors = detail
-            .map((err: { loc: string[]; msg: string }) => {
-              const field = err.loc[err.loc.length - 1];
-              return `${field}: ${err.msg}`;
-            })
+      if (isAppError(error) && error.status === 422) {
+        if (error.hasFieldErrors && error.fieldErrors) {
+          const fieldErrors = Object.entries(error.fieldErrors)
+            .map(([field, msg]) => `${field}: ${msg}`)
             .join('; ');
           throw new Error(`Validation error: ${fieldErrors}`);
+        }
+        if (error.message) {
+          throw new Error(`Validation error: ${error.message}`);
         }
       }
       throw error;

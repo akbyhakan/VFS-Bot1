@@ -1,24 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Webhook, Copy, Check, Zap } from 'lucide-react';
-import { webhookApi } from '@/services/webhook';
 import { api } from '@/services/api';
-import type { WebhookUrls } from '@/types/payment';
-import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
+import { useWebhookUrls } from '@/hooks/useWebhook';
 
 export function WebhookUrlsSection() {
   const { t } = useTranslation();
-  const [webhookUrls, setWebhookUrls] = useState<WebhookUrls | null>(null);
+  const { data: webhookUrls } = useWebhookUrls();
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
-  useEffect(() => {
-    webhookApi.getWebhookUrls().then(setWebhookUrls).catch((error: unknown) => {
-      logger.error('Failed to load webhook URLs:', error);
-    });
-  }, []);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text).then(() => {

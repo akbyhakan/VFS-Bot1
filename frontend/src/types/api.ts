@@ -78,10 +78,36 @@ export interface HealthCheck {
   };
 }
 
-export interface WebSocketMessage {
-  type: 'status' | 'log' | 'stats' | 'ping' | 'ack' | 'notification';
-  data: Record<string, unknown>;
+export interface BotStatusData {
+  running?: boolean;
+  status?: string;
+  last_check?: string | null;
+  stats?: {
+    slots_found: number;
+    appointments_booked: number;
+    active_users: number;
+  };
 }
+
+export interface StatsData {
+  slots_found: number;
+  appointments_booked: number;
+  active_users: number;
+}
+
+export interface NotificationData {
+  message: string;
+  level?: 'info' | 'warning' | 'error' | 'success';
+  title?: string;
+}
+
+export type WebSocketMessage =
+  | { type: 'status'; data: BotStatusData }
+  | { type: 'log'; data: LogEntry }
+  | { type: 'stats'; data: StatsData }
+  | { type: 'notification'; data: NotificationData }
+  | { type: 'ping'; data: Record<string, unknown> }
+  | { type: 'ack'; data: Record<string, unknown> };
 
 export interface ApiError {
   type: string;

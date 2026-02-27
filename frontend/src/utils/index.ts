@@ -5,3 +5,4 @@ export * from './errorHandler';
 export * from './logger';
 export * from './typeGuards';
 export * from './validators';
+export * from './AppError';
