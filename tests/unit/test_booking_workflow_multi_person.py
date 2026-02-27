@@ -82,6 +82,7 @@ class TestBookingWorkflowMultiPerson:
         repository_services = RepositoryServices(
             appointment_repo=MagicMock(),
             appointment_request_repo=MagicMock(),
+            payment_repo=None,
         )
 
         deps = BookingDependencies(
