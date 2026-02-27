@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import type { BotStatus, BotCommand, Metrics, HealthCheck } from '@/types/api';
+import type { BotStatus, Metrics, HealthCheck } from '@/types/api';
 import type { VFSAccount, CreateVFSAccountRequest, UpdateVFSAccountRequest } from '@/types/user';
 
 // Bot queries and mutations
+/**
+ * Fetch bot status from the non-versioned infrastructure endpoint.
+ * GET /api/status is intentionally unversioned — it's a public health/status
+ * endpoint, unlike /api/v1/bot/* which requires JWT authentication.
+ */
 export function useBotStatus() {
   return useQuery<BotStatus>({
     queryKey: ['bot-status'],
@@ -14,8 +19,8 @@ export function useBotStatus() {
 
 export function useStartBot() {
   const queryClient = useQueryClient();
-  return useMutation<{ status: string; message: string }, Error, BotCommand>({
-    mutationFn: (command) => api.post('/api/v1/bot/start', command),
+  return useMutation<{ status: string; message: string }, Error, void>({
+    mutationFn: () => api.post('/api/v1/bot/start'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-status'] });
     },
@@ -52,6 +57,10 @@ export function useCheckNow() {
   });
 }
 
+/**
+ * Fetch metrics from the non-versioned infrastructure endpoint.
+ * GET /metrics is intentionally unversioned — it's a public metrics endpoint.
+ */
 export function useMetrics() {
   return useQuery<Metrics>({
     queryKey: ['metrics'],
@@ -60,6 +69,10 @@ export function useMetrics() {
   });
 }
 
+/**
+ * Fetch health status from the non-versioned infrastructure endpoint.
+ * GET /health is intentionally unversioned — it's a public health endpoint.
+ */
 export function useHealthCheck() {
   return useQuery<HealthCheck>({
     queryKey: ['health'],

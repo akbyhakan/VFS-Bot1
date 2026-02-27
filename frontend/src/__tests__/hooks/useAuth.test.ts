@@ -35,8 +35,7 @@ describe('useAuth', () => {
   });
 
   it('should handle successful login', async () => {
-    const mockTokenResponse = { access_token: 'token123', token_type: 'bearer' };
-    vi.mocked(authService.login).mockResolvedValue(mockTokenResponse);
+    vi.mocked(authService.login).mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuth());
 
