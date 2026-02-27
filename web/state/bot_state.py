@@ -3,7 +3,8 @@
 import threading
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -107,12 +108,13 @@ class ThreadSafeBotState:
             self.appointments_booked += count
 
     # Log operations
-    def append_log(self, message: str) -> None:
-        """Thread-safe append log message."""
+    def append_log(self, message: str, level: str = "INFO") -> None:
+        """Thread-safe append log message as structured dict."""
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         with self._lock:
-            self.logs.append(message)
+            self.logs.append({"message": message, "level": level, "timestamp": timestamp})
 
-    def get_logs_list(self) -> list:
+    def get_logs_list(self) -> List[Dict[str, str]]:
         """Thread-safe get logs as a list (copy)."""
         with self._lock:
             return list(self.logs)

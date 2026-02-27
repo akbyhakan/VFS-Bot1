@@ -262,7 +262,7 @@ async def check_now(
 @router.get("/logs")
 async def get_logs(
     limit: int = 100, auth_data: Dict[str, Any] = Depends(verify_jwt_token)
-) -> Dict[str, List[str]]:
+) -> Dict[str, Any]:
     """
     Get recent logs - requires authentication.
 

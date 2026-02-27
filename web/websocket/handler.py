@@ -144,11 +144,10 @@ async def add_log(message: str, level: str = "INFO") -> None:
         level: Log level
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] [{level}] {message}"
 
-    bot_state.append_log(log_entry)
+    bot_state.append_log(message, level)
     # deque with maxlen=500 automatically removes oldest entries
 
     await broadcast_message(
-        {"type": "log", "data": {"message": log_entry, "level": level, "timestamp": timestamp}}
+        {"type": "log", "data": {"message": message, "level": level, "timestamp": timestamp}}
     )

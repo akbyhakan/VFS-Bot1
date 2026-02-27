@@ -121,3 +121,14 @@ export interface ApiError {
   field?: string;
   errors?: Record<string, string>;
 }
+
+export interface RuntimeConfigResponse {
+  success: boolean;
+  message: string;
+  config: Record<string, number | string | boolean>;
+}
+
+export interface RuntimeConfigUpdateRequest {
+  key: string;
+  value: number | string | boolean;
+}
