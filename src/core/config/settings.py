@@ -309,12 +309,13 @@ class VFSSettings(BaseSettings):
 
     def get_cors_origins(self) -> List[str]:
         """
-        Get CORS allowed origins as a list.
+        Get CORS allowed origins as a list, with security validation.
 
         Returns:
-            List of allowed origin URLs
+            List of validated allowed origin URLs
         """
-        return [origin.strip() for origin in self.cors_allowed_origins.split(",")]
+        from web.cors import validate_cors_origins
+        return validate_cors_origins(self.cors_allowed_origins)
 
     def is_development(self) -> bool:
         """
