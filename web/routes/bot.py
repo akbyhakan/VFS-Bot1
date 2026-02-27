@@ -457,20 +457,23 @@ async def update_bot_settings(
     except HTTPException:
         return BOT_NOT_CONFIGURED_ERROR
 
-    # Convert minutes to seconds
-    cooldown_seconds = settings.cooldown_minutes * 60
+    # Build update kwargs - only send non-None values
+    update_kwargs = {"cooldown_seconds": settings.cooldown_minutes * 60}
 
-    # Update cooldown
-    result = await controller.update_cooldown(cooldown_seconds)
+    if settings.quarantine_minutes is not None:
+        update_kwargs["quarantine_seconds"] = settings.quarantine_minutes * 60
+
+    if settings.max_failures is not None:
+        update_kwargs["max_failures"] = settings.max_failures
+
+    result = await controller.update_settings(**update_kwargs)
 
     if result["status"] == "success":
-        logger.info(
-            f"Cooldown updated to {settings.cooldown_minutes} minutes ({cooldown_seconds}s) "
-            f"via dashboard by {auth_data.get('name', auth_data.get('sub', 'unknown'))}"
-        )
+        user = auth_data.get('name', auth_data.get('sub', 'unknown'))
+        logger.info(f"Bot settings updated via dashboard by {user}: {update_kwargs}")
         return {
             "status": "success",
-            "message": f"Cooldown {settings.cooldown_minutes} dakikaya güncellendi",
+            "message": "Bot ayarları güncellendi",
         }
     else:
         return result

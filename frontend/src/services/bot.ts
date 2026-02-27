@@ -9,6 +9,8 @@ export interface BotSettingsResponse {
 
 export interface BotSettingsUpdate {
   cooldown_minutes: number;
+  quarantine_minutes?: number;
+  max_failures?: number;
 }
 
 export interface BotSettingsUpdateResponse {

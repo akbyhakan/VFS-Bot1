@@ -338,22 +338,45 @@ class BotController:
                 logger.error("Bot reference lost during trigger attempt")
                 return {"status": "error", "message": "Bot is no longer available"}
 
-    async def update_cooldown(self, cooldown_seconds: int) -> Dict[str, Any]:
+    async def update_settings(
+        self,
+        cooldown_seconds: Optional[int] = None,
+        quarantine_seconds: Optional[int] = None,
+        max_failures: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """
-        Update the account pool cooldown duration at runtime.
+        Update account pool settings at runtime.
+        Only provided (non-None) values will be updated.
 
         Args:
             cooldown_seconds: New cooldown duration in seconds
+            quarantine_seconds: New quarantine duration in seconds
+            max_failures: New maximum consecutive failures before quarantine
 
         Returns:
             Status dictionary with result
         """
         async with self._async_lock:
-            if self._bot and self._bot.account_pool:
-                self._bot.account_pool.cooldown_seconds = cooldown_seconds
-                logger.info(f"Cooldown updated to {cooldown_seconds}s via dashboard")
-                return {"status": "success", "cooldown_seconds": cooldown_seconds}
-            return {"status": "error", "message": "Bot not running or account pool not initialized"}
+            if not (self._bot and self._bot.account_pool):
+                return {"status": "error", "message": "Bot not running or account pool not initialized"}
+
+            pool = self._bot.account_pool
+            updated = {}
+
+            if cooldown_seconds is not None:
+                pool.cooldown_seconds = cooldown_seconds
+                updated["cooldown_seconds"] = cooldown_seconds
+
+            if quarantine_seconds is not None:
+                pool.quarantine_seconds = quarantine_seconds
+                updated["quarantine_seconds"] = quarantine_seconds
+
+            if max_failures is not None:
+                pool.max_failures = max_failures
+                updated["max_failures"] = max_failures
+
+            logger.info(f"Bot settings updated via dashboard: {updated}")
+            return {"status": "success", **updated}
 
     def get_cooldown_settings(self) -> Dict[str, int]:
         """
@@ -364,17 +387,21 @@ class BotController:
         """
         from src.constants import AccountPoolConfig
 
-        # If bot is running, get from account pool, otherwise use default
         if self._bot and self._bot.account_pool:
-            cooldown_seconds = self._bot.account_pool.cooldown_seconds
+            pool = self._bot.account_pool
+            cooldown_seconds = pool.cooldown_seconds
+            quarantine_seconds = pool.quarantine_seconds
+            max_failures = pool.max_failures
         else:
             cooldown_seconds = AccountPoolConfig.COOLDOWN_SECONDS
+            quarantine_seconds = AccountPoolConfig.QUARANTINE_SECONDS
+            max_failures = AccountPoolConfig.MAX_FAILURES
 
         return {
             "cooldown_seconds": cooldown_seconds,
-            "cooldown_minutes": round(cooldown_seconds / 60),  # Round to nearest minute
-            "quarantine_minutes": AccountPoolConfig.QUARANTINE_SECONDS // 60,
-            "max_failures": AccountPoolConfig.MAX_FAILURES,
+            "cooldown_minutes": round(cooldown_seconds / 60),
+            "quarantine_minutes": quarantine_seconds // 60,
+            "max_failures": max_failures,
         }
 
     def get_status(self) -> Dict[str, Any]:

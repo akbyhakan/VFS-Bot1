@@ -31,11 +31,11 @@ def mock_bot_controller():
         }
     )
 
-    # Mock update_cooldown method
-    async def mock_update_cooldown(cooldown_seconds):
-        return {"status": "success", "cooldown_seconds": cooldown_seconds}
+    # Mock update_settings method
+    async def mock_update_settings(**kwargs):
+        return {"status": "success", **kwargs}
 
-    controller.update_cooldown = AsyncMock(side_effect=mock_update_cooldown)
+    controller.update_settings = AsyncMock(side_effect=mock_update_settings)
 
     return controller
 
@@ -59,7 +59,6 @@ class TestBotSettingsRoutes:
 
     def test_get_bot_settings_default(self, client, mock_auth):
         """Test getting bot settings returns default values when controller not configured."""
-        # Patch BotController.get_instance to raise HTTPException
         with patch("web.routes.bot._get_controller") as mock_get_controller:
             from fastapi import HTTPException
 
@@ -88,9 +87,8 @@ class TestBotSettingsRoutes:
             assert data["quarantine_minutes"] == 30
             assert data["max_failures"] == 3
 
-    @pytest.mark.asyncio
-    async def test_update_bot_settings_success(self, client, mock_auth, mock_bot_controller):
-        """Test updating bot settings successfully."""
+    def test_update_cooldown_only(self, client, mock_auth, mock_bot_controller):
+        """Test updating only cooldown (backward compatible)."""
         with patch("web.routes.bot._get_controller") as mock_get_controller:
             mock_get_controller.return_value = mock_bot_controller
 
@@ -99,24 +97,89 @@ class TestBotSettingsRoutes:
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "success"
-            assert "15 dakikaya güncellendi" in data["message"]
 
-            # Verify update_cooldown was called with correct seconds
-            mock_bot_controller.update_cooldown.assert_called_once()
-            call_args = mock_bot_controller.update_cooldown.call_args
-            assert call_args[0][0] == 900  # 15 minutes * 60 seconds
+            # Verify update_settings was called with cooldown_seconds
+            mock_bot_controller.update_settings.assert_called_once()
+            call_kwargs = mock_bot_controller.update_settings.call_args[1]
+            assert call_kwargs["cooldown_seconds"] == 900  # 15 * 60
+
+    def test_update_all_settings(self, client, mock_auth, mock_bot_controller):
+        """Test updating all bot settings at once."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            mock_get_controller.return_value = mock_bot_controller
+
+            response = client.put("/api/v1/bot/settings", json={
+                "cooldown_minutes": 15,
+                "quarantine_minutes": 45,
+                "max_failures": 5,
+            })
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+
+            call_kwargs = mock_bot_controller.update_settings.call_args[1]
+            assert call_kwargs["cooldown_seconds"] == 900
+            assert call_kwargs["quarantine_seconds"] == 2700  # 45 * 60
+            assert call_kwargs["max_failures"] == 5
+
+    def test_update_partial_quarantine_only(self, client, mock_auth, mock_bot_controller):
+        """Test updating cooldown and quarantine only."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            mock_get_controller.return_value = mock_bot_controller
+
+            response = client.put("/api/v1/bot/settings", json={
+                "cooldown_minutes": 10,
+                "quarantine_minutes": 60,
+            })
+
+            assert response.status_code == 200
+            call_kwargs = mock_bot_controller.update_settings.call_args[1]
+            assert call_kwargs["cooldown_seconds"] == 600
+            assert call_kwargs["quarantine_seconds"] == 3600
+            assert "max_failures" not in call_kwargs
 
     def test_update_bot_settings_validation_min(self, client, mock_auth):
         """Test updating bot settings with value below minimum."""
         response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 4})
-
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422
 
     def test_update_bot_settings_validation_max(self, client, mock_auth):
         """Test updating bot settings with value above maximum."""
         response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 61})
+        assert response.status_code == 422
 
-        assert response.status_code == 422  # Validation error
+    def test_quarantine_validation_min(self, client, mock_auth):
+        """Test quarantine_minutes below minimum."""
+        response = client.put("/api/v1/bot/settings", json={
+            "cooldown_minutes": 10,
+            "quarantine_minutes": 4,
+        })
+        assert response.status_code == 422
+
+    def test_quarantine_validation_max(self, client, mock_auth):
+        """Test quarantine_minutes above maximum."""
+        response = client.put("/api/v1/bot/settings", json={
+            "cooldown_minutes": 10,
+            "quarantine_minutes": 121,
+        })
+        assert response.status_code == 422
+
+    def test_max_failures_validation_min(self, client, mock_auth):
+        """Test max_failures below minimum."""
+        response = client.put("/api/v1/bot/settings", json={
+            "cooldown_minutes": 10,
+            "max_failures": 0,
+        })
+        assert response.status_code == 422
+
+    def test_max_failures_validation_max(self, client, mock_auth):
+        """Test max_failures above maximum."""
+        response = client.put("/api/v1/bot/settings", json={
+            "cooldown_minutes": 10,
+            "max_failures": 11,
+        })
+        assert response.status_code == 422
 
     def test_update_bot_settings_controller_not_configured(self, client, mock_auth):
         """Test updating bot settings when controller not configured."""
