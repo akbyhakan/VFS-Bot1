@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useHealthCheck, useMetrics } from '@/hooks/useApi';
+import { useBotErrors, useSelectorHealth, getErrorScreenshotUrl, getErrorHtmlSnapshotUrl } from '@/hooks/useBotErrors';
 import { Card } from '@/components/ui/Card';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { cn } from '@/utils/helpers';
@@ -16,12 +17,18 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
+  Bug,
+  Camera,
+  FileCode,
+  Search,
 } from 'lucide-react';
 
 export function SystemHealth() {
   const { t } = useTranslation();
   const { data: health, isLoading: healthLoading } = useHealthCheck();
   const { data: metrics, isLoading: metricsLoading } = useMetrics();
+  const { data: botErrors } = useBotErrors(10);
+  const { data: selectorHealth } = useSelectorHealth();
 
   if (healthLoading || metricsLoading) {
     return (
@@ -250,6 +257,30 @@ export function SystemHealth() {
               {health.components.notifications.status}
             </span>
           </div>
+
+          {/* Selector Health */}
+          {selectorHealth && (
+            <div className="p-4 rounded-lg bg-dark-800 border border-dark-700">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Search className="w-5 h-5 text-dark-400" />
+                  <span className="font-medium">{t('systemHealth.selectorHealth')}</span>
+                </div>
+                {getStatusIcon(selectorHealth.status)}
+              </div>
+              <span
+                className={cn(
+                  'text-xs px-2 py-1 rounded',
+                  getStatusColor(selectorHealth.status)
+                )}
+              >
+                {selectorHealth.status}
+              </span>
+              {selectorHealth.message && (
+                <p className="text-xs text-dark-400 mt-2">{selectorHealth.message}</p>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -265,6 +296,53 @@ export function SystemHealth() {
               >
                 <span className="text-dark-300">{type}</span>
                 <span className="font-medium text-red-400">{count}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Recent Bot Errors */}
+      {botErrors && botErrors.length > 0 && (
+        <Card>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Bug className="w-5 h-5 text-red-400" />
+            {t('systemHealth.recentBotErrors')}
+          </h2>
+          <div className="space-y-3">
+            {botErrors.map((error) => (
+              <div key={error.id} className="p-3 rounded-lg bg-dark-800 border border-dark-700">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-red-400">{error.error_type}</span>
+                  <span className="text-xs text-dark-400">
+                    {new Date(error.timestamp).toLocaleString('tr-TR')}
+                  </span>
+                </div>
+                <p className="text-sm text-dark-300 mb-2">{error.error_message}</p>
+                <div className="flex gap-3 text-xs">
+                  {error.captures?.full_screenshot && (
+                    <a
+                      href={getErrorScreenshotUrl(error.id, 'full')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
+                    >
+                      <Camera className="w-3 h-3" />
+                      {t('systemHealth.screenshot')}
+                    </a>
+                  )}
+                  {error.captures?.html_snapshot && (
+                    <a
+                      href={getErrorHtmlSnapshotUrl(error.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
+                    >
+                      <FileCode className="w-3 h-3" />
+                      {t('systemHealth.htmlSnapshot')}
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>

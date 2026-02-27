@@ -102,6 +102,11 @@ async def update_runtime_config(
     "/runtime/{key}",
     response_model=Dict[str, Any],
     summary="Get specific runtime configuration value",
+    tags=["config", "internal"],
+    description=(
+        "Get a specific runtime configuration value by key. "
+        "This endpoint is not used by the frontend and is intended for operational/debugging purposes only."
+    ),
 )
 async def get_runtime_config_value(
     key: str,
@@ -110,7 +115,7 @@ async def get_runtime_config_value(
     """
     Get a specific runtime configuration value.
 
-    Requires admin authentication.
+    Requires admin authentication. Not used by the frontend — operational use only.
 
     Args:
         key: Configuration key (e.g., 'retries.max_login')
