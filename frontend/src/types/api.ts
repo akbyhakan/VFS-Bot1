@@ -5,11 +5,6 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface TokenResponse {
-  access_token: string;
-  token_type: string;
-}
-
 export type BotStatusType = (typeof BOT_STATUS)[keyof typeof BOT_STATUS];
 
 export interface BotStatus {
@@ -21,11 +16,6 @@ export interface BotStatus {
     appointments_booked: number;
     active_users: number;
   };
-}
-
-export interface BotCommand {
-  action: 'start' | 'stop' | 'restart' | 'check_now';
-  config?: Record<string, unknown>;
 }
 
 export interface LogEntry {

@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from src.core.bot_controller import BotController
 from web.dependencies import bot_state, broadcast_message, verify_jwt_token
-from web.models.bot import BotCommand, BotSettings, BotSettingsResponse
+from web.models.bot import BotSettings, BotSettingsResponse
 
 router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
@@ -59,14 +59,13 @@ async def _sync_bot_state(controller: BotController) -> None:
 @router.post("/start")
 @limiter.limit("5/minute")
 async def start_bot(
-    request: Request, command: BotCommand, auth_data: dict = Depends(verify_jwt_token)
+    request: Request, auth_data: dict = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Start the bot - requires authentication.
 
     Args:
         request: FastAPI request object (required for rate limiter)
-        command: Bot command with configuration
         auth_data: Verified authentication metadata
 
     Returns:

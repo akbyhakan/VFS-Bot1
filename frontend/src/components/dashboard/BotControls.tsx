@@ -16,7 +16,7 @@ export function BotControls() {
 
   const handleStart = async () => {
     try {
-      await startBot.mutateAsync({ action: 'start' });
+      await startBot.mutateAsync();
       toast.success(t('botControls.startSuccess'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('botControls.startError'));
