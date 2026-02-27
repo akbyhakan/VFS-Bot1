@@ -285,9 +285,15 @@ async def test_add_log(test_db):
     await LogRepository(test_db).create(
         {"level": "ERROR", "message": "Test error", "user_id": user_id}
     )
+    await LogRepository(test_db).create(
+        {"level": "SUCCESS", "message": "Test success", "user_id": user_id}
+    )
+    await LogRepository(test_db).create(
+        {"level": "DEBUG", "message": "Test debug", "user_id": user_id}
+    )
 
     logs = await LogRepository(test_db).get_all(limit=10)
-    assert len(logs) >= 2
+    assert len(logs) >= 4
 
 
 @pytest.mark.asyncio

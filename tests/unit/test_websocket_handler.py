@@ -228,3 +228,45 @@ class TestAddLog:
         call_args = mock_broadcast.call_args[0][0]
         assert "timestamp" in call_args["data"]
         assert "message" in call_args["data"]
+
+    @pytest.mark.asyncio
+    async def test_add_log_success_level(self):
+        """Test add_log with SUCCESS log level."""
+        mock_state = MagicMock()
+        mock_broadcast = AsyncMock()
+
+        with (
+            patch("web.websocket.handler.bot_state", mock_state),
+            patch("web.websocket.handler.broadcast_message", mock_broadcast),
+        ):
+            from web.websocket.handler import add_log
+
+            await add_log("Slot found!", level="SUCCESS")
+
+        log_entry = mock_state.append_log.call_args[0][0]
+        assert "SUCCESS" in log_entry
+        assert "Slot found!" in log_entry
+
+        call_args = mock_broadcast.call_args[0][0]
+        assert call_args["data"]["level"] == "SUCCESS"
+
+    @pytest.mark.asyncio
+    async def test_add_log_debug_level(self):
+        """Test add_log with DEBUG log level."""
+        mock_state = MagicMock()
+        mock_broadcast = AsyncMock()
+
+        with (
+            patch("web.websocket.handler.bot_state", mock_state),
+            patch("web.websocket.handler.broadcast_message", mock_broadcast),
+        ):
+            from web.websocket.handler import add_log
+
+            await add_log("Debug info", level="DEBUG")
+
+        log_entry = mock_state.append_log.call_args[0][0]
+        assert "DEBUG" in log_entry
+        assert "Debug info" in log_entry
+
+        call_args = mock_broadcast.call_args[0][0]
+        assert call_args["data"]["level"] == "DEBUG"

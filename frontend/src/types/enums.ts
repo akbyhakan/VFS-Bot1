@@ -28,7 +28,9 @@ export enum AppointmentHistoryStatus {
 }
 
 export enum LogLevel {
+  DEBUG = 'DEBUG',
   INFO = 'INFO',
   WARNING = 'WARNING',
   ERROR = 'ERROR',
+  SUCCESS = 'SUCCESS',
 }
