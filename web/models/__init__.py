@@ -7,8 +7,8 @@ from .appointments import (
     AppointmentRequestCreate,
     AppointmentRequestResponse,
 )
-from .auth import LoginRequest, TokenResponse
-from .bot import BotCommand, StatusUpdate
+from .auth import LoginRequest
+from .bot import StatusUpdate
 from .common import CountryResponse, WebhookUrlsResponse
 from .payment import PaymentCardRequest, PaymentCardResponse
 from .proxy import ProxyCreateRequest, ProxyResponse, ProxyUpdateRequest
@@ -17,9 +17,7 @@ from .vfs_accounts import VFSAccountCreateRequest, VFSAccountModel, VFSAccountUp
 __all__ = [
     # Auth models
     "LoginRequest",
-    "TokenResponse",
     # Bot models
-    "BotCommand",
     "StatusUpdate",
     # VFS Account models
     "VFSAccountCreateRequest",

@@ -1,15 +1,8 @@
-"""Bot command and status models for VFS-Bot web application."""
+"""Bot status models for VFS-Bot web application."""
 
-from typing import Any, Dict, Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
-
-
-class BotCommand(BaseModel):
-    """Bot command model."""
-
-    action: Literal["start", "stop", "restart", "check_now"]
-    config: Dict[str, Any] = {}
 
 
 class StatusUpdate(BaseModel):

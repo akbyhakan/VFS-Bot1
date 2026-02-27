@@ -1,44 +1,9 @@
-"""Tests for security audit fixes (issues 2.1.3, 2.1.4, 2.1.5)."""
+"""Tests for security audit fixes (issues 2.1.3, 2.1.5)."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from pydantic import ValidationError
-
-from web.models.bot import BotCommand
-
-
-class TestBotCommandValidation:
-    """Tests for BotCommand model validation (issue 2.1.4)."""
-
-    def test_bot_command_valid_actions(self):
-        """Test that BotCommand accepts valid action values."""
-        valid_actions = ["start", "stop", "restart", "check_now"]
-
-        for action in valid_actions:
-            command = BotCommand(action=action, config={})
-            assert command.action == action
-
-    def test_bot_command_invalid_action_rejected(self):
-        """Test that BotCommand rejects invalid action values."""
-        with pytest.raises(ValidationError) as exc_info:
-            BotCommand(action="invalid_action", config={})
-
-        # Check that the error message mentions the invalid literal
-        error_msg = str(exc_info.value)
-        assert "Input should be 'start', 'stop', 'restart' or 'check_now'" in error_msg
-
-    def test_bot_command_empty_config_allowed(self):
-        """Test that BotCommand allows empty config."""
-        command = BotCommand(action="start")
-        assert command.config == {}
-
-    def test_bot_command_with_config(self):
-        """Test that BotCommand accepts config data."""
-        config_data = {"key1": "value1", "key2": 123}
-        command = BotCommand(action="start", config=config_data)
-        assert command.config == config_data
 
 
 class TestPaymentCardLoggingSecurity:

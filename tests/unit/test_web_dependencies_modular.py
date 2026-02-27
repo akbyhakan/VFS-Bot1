@@ -13,7 +13,6 @@ class TestWebDependenciesModularStructure:
             AppointmentPersonResponse,
             AppointmentRequestCreate,
             AppointmentRequestResponse,
-            BotCommand,
             CountryResponse,
             LoginRequest,
             PaymentCardRequest,
@@ -22,7 +21,6 @@ class TestWebDependenciesModularStructure:
             ProxyResponse,
             ProxyUpdateRequest,
             StatusUpdate,
-            TokenResponse,
             UserCreateRequest,
             UserModel,
             UserUpdateRequest,
@@ -30,7 +28,7 @@ class TestWebDependenciesModularStructure:
         )
 
         assert LoginRequest is not None
-        assert BotCommand is not None
+        assert StatusUpdate is not None
 
     def test_import_models_from_submodules(self):
         """Test that models can be imported from their specific submodules."""
@@ -38,8 +36,8 @@ class TestWebDependenciesModularStructure:
             AppointmentPersonRequest,
             AppointmentRequestCreate,
         )
-        from web.models.auth import LoginRequest, TokenResponse
-        from web.models.bot import BotCommand, StatusUpdate
+        from web.models.auth import LoginRequest
+        from web.models.bot import StatusUpdate
         from web.models.common import CountryResponse, WebhookUrlsResponse
         from web.models.payment import PaymentCardRequest, PaymentCardResponse
         from web.models.proxy import ProxyCreateRequest, ProxyResponse
@@ -52,8 +50,6 @@ class TestWebDependenciesModularStructure:
         assert all(
             [
                 LoginRequest,
-                TokenResponse,
-                BotCommand,
                 StatusUpdate,
                 VFSAccountCreateRequest,
                 VFSAccountModel,
