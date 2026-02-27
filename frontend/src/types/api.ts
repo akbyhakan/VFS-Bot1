@@ -101,11 +101,26 @@ export interface NotificationData {
   title?: string;
 }
 
+export interface CriticalNotificationData {
+  title: string;
+  message: string;
+  timestamp: number;
+  priority: 'high' | 'normal';
+}
+
+export interface WebSocketErrorData {
+  code?: number;
+  message: string;
+  recoverable?: boolean;
+}
+
 export type WebSocketMessage =
   | { type: 'status'; data: BotStatusData }
   | { type: 'log'; data: LogEntry }
   | { type: 'stats'; data: StatsData }
   | { type: 'notification'; data: NotificationData }
+  | { type: 'critical_notification'; data: CriticalNotificationData }
+  | { type: 'error'; data: WebSocketErrorData }
   | { type: 'ping'; data: Record<string, unknown> }
   | { type: 'ack'; data: Record<string, unknown> };
 

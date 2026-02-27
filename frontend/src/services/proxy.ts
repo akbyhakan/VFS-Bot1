@@ -3,8 +3,6 @@
  */
 
 import { api } from './api';
-import axios from 'axios';
-import { API_BASE_URL } from '@/utils/constants';
 
 export interface ProxyStats {
   total: number;
@@ -41,20 +39,7 @@ export interface UploadProxyResponse {
 export async function uploadProxyCSV(file: File): Promise<UploadProxyResponse> {
   const formData = new FormData();
   formData.append('file', file);
-
-  // Use cookie-based authentication (HttpOnly cookie sent automatically)
-  const response = await axios.post<UploadProxyResponse>(
-    `${API_BASE_URL}/api/v1/proxy/upload`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      withCredentials: true,  // Send HttpOnly cookies with request
-    }
-  );
-
-  return response.data;
+  return api.upload<UploadProxyResponse>('/api/v1/proxy/upload', formData);
 }
 
 /**

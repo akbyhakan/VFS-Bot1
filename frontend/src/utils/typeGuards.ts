@@ -104,25 +104,3 @@ export function isStatsData(data: unknown): data is {
     typeof obj.active_users === 'number'
   );
 }
-
-/**
- * Type guard for API error response
- * @deprecated Use `isAppError` from `@/utils/AppError` instead.
- */
-export function isApiError(error: unknown): error is {
-  response?: {
-    status?: number;
-    data?: { detail?: unknown; [key: string]: unknown } | null;
-  };
-} {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-
-  const err = error as Record<string, unknown>;
-  if (!err.response || typeof err.response !== 'object') {
-    return false;
-  }
-
-  return true;
-}
