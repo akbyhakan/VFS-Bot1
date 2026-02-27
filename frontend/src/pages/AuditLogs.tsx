@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { logger } from '@/utils/logger';
 import { useAuditLogs, useAuditLogDetail, useAuditStats } from '@/hooks/useAuditLogs';
-import type { AuditLog } from '@/hooks/useAuditLogs';
+import type { AuditLog } from '@/types/audit';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';

@@ -169,6 +169,33 @@ export function useWebSocket() {
             });
           }
           break;
+        case 'critical_notification':
+          if (message.data && typeof message.data === 'object') {
+            const criticalData = message.data as {
+              title?: string;
+              message?: string;
+            };
+            addNotificationRef.current({
+              title: criticalData.title || tRef.current('notifications.criticalAlert'),
+              message: criticalData.message || '',
+              type: 'error',
+            });
+          }
+          break;
+        case 'error':
+          if (message.data && typeof message.data === 'object') {
+            const errorData = message.data as {
+              message?: string;
+              code?: number;
+            };
+            logger.error('WebSocket error message from server:', errorData);
+            addNotificationRef.current({
+              title: tRef.current('notifications.serverError'),
+              message: errorData.message || tRef.current('notifications.unknownError'),
+              type: 'error',
+            });
+          }
+          break;
         case 'ping':
           // Respond to ping to keep connection alive
           websocketService.send({ type: 'pong' });
