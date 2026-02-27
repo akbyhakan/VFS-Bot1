@@ -15,7 +15,6 @@ from fastapi.security import HTTPBearer
 from loguru import logger
 
 from src.core.auth import verify_token
-from src.core.security import APIKeyManager
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
 from src.repositories import (
@@ -94,55 +93,6 @@ async def verify_jwt_token(
         )
 
     return await verify_token(token)
-
-
-async def verify_hybrid_auth(request: Request) -> Dict[str, Any]:
-    """
-    Hybrid authentication: accepts either JWT token or API key.
-
-    Resolution order:
-    1. Try JWT token (from HttpOnly cookie or Authorization header)
-    2. If JWT fails, try API key (from Authorization header)
-    3. If both fail, raise 401
-
-    Returns:
-        Dict with auth metadata. Includes 'auth_method' key ('jwt' or 'api_key').
-
-    Raises:
-        HTTPException: If both JWT and API key authentication fail
-    """
-    # First, try JWT authentication
-    token = extract_raw_token(request)
-
-    if token:
-        try:
-            # Try to verify as JWT token
-            jwt_payload = await verify_token(token)
-            # Add auth method indicator
-            jwt_payload["auth_method"] = "jwt"
-            return jwt_payload
-        except Exception as jwt_error:
-            # JWT verification failed, try API key
-            logger.debug(f"JWT verification failed, attempting API key: {jwt_error}")
-
-            # Try to verify as API key (only from Authorization header, not cookie)
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                api_key = auth_header.split(" ")[1]
-                manager = APIKeyManager()
-                key_metadata = manager.verify_key(api_key)
-
-                if key_metadata:
-                    # Add auth method indicator
-                    key_metadata["auth_method"] = "api_key"
-                    return key_metadata
-
-    # Both authentication methods failed
-    raise HTTPException(
-        status_code=401,
-        detail="Not authenticated",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
 
 
 async def verify_webhook_request(request: Request) -> None:

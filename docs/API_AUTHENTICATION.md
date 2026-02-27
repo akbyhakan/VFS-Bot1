@@ -4,11 +4,10 @@ This document describes the authentication mechanisms available for the VFS-Bot 
 
 ## Overview
 
-The VFS-Bot web dashboard provides three authentication methods:
+The VFS-Bot web dashboard provides two authentication methods:
 
 1. **JWT Token Authentication** - Recommended for web/mobile applications
-2. **API Key Authentication** - Recommended for server-to-server communication
-3. **Hybrid Authentication** - Automatically accepts either JWT or API Key (used for bot control endpoints)
+2. **API Key Authentication** - Used exclusively for the `generate-key` endpoint
 
 ## JWT Token Authentication
 
@@ -71,45 +70,13 @@ The following endpoints require JWT authentication:
 - `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
 - `GET /api/v1/audit/logs` - View audit logs
 - `GET /api/v1/payment/payment-card` - View payment card
-
-## Hybrid Authentication
-
-Hybrid authentication accepts **either** JWT tokens or API keys, automatically detecting which one is provided. This provides maximum flexibility for API consumers.
-
-### How It Works
-
-1. The system first attempts to validate the token as a JWT
-2. If JWT validation fails, it tries to validate as an API key
-3. If both fail, a 401 Unauthorized error is returned
-4. The authentication metadata includes an `auth_method` field indicating which method was used
-
-### Endpoints Using Hybrid Authentication
-
-The following bot control endpoints accept both JWT tokens and API keys:
-
 - `POST /api/v1/bot/start` - Start the bot
 - `POST /api/v1/bot/stop` - Stop the bot
 - `POST /api/v1/bot/restart` - Restart the bot
 - `POST /api/v1/bot/check-now` - Trigger manual check
 - `GET /api/v1/bot/logs` - Retrieve bot logs
-
-### Using Hybrid Authentication
-
-You can use either a JWT token or an API key - the system will accept both:
-
-```bash
-# Using JWT token
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     -X POST \
-     http://localhost:8000/api/v1/bot/start
-
-# Using API key
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-     -X POST \
-     http://localhost:8000/api/v1/bot/start
-```
-
-Both requests will work identically, giving you flexibility in how you authenticate.
+- `GET /api/v1/bot/settings` - Get bot settings
+- `PUT /api/v1/bot/settings` - Update bot settings
 
 ## API Key Authentication
 
@@ -123,7 +90,7 @@ DASHBOARD_API_KEY=your-secure-api-key-here
 
 ### Using API Key
 
-API keys can be used directly for hybrid authentication endpoints (see above) or for any other endpoints that specifically require API key authentication.
+API keys are used exclusively for the `generate-key` endpoint (see below). All other protected endpoints require JWT authentication.
 
 Include the API key in the Authorization header:
 

@@ -44,12 +44,12 @@ def mock_bot_controller():
 def mock_auth(client):
     """Mock authentication."""
 
-    async def mock_verify_hybrid_auth():
+    async def mock_verify_jwt_token():
         return {"sub": "test_user", "name": "Test User"}
 
-    from web.dependencies import verify_hybrid_auth
+    from web.dependencies import verify_jwt_token
 
-    client.app.dependency_overrides[verify_hybrid_auth] = mock_verify_hybrid_auth
+    client.app.dependency_overrides[verify_jwt_token] = mock_verify_jwt_token
     yield
     client.app.dependency_overrides.clear()
 
