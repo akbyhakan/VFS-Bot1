@@ -15,6 +15,7 @@ from loguru import logger
 from src import __version__
 from src.core.auth import get_token_blacklist, init_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
+from src.core.config.settings import get_settings
 from src.core.infra.startup_validator import log_security_warnings
 from src.models.db_factory import DatabaseFactory
 from src.services.otp_manager.otp_webhook_routes import router as otp_router
@@ -258,10 +259,7 @@ API endpoints are rate-limited to prevent abuse:
     app.add_middleware(SecurityHeadersMiddleware)
 
     # 3. Configure CORS
-    allowed_origins_str = os.getenv(
-        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
-    )
-    allowed_origins = validate_cors_origins(allowed_origins_str)
+    allowed_origins = validate_cors_origins(get_settings().cors_allowed_origins)
 
     app.add_middleware(
         CORSMiddleware,

@@ -730,7 +730,7 @@ VFS-Bot1/
 │   ├── api_versioning.py            # /api/v1 versioning
 │   ├── routes/                      # API endpoints
 │   │   ├── auth.py                  # Authentication
-│   │   ├── users.py                 # User management
+│   │   ├── vfs_accounts.py          # VFS account management
 │   │   ├── bot.py                   # Bot control
 │   │   ├── appointments.py          # Appointments
 │   │   ├── audit.py                 # Audit logs
@@ -739,8 +739,9 @@ VFS-Bot1/
 │   │   ├── config.py                # Runtime configuration
 │   │   ├── dropdown_sync.py         # Dropdown synchronization
 │   │   ├── health.py                # Health check
-│   │   ├── webhook.py               # OTP webhooks
-│   │   └── sms_webhook.py           # SMS webhooks
+│   │   ├── webhook_accounts.py      # Webhook token CRUD
+│   │   ├── webhook_otp.py           # Per-user OTP receiver
+│   │   └── sms_webhook.py           # SMS Forwarder webhooks
 │   ├── middleware/                  # Security, CORS, error handling
 │   ├── models/                      # Pydantic models
 │   ├── state/                       # Thread-safe bot state
