@@ -14,8 +14,17 @@ def setup_versioned_routes(app: FastAPI) -> None:
     """
     Configure versioned API routes on the FastAPI application.
 
-    This function should be called from the main app factory to register
-    all versioned API routes under /api/v1 prefix.
+    All frontend-facing, JWT-protected routes are registered under /api/v1.
+
+    The following routers are intentionally NOT included here:
+    - sms_webhook_router  → /webhook/sms/*       (SMS Forwarder app integration)
+    - webhook_otp_router  → /api/webhook/otp/*    (Per-user OTP receiver)
+    - otp_router          → /api/webhook/sms/*    (SMS provider webhooks)
+
+    These serve external systems with fixed, published URLs and use
+    HMAC webhook-signature authentication instead of JWT. Adding them
+    under /api/v1 would break 150+ field-device configurations and
+    the webhook URLs returned by webhook_accounts_router CRUD endpoints.
 
     Args:
         app: FastAPI application instance
