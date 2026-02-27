@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Timer, Save } from 'lucide-react';
-import { getBotSettings, updateBotSettings, type BotSettingsResponse } from '@/services/bot';
+import { getBotSettings, updateBotSettings, type BotSettingsResponse, type BotSettingsUpdate } from '@/services/bot';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 
@@ -16,9 +16,13 @@ export function BotSettingsSection() {
   const { t } = useTranslation();
   const [botSettings, setBotSettings] = useState<BotSettingsResponse | null>(null);
   const [cooldownMinutes, setCooldownMinutes] = useState<number>(10);
-  const [cooldownSaving, setCooldownSaving] = useState(false);
-  const [cooldownLoaded, setCooldownLoaded] = useState(false);
+  const [quarantineMinutes, setQuarantineMinutes] = useState<number>(30);
+  const [maxFailures, setMaxFailures] = useState<number>(3);
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [initialCooldown, setInitialCooldown] = useState<number>(10);
+  const [initialQuarantine, setInitialQuarantine] = useState<number>(30);
+  const [initialMaxFailures, setInitialMaxFailures] = useState<number>(3);
 
   const loadBotSettings = async () => {
     try {
@@ -26,10 +30,14 @@ export function BotSettingsSection() {
       setBotSettings(settings);
       setCooldownMinutes(settings.cooldown_minutes);
       setInitialCooldown(settings.cooldown_minutes);
-      setCooldownLoaded(true);
+      setQuarantineMinutes(settings.quarantine_minutes);
+      setInitialQuarantine(settings.quarantine_minutes);
+      setMaxFailures(settings.max_failures);
+      setInitialMaxFailures(settings.max_failures);
+      setLoaded(true);
     } catch (error: unknown) {
       logger.error('Failed to load bot settings:', error);
-      setCooldownLoaded(true);
+      setLoaded(true);
     }
   };
 
@@ -37,18 +45,32 @@ export function BotSettingsSection() {
     loadBotSettings();
   }, []);
 
-  const handleSaveCooldown = async () => {
+  const hasChanges =
+    cooldownMinutes !== initialCooldown ||
+    quarantineMinutes !== initialQuarantine ||
+    maxFailures !== initialMaxFailures;
+
+  const handleSave = async () => {
     try {
-      setCooldownSaving(true);
-      await updateBotSettings({ cooldown_minutes: cooldownMinutes });
+      setSaving(true);
+      const update: BotSettingsUpdate = { cooldown_minutes: cooldownMinutes };
+      if (quarantineMinutes !== initialQuarantine) {
+        update.quarantine_minutes = quarantineMinutes;
+      }
+      if (maxFailures !== initialMaxFailures) {
+        update.max_failures = maxFailures;
+      }
+      await updateBotSettings(update);
       setInitialCooldown(cooldownMinutes);
-      toast.success(t('settings.cooldownUpdated'));
+      setInitialQuarantine(quarantineMinutes);
+      setInitialMaxFailures(maxFailures);
+      toast.success(t('settings.settingsUpdated'));
       await loadBotSettings();
     } catch (error: unknown) {
-      logger.error('Failed to update cooldown:', error);
-      toast.error(t('settings.cooldownUpdateFailed'));
+      logger.error('Failed to update bot settings:', error);
+      toast.error(t('settings.settingsUpdateFailed'));
     } finally {
-      setCooldownSaving(false);
+      setSaving(false);
     }
   };
 
@@ -61,10 +83,11 @@ export function BotSettingsSection() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!cooldownLoaded ? (
+        {!loaded ? (
           <p className="text-dark-400 text-sm">{t('settings.loading')}</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Cooldown Duration Slider */}
             <div>
               <label className="block text-sm font-medium text-white mb-3">
                 {t('settings.cooldownDuration', { minutes: cooldownMinutes })}
@@ -83,33 +106,68 @@ export function BotSettingsSection() {
                 <span>5 {t('settings.minutes')}</span>
                 <span>60 {t('settings.minutes')}</span>
               </div>
-              <p className="text-dark-400 text-sm mt-3">
+              <p className="text-dark-400 text-sm mt-2">
                 {t('settings.cooldownDesc')}
               </p>
             </div>
 
-            {botSettings && (
-              <div className="pt-4 border-t border-dark-700 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-dark-400">{t('settings.quarantineDuration')}:</span>
-                  <span className="text-white">{botSettings.quarantine_minutes} {t('settings.minutes')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-dark-400">{t('settings.maxFailures')}:</span>
-                  <span className="text-white">{botSettings.max_failures}</span>
-                </div>
+            {/* Quarantine Duration Slider */}
+            <div className="pt-4 border-t border-dark-700">
+              <label className="block text-sm font-medium text-white mb-3">
+                {t('settings.quarantineDuration', { minutes: quarantineMinutes })}
+              </label>
+              <input
+                type="range"
+                min="5"
+                max="120"
+                step="5"
+                value={quarantineMinutes}
+                onChange={(e) => setQuarantineMinutes(Number(e.target.value))}
+                className="w-full h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+                style={{ background: getSliderGradient(quarantineMinutes, 5, 120) }}
+              />
+              <div className="flex justify-between text-xs text-dark-400 mt-1">
+                <span>5 {t('settings.minutes')}</span>
+                <span>120 {t('settings.minutes')}</span>
               </div>
-            )}
+              <p className="text-dark-400 text-sm mt-2">
+                {t('settings.quarantineDesc')}
+              </p>
+            </div>
 
-            {cooldownMinutes !== initialCooldown && (
+            {/* Max Failures Input */}
+            <div className="pt-4 border-t border-dark-700">
+              <label className="block text-sm font-medium text-white mb-3">
+                {t('settings.maxFailuresLabel', { count: maxFailures })}
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={maxFailures}
+                onChange={(e) => setMaxFailures(Number(e.target.value))}
+                className="w-full h-2 bg-dark-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+                style={{ background: getSliderGradient(maxFailures, 1, 10) }}
+              />
+              <div className="flex justify-between text-xs text-dark-400 mt-1">
+                <span>1</span>
+                <span>10</span>
+              </div>
+              <p className="text-dark-400 text-sm mt-2">
+                {t('settings.maxFailuresDesc')}
+              </p>
+            </div>
+
+            {hasChanges && (
               <Button
                 variant="primary"
                 leftIcon={<Save className="w-4 h-4" />}
-                onClick={handleSaveCooldown}
-                isLoading={cooldownSaving}
+                onClick={handleSave}
+                isLoading={saving}
                 fullWidth
               >
-                {cooldownSaving ? t('settings.saving') : t('settings.save')}
+                {saving ? t('settings.saving') : t('settings.save')}
               </Button>
             )}
           </div>
