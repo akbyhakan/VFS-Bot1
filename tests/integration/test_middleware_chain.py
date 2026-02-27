@@ -83,10 +83,12 @@ class TestSecurityHeadersMiddleware:
                 yield TestClient(app)
 
     def test_security_headers_csp_present(self, client):
-        """Test that Content-Security-Policy header is not present (removed)."""
+        """Test that Content-Security-Policy header is present."""
         response = client.get("/health")
 
-        assert "Content-Security-Policy" not in response.headers
+        assert "Content-Security-Policy" in response.headers
+        csp = response.headers["Content-Security-Policy"]
+        assert "default-src 'self'" in csp
 
     def test_security_headers_xss_protection(self, client):
         """Test that X-XSS-Protection header is not present (removed)."""
@@ -95,9 +97,10 @@ class TestSecurityHeadersMiddleware:
         assert "X-XSS-Protection" not in response.headers
 
     def test_security_headers_hsts_in_production(self, client):
-        """Test that HSTS header is not present (removed)."""
+        """Test that HSTS header is absent in non-production environments."""
         response = client.get("/health")
 
+        # HSTS is only added in production; test env uses env_override="testing"
         assert "Strict-Transport-Security" not in response.headers
 
     def test_security_headers_frame_options(self, client):

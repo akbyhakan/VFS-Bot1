@@ -1,23 +1,20 @@
 import { api } from './api';
 import { REMEMBER_ME_KEY } from '@/utils/constants';
 import { logger } from '@/utils/logger';
-import type { LoginRequest, TokenResponse } from '@/types/api';
+import type { LoginRequest } from '@/types/api';
 
 export class AuthService {
-  async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<TokenResponse> {
-    const response = await api.post<TokenResponse>('/api/v1/auth/login', credentials);
-    
-    // HttpOnly cookie is automatically set by the server
-    // Cookie-based authentication handles all token management
-    
+  async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<void> {
+    // Server sets HttpOnly cookie — no token in response body
+    await api.post('/api/v1/auth/login', credentials);
+
     // Store remember me preference
     if (rememberMe) {
       localStorage.setItem(REMEMBER_ME_KEY, 'true');
     } else {
       localStorage.removeItem(REMEMBER_ME_KEY);
     }
-    
-    return response;
+    // No need to return/store the token — cookie handles auth
   }
 
   async logout(): Promise<void> {

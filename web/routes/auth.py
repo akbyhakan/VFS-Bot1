@@ -12,7 +12,7 @@ from src.core.auth.jwt_tokens import get_token_expire_hours
 from src.core.security import generate_api_key
 from src.models.database import Database
 from web.dependencies import extract_raw_token, get_db, verify_jwt_token
-from web.models.auth import LoginRequest, TokenResponse
+from web.models.auth import LoginRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -101,10 +101,10 @@ async def create_api_key_endpoint(
     }
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(request: Request, response: Response, credentials: LoginRequest) -> TokenResponse:
+@router.post("/login")
+async def login(request: Request, response: Response, credentials: LoginRequest) -> Dict[str, str]:
     """
-    Login endpoint - returns JWT token and sets HttpOnly cookie.
+    Login endpoint - sets HttpOnly cookie.
 
     Args:
         request: FastAPI request object (required for rate limiter)
@@ -112,7 +112,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
         credentials: Username and password
 
     Returns:
-        JWT access token
+        Success message
 
     Raises:
         HTTPException: If credentials are invalid or environment not configured
@@ -169,15 +169,13 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
         path="/",
     )
 
-    # Also return token in response body for backward compatibility
-    # (API clients and existing code that uses Authorization header)
-    return TokenResponse(access_token=access_token)
+    return {"message": "Login successful"}
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh")
 async def refresh_token(
     request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)
-) -> TokenResponse:
+) -> Dict[str, str]:
     """
     Refresh JWT token endpoint - issues a new HttpOnly cookie with a fresh token.
 
@@ -189,7 +187,7 @@ async def refresh_token(
         token_data: JWT token payload (dependency for authentication)
 
     Returns:
-        New JWT access token (also set as HttpOnly cookie)
+        Success message
     """
     from src.core.config.settings import get_settings
 
@@ -217,8 +215,7 @@ async def refresh_token(
 
     logger.info(f"Token refreshed for user: {token_data.get('sub', 'unknown')}")
 
-    # Also return token in response body for backward compatibility
-    return TokenResponse(access_token=access_token)
+    return {"message": "Token refreshed successfully"}
 
 
 @router.post("/logout")
