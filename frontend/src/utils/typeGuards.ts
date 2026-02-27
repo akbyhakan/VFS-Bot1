@@ -107,6 +107,7 @@ export function isStatsData(data: unknown): data is {
 
 /**
  * Type guard for API error response
+ * @deprecated Use `isAppError` from `@/utils/AppError` instead.
  */
 export function isApiError(error: unknown): error is {
   response?: {

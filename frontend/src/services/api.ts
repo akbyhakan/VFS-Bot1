@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '@/utils/constants';
 import type { ApiError } from '@/types/api';
+import { AppError } from '@/utils/AppError';
 
 // Default timeout: 30 seconds
 const DEFAULT_TIMEOUT = 30000;
@@ -88,14 +89,19 @@ class ApiClient {
     }
   }
 
-  private handleError(error: AxiosError<ApiError>): Error {
-    if (error.response?.data?.detail) {
-      return new Error(error.response.data.detail);
-    }
-    if (error.message) {
-      return new Error(error.message);
-    }
-    return new Error('Bilinmeyen bir hata oluştu');
+  private handleError(error: AxiosError<ApiError>): AppError {
+    const data = error.response?.data;
+    const message =
+      data?.detail ?? error.message ?? 'Bilinmeyen bir hata oluştu';
+    return new AppError(message, {
+      type: data?.type,
+      title: data?.title,
+      status: data?.status ?? error.response?.status,
+      recoverable: data?.recoverable,
+      retryAfter: data?.retry_after,
+      field: data?.field,
+      fieldErrors: data?.errors,
+    });
   }
 
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {

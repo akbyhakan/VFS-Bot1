@@ -11,6 +11,7 @@ import { SkipLink } from '@/components/common/SkipLink';
 import { Login } from '@/pages/Login';
 import { ROUTES } from '@/utils/constants';
 import { handleError } from '@/utils/errorHandler';
+import { isAppError } from '@/utils/AppError';
 import '@/styles/globals.css';
 
 // Lazy load pages for code splitting
@@ -30,13 +31,12 @@ const queryClient = new QueryClient({
     queries: {
       retry: (failureCount, error) => {
         // Don't retry on 401/403 errors
-        // Check both error message and response status if available
-        const errorMessage = error instanceof Error ? error.message : '';
-        const isAuthError = errorMessage.includes('401') || errorMessage.includes('403');
-        
-        if (isAuthError) {
+        if (isAppError(error) && (error.status === 401 || error.status === 403)) {
           return false;
         }
+        const errorMessage = error instanceof Error ? error.message : '';
+        const isAuthError = errorMessage.includes('401') || errorMessage.includes('403');
+        if (isAuthError) return false;
         return failureCount < 2;
       },
       refetchOnWindowFocus: false,

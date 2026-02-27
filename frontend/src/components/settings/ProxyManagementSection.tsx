@@ -1,50 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Globe, Upload, FileText, Trash2 } from 'lucide-react';
-import { proxyApi, type ProxyStats } from '@/services/proxy';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
+import { useProxyStats, useUploadProxy, useClearProxies } from '@/hooks/useProxy';
 
 export function ProxyManagementSection() {
   const { t } = useTranslation();
-  const [proxyStats, setProxyStats] = useState<ProxyStats | null>(null);
-  const [proxyUploading, setProxyUploading] = useState(false);
+  const { data: proxyStats } = useProxyStats();
+  const uploadProxy = useUploadProxy();
+  const clearProxiesMutation = useClearProxies();
   const [proxyFileName, setProxyFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isOpen: isConfirmOpen, options: confirmOptions, confirm, handleConfirm, handleCancel: handleConfirmCancel } = useConfirmDialog();
 
-  const loadProxyStats = async () => {
-    try {
-      const stats = await proxyApi.getProxyStats();
-      setProxyStats(stats);
-    } catch (error: unknown) {
-      logger.error('Failed to load proxy stats:', error);
-    }
-  };
-
-  useEffect(() => {
-    loadProxyStats();
-  }, []);
-
   const uploadProxyFile = async (file: File) => {
     try {
-      setProxyUploading(true);
-      const result = await proxyApi.uploadProxyCSV(file);
+      const result = await uploadProxy.mutateAsync(file);
       setProxyFileName(result.filename);
       toast.success(t('settings.proxyUploaded', { count: result.count }));
-      await loadProxyStats();
     } catch (error: unknown) {
       const message = error instanceof Error && 'response' in error
         ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
         : t('settings.proxyUploadFailed');
       toast.error(message || t('settings.proxyUploadFailed'));
-    } finally {
-      setProxyUploading(false);
     }
   };
 
@@ -84,12 +67,10 @@ export function ProxyManagementSection() {
     if (!confirmed) return;
 
     try {
-      await proxyApi.clearProxies();
+      await clearProxiesMutation.mutateAsync();
       setProxyFileName(null);
       toast.success(t('settings.proxiesCleared'));
-      await loadProxyStats();
     } catch (error: unknown) {
-      logger.error('Failed to clear proxies:', error);
       toast.error(t('settings.proxiesClearFailed'));
     }
   };
@@ -143,9 +124,9 @@ export function ProxyManagementSection() {
             <Button
               variant="primary"
               onClick={() => fileInputRef.current?.click()}
-              isLoading={proxyUploading}
+              isLoading={uploadProxy.isPending}
             >
-              {proxyUploading ? t('settings.uploading') : t('settings.selectFile')}
+              {uploadProxy.isPending ? t('settings.uploading') : t('settings.selectFile')}
             </Button>
             <p className="text-dark-400 text-xs mt-4">{t('settings.proxyFormat')}</p>
           </div>

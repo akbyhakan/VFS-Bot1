@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { logger } from './logger';
+import { isAppError } from './AppError';
 import i18n from '@/i18n';
 
 interface ErrorOptions {
@@ -23,7 +24,26 @@ export function handleError(
 
   let message: string;
 
-  if (error instanceof Error) {
+  if (isAppError(error)) {
+    if (error.isRateLimited) {
+      message = error.retryAfter
+        ? `${error.message} (${i18n.t('errors.retryAfter', { seconds: error.retryAfter, defaultValue: `${error.retryAfter}s sonra tekrar deneyin` })})`
+        : error.message;
+      if (logError) {
+        logger.error('Error occurred:', error);
+      }
+      if (showToast) {
+        toast.warning(message);
+      }
+      return message;
+    }
+    if (error.hasFieldErrors) {
+      const firstFieldError = error.fieldErrors ? Object.values(error.fieldErrors)[0] : undefined;
+      message = firstFieldError ?? error.message;
+    } else {
+      message = error.message;
+    }
+  } else if (error instanceof Error) {
     message = error.message;
   } else if (typeof error === 'string') {
     message = error;
