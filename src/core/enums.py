@@ -8,6 +8,7 @@ class AppointmentRequestStatus(str, Enum):
 
     PENDING = "pending"
     PROCESSING = "processing"
+    CHECKING = "checking"
     COMPLETED = "completed"
     BOOKED = "booked"
     FAILED = "failed"
@@ -72,9 +73,11 @@ class SlotCheckStatus(str, Enum):
 class LogLevel(str, Enum):
     """Log level values for database logs."""
 
+    DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
+    SUCCESS = "SUCCESS"
 
     @classmethod
     def values(cls) -> list:
