@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import type { BotStatus, Metrics, HealthCheck } from '@/types/api';
+import type { BotStatus, Metrics, HealthCheck, LogEntry } from '@/types/api';
 import type { VFSAccount, CreateVFSAccountRequest, UpdateVFSAccountRequest } from '@/types/user';
 
 // Bot queries and mutations
@@ -82,9 +82,9 @@ export function useHealthCheck() {
 }
 
 export function useLogs(limit: number = 100) {
-  return useQuery<{ logs: string[] }>({
+  return useQuery<{ logs: LogEntry[] }>({
     queryKey: ['logs', limit],
-    queryFn: () => api.get<{ logs: string[] }>('/api/v1/bot/logs', { limit }),
+    queryFn: () => api.get<{ logs: LogEntry[] }>('/api/v1/bot/logs', { limit }),
     refetchInterval: 10000,
   });
 }

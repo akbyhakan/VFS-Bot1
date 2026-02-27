@@ -342,8 +342,8 @@ def test_thread_safe_bot_state_logs_deque():
     # Should only keep last 500
     logs = state.get_logs()
     assert len(logs) == 500
-    assert list(logs)[0] == "Log entry 100"  # First 100 were dropped
-    assert list(logs)[-1] == "Log entry 599"
+    assert list(logs)[0]["message"] == "Log entry 100"  # First 100 were dropped
+    assert list(logs)[-1]["message"] == "Log entry 599"
 
 
 @pytest.mark.security

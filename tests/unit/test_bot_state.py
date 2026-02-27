@@ -97,7 +97,10 @@ class TestThreadSafeBotStateLogs:
         """Test append_log adds to logs."""
         state = ThreadSafeBotState()
         state.append_log("First log")
-        assert "First log" in state.get_logs_list()
+        logs = state.get_logs_list()
+        assert logs[0]["message"] == "First log"
+        assert logs[0]["level"] == "INFO"
+        assert "timestamp" in logs[0]
 
     def test_get_logs_list_returns_copy(self):
         """Test get_logs_list returns a list copy."""
@@ -105,9 +108,9 @@ class TestThreadSafeBotStateLogs:
         state.append_log("msg1")
         logs = state.get_logs_list()
         assert isinstance(logs, list)
-        logs.append("injected")
+        logs.append({"message": "injected", "level": "INFO", "timestamp": "2024-01-01 00:00:00"})
         # Should not affect internal state
-        assert "injected" not in state.get_logs_list()
+        assert not any(l["message"] == "injected" for l in state.get_logs_list())
 
     def test_get_logs_returns_deque(self):
         """Test get_logs returns the deque reference."""
@@ -124,9 +127,9 @@ class TestThreadSafeBotStateLogs:
         logs = state.get_logs_list()
         assert len(logs) == 500
         # Most recent entries should be kept
-        assert "Log message 599" in logs
+        assert any(l["message"] == "Log message 599" for l in logs)
         # Oldest entries should be dropped
-        assert "Log message 0" not in logs
+        assert not any(l["message"] == "Log message 0" for l in logs)
 
 
 class TestThreadSafeBotStateToDict:
@@ -156,7 +159,7 @@ class TestThreadSafeBotStateToDict:
         assert d["running"] is True
         assert d["status"] == "running"
         assert d["slots_found"] == 10
-        assert "test log" in d["logs"]
+        assert any(entry["message"] == "test log" for entry in d["logs"])
 
     @pytest.mark.asyncio
     async def test_async_to_dict(self):

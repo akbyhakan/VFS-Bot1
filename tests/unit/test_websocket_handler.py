@@ -181,14 +181,15 @@ class TestAddLog:
             await add_log("Test message")
 
         mock_state.append_log.assert_called_once()
-        log_entry = mock_state.append_log.call_args[0][0]
-        assert "Test message" in log_entry
-        assert "INFO" in log_entry
+        # First positional arg is the raw message, second is the level
+        assert mock_state.append_log.call_args[0][0] == "Test message"
+        assert mock_state.append_log.call_args[0][1] == "INFO"
 
         mock_broadcast.assert_called_once()
         call_args = mock_broadcast.call_args[0][0]
         assert call_args["type"] == "log"
         assert call_args["data"]["level"] == "INFO"
+        assert call_args["data"]["message"] == "Test message"
 
     @pytest.mark.asyncio
     async def test_add_log_custom_level(self):
@@ -205,11 +206,12 @@ class TestAddLog:
             await add_log("Error occurred", level="ERROR")
 
         log_entry = mock_state.append_log.call_args[0][0]
-        assert "ERROR" in log_entry
-        assert "Error occurred" in log_entry
+        assert log_entry == "Error occurred"
+        assert mock_state.append_log.call_args[0][1] == "ERROR"
 
         call_args = mock_broadcast.call_args[0][0]
         assert call_args["data"]["level"] == "ERROR"
+        assert call_args["data"]["message"] == "Error occurred"
 
     @pytest.mark.asyncio
     async def test_add_log_broadcast_contains_timestamp(self):
@@ -244,8 +246,8 @@ class TestAddLog:
             await add_log("Slot found!", level="SUCCESS")
 
         log_entry = mock_state.append_log.call_args[0][0]
-        assert "SUCCESS" in log_entry
-        assert "Slot found!" in log_entry
+        assert log_entry == "Slot found!"
+        assert mock_state.append_log.call_args[0][1] == "SUCCESS"
 
         call_args = mock_broadcast.call_args[0][0]
         assert call_args["data"]["level"] == "SUCCESS"
@@ -265,8 +267,8 @@ class TestAddLog:
             await add_log("Debug info", level="DEBUG")
 
         log_entry = mock_state.append_log.call_args[0][0]
-        assert "DEBUG" in log_entry
-        assert "Debug info" in log_entry
+        assert log_entry == "Debug info"
+        assert mock_state.append_log.call_args[0][1] == "DEBUG"
 
         call_args = mock_broadcast.call_args[0][0]
         assert call_args["data"]["level"] == "DEBUG"

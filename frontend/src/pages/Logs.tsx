@@ -7,34 +7,27 @@ import { FileText, Search, Filter, Download, X, RefreshCw, Trash2 } from 'lucide
 import DOMPurify from 'dompurify';
 import { toast } from 'sonner';
 import { FixedSizeList } from 'react-window';
+import type { LogEntry } from '@/types/api';
 
 type LogLevel = 'ALL' | 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
 
 const LOG_LEVELS: LogLevel[] = ['ALL', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'SUCCESS'];
 
 /**
- * Sanitize log content to prevent XSS attacks
+ * Sanitize log message content to prevent XSS attacks
  */
-const sanitizeLog = (log: string): string => {
-  return DOMPurify.sanitize(log, {
+const sanitizeMessage = (message: string): string => {
+  return DOMPurify.sanitize(message, {
     ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'code'],
     ALLOWED_ATTR: [],
   });
-};
-
-/**
- * Extract log level from log string
- */
-const extractLogLevel = (log: string): string => {
-  const match = log.match(/\[(DEBUG|INFO|WARNING|ERROR|SUCCESS)\]/);
-  return match ? match[1] : 'INFO';
 };
 
 export function Logs() {
   const { data, isLoading, refetch, isRefetching } = useLogs(500);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<LogLevel>('ALL');
-  const [localLogs, setLocalLogs] = useState<string[] | null>(null);
+  const [localLogs, setLocalLogs] = useState<LogEntry[] | null>(null);
 
   // Use local logs if cleared, otherwise use API data
   const apiLogs = data?.logs || [];
@@ -46,17 +39,14 @@ export function Logs() {
 
     // Filter by level
     if (selectedLevel !== 'ALL') {
-      result = result.filter((log) => {
-        const level = extractLogLevel(log);
-        return level === selectedLevel;
-      });
+      result = result.filter((log) => log.level === selectedLevel);
     }
 
     // Search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter((log) =>
-        log.toLowerCase().includes(query)
+        log.message.toLowerCase().includes(query)
       );
     }
 
@@ -82,7 +72,9 @@ export function Logs() {
   };
 
   const handleExport = () => {
-    const content = filteredLogs.join('\n');
+    const content = filteredLogs
+      .map((l) => `[${l.timestamp}] [${l.level}] ${l.message}`)
+      .join('\n');
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -215,18 +207,18 @@ export function Logs() {
               >
                 {({ index, style }: { index: number; style: React.CSSProperties }) => {
                   const log = filteredLogs[index];
-                  const sanitizedLog = sanitizeLog(log);
-                  const level = extractLogLevel(sanitizedLog);
 
                   return (
                     <div
                       style={style}
                       className={cn(
                         'py-1 hover:bg-dark-800/50 transition-colors border-l-2 pl-2',
-                        getLogLevelColor(level)
+                        getLogLevelColor(log.level)
                       )}
                     >
-                      {sanitizedLog}
+                      <span className="text-dark-500">[{log.timestamp}]</span>{' '}
+                      <span className="font-semibold">[{log.level}]</span>{' '}
+                      {sanitizeMessage(log.message)}
                     </div>
                   );
                 }}
