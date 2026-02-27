@@ -131,9 +131,9 @@ export function VFSAccounts() {
 
   const handleDelete = async (user: VFSAccount) => {
     const confirmed = await confirm({
-      title: t('users.deleteAccountTitle'),
-      message: t('users.deleteAccountMessage', { email: user.email }),
-      confirmText: t('users.deleteAccountConfirm'),
+      title: t('users.deactivateAccountTitle'),
+      message: t('users.deactivateAccountMessage', { email: user.email }),
+      confirmText: t('users.deactivateAccountConfirm'),
       cancelText: t('users.deleteAccountCancel'),
       variant: 'danger',
     });
@@ -142,9 +142,9 @@ export function VFSAccounts() {
 
     try {
       await deleteUser.mutateAsync(user.id);
-      toast.success(t('users.accountDeleted'));
+      toast.success(t('users.accountDeactivated'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('users.deleteFailed'));
+      toast.error(error instanceof Error ? error.message : t('users.deactivateFailed'));
     }
   };
 
