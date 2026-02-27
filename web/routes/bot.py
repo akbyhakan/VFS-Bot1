@@ -11,7 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from src.core.bot_controller import BotController
-from web.dependencies import bot_state, broadcast_message, verify_hybrid_auth
+from web.dependencies import bot_state, broadcast_message, verify_jwt_token
 from web.models.bot import BotCommand, BotSettings, BotSettingsResponse
 
 router = APIRouter(prefix="/bot", tags=["bot"])
@@ -59,7 +59,7 @@ async def _sync_bot_state(controller: BotController) -> None:
 @router.post("/start")
 @limiter.limit("5/minute")
 async def start_bot(
-    request: Request, command: BotCommand, auth_data: dict = Depends(verify_hybrid_auth)
+    request: Request, command: BotCommand, auth_data: dict = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Start the bot - requires authentication.
@@ -108,7 +108,7 @@ async def start_bot(
 @router.post("/stop")
 @limiter.limit("5/minute")
 async def stop_bot(
-    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+    request: Request, auth_data: dict = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Stop the bot - requires authentication.
@@ -156,7 +156,7 @@ async def stop_bot(
 @router.post("/restart")
 @limiter.limit("5/minute")
 async def restart_bot(
-    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+    request: Request, auth_data: dict = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Restart the bot - requires authentication.
@@ -213,7 +213,7 @@ async def restart_bot(
 @router.post("/check-now")
 @limiter.limit("10/minute")
 async def check_now(
-    request: Request, auth_data: dict = Depends(verify_hybrid_auth)
+    request: Request, auth_data: dict = Depends(verify_jwt_token)
 ) -> Dict[str, str]:
     """
     Trigger a manual slot check - requires authentication.
@@ -254,7 +254,7 @@ async def check_now(
 
 @router.get("/logs")
 async def get_logs(
-    limit: int = 100, auth_data: Dict[str, Any] = Depends(verify_hybrid_auth)
+    limit: int = 100, auth_data: Dict[str, Any] = Depends(verify_jwt_token)
 ) -> Dict[str, List[str]]:
     """
     Get recent logs - requires authentication.
@@ -404,7 +404,7 @@ async def get_error_html_snapshot(request: Request, error_id: str):
 
 @router.get("/settings")
 async def get_bot_settings(
-    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth),
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
 ) -> BotSettingsResponse:
     """
     Get bot settings - requires authentication.
@@ -439,7 +439,7 @@ async def get_bot_settings(
 async def update_bot_settings(
     request: Request,
     settings: BotSettings,
-    auth_data: Dict[str, Any] = Depends(verify_hybrid_auth),
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
 ) -> Dict[str, str]:
     """
     Update bot settings - requires authentication.
