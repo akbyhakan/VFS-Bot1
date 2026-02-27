@@ -39,8 +39,8 @@ class AccountPoolRepository(BaseRepository):
         return await self.update_account_status(id, status)
 
     async def delete(self, id: int) -> bool:
-        """Soft-delete an account (set is_active=FALSE)."""
-        return await self.deactivate_account(id)
+        """Permanently delete an account from the database."""
+        return await self.hard_delete_account(id)
 
     async def get_available_accounts(self) -> List[Dict[str, Any]]:
         """
@@ -521,6 +521,29 @@ class AccountPoolRepository(BaseRepository):
         async with self.db.get_connection() as conn:
             result = await conn.execute(query, *params)
             return bool(result == "UPDATE 1")
+
+    async def hard_delete_account(self, account_id: int) -> bool:
+        """
+        Permanently delete an account from the database.
+
+        Related records in account_usage_log are automatically removed
+        via the ON DELETE CASCADE constraint defined in the migration.
+
+        Args:
+            account_id: Account ID
+
+        Returns:
+            True if successful, False otherwise
+        """
+        async with self.db.get_connection() as conn:
+            result = await conn.execute(
+                """
+                DELETE FROM vfs_account_pool
+                WHERE id = $1
+                """,
+                account_id,
+            )
+            return bool(result == "DELETE 1")
 
     async def deactivate_account(self, account_id: int) -> bool:
         """

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useBotStatus, useStartBot, useStopBot, useVFSAccounts } from '@/hooks/useApi';
+import { useBotStatus, useStartBot, useStopBot, useVFSAccounts, useDeleteVFSAccount } from '@/hooks/useApi';
 import { api } from '@/services/api';
 import { type ReactNode } from 'react';
 
@@ -108,6 +108,32 @@ describe('useApi hooks', () => {
 
       expect(result.current.data).toEqual(mockAccounts);
       expect(api.get).toHaveBeenCalledWith('/api/v1/vfs-accounts');
+    });
+  });
+
+  describe('useDeleteVFSAccount', () => {
+    it('should delete VFS account successfully', async () => {
+      vi.mocked(api.delete).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useDeleteVFSAccount(), { wrapper: createWrapper() });
+
+      result.current.mutate(1);
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      expect(api.delete).toHaveBeenCalledWith('/api/v1/vfs-accounts/1');
+    });
+
+    it('should handle delete error', async () => {
+      vi.mocked(api.delete).mockRejectedValue(new Error('Delete failed'));
+
+      const { result } = renderHook(() => useDeleteVFSAccount(), { wrapper: createWrapper() });
+
+      result.current.mutate(1);
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      expect(result.current.error).toBeInstanceOf(Error);
     });
   });
 });
