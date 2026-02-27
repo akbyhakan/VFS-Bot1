@@ -315,7 +315,7 @@ API endpoints are rate-limited to prevent abuse:
     # INFRASTRUCTURE (Unversioned — Standard practice)
     # ──────────────────────────────────────────────────────────────
     app.include_router(health_router)       # /health, /ready, /metrics
-    app.include_router(dashboard_router)    # /errors.html
+    app.include_router(dashboard_router)    # React SPA dashboard router
 
     # ──────────────────────────────────────────────────────────────
     # VERSIONED API (v1) — Used by the React frontend

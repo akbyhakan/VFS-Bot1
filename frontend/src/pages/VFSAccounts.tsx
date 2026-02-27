@@ -3,6 +3,7 @@ import { logger } from '@/utils/logger';
 import { useTranslation } from 'react-i18next';
 import { useVFSAccounts, useCreateVFSAccount, useUpdateVFSAccount, useDeleteVFSAccount, useToggleVFSAccountStatus } from '@/hooks/useApi';
 import { useCreateWebhook, useDeleteWebhook } from '@/hooks/useWebhook';
+import { useVFSAccountStats } from '@/hooks/useVFSAccountStats';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Table } from '@/components/ui/Table';
@@ -12,7 +13,7 @@ import { Loading } from '@/components/common/Loading';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CSVImportModal } from '@/components/vfs-accounts/CSVImportModal';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload, Link2, Copy, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Power, Search, Download, X, Eye, EyeOff, Upload, Link2, Copy, Check, Users } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vfsAccountSchema, createVFSAccountSchema, type VFSAccountFormData } from '@/utils/validators';
@@ -40,6 +41,7 @@ export function VFSAccounts() {
   const toggleStatus = useToggleVFSAccountStatus();
   const createWebhookMutation = useCreateWebhook();
   const deleteWebhookMutation = useDeleteWebhook();
+  const stats = useVFSAccountStats(users);
 
   // Load webhooks for all users
   useEffect(() => {
@@ -252,6 +254,25 @@ export function VFSAccounts() {
           <Button variant="primary" onClick={openCreateModal} leftIcon={<Plus className="w-4 h-4" />}>
             {t('users.newAccount')}
           </Button>
+        </div>
+      </div>
+
+      {/* Account Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-3 bg-dark-800 rounded-lg text-center border border-dark-700">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-dark-400" />
+          </div>
+          <p className="text-2xl font-bold">{stats.total_accounts}</p>
+          <p className="text-xs text-dark-400">{t('users.totalAccounts')}</p>
+        </div>
+        <div className="p-3 bg-dark-800 rounded-lg text-center border border-dark-700">
+          <p className="text-2xl font-bold text-green-400">{stats.active_accounts}</p>
+          <p className="text-xs text-dark-400">{t('users.activeAccounts')}</p>
+        </div>
+        <div className="p-3 bg-dark-800 rounded-lg text-center border border-dark-700">
+          <p className="text-2xl font-bold text-red-400">{stats.inactive_accounts}</p>
+          <p className="text-xs text-dark-400">{t('users.inactiveAccounts')}</p>
         </div>
       </div>
 

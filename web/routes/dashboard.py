@@ -4,29 +4,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-
-# Initialize templates
-templates_dir = Path(__file__).parent.parent / "templates"
-templates = Jinja2Templates(directory=str(templates_dir))
 
 router = APIRouter(tags=["dashboard"])
-
-
-@router.get("/errors.html", response_class=HTMLResponse)
-async def errors_dashboard(request: Request):
-    """
-    Render errors dashboard page.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        HTML response with errors dashboard template
-    """
-    return templates.TemplateResponse(
-        "errors.html", {"request": request, "title": "Error Dashboard - VFS Bot"}
-    )
 
 
 # Catch-all route for React SPA - MUST be registered last in main app!

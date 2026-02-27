@@ -131,29 +131,6 @@ class TestCSPNonceInHeaders:
         assert "'unsafe-inline'" in csp
 
 
-class TestCSPInHTML:
-    """Tests for CSP header in HTML responses."""
-
-    def test_errors_template_has_csp(self, client):
-        """Test that errors.html response includes CSP header."""
-        response = client.get("/errors.html")
-        assert response.status_code == 200
-
-        # CSP header should be present
-        csp = response.headers.get("Content-Security-Policy", "")
-        assert csp != ""
-        assert "default-src 'self'" in csp
-
-    def test_csp_consistent_on_html_responses(self, client):
-        """Test that CSP is consistent across multiple HTML requests."""
-        responses = [client.get("/errors.html") for _ in range(3)]
-        csps = [r.headers.get("Content-Security-Policy", "") for r in responses]
-
-        # All CSP headers should be identical (no dynamic nonces)
-        assert len(set(csps)) == 1
-        assert csps[0] != ""
-
-
 class TestCSPContent:
     """Tests for CSP header content and security properties."""
 
