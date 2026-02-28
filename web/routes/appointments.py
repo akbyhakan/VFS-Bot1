@@ -68,7 +68,7 @@ def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
 
 
 # Load countries data from YAML (replaces hardcoded list)
-COUNTRIES_DATA = list(_load_countries_from_yaml())
+COUNTRIES_DATA = _load_countries_from_yaml()
 
 
 @router.get("/countries", response_model=List[CountryResponse])
