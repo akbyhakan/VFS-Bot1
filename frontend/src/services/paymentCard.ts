@@ -13,7 +13,7 @@ export const paymentCardApi = {
   async getPaymentCard(): Promise<PaymentCard | null> {
     try {
       const card = await api.get<PaymentCard>('/api/v1/payment/payment-card');
-      return card;
+      return card ?? null;
     } catch (error: unknown) {
       // Return null if no card exists (404) or if card is explicitly null
       if (isAppError(error)) {
