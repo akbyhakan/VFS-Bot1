@@ -227,6 +227,13 @@ class SelectorHealthCheckConfig(BaseModel):
 
     enabled: bool = Field(default=False)
     interval: int = Field(default=60)
+    critical_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Failure ratio threshold (0.0–1.0) that triggers auto-stop. "
+                    "E.g., 0.5 = stop if ≥50% selectors fail.",
+    )
 
 
 class AppointmentsConfig(BaseModel):

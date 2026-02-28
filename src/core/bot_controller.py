@@ -159,6 +159,10 @@ class BotController:
                     check_interval=self._config.get("selector_health_check", {}).get(
                         "interval", 3600
                     ),
+                    shutdown_event=self._shutdown_event,
+                    critical_failure_threshold=self._config.get(
+                        "selector_health_check", {}
+                    ).get("critical_threshold", 0.5),
                 )
                 logger.info("Selector health monitoring initialized")
             except Exception as e:

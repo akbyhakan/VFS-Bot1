@@ -465,3 +465,36 @@ class TestSecretStrMasking:
         repr_str = repr(config)
 
         assert "123456" in repr_str
+
+
+class TestSelectorHealthCheckConfig:
+    """Tests for SelectorHealthCheckConfig."""
+
+    def test_default_values(self):
+        """Test default values."""
+        config = SelectorHealthCheckConfig()
+        assert config.enabled is False
+        assert config.interval == 60
+        assert config.critical_threshold == 0.5
+
+    def test_custom_threshold(self):
+        """Test that custom critical_threshold is accepted."""
+        config = SelectorHealthCheckConfig(critical_threshold=0.7)
+        assert config.critical_threshold == 0.7
+
+    def test_threshold_boundary_values(self):
+        """Test boundary values 0.0 and 1.0 are accepted."""
+        config_min = SelectorHealthCheckConfig(critical_threshold=0.0)
+        assert config_min.critical_threshold == 0.0
+        config_max = SelectorHealthCheckConfig(critical_threshold=1.0)
+        assert config_max.critical_threshold == 1.0
+
+    def test_threshold_out_of_range_raises(self):
+        """Test that values outside 0.0–1.0 raise ValidationError."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            SelectorHealthCheckConfig(critical_threshold=1.1)
+
+        with pytest.raises(ValidationError):
+            SelectorHealthCheckConfig(critical_threshold=-0.1)
