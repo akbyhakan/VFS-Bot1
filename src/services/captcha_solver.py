@@ -2,6 +2,7 @@
 
 import asyncio
 import atexit
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
@@ -12,7 +13,8 @@ from playwright.async_api import Page
 class CaptchaSolver:
     """2Captcha-based captcha solving service."""
 
-    _executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(max_workers=2)
+    _executor: Optional[ThreadPoolExecutor] = None
+    _executor_lock = threading.Lock()
 
     def __init__(self, api_key: str):
         """
@@ -44,27 +46,28 @@ class CaptchaSolver:
         """Return string representation with masked API key."""
         return self.__repr__()
 
-    def _get_executor(self) -> Optional[ThreadPoolExecutor]:
+    @classmethod
+    def _get_or_create_executor(cls) -> ThreadPoolExecutor:
         """
-        Get executor if available and not shutdown.
+        Get or create the thread pool executor using double-checked locking.
 
         Returns:
-            ThreadPoolExecutor if valid, None otherwise (will use asyncio default executor)
+            ThreadPoolExecutor instance
         """
-        executor = self._executor
-        if executor is None:
-            return None
+        if cls._executor is None:
+            with cls._executor_lock:
+                if cls._executor is None:  # Double-checked locking
+                    cls._executor = ThreadPoolExecutor(max_workers=2)
+        return cls._executor
 
-        # Check if executor is shutdown by attempting to access _shutdown attribute
-        try:
-            # If _shutdown is True, the executor has been shut down
-            if hasattr(executor, "_shutdown") and executor._shutdown:
-                return None
-        except Exception:
-            # If we can't check, assume it's not usable
-            return None
+    def _get_executor(self) -> ThreadPoolExecutor:
+        """
+        Get the thread pool executor, creating it if needed.
 
-        return executor
+        Returns:
+            ThreadPoolExecutor instance
+        """
+        return self._get_or_create_executor()
 
     async def solve_recaptcha(self, page: Page, site_key: str, url: str) -> Optional[str]:
         """
@@ -224,19 +227,19 @@ class CaptchaSolver:
         Args:
             wait: If True, wait for pending tasks to complete before shutdown
         """
-        # Guard against multiple shutdown calls
-        if not hasattr(cls, "_executor") or cls._executor is None:
-            logger.debug("Executor already shut down or not initialized")
-            return
+        with cls._executor_lock:
+            if cls._executor is None:
+                logger.debug("Executor already shut down or not initialized")
+                return
 
-        try:
-            cls._executor.shutdown(wait=wait)
-            logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
-        except RuntimeError:
-            # Executor may have been shut down by another thread
-            logger.debug("Executor shutdown already in progress")
-        finally:
-            cls._executor = None
+            try:
+                cls._executor.shutdown(wait=wait)
+                logger.info(f"CaptchaSolver executor shutdown (wait={wait})")
+            except RuntimeError:
+                # Executor may have been shut down by another thread
+                logger.debug("Executor shutdown already in progress")
+            finally:
+                cls._executor = None
 
 
 # Register automatic cleanup on module exit
@@ -244,4 +247,5 @@ class CaptchaSolver:
 # Captcha solving tasks are API calls that can be safely interrupted during shutdown.
 # Trade-off: In-flight API requests to 2Captcha may be interrupted, potentially wasting
 # credits if a solve was in progress. This is acceptable to prevent hanging on shutdown.
+# After shutdown, the executor will be re-created automatically on the next use.
 atexit.register(CaptchaSolver.shutdown, wait=False)

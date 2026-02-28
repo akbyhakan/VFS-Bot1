@@ -272,6 +272,7 @@ def get_encryption() -> PasswordEncryption:
     Thread Safety:
         Uses double-checked locking pattern to minimize lock contention.
         First check without lock (fast path), then recheck after acquiring lock.
+        All _last_key_check_time writes happen inside the lock.
     """
     global _encryption_instance, _last_key_check_time
 
@@ -284,17 +285,18 @@ def get_encryption() -> PasswordEncryption:
             # Fast path: instance exists and TTL not expired - no env check needed
             return _encryption_instance
 
-        # TTL expired - check if key changed
-        current_key = os.getenv("ENCRYPTION_KEY")
-        if current_key and _normalize_key(current_key) == _encryption_instance._key:
-            # Key unchanged - update check time and return
-            _last_key_check_time = current_time
-            return _encryption_instance
-        # Key changed or no cached instance - recreate with new key
+        # TTL expired - fall through to locked section
 
-    # Acquire lock only if instance doesn't exist or key changed
+    # Acquire lock if instance doesn't exist or TTL expired
     with _encryption_lock:
         current_time = time.monotonic()
+
+        # Re-check TTL inside lock (another thread may have updated it while we waited)
+        if _encryption_instance is not None and (
+            current_time - _last_key_check_time < _KEY_CHECK_INTERVAL
+        ):
+            return _encryption_instance
+
         current_key = os.getenv("ENCRYPTION_KEY")
 
         # Double-check after acquiring lock

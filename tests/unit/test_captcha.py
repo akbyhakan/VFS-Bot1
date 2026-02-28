@@ -1,7 +1,6 @@
 """Tests for captcha solver."""
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -108,36 +107,38 @@ async def test_solve_turnstile_custom_timeout():
 
 @pytest.mark.asyncio
 async def test_solve_turnstile_executor_shutdown():
-    """Test Turnstile solving after executor shutdown."""
+    """Test Turnstile solving after executor shutdown - executor is auto-recreated."""
     solver = CaptchaSolver(api_key="test_api_key")
 
     # Shutdown the executor
     CaptchaSolver.shutdown(wait=False)
+    assert CaptchaSolver._executor is None
 
     # Mock TwoCaptcha
     mock_solver_instance = MagicMock()
     mock_solver_instance.turnstile = MagicMock(return_value={"code": "token-after-shutdown"})
 
     with patch("twocaptcha.TwoCaptcha", return_value=mock_solver_instance):
-        # Should still work by using asyncio's default executor (None)
+        # Should still work - executor is auto-recreated by _get_or_create_executor()
         token = await solver.solve_turnstile(
             page_url="https://visa.vfsglobal.com/tur/tr/nld", site_key="mock-site-key", timeout=120
         )
 
-        # Should succeed even after shutdown by falling back to default executor
+        # Should succeed with auto-recreated executor
         assert token == "token-after-shutdown"
 
-    # Recreate executor for other tests
-    CaptchaSolver._executor = ThreadPoolExecutor(max_workers=2)
+    # Verify executor was re-created
+    assert CaptchaSolver._executor is not None
 
 
 @pytest.mark.asyncio
 async def test_solve_recaptcha_executor_shutdown():
-    """Test reCAPTCHA solving after executor shutdown."""
+    """Test reCAPTCHA solving after executor shutdown - executor is auto-recreated."""
     solver = CaptchaSolver(api_key="test_api_key")
 
     # Shutdown the executor
     CaptchaSolver.shutdown(wait=False)
+    assert CaptchaSolver._executor is None
 
     # Mock TwoCaptcha
     mock_solver_instance = MagicMock()
@@ -145,13 +146,13 @@ async def test_solve_recaptcha_executor_shutdown():
 
     with patch("twocaptcha.TwoCaptcha", return_value=mock_solver_instance):
         mock_page = MagicMock()
-        # Should still work by using asyncio's default executor (None)
+        # Should still work - executor is auto-recreated by _get_or_create_executor()
         token = await solver.solve_recaptcha(
             page=mock_page, site_key="mock-site-key", url="https://example.com"
         )
 
-        # Should succeed even after shutdown by falling back to default executor
+        # Should succeed with auto-recreated executor
         assert token == "recaptcha-token"
 
-    # Recreate executor for other tests
-    CaptchaSolver._executor = ThreadPoolExecutor(max_workers=2)
+    # Verify executor was re-created
+    assert CaptchaSolver._executor is not None
