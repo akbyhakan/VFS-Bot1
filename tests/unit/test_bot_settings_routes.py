@@ -182,7 +182,7 @@ class TestBotSettingsRoutes:
         assert response.status_code == 422
 
     def test_update_bot_settings_controller_not_configured(self, client, mock_auth):
-        """Test updating bot settings when controller not configured."""
+        """Test updating bot settings when controller not configured returns 503."""
         with patch("web.routes.bot._get_controller") as mock_get_controller:
             from fastapi import HTTPException
 
@@ -190,7 +190,57 @@ class TestBotSettingsRoutes:
 
             response = client.put("/api/v1/bot/settings", json={"cooldown_minutes": 15})
 
-            assert response.status_code == 200
+            assert response.status_code == 503
             data = response.json()
-            assert data["status"] == "error"
-            assert "not configured" in data["message"]
+            assert data["type"] == "urn:vfsbot:error:service-unavailable"
+            assert data["title"] == "Service Unavailable"
+            assert data["status"] == 503
+            assert "detail" in data
+
+    def test_start_bot_controller_not_configured(self, client, mock_auth):
+        """Test starting bot when controller not configured returns 503."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            from fastapi import HTTPException
+
+            mock_get_controller.side_effect = HTTPException(status_code=503)
+            response = client.post("/api/v1/bot/start")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["type"] == "urn:vfsbot:error:service-unavailable"
+            assert data["status"] == 503
+
+    def test_stop_bot_controller_not_configured(self, client, mock_auth):
+        """Test stopping bot when controller not configured returns 503."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            from fastapi import HTTPException
+
+            mock_get_controller.side_effect = HTTPException(status_code=503)
+            response = client.post("/api/v1/bot/stop")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["type"] == "urn:vfsbot:error:service-unavailable"
+            assert data["status"] == 503
+
+    def test_restart_bot_controller_not_configured(self, client, mock_auth):
+        """Test restarting bot when controller not configured returns 503."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            from fastapi import HTTPException
+
+            mock_get_controller.side_effect = HTTPException(status_code=503)
+            response = client.post("/api/v1/bot/restart")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["type"] == "urn:vfsbot:error:service-unavailable"
+            assert data["status"] == 503
+
+    def test_check_now_controller_not_configured(self, client, mock_auth):
+        """Test check-now when controller not configured returns 503."""
+        with patch("web.routes.bot._get_controller") as mock_get_controller:
+            from fastapi import HTTPException
+
+            mock_get_controller.side_effect = HTTPException(status_code=503)
+            response = client.post("/api/v1/bot/check-now")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["type"] == "urn:vfsbot:error:service-unavailable"
+            assert data["status"] == 503

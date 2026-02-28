@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -16,21 +16,6 @@ from web.models.bot import BotSettings, BotSettingsResponse
 
 router = APIRouter(prefix="/bot", tags=["bot"])
 limiter = Limiter(key_func=get_remote_address)
-
-# Error message constants
-def _bot_not_configured_response() -> JSONResponse:
-    """Return a proper 503 response when bot controller is not configured."""
-    return JSONResponse(
-        status_code=503,
-        content={
-            "type": "urn:vfsbot:error:service-unavailable",
-            "title": "Service Unavailable",
-            "status": 503,
-            "detail": "Bot controller not configured. Please restart in 'both' mode.",
-        },
-        media_type="application/problem+json",
-    )
-
 
 async def _get_controller() -> BotController:
     """
@@ -79,10 +64,7 @@ async def start_bot(
     Returns:
         Response dictionary
     """
-    try:
-        controller = await _get_controller()
-    except HTTPException:
-        return _bot_not_configured_response()
+    controller = await _get_controller()
 
     # Start the bot via controller
     result = await controller.start_bot()
@@ -127,10 +109,7 @@ async def stop_bot(
     Returns:
         Response dictionary
     """
-    try:
-        controller = await _get_controller()
-    except HTTPException:
-        return _bot_not_configured_response()
+    controller = await _get_controller()
 
     # Stop the bot via controller
     result = await controller.stop_bot()
@@ -175,10 +154,7 @@ async def restart_bot(
     Returns:
         Response dictionary
     """
-    try:
-        controller = await _get_controller()
-    except HTTPException:
-        return _bot_not_configured_response()
+    controller = await _get_controller()
 
     # Broadcast restarting status
     await broadcast_message(
@@ -232,10 +208,7 @@ async def check_now(
     Returns:
         Response dictionary
     """
-    try:
-        controller = await _get_controller()
-    except HTTPException:
-        return _bot_not_configured_response()
+    controller = await _get_controller()
 
     # Trigger manual check via controller
     result = await controller.trigger_check_now()
@@ -479,12 +452,9 @@ async def update_bot_settings(
     Returns:
         Response dictionary
     """
-    try:
-        controller = await _get_controller()
-    except HTTPException:
-        return _bot_not_configured_response()
+    controller = await _get_controller()
 
-    # Build update kwargs - only send non-None values
+    # Build update kwargs
     update_kwargs = {"cooldown_seconds": settings.cooldown_minutes * 60}
 
     if settings.quarantine_minutes is not None:
