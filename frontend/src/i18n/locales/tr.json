@@ -182,7 +182,7 @@
     "clearProxiesMessage": "Tüm proxy listesini temizlemek istediğinizden emin misiniz?",
     "clearProxiesConfirm": "Temizle",
     "clearProxiesCancel": "İptal",
-    "proxiesCleared": "Proxy listesi temizlendi",
+    "proxiesCleared": "{{count}} proxy başarıyla temizlendi",
     "proxiesClearFailed": "Proxy listesi temizlenemedi",
     "fixFormErrors": "Lütfen form hatalarını düzeltin",
     "cardSaved": "Kart bilgileri kaydedildi",

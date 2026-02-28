@@ -183,7 +183,7 @@
     "clearProxiesMessage": "Are you sure you want to clear the entire proxy list?",
     "clearProxiesConfirm": "Clear",
     "clearProxiesCancel": "Cancel",
-    "proxiesCleared": "Proxy list cleared",
+    "proxiesCleared": "{{count}} proxies cleared successfully",
     "proxiesClearFailed": "Failed to clear proxy list",
     "fixFormErrors": "Please fix form errors",
     "cardSaved": "Card details saved",

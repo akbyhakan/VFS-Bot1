@@ -57,10 +57,12 @@ export interface ProxyDeleteResponse {
 
 export interface ProxyClearResponse {
   message: string;
+  count: number;
 }
 
 export interface ProxyResetFailuresResponse {
   message: string;
+  count: number;
 }
 
 /**
