@@ -144,6 +144,7 @@ export interface RuntimeConfigResponse {
 }
 
 export interface RuntimeConfigUpdateRequest {
+  /** Configuration key in `'category.parameter'` format (must contain a dot). */
   key: string;
   value: number | string | boolean;
 }
