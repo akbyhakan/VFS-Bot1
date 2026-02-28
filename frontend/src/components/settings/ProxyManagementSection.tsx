@@ -67,9 +67,9 @@ export function ProxyManagementSection() {
     if (!confirmed) return;
 
     try {
-      await clearProxiesMutation.mutateAsync();
+      const result = await clearProxiesMutation.mutateAsync();
       setProxyFileName(null);
-      toast.success(t('settings.proxiesCleared'));
+      toast.success(t('settings.proxiesCleared', { count: result.count }));
     } catch (error: unknown) {
       toast.error(t('settings.proxiesClearFailed'));
     }

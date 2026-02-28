@@ -169,7 +169,7 @@ All protected endpoints require a Bearer token in the Authorization header:
 Authorization: Bearer <your-token>
 ```
 
-Obtain a token via the `/api/auth/login` endpoint.
+Obtain a token via the `/api/v1/auth/login` endpoint.
 
 ### Rate Limiting
 

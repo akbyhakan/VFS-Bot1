@@ -25,7 +25,7 @@ class ProxyStats(BaseModel):
 
 
 # ================================================================================
-# CRUD Endpoints
+# Static Path Endpoints (MUST be defined BEFORE dynamic /{proxy_id} routes)
 # ================================================================================
 
 
@@ -149,151 +149,34 @@ async def list_proxies(
         raise HTTPException(status_code=500, detail="Failed to retrieve proxy list")
 
 
-@router.get("/{proxy_id}", response_model=ProxyResponse)
-async def get_proxy(
-    proxy_id: int,
+@router.get("/stats")
+async def get_proxy_stats(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
-    Get a single proxy by ID (password excluded).
+    Get proxy statistics from the database.
 
     Args:
-        proxy_id: Proxy ID
         token_data: Verified token data
         proxy_repo: ProxyRepository instance
 
     Returns:
-        Proxy details
+        Database statistics
     """
     try:
-        proxy = await proxy_repo.get_by_id(proxy_id)
-
-        if not proxy:
-            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
-
-        return ProxyResponse(
-            id=proxy["id"],
-            server=proxy["server"],
-            port=proxy["port"],
-            username=proxy["username"],
-            is_active=bool(proxy["is_active"]),
-            failure_count=proxy["failure_count"],
-            last_used=proxy.get("last_used"),
-            created_at=proxy["created_at"],
-            updated_at=proxy["updated_at"],
+        db_stats = await proxy_repo.get_stats()
+        return ProxyStats(
+            total=db_stats.get("total_proxies", 0),
+            active=db_stats.get("active_proxies", 0),
+            inactive=db_stats.get("inactive_proxies", 0),
+            failed=db_stats.get("failed_proxies", 0),
+            avg_failure_count=db_stats.get("avg_failure_count", 0.0),
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to get proxy {proxy_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve proxy")
-
-
-@router.put("/{proxy_id}", response_model=ProxyResponse)
-async def update_proxy(
-    proxy_id: int,
-    proxy: ProxyUpdateRequest,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
-):
-    """
-    Update a proxy endpoint.
-
-    Args:
-        proxy_id: Proxy ID
-        proxy: Update data
-        token_data: Verified token data
-        proxy_repo: ProxyRepository instance
-
-    Returns:
-        Updated proxy details
-    """
-    try:
-        # Validate port if provided
-        if proxy.port is not None and not (1 <= proxy.port <= 65535):
-            raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
-
-        # Build update data dictionary
-        update_data = {}
-        if proxy.server is not None:
-            update_data["server"] = proxy.server
-        if proxy.port is not None:
-            update_data["port"] = proxy.port
-        if proxy.username is not None:
-            update_data["username"] = proxy.username
-        if proxy.password is not None:
-            update_data["password"] = proxy.password
-        if proxy.is_active is not None:
-            update_data["is_active"] = proxy.is_active
-
-        # Update proxy
-        updated = await proxy_repo.update(proxy_id, update_data)
-
-        if not updated:
-            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
-
-        # Fetch updated proxy
-        updated_proxy = await proxy_repo.get_by_id(proxy_id)
-        if not updated_proxy:
-            raise HTTPException(status_code=500, detail="Failed to retrieve updated proxy")
-
-        logger.info(f"Proxy {proxy_id} updated")
-
-        return ProxyResponse(
-            id=updated_proxy["id"],
-            server=updated_proxy["server"],
-            port=updated_proxy["port"],
-            username=updated_proxy["username"],
-            is_active=bool(updated_proxy["is_active"]),
-            failure_count=updated_proxy["failure_count"],
-            last_used=updated_proxy.get("last_used"),
-            created_at=updated_proxy["created_at"],
-            updated_at=updated_proxy["updated_at"],
-        )
-
-    except HTTPException:
-        raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Failed to update proxy {proxy_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update proxy")
-
-
-@router.delete("/{proxy_id}")
-async def delete_proxy(
-    proxy_id: int,
-    token_data: Dict[str, Any] = Depends(verify_jwt_token),
-    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
-):
-    """
-    Delete a proxy endpoint.
-
-    Args:
-        proxy_id: Proxy ID
-        token_data: Verified token data
-        proxy_repo: ProxyRepository instance
-
-    Returns:
-        Success message
-    """
-    try:
-        deleted = await proxy_repo.delete(proxy_id)
-
-        if not deleted:
-            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
-
-        logger.info(f"Proxy {proxy_id} deleted")
-
-        return {"message": f"Proxy {proxy_id} deleted successfully"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to delete proxy {proxy_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete proxy")
+        logger.error(f"Failed to get stats: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
 
 
 @router.delete("/clear-all")
@@ -483,31 +366,153 @@ async def upload_proxy_csv(
         raise HTTPException(status_code=500, detail="Failed to upload proxy file")
 
 
-@router.get("/stats")
-async def get_proxy_stats(
+# ================================================================================
+# Dynamic Path Endpoints (/{proxy_id} — MUST come AFTER all static paths)
+# ================================================================================
+
+
+@router.get("/{proxy_id}", response_model=ProxyResponse)
+async def get_proxy(
+    proxy_id: int,
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
     """
-    Get proxy statistics from the database.
+    Get a single proxy by ID (password excluded).
 
     Args:
+        proxy_id: Proxy ID
         token_data: Verified token data
         proxy_repo: ProxyRepository instance
 
     Returns:
-        Database statistics
+        Proxy details
     """
     try:
-        db_stats = await proxy_repo.get_stats()
-        return ProxyStats(
-            total=db_stats.get("total_proxies", 0),
-            active=db_stats.get("active_proxies", 0),
-            inactive=db_stats.get("inactive_proxies", 0),
-            failed=db_stats.get("failed_proxies", 0),
-            avg_failure_count=db_stats.get("avg_failure_count", 0.0),
+        proxy = await proxy_repo.get_by_id(proxy_id)
+
+        if not proxy:
+            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
+
+        return ProxyResponse(
+            id=proxy["id"],
+            server=proxy["server"],
+            port=proxy["port"],
+            username=proxy["username"],
+            is_active=bool(proxy["is_active"]),
+            failure_count=proxy["failure_count"],
+            last_used=proxy.get("last_used"),
+            created_at=proxy["created_at"],
+            updated_at=proxy["updated_at"],
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to get stats: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve statistics")
+        logger.error(f"Failed to get proxy {proxy_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve proxy")
+
+
+@router.put("/{proxy_id}", response_model=ProxyResponse)
+async def update_proxy(
+    proxy_id: int,
+    proxy: ProxyUpdateRequest,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
+):
+    """
+    Update a proxy endpoint.
+
+    Args:
+        proxy_id: Proxy ID
+        proxy: Update data
+        token_data: Verified token data
+        proxy_repo: ProxyRepository instance
+
+    Returns:
+        Updated proxy details
+    """
+    try:
+        # Validate port if provided
+        if proxy.port is not None and not (1 <= proxy.port <= 65535):
+            raise HTTPException(status_code=400, detail="Port must be between 1 and 65535")
+
+        # Build update data dictionary
+        update_data = {}
+        if proxy.server is not None:
+            update_data["server"] = proxy.server
+        if proxy.port is not None:
+            update_data["port"] = proxy.port
+        if proxy.username is not None:
+            update_data["username"] = proxy.username
+        if proxy.password is not None:
+            update_data["password"] = proxy.password
+        if proxy.is_active is not None:
+            update_data["is_active"] = proxy.is_active
+
+        # Update proxy
+        updated = await proxy_repo.update(proxy_id, update_data)
+
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
+
+        # Fetch updated proxy
+        updated_proxy = await proxy_repo.get_by_id(proxy_id)
+        if not updated_proxy:
+            raise HTTPException(status_code=500, detail="Failed to retrieve updated proxy")
+
+        logger.info(f"Proxy {proxy_id} updated")
+
+        return ProxyResponse(
+            id=updated_proxy["id"],
+            server=updated_proxy["server"],
+            port=updated_proxy["port"],
+            username=updated_proxy["username"],
+            is_active=bool(updated_proxy["is_active"]),
+            failure_count=updated_proxy["failure_count"],
+            last_used=updated_proxy.get("last_used"),
+            created_at=updated_proxy["created_at"],
+            updated_at=updated_proxy["updated_at"],
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update proxy {proxy_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update proxy")
+
+
+@router.delete("/{proxy_id}")
+async def delete_proxy(
+    proxy_id: int,
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+    proxy_repo: ProxyRepository = Depends(get_proxy_repository),
+):
+    """
+    Delete a proxy endpoint.
+
+    Args:
+        proxy_id: Proxy ID
+        token_data: Verified token data
+        proxy_repo: ProxyRepository instance
+
+    Returns:
+        Success message
+    """
+    try:
+        deleted = await proxy_repo.delete(proxy_id)
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"Proxy {proxy_id} not found")
+
+        logger.info(f"Proxy {proxy_id} deleted")
+
+        return {"message": f"Proxy {proxy_id} deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete proxy {proxy_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete proxy")
