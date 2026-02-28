@@ -19,7 +19,9 @@ class ProxyStats(BaseModel):
 
     total: int
     active: int
+    inactive: int
     failed: int
+    avg_failure_count: float
 
 
 # ================================================================================
@@ -132,7 +134,9 @@ async def list_proxies(
         stats = ProxyStats(
             total=db_stats.get("total_proxies", 0),
             active=db_stats.get("active_proxies", 0),
-            failed=db_stats.get("inactive_proxies", 0),
+            inactive=db_stats.get("inactive_proxies", 0),
+            failed=db_stats.get("failed_proxies", 0),
+            avg_failure_count=db_stats.get("avg_failure_count", 0.0),
         )
 
         return {
@@ -499,7 +503,9 @@ async def get_proxy_stats(
         return ProxyStats(
             total=db_stats.get("total_proxies", 0),
             active=db_stats.get("active_proxies", 0),
-            failed=db_stats.get("inactive_proxies", 0),
+            inactive=db_stats.get("inactive_proxies", 0),
+            failed=db_stats.get("failed_proxies", 0),
+            avg_failure_count=db_stats.get("avg_failure_count", 0.0),
         )
 
     except Exception as e:

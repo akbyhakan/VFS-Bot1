@@ -445,6 +445,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                     COUNT(*) as total_proxies,
                     COUNT(*) FILTER (WHERE is_active = true) as active_proxies,
                     COUNT(*) FILTER (WHERE is_active = false) as inactive_proxies,
+                    COUNT(*) FILTER (WHERE failure_count > 0) as failed_proxies,
                     AVG(failure_count) as avg_failure_count,
                     MAX(failure_count) as max_failure_count
                 FROM proxy_endpoints
@@ -455,6 +456,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                     "total_proxies": int(row["total_proxies"]),
                     "active_proxies": int(row["active_proxies"]),
                     "inactive_proxies": int(row["inactive_proxies"]),
+                    "failed_proxies": int(row["failed_proxies"]),
                     "avg_failure_count": (
                         float(row["avg_failure_count"]) if row["avg_failure_count"] else 0.0
                     ),
@@ -467,6 +469,7 @@ class ProxyRepository(BaseRepository[Proxy]):
                 "total_proxies": 0,
                 "active_proxies": 0,
                 "inactive_proxies": 0,
+                "failed_proxies": 0,
                 "avg_failure_count": 0.0,
                 "max_failure_count": 0,
             }

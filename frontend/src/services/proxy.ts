@@ -7,7 +7,9 @@ import { api } from './api';
 export interface ProxyStats {
   total: number;
   active: number;
+  inactive: number;
   failed: number;
+  avg_failure_count: number;
 }
 
 export interface ProxyInfo {

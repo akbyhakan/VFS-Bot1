@@ -322,6 +322,7 @@ class TestProxyDatabase:
             assert stats["total_proxies"] == 0
             assert stats["active_proxies"] == 0
             assert stats["inactive_proxies"] == 0
+            assert stats["failed_proxies"] == 0
 
             # Add proxies
             await proxy_repo.create(
@@ -357,6 +358,14 @@ class TestProxyDatabase:
             assert stats["total_proxies"] == 3
             assert stats["active_proxies"] == 2
             assert stats["inactive_proxies"] == 1
+            assert stats["failed_proxies"] == 0
+
+            # Mark a proxy as failed
+            await proxy_repo.mark_failed(proxy2_id)
+
+            # Verify failed_proxies count increases
+            stats = await proxy_repo.get_stats()
+            assert stats["failed_proxies"] == 1
 
         finally:
             await db.close()

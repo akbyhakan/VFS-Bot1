@@ -85,7 +85,7 @@ export function ProxyManagementSection() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-dark-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-white">{proxyStats?.total || 0}</div>
               <div className="text-sm text-dark-400">{t('settings.proxyTotal')}</div>
@@ -93,6 +93,10 @@ export function ProxyManagementSection() {
             <div className="bg-dark-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-green-500">{proxyStats?.active || 0}</div>
               <div className="text-sm text-dark-400">{t('settings.proxyActive')}</div>
+            </div>
+            <div className="bg-dark-800 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-amber-500">{proxyStats?.inactive || 0}</div>
+              <div className="text-sm text-dark-400">{t('settings.proxyInactive')}</div>
             </div>
             <div className="bg-dark-800 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-red-500">{proxyStats?.failed || 0}</div>

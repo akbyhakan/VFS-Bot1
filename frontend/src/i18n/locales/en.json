@@ -168,6 +168,7 @@
     "proxyManagement": "🌐 Proxy Management (NetNut)",
     "proxyTotal": "Total",
     "proxyActive": "Active",
+    "proxyInactive": "Inactive",
     "proxyFailed": "Failed",
     "dragDropCSV": "Drag and drop CSV file",
     "or": "or",
