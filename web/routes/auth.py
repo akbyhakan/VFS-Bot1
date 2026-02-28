@@ -11,7 +11,7 @@ from src.core.auth import create_access_token, revoke_token
 from src.core.auth.jwt_tokens import get_token_expire_hours
 from src.core.security import generate_api_key
 from src.models.database import Database
-from web.dependencies import extract_raw_token, get_db, verify_jwt_token
+from web.dependencies import extract_raw_token, get_db, verify_jwt_token, verify_jwt_token_allow_expired
 from web.models.auth import LoginRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -191,12 +191,12 @@ async def get_current_user(
 
 @router.post("/refresh")
 async def refresh_token(
-    request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token)
+    request: Request, response: Response, token_data: Dict[str, Any] = Depends(verify_jwt_token_allow_expired)
 ) -> Dict[str, str]:
     """
     Refresh JWT token endpoint - issues a new HttpOnly cookie with a fresh token.
 
-    Requires authentication (valid existing token) to prevent unauthorized use.
+    Accepts expired tokens (signature and blacklist still validated).
 
     Args:
         request: FastAPI request object (required for rate limiter)

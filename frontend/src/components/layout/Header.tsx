@@ -57,7 +57,6 @@ export function Header({ onMenuClick, isSidebarOpen = false }: HeaderProps) {
               'w-2 h-2 rounded-full',
               status === 'running' && 'bg-primary-500 animate-pulse',
               status === 'stopped' && 'bg-red-500',
-              status === 'idle' && 'bg-yellow-500',
               status === 'error' && 'bg-red-600',
               status === 'starting' && 'bg-blue-500 animate-pulse',
               status === 'restarting' && 'bg-yellow-500 animate-pulse',
@@ -69,7 +68,6 @@ export function Header({ onMenuClick, isSidebarOpen = false }: HeaderProps) {
           <span className={cn('text-sm font-medium', getStatusColor(status))}>
             {status === 'running' && t('header.statusRunning')}
             {status === 'stopped' && t('header.statusStopped')}
-            {status === 'idle' && t('header.statusIdle')}
             {status === 'error' && t('header.statusError')}
             {status === 'starting' && t('header.statusStarting')}
             {status === 'restarting' && t('header.statusRestarting')}

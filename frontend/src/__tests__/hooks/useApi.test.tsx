@@ -113,7 +113,8 @@ describe('useApi hooks', () => {
 
   describe('useDeleteVFSAccount', () => {
     it('should delete VFS account successfully', async () => {
-      vi.mocked(api.delete).mockResolvedValue(undefined);
+      const mockResponse = { message: 'VFS account permanently deleted', action: 'deleted' };
+      vi.mocked(api.delete).mockResolvedValue(mockResponse);
 
       const { result } = renderHook(() => useDeleteVFSAccount(), { wrapper: createWrapper() });
 
@@ -121,6 +122,7 @@ describe('useApi hooks', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
+      expect(result.current.data).toEqual(mockResponse);
       expect(api.delete).toHaveBeenCalledWith('/api/v1/vfs-accounts/1');
     });
 

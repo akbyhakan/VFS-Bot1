@@ -23,6 +23,7 @@ from .jwt_tokens import (
     invalidate_jwt_settings_cache,
     revoke_token,
     verify_token,
+    verify_token_allow_expired,
 )
 from .password import (
     MAX_PASSWORD_BYTES,
@@ -65,6 +66,7 @@ __all__ = [
     "get_token_expire_hours",
     "create_access_token",
     "verify_token",
+    "verify_token_allow_expired",
     "revoke_token",
     # Password
     "MAX_PASSWORD_BYTES",

@@ -74,8 +74,6 @@ export function getStatusColor(status: string): string {
       return 'text-primary-500';
     case 'stopped':
       return 'text-red-500';
-    case 'idle':
-      return 'text-yellow-500';
     case 'error':
       return 'text-red-600';
     case 'starting':

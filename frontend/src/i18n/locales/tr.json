@@ -45,7 +45,6 @@
     "switchToDark": "Koyu temaya geç",
     "statusRunning": "Çalışıyor",
     "statusStopped": "Durduruldu",
-    "statusIdle": "Beklemede",
     "statusError": "Hata",
     "statusStarting": "Başlatılıyor...",
     "statusRestarting": "Yeniden Başlatılıyor...",

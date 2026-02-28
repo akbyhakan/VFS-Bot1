@@ -119,8 +119,8 @@ export function useUpdateVFSAccount() {
 
 export function useDeleteVFSAccount() {
   const queryClient = useQueryClient();
-  return useMutation<void, Error, number>({
-    mutationFn: (id) => api.delete(`/api/v1/vfs-accounts/${id}`),
+  return useMutation<{ message: string; action: string }, Error, number>({
+    mutationFn: (id) => api.delete<{ message: string; action: string }>(`/api/v1/vfs-accounts/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vfs-accounts'] });
     },
