@@ -10,6 +10,7 @@ from loguru import logger
 from src.core.rate_limiting import EndpointRateLimiter
 
 from ...constants.countries import get_country_info, get_route, validate_mission_code
+from ...utils.security.header_manager import HeaderManager
 from .auth import VFSAuth
 from .booking import VFSBooking
 from .models import (
@@ -30,7 +31,13 @@ class VFSApiClient:
     Supports all 21 Schengen countries that can be applied from Turkey.
     """
 
-    def __init__(self, mission_code: str, captcha_solver: Any, timeout: int = 30):
+    def __init__(
+        self,
+        mission_code: str,
+        captcha_solver: Any,
+        timeout: int = 30,
+        header_manager: Optional[HeaderManager] = None,
+    ):
         """
         Initialize VFS API client.
 
@@ -38,6 +45,7 @@ class VFSApiClient:
             mission_code: Target country code (fra, nld, hrv, etc.)
             captcha_solver: CaptchaSolver instance for Turnstile
             timeout: Request timeout in seconds
+            header_manager: Optional HeaderManager for dynamic UA rotation
         """
         validate_mission_code(mission_code)
 
@@ -46,6 +54,7 @@ class VFSApiClient:
         self.country_info = get_country_info(mission_code)
         self.captcha_solver = captcha_solver
         self.timeout = timeout
+        self._header_manager = header_manager or HeaderManager()
 
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._client_source: Optional[str] = None
@@ -91,19 +100,17 @@ class VFSApiClient:
         if self._http_session is None:
             self._client_source = self._generate_client_source()
 
-            headers = {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/135.0.0.0 Safari/537.36"
-                ),
-                "Accept": "application/json, text/plain, */*",
-                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Origin": "https://visa.vfsglobal.com",
-                "Referer": f"https://visa.vfsglobal.com/{self.route}/",
-                "route": self.route,
-                "clientsource": self._client_source,
-            }
+            # Get dynamic headers from HeaderManager and overlay VFS-specific headers
+            headers = self._header_manager.get_api_headers()
+            headers.update(
+                {
+                    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "Origin": "https://visa.vfsglobal.com",
+                    "Referer": f"https://visa.vfsglobal.com/{self.route}/",
+                    "route": self.route,
+                    "clientsource": self._client_source,
+                }
+            )
 
             # Connection pooling configuration
             connector = aiohttp.TCPConnector(

@@ -154,7 +154,31 @@ class TestVFSApiClient:
         assert headers["route"] == "tur/tr/nld"
         assert headers["clientsource"] is not None
         assert "visa.vfsglobal.com" in headers["Origin"]
+        # User-Agent is dynamic (not the old hardcoded Chrome/135 version)
+        assert headers["User-Agent"]
+        assert "Chrome/135.0.0.0" not in headers["User-Agent"]
 
+        await client.close()
+
+    @pytest.mark.asyncio
+    async def test_header_manager_injection(self, mock_captcha_solver):
+        """Test that a custom HeaderManager can be injected."""
+        from src.utils.security.header_manager import HeaderManager
+
+        custom_hm = HeaderManager()
+        client = VFSApiClient(
+            mission_code="nld", captcha_solver=mock_captcha_solver, header_manager=custom_hm
+        )
+        assert client._header_manager is custom_hm
+        await client.close()
+
+    @pytest.mark.asyncio
+    async def test_header_manager_default_creation(self, mock_captcha_solver):
+        """Test that a default HeaderManager is created when none is provided."""
+        from src.utils.security.header_manager import HeaderManager
+
+        client = VFSApiClient(mission_code="nld", captcha_solver=mock_captcha_solver)
+        assert isinstance(client._header_manager, HeaderManager)
         await client.close()
 
     @pytest.mark.asyncio

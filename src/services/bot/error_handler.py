@@ -1,12 +1,15 @@
 """Error handling and screenshot capture service."""
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from loguru import logger
 from playwright.async_api import Page
+
+from src.utils.masking import mask_sensitive_dict
 
 
 class ErrorHandler:
@@ -91,11 +94,13 @@ class ErrorHandler:
 
             checkpoint_data = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                **state,
+                **mask_sensitive_dict(state),
             }
 
             with open(checkpoint_file, "w") as f:
                 json.dump(checkpoint_data, f, indent=2)
+
+            os.chmod(checkpoint_file, 0o600)
 
             logger.info(f"Checkpoint saved to {checkpoint_file}")
             return checkpoint_file
