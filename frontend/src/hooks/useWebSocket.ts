@@ -40,14 +40,6 @@ export function useWebSocket() {
   // Maximum buffer size to prevent memory leak
   const MAX_LOG_BUFFER_SIZE = 100;
 
-  // Helper to safely extract error message from status data
-  const getErrorMessage = (data: unknown): string | undefined => {
-    if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
-      return data.message;
-    }
-    return undefined;
-  };
-
   // Flush log buffer - now with stable dependencies
   const flushLogs = useCallback(() => {
     if (logBuffer.current.length > 0) {
@@ -96,7 +88,7 @@ export function useWebSocket() {
                 type: 'info',
               });
             } else if (status === BOT_STATUS.ERROR) {
-              const errorMessage = getErrorMessage(message.data);
+              const errorMessage = message.data.message;
               addNotificationRef.current({
                 title: tRef.current('notifications.botError'),
                 message: errorMessage || tRef.current('notifications.botErrorMessage'),

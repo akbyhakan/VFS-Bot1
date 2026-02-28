@@ -3,11 +3,19 @@ import { renderHook, act } from '@testing-library/react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth';
+import { api } from '@/services/api';
 
 vi.mock('@/services/auth', () => ({
   authService: {
     login: vi.fn(),
     logout: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/api', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -19,6 +27,7 @@ describe('useAuth', () => {
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      username: null,
     });
   });
 
@@ -28,6 +37,7 @@ describe('useAuth', () => {
     expect(result.current).toHaveProperty('isAuthenticated');
     expect(result.current).toHaveProperty('isLoading');
     expect(result.current).toHaveProperty('error');
+    expect(result.current).toHaveProperty('username');
     expect(result.current).toHaveProperty('login');
     expect(result.current).toHaveProperty('logout');
     expect(result.current).toHaveProperty('checkAuth');
@@ -35,7 +45,10 @@ describe('useAuth', () => {
   });
 
   it('should handle successful login', async () => {
-    vi.mocked(authService.login).mockResolvedValue(undefined);
+    vi.mocked(authService.login).mockResolvedValue({
+      message: 'Login successful',
+      user: { username: 'test' },
+    });
 
     const { result } = renderHook(() => useAuth());
 
@@ -49,6 +62,7 @@ describe('useAuth', () => {
     );
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.error).toBe(null);
+    expect(result.current.username).toBe('test');
   });
 
   it('should handle login error', async () => {
@@ -68,7 +82,7 @@ describe('useAuth', () => {
   });
 
   it('should handle logout', async () => {
-    useAuthStore.setState({ isAuthenticated: true });
+    useAuthStore.setState({ isAuthenticated: true, username: 'test' });
     const { result } = renderHook(() => useAuth());
 
     await act(async () => {
@@ -77,17 +91,34 @@ describe('useAuth', () => {
 
     expect(authService.logout).toHaveBeenCalled();
     expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.username).toBe(null);
   });
 
-  it('should check authentication status', () => {
+  it('should check authentication status', async () => {
+    vi.mocked(api.get).mockResolvedValue({ username: 'test' });
+
     const { result } = renderHook(() => useAuth());
 
-    act(() => {
-      result.current.checkAuth();
+    await act(async () => {
+      await result.current.checkAuth();
     });
 
-    // checkAuth is now a no-op, so state should remain unchanged
+    expect(api.get).toHaveBeenCalledWith('/api/v1/auth/me');
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.username).toBe('test');
+  });
+
+  it('should handle failed checkAuth', async () => {
+    vi.mocked(api.get).mockRejectedValue(new Error('Unauthorized'));
+
+    const { result } = renderHook(() => useAuth());
+
+    await act(async () => {
+      await result.current.checkAuth();
+    });
+
     expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.username).toBe(null);
   });
 
   it('should clear error', () => {

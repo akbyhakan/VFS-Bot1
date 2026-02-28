@@ -180,6 +180,43 @@ class ProxyRepository(BaseRepository[Proxy]):
 
             return proxies
 
+    async def get_all_as_dicts(self, limit: int = 1000) -> List[Dict[str, Any]]:
+        """
+        Get all proxies (active and inactive) with decrypted passwords.
+
+        Args:
+            limit: Maximum number of proxies to return
+
+        Returns:
+            List of proxy dictionaries with decrypted passwords
+        """
+        async with self.db.get_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, server, port, username, password_encrypted, is_active,
+                       last_used, failure_count, created_at, updated_at
+                FROM proxy_endpoints
+                ORDER BY created_at DESC
+                LIMIT $1
+                """,
+                limit,
+            )
+
+            proxies = []
+            for row in rows:
+                proxy_dict = dict(row)
+                # Decrypt password
+                try:
+                    proxy_dict["password"] = decrypt_password(proxy_dict["password_encrypted"])
+                    del proxy_dict["password_encrypted"]  # Remove encrypted version from response
+                    proxies.append(proxy_dict)
+                except Exception as e:
+                    logger.error(f"Failed to decrypt password for proxy {proxy_dict['id']}: {e}")
+                    # Skip proxies with decryption errors
+                    continue
+
+            return proxies
+
     async def create(self, data: Dict[str, Any]) -> int:
         """
         Add a new proxy endpoint with encrypted password.

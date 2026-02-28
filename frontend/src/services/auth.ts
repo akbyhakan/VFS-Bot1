@@ -1,12 +1,12 @@
 import { api } from './api';
 import { REMEMBER_ME_KEY } from '@/utils/constants';
 import { logger } from '@/utils/logger';
-import type { LoginRequest } from '@/types/api';
+import type { LoginRequest, LoginResponse } from '@/types/api';
 
 export class AuthService {
-  async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<void> {
-    // Server sets HttpOnly cookie — no token in response body
-    await api.post('/api/v1/auth/login', credentials);
+  async login(credentials: LoginRequest, rememberMe: boolean = false): Promise<LoginResponse> {
+    // Server sets HttpOnly cookie — token also returned in response body
+    const response = await api.post<LoginResponse>('/api/v1/auth/login', credentials);
 
     // Store remember me preference
     if (rememberMe) {
@@ -14,7 +14,8 @@ export class AuthService {
     } else {
       localStorage.removeItem(REMEMBER_ME_KEY);
     }
-    // No need to return/store the token — cookie handles auth
+
+    return response;
   }
 
   async logout(): Promise<void> {

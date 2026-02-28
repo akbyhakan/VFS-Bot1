@@ -102,7 +102,7 @@ async def create_api_key_endpoint(
 
 
 @router.post("/login")
-async def login(request: Request, response: Response, credentials: LoginRequest) -> Dict[str, str]:
+async def login(request: Request, response: Response, credentials: LoginRequest) -> Dict[str, Any]:
     """
     Login endpoint - sets HttpOnly cookie.
 
@@ -112,7 +112,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
         credentials: Username and password
 
     Returns:
-        Success message
+        Success message with user info
 
     Raises:
         HTTPException: If credentials are invalid or environment not configured
@@ -169,7 +169,24 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
         path="/",
     )
 
-    return {"message": "Login successful"}
+    return {"message": "Login successful", "user": {"username": credentials.username}}
+
+
+@router.get("/me")
+async def get_current_user(
+    token_data: Dict[str, Any] = Depends(verify_jwt_token),
+) -> Dict[str, Any]:
+    """
+    Get current authenticated user info.
+
+    Args:
+        token_data: Verified JWT token payload
+
+    Returns:
+        Current user info
+    """
+    username = token_data.get("name", token_data.get("sub", "unknown"))
+    return {"username": username}
 
 
 @router.post("/refresh")
