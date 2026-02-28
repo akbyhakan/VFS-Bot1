@@ -4,7 +4,7 @@ This module has been refactored into a modular package structure for better
 maintainability and separation of concerns.
 """
 
-from src.core.rate_limiting import (
+from ..rate_limiting import (
     AuthRateLimiter,
     InMemoryBackend,
     RateLimiterBackend,

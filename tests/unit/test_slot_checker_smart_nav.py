@@ -6,7 +6,7 @@ import pytest
 
 from src.core.exceptions import VFSBotError
 from src.services.bot.page_state_detector import PageState, PageStateResult
-from src.services.bot.slot_checker import SlotChecker
+from src.services.bot.slot_checker import SlotChecker, SlotCheckerDeps
 
 
 class TestSlotCheckerSPANavigation:
@@ -54,7 +54,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -95,7 +95,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -127,7 +127,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -155,7 +155,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -182,7 +182,6 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=None,
         )
 
         mock_page = AsyncMock()
@@ -217,7 +216,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -265,7 +264,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -316,7 +315,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -378,7 +377,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -431,7 +430,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -486,7 +485,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -541,7 +540,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()
@@ -596,7 +595,7 @@ class TestSlotCheckerSPANavigation:
         slot_checker = SlotChecker(
             config=config,
             rate_limiter=mock_rate_limiter,
-            page_state_detector=mock_page_state_detector,
+            deps=SlotCheckerDeps(page_state_detector=mock_page_state_detector),
         )
 
         mock_page = AsyncMock()

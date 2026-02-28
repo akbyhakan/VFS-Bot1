@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 import aiohttp
 from loguru import logger
 
-from src.core.rate_limiting import EndpointRateLimiter
+from ...core.rate_limiting import EndpointRateLimiter
 
 from ...core.exceptions import (
     VFSAuthenticationError,

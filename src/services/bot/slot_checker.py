@@ -2,12 +2,13 @@
 
 import asyncio
 import random
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 
 from loguru import logger
 from playwright.async_api import Page
 
-from src.core.rate_limiting import RateLimiter
+from ...core.rate_limiting import RateLimiter
 
 from ...constants import Delays
 from ...core.exceptions import VFSBotError
@@ -29,6 +30,17 @@ class SlotInfo(TypedDict, total=False):
     capacity: int
 
 
+@dataclass(frozen=True)
+class SlotCheckerDeps:
+    """Optional dependencies for SlotChecker, following InfraServices pattern."""
+
+    human_sim: Optional[HumanSimulator] = None
+    cloudflare_handler: Optional[CloudflareHandler] = None
+    error_capture: Optional[ErrorCapture] = None
+    page_state_detector: Optional[Any] = None
+    selector_manager: Optional[Any] = None
+
+
 class SlotChecker:
     """Checks for available VFS appointment slots with rate limiting."""
 
@@ -36,11 +48,7 @@ class SlotChecker:
         self,
         config: "Dict[str, Any]",
         rate_limiter: RateLimiter,
-        human_sim: Optional[HumanSimulator] = None,
-        cloudflare_handler: Optional[CloudflareHandler] = None,
-        error_capture: Optional[ErrorCapture] = None,
-        page_state_detector: Optional[Any] = None,
-        selector_manager: Optional[Any] = None,
+        deps: Optional[SlotCheckerDeps] = None,
     ):
         """
         Initialize slot checker.
@@ -48,25 +56,23 @@ class SlotChecker:
         Args:
             config: Bot configuration dictionary
             rate_limiter: RateLimiter instance for rate limiting
-            human_sim: Optional HumanSimulator for realistic interactions
-            cloudflare_handler: Optional CloudflareHandler for bypassing challenges
-            error_capture: Optional ErrorCapture for capturing errors
-            page_state_detector: Optional PageStateDetector for smart navigation
-            selector_manager: Optional SelectorManager instance (for dependency injection)
+            deps: Optional SlotCheckerDeps with optional service dependencies
         """
         self.config = config
         self.rate_limiter = rate_limiter
-        self.human_sim = human_sim
-        self.cloudflare_handler = cloudflare_handler
-        self.error_capture = error_capture or ErrorCapture()
-        self.page_state_detector = page_state_detector
+
+        _deps = deps or SlotCheckerDeps()
+        self.human_sim = _deps.human_sim
+        self.cloudflare_handler = _deps.cloudflare_handler
+        self.error_capture = _deps.error_capture or ErrorCapture()
+        self.page_state_detector = _deps.page_state_detector
 
         # Initialize SelectorManager (with DI support and fallback to lazy import)
-        if selector_manager is not None:
-            self._selector_manager = selector_manager
+        if _deps.selector_manager is not None:
+            self._selector_manager = _deps.selector_manager
         else:
             # Fallback: lazy import for backward compatibility
-            from src.selector import get_selector_manager
+            from ...selector import get_selector_manager
 
             country = config.get("vfs", {}).get("mission", "default")
             self._selector_manager = get_selector_manager(country)

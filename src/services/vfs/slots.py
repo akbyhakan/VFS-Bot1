@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Optional
 import aiohttp
 from loguru import logger
 
-from src.core.rate_limiting import EndpointRateLimiter
+from ...core.rate_limiting import EndpointRateLimiter
 
 from ...core.exceptions import VFSApiError, VFSRateLimitError
 from .encryption import get_vfs_api_base
