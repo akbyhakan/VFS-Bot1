@@ -128,28 +128,28 @@ async def delete_vfs_account(
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     account_repo: AccountPoolRepository = Depends(get_vfs_account_repository),
 ):
-    """Deactivate a VFS account - requires authentication."""
+    """Permanently delete a VFS account - requires authentication."""
     try:
         account = await account_repo.get_account_by_id(account_id, decrypt=False)
 
         if not account:
             raise HTTPException(status_code=404, detail="VFS account not found")
 
-        deleted = await account_repo.deactivate_account(account_id)
+        deleted = await account_repo.hard_delete_account(account_id)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="VFS account not found")
 
         logger.info(
-            f"VFS account deactivated: {account['email']} by {token_data.get('sub', 'unknown')}"
+            f"VFS account permanently deleted: {account['email']} by {token_data.get('sub', 'unknown')}"
         )
-        return {"message": "VFS account deactivated successfully", "action": "deactivated"}
+        return {"message": "VFS account permanently deleted", "action": "deleted"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deactivating VFS account: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to deactivate VFS account")
+        logger.error(f"Error deleting VFS account: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete VFS account")
 
 
 @router.patch("/{account_id}", response_model=VFSAccountModel)

@@ -293,6 +293,11 @@
     "deactivateFailed": "Deactivation failed",
     "accountActivated": "Account activated",
     "accountDeactivated": "Account deactivated",
+    "deleteAccountTitle": "Permanently Delete Account",
+    "deleteAccountMessage": "Are you sure you want to permanently delete the \"{{email}}\" account? This action cannot be undone and all related data will be deleted.",
+    "deleteAccountConfirm": "Delete Permanently",
+    "accountDeleted": "Account permanently deleted",
+    "deleteFailed": "Failed to delete account",
     "exportSuccess": "VFS account list downloaded"
   },
   "appointmentRequest": {
