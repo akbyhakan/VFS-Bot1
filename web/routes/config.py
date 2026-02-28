@@ -1,6 +1,6 @@
 """Runtime configuration API routes."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -16,7 +16,9 @@ class ConfigUpdateRequest(BaseModel):
     """Request model for updating runtime configuration."""
 
     key: str = Field(..., description="Configuration key (e.g., 'retries.max_login')")
-    value: Any = Field(..., description="New value for the configuration key")
+    value: Union[int, float, str, bool] = Field(
+        ..., description="New value for the configuration key"
+    )
 
     @field_validator("key")
     @classmethod

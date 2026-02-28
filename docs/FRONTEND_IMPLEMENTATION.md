@@ -248,9 +248,13 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `DELETE /api/v1/payment/payment-card` - Delete payment card
 - ✅ `POST /api/v1/proxy/add` - Add proxy
 - ✅ `GET /api/v1/proxy/list` - List proxies
+- ✅ `GET /api/v1/proxy/{proxy_id}` - Get single proxy
+- ✅ `PUT /api/v1/proxy/{proxy_id}` - Update proxy
+- ✅ `DELETE /api/v1/proxy/{proxy_id}` - Delete single proxy
 - ✅ `GET /api/v1/proxy/stats` - Get proxy statistics
 - ✅ `DELETE /api/v1/proxy/clear-all` - Clear all proxies
 - ✅ `POST /api/v1/proxy/upload` - Upload proxy file
+- ✅ `POST /api/v1/proxy/reset-failures` - Reset proxy failure counts
 - ✅ `GET /api/v1/appointments/settings/webhook-urls` - Get webhook URLs for SMS forwarding
 - ✅ `POST /api/v1/webhook/users/{id}/create` - Create user webhook
 - ✅ `GET /api/v1/webhook/users/{id}` - Get user webhook info

@@ -31,6 +31,34 @@ export interface UploadProxyResponse {
   message: string;
   count: number;
   filename: string;
+  warnings?: string[];
+}
+
+export interface ProxyCreateRequest {
+  server: string;
+  port: number;
+  username: string;
+  password: string;
+}
+
+export interface ProxyUpdateRequest {
+  server?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  is_active?: boolean;
+}
+
+export interface ProxyDeleteResponse {
+  message: string;
+}
+
+export interface ProxyClearResponse {
+  message: string;
+}
+
+export interface ProxyResetFailuresResponse {
+  message: string;
 }
 
 /**
@@ -59,8 +87,43 @@ export async function getProxyStats(): Promise<ProxyStats> {
 /**
  * Clear all proxies
  */
-export async function clearProxies(): Promise<void> {
-  await api.delete('/api/v1/proxy/clear-all');
+export async function clearProxies(): Promise<ProxyClearResponse> {
+  return api.delete<ProxyClearResponse>('/api/v1/proxy/clear-all');
+}
+
+/**
+ * Add a single proxy
+ */
+export async function addProxy(proxy: ProxyCreateRequest): Promise<ProxyInfo> {
+  return api.post<ProxyInfo>('/api/v1/proxy/add', proxy);
+}
+
+/**
+ * Get a single proxy by ID
+ */
+export async function getProxy(proxyId: number): Promise<ProxyInfo> {
+  return api.get<ProxyInfo>(`/api/v1/proxy/${proxyId}`);
+}
+
+/**
+ * Update a proxy by ID
+ */
+export async function updateProxy(proxyId: number, data: ProxyUpdateRequest): Promise<ProxyInfo> {
+  return api.put<ProxyInfo>(`/api/v1/proxy/${proxyId}`, data);
+}
+
+/**
+ * Delete a proxy by ID
+ */
+export async function deleteProxy(proxyId: number): Promise<ProxyDeleteResponse> {
+  return api.delete<ProxyDeleteResponse>(`/api/v1/proxy/${proxyId}`);
+}
+
+/**
+ * Reset failure counts for all proxies
+ */
+export async function resetProxyFailures(): Promise<ProxyResetFailuresResponse> {
+  return api.post<ProxyResetFailuresResponse>('/api/v1/proxy/reset-failures', {});
 }
 
 export const proxyApi = {
@@ -68,4 +131,9 @@ export const proxyApi = {
   getProxyList,
   getProxyStats,
   clearProxies,
+  addProxy,
+  getProxy,
+  updateProxy,
+  deleteProxy,
+  resetProxyFailures,
 };
