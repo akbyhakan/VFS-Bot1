@@ -14,8 +14,8 @@ from loguru import logger
 if TYPE_CHECKING:
     from ...core.infra.runners import BotConfigDict
 
-from src.core.rate_limiting import get_rate_limiter
-from src.selector import SelectorSelfHealing
+from ...core.rate_limiting import get_rate_limiter
+from ...selector import SelectorSelfHealing
 
 from ...constants import RateLimits
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
@@ -37,7 +37,7 @@ from ..slot_analyzer import SlotPatternAnalyzer
 from .auth_service import AuthService
 from .error_handler import ErrorHandler
 from .page_state_detector import PageStateDetector
-from .slot_checker import SlotChecker
+from .slot_checker import SlotChecker, SlotCheckerDeps
 from .waitlist_handler import WaitlistHandler
 
 
@@ -374,7 +374,7 @@ class BotServiceFactory:
         )
 
         # Get selector manager for country-aware selectors
-        from src.selector import get_selector_manager
+        from ...selector import get_selector_manager
 
         country = config_dict.get("vfs", {}).get("mission", "default")
         selector_manager = get_selector_manager(country)
@@ -383,11 +383,13 @@ class BotServiceFactory:
         slot_checker = SlotChecker(
             config_dict,
             core.rate_limiter,
-            anti_detection.human_sim,
-            anti_detection.cloudflare_handler,
-            core.error_capture,
-            page_state_detector,
-            selector_manager,
+            deps=SlotCheckerDeps(
+                human_sim=anti_detection.human_sim,
+                cloudflare_handler=anti_detection.cloudflare_handler,
+                error_capture=core.error_capture,
+                page_state_detector=page_state_detector,
+                selector_manager=selector_manager,
+            ),
         )
 
         return WorkflowServicesContext(

@@ -21,6 +21,7 @@ Public API:
 from .auth_service import AuthService
 from .booking_executor import BookingExecutor
 from .booking_workflow import BookingWorkflow
+from .bot_loop_manager import BotLoopManager
 from .browser_manager import BrowserManager
 from .error_handler import ErrorHandler
 from .mission_processor import MissionProcessor
@@ -33,12 +34,13 @@ from .service_context import (
     CoreServicesContext,
     WorkflowServicesContext,
 )
-from .slot_checker import SlotChecker, SlotInfo
+from .slot_checker import SlotChecker, SlotCheckerDeps, SlotInfo
 from .types import PersonDict, ReservationDict
 from .vfs_bot import VFSBot
 
 __all__ = [
     "VFSBot",
+    "BotLoopManager",
     "BrowserManager",
     "AuthService",
     "BookingWorkflow",
@@ -46,6 +48,7 @@ __all__ = [
     "BookingExecutor",
     "MissionProcessor",
     "SlotChecker",
+    "SlotCheckerDeps",
     "SlotInfo",
     "ErrorHandler",
     "PersonDict",

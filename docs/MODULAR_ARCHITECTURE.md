@@ -9,7 +9,8 @@ The VFS Bot is now split into focused, maintainable components:
 ```
 src/services/bot/
 ├── __init__.py                    # Public API exports
-├── vfs_bot.py                     # Orchestrator (~645 lines)
+├── vfs_bot.py                     # Orchestrator (~415 lines)
+├── bot_loop_manager.py            # Main bot loop and loop helpers (~250 lines)
 ├── booking_dependencies.py        # DI container dataclasses (~69 lines)
 ├── booking_workflow.py            # Main booking workflow orchestrator
 ├── booking_executor.py            # Booking execution and confirmation
@@ -17,7 +18,7 @@ src/services/bot/
 ├── mission_processor.py           # Individual request processing within missions
 ├── browser_manager.py             # Browser lifecycle (~159 lines)
 ├── auth_service.py                # Authentication & OTP (~157 lines)
-├── slot_checker.py                # Slot availability (~133 lines)
+├── slot_checker.py                # Slot availability (~145 lines)
 ├── circuit_breaker_service.py     # Fault tolerance (~141 lines)
 ├── error_handler.py               # Error capture & screenshots (~131 lines)
 ├── page_state_detector.py         # Page state detection
@@ -30,23 +31,17 @@ src/services/bot/
 ### 1. **VFSBot** (Orchestrator)
 - **File**: `vfs_bot.py`
 - **Responsibility**: Coordinate all bot components
-- **Lines**: ~645 (down from 860 in the God Class)
+- **Lines**: ~415 (down from 668 after BotLoopManager extraction)
 - **Key Methods**:
   - `__init__()` - Initialize bot with dependency injection
   - `_wire_booking_dependencies()` - Static factory for BookingDependencies (SRP extraction)
-  - `start()` - Initialize and start bot loop
+  - `start()` - Initialize and start bot loop (delegates to BotLoopManager)
   - `stop()` - Graceful shutdown (idempotent, delegates to helpers)
   - `_cancel_health_checker()` - Cancel health checker task
   - `_shutdown_active_bookings()` - Wait for active bookings with grace period
   - `_force_cancel_bookings()` - Force-cancel after timeout
   - `_save_shutdown_checkpoint()` - Save state before cancellation
   - `_notify_stopped()` - Send stopped notification
-  - `run_bot_loop()` - Main processing loop using SessionOrchestrator
-  - `_wait_or_shutdown()` - Event-based wait (no polling)
-  - `_handle_circuit_breaker_open()` - Handle CB open state with alerting
-  - `_wait_adaptive_interval()` - Adaptive interval scheduling
-  - `_ensure_db_connection()` - Database health check and reconnection
-  - `_record_circuit_breaker_trip()` - Metrics recording
   - `book_appointment_for_request()` - API booking delegation
   - `trigger_immediate_check()` - Trigger immediate slot check
   - `cleanup()` - Browser resource cleanup (idempotent)
@@ -65,7 +60,19 @@ stop()
 └── _notify_stopped()              # Send stopped notification
 ```
 
-### 2. **BookingDependencies** (DI Container)
+### 2. **BotLoopManager** (Loop Manager)
+- **File**: `bot_loop_manager.py`
+- **Responsibility**: Manage the main bot processing loop and associated helpers
+- **Lines**: ~250
+- **Key Methods**:
+  - `run_bot_loop()` - Main processing loop using SessionOrchestrator
+  - `_wait_or_shutdown()` - Event-based wait (no polling)
+  - `_handle_circuit_breaker_open()` - Handle CB open state with alerting
+  - `_wait_adaptive_interval()` - Adaptive interval scheduling
+  - `_ensure_db_connection()` - Database health check and reconnection
+  - `_record_circuit_breaker_trip()` - Metrics recording
+
+### 4. **BookingDependencies** (DI Container)
 - **File**: `booking_dependencies.py`
 - **Responsibility**: Dependency injection container dataclasses grouping all services required by BookingWorkflow
 - **Lines**: ~69
@@ -75,7 +82,7 @@ stop()
   - `RepositoryServices` — Data access repositories (appointment, appointment request)
   - `BookingDependencies` — Top-level container grouping `WorkflowServices`, `InfraServices`, and `RepositoryServices`
 
-### 3. **BookingWorkflow** (Workflow Orchestrator)
+### 5. **BookingWorkflow** (Workflow Orchestrator)
 - **File**: `booking_workflow.py`
 - **Responsibility**: Orchestrate the end-to-end booking workflow for a mission (country)
 - **Constructor**: `__init__(config, notifier, deps)` — repositories are injected via `deps.repositories` (no `db` parameter)
@@ -88,26 +95,26 @@ stop()
   - `_handle_workflow_exception()` - Consistent exception handling
   - `_capture_error_safe()` - Safe error capture with screenshots
 
-### 4. **BookingExecutor**
+### 6. **BookingExecutor**
 - **File**: `booking_executor.py`
 - **Responsibility**: Execute booking flows and confirm appointments
 - **Key Methods**:
   - `execute_and_confirm_booking()` - Execute booking and confirm appointment
 
-### 5. **ReservationBuilder**
+### 7. **ReservationBuilder**
 - **File**: `reservation_builder.py`
 - **Responsibility**: Build reservation data structures for appointment bookings
 - **Key Methods**:
   - `build_reservation_for_user()` - Build reservation for user using appropriate strategy
   - `build_reservation()` - Build reservation from provided data
 
-### 6. **MissionProcessor**
+### 8. **MissionProcessor**
 - **File**: `mission_processor.py`
 - **Responsibility**: Process individual appointment requests within a mission
 - **Key Methods**:
   - `process_single_request()` - Process a single appointment request
 
-### 7. **BrowserManager**
+### 9. **BrowserManager**
 - **File**: `browser_manager.py`
 - **Responsibility**: Browser lifecycle and context management
 - **Lines**: ~159
@@ -121,7 +128,7 @@ stop()
   - Custom user agents
   - Fingerprint bypass
 
-### 8. **AuthService**
+### 10. **AuthService**
 - **File**: `auth_service.py`
 - **Responsibility**: VFS authentication operations
 - **Lines**: ~157
@@ -134,7 +141,7 @@ stop()
   - Human-like interactions
   - Error capture
 
-### 9. **SlotChecker**
+### 11. **SlotChecker**
 - **File**: `slot_checker.py`
 - **Responsibility**: Check appointment slot availability
 - **Lines**: ~133
@@ -146,7 +153,7 @@ stop()
   - Human simulation
   - Error context capture
 
-### 10. **CircuitBreakerService**
+### 12. **CircuitBreakerService**
 - **File**: `circuit_breaker_service.py`
 - **Responsibility**: Fault tolerance wrapper around core circuit breaker
 - **Lines**: ~103
@@ -165,7 +172,7 @@ stop()
   - Exponential backoff
   - Metrics integration
 
-### 11. **ErrorHandler**
+### 13. **ErrorHandler**
 - **File**: `error_handler.py`
 - **Responsibility**: Error capture and screenshot management
 - **Lines**: ~131
@@ -183,8 +190,8 @@ stop()
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| **Files** | 1 | 14 | Better organization |
-| **Main Class Lines** | 860 | 645 | 25% reduction |
+| **Files** | 1 | 15 | Better organization |
+| **Main Class Lines** | 860 | 415 | 52% reduction |
 | **Responsibilities** | 7 in 1 class | 1 per class | SRP compliant |
 | **Test Isolation** | Low | High | Easy mocking |
 | **Coupling** | Tight | Loose | Independent components |
