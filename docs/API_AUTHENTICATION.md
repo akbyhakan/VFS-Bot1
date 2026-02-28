@@ -43,12 +43,14 @@ Request body:
 Response:
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+  "message": "Login successful",
+  "user": {
+    "username": "admin"
+  }
 }
 ```
 
-> **Note**: Login also sets an **HttpOnly cookie** (`access_token`) automatically. This cookie is used for browser-based authentication without any manual token handling.
+> **Important**: The JWT token is NOT returned in the response body. It is set as an `HttpOnly` cookie (`access_token`) for security (XSS protection). Browser-based clients authenticate automatically via this cookie. For non-browser API clients, extract the `access_token` cookie from the `Set-Cookie` response header.
 
 ### Using JWT Token
 
@@ -202,17 +204,24 @@ curl -X POST \
 ```python
 import requests
 
-# Login and get JWT token
-response = requests.post(
+# Login - token is set as HttpOnly cookie
+session = requests.Session()
+response = session.post(
     "http://localhost:8000/api/v1/auth/login",
     json={"username": "admin", "password": "your-password"}
 )
-token = response.json()["access_token"]
+response.raise_for_status()  # Raises an error if login fails
 
-# Use token to access protected endpoint
+# Subsequent requests use the session cookie automatically
+logs = session.get("http://localhost:8000/api/v1/bot/logs")
+print(logs.json())
+```
+
+```python
+# Or extract token from cookie for Authorization header usage
+token = session.cookies.get("access_token")
 headers = {"Authorization": f"Bearer {token}"}
 logs = requests.get("http://localhost:8000/api/v1/bot/logs", headers=headers)
-print(logs.json())
 ```
 
 ## Example: JavaScript/Node.js Client
