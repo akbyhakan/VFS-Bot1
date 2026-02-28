@@ -167,6 +167,7 @@
     "proxyManagement": "🌐 Proxy Yönetimi (NetNut)",
     "proxyTotal": "Toplam",
     "proxyActive": "Aktif",
+    "proxyInactive": "Devre Dışı",
     "proxyFailed": "Başarısız",
     "dragDropCSV": "CSV dosyasını sürükleyip bırakın",
     "or": "veya",
