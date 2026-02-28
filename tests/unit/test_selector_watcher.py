@@ -20,6 +20,8 @@ class TestSelectorHealthCheck:
         assert health_checker.check_interval == 3600
         assert health_checker.health_status == {}
         assert health_checker.last_check is None
+        assert health_checker.shutdown_event is None
+        assert health_checker.critical_failure_threshold == 0.5
 
     def test_init_with_custom_interval(self):
         """Test SelectorHealthCheck with custom interval."""

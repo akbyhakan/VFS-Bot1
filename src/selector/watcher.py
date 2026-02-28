@@ -19,10 +19,14 @@ class SelectorHealthCheck:
         selector_manager: CountryAwareSelectorManager,
         notifier: Optional[NotificationService] = None,
         check_interval: int = 3600,  # 1 hour default
+        shutdown_event: Optional[asyncio.Event] = None,
+        critical_failure_threshold: float = 0.5,
     ):
         self.selector_manager = selector_manager
         self.notifier = notifier
         self.check_interval = check_interval
+        self.shutdown_event = shutdown_event
+        self.critical_failure_threshold = critical_failure_threshold
         self.health_status: Dict[str, Any] = {}
         self.last_check: Optional[datetime] = None
 
@@ -173,6 +177,24 @@ class SelectorHealthCheck:
             if results["invalid"] > 0:
                 await self._send_critical_alert(results)
 
+                # Check if failure ratio exceeds threshold → trigger auto-stop
+                total: int = results["total"]
+                invalid: int = results["invalid"]
+                if total > 0 and self.shutdown_event is not None:
+                    failure_ratio = invalid / total
+                    if failure_ratio >= self.critical_failure_threshold:
+                        logger.critical(
+                            f"Auto-stop triggered: {invalid}/{total} selectors failed "
+                            f"(ratio {failure_ratio:.0%} >= threshold "
+                            f"{self.critical_failure_threshold:.0%})"
+                        )
+                        await self._send_alert(
+                            f"🛑 AUTO-STOP: Bot is shutting down due to critical selector failures.\n"
+                            f"Failed: {invalid}/{total} selectors.\n"
+                            "Manual intervention required."
+                        )
+                        self.shutdown_event.set()
+
             logger.info(f"Health check complete: {results['valid']}/{results['total']} valid")
 
         except Exception as e:
@@ -213,8 +235,12 @@ class SelectorHealthCheck:
         logger.info(f"Starting continuous health monitoring (interval: {self.check_interval}s)")
 
         while True:
+            if self.shutdown_event and self.shutdown_event.is_set():
+                break
             try:
                 await self.check_all_selectors(browser)
+                if self.shutdown_event and self.shutdown_event.is_set():
+                    break
                 await asyncio.sleep(self.check_interval)
             except Exception as e:
                 logger.error(f"Health check loop error: {e}")

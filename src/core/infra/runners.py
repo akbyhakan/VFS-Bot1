@@ -132,6 +132,10 @@ async def run_bot_mode(config: BotConfigDict, db: Optional[Database] = None) -> 
                 selector_manager,
                 notifier,
                 check_interval=config.get("selector_health_check", {}).get("interval", 3600),
+                shutdown_event=shutdown_event,
+                critical_failure_threshold=config.get("selector_health_check", {}).get(
+                    "critical_threshold", 0.5
+                ),
             )
             logger.info("Selector health monitoring initialized")
         else:
