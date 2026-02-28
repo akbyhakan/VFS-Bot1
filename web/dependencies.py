@@ -14,7 +14,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
 from loguru import logger
 
-from src.core.auth import verify_token
+from src.core.auth import verify_token, verify_token_allow_expired
 from src.models.database import Database
 from src.models.db_factory import DatabaseFactory
 from src.repositories import (
@@ -93,6 +93,36 @@ async def verify_jwt_token(
         )
 
     return await verify_token(token)
+
+
+async def verify_jwt_token_allow_expired(
+    request: Request,
+) -> Dict[str, Any]:
+    """
+    Verify JWT token from HttpOnly cookie or Authorization header.
+
+    Accepts expired tokens (signature and blacklist still validated).
+    Intended for the refresh endpoint so clients can renew expired tokens.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        Decoded token payload
+
+    Raises:
+        HTTPException: If token is invalid, blacklisted, or missing
+    """
+    token = extract_raw_token(request)
+
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return await verify_token_allow_expired(token)
 
 
 async def verify_webhook_request(request: Request) -> None:

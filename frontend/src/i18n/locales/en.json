@@ -45,7 +45,6 @@
     "switchToDark": "Switch to dark theme",
     "statusRunning": "Running",
     "statusStopped": "Stopped",
-    "statusIdle": "Idle",
     "statusError": "Error",
     "statusStarting": "Starting...",
     "statusRestarting": "Restarting...",

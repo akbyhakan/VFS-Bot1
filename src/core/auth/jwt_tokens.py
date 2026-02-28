@@ -224,6 +224,59 @@ async def verify_token(token: str) -> Dict[str, Any]:
         )
 
 
+async def verify_token_allow_expired(token: str) -> Dict[str, Any]:
+    """
+    Verify and decode JWT token, allowing expired tokens.
+
+    Signature and blacklist are still validated. Only expiry check is skipped.
+    Intended for the refresh endpoint so expired-but-valid tokens can be renewed.
+
+    Args:
+        token: JWT token to verify (may be expired)
+
+    Returns:
+        Decoded token payload
+
+    Raises:
+        HTTPException: If token signature is invalid, token is blacklisted,
+                       or token is not an access token
+    """
+    secret_key = get_secret_key()
+    algorithm = get_algorithm()
+
+    try:
+        payload = jwt.decode(
+            token, secret_key, algorithms=[algorithm], options={"verify_exp": False}
+        )
+
+        # Only accept access tokens
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Check if token is blacklisted using helper
+        await _check_token_blacklist(payload)
+
+        return cast(dict[str, Any], payload)
+    except HTTPException:
+        raise
+    except JWTError as primary_error:
+        # Production: Don't expose internal error details for security
+        if Environment.is_production():
+            detail = "Could not validate credentials"
+        else:
+            detail = f"Could not validate credentials: {str(primary_error)}"
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
 async def revoke_token(token: str) -> bool:
     """
     Revoke a JWT token by adding it to the blacklist.

@@ -26,7 +26,6 @@ export const LOG_LEVELS = {
 export const BOT_STATUS = {
   RUNNING: 'running',
   STOPPED: 'stopped',
-  IDLE: 'idle',
   ERROR: 'error',
   STARTING: 'starting',
   RESTARTING: 'restarting',

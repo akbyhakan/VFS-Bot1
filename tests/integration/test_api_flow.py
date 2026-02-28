@@ -226,6 +226,31 @@ class TestAuthenticationFlow:
         assert "detail" in data
 
     def test_refresh_endpoint_requires_auth(self, client):
-        """Test that refresh endpoint requires authentication."""
+        """Test that refresh endpoint requires authentication (no token → 401)."""
         response = client.post("/api/v1/auth/refresh")
+        assert response.status_code == 401
+
+    def test_refresh_endpoint_accepts_expired_token(self, client):
+        """Test that refresh endpoint accepts an expired token and returns a new one."""
+        from datetime import timedelta
+        from src.core.auth import create_access_token
+
+        # Create an already-expired access token
+        expired_token = create_access_token(
+            {"sub": "testuser", "name": "Test User"}, expires_delta=timedelta(seconds=-1)
+        )
+
+        response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"access_token": expired_token},
+        )
+        # Endpoint should issue a new token (200), not 401
+        assert response.status_code == 200
+
+    def test_refresh_endpoint_rejects_invalid_signature(self, client):
+        """Test that refresh endpoint still rejects tokens with invalid signatures."""
+        response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"access_token": "invalid.token.here"},
+        )
         assert response.status_code == 401

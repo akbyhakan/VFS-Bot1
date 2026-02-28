@@ -14,6 +14,7 @@ from src.core.auth import (
     hash_password,
     verify_password,
     verify_token,
+    verify_token_allow_expired,
 )
 
 
@@ -73,6 +74,47 @@ async def test_verify_token_expired():
 
     with pytest.raises(HTTPException) as exc_info:
         await verify_token(token)
+
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_verify_token_allow_expired_with_expired_token():
+    """Test that verify_token_allow_expired successfully decodes an expired token."""
+    data = {"sub": "testuser", "name": "Test User"}
+    expires_delta = timedelta(seconds=-1)
+    token = create_access_token(data, expires_delta)
+
+    # Should NOT raise — expired tokens are accepted
+    payload = await verify_token_allow_expired(token)
+    assert payload["sub"] == "testuser"
+    assert payload["name"] == "Test User"
+    assert payload["type"] == "access"
+
+
+@pytest.mark.asyncio
+async def test_verify_token_allow_expired_with_invalid_signature():
+    """Test that verify_token_allow_expired still rejects tokens with invalid signatures."""
+    with pytest.raises(HTTPException) as exc_info:
+        await verify_token_allow_expired("invalid.token.here")
+
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_verify_token_allow_expired_blacklisted():
+    """Test that verify_token_allow_expired rejects blacklisted expired tokens."""
+    from unittest.mock import AsyncMock, patch
+
+    data = {"sub": "testuser"}
+    expires_delta = timedelta(seconds=-1)
+    token = create_access_token(data, expires_delta)
+
+    # Simulate the token being on the blacklist
+    with patch("src.core.auth.jwt_tokens.check_blacklisted", new_callable=AsyncMock) as mock_bl:
+        mock_bl.return_value = True
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token_allow_expired(token)
 
     assert exc_info.value.status_code == 401
 
