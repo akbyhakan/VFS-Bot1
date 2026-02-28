@@ -564,6 +564,11 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `GET /api/v1/bot/logs` - Fetch bot logs
 - `GET /api/v1/bot/settings` - Get bot settings
 - `PUT /api/v1/bot/settings` - Update bot settings
+- `GET /api/v1/bot/selector-health` - Get adaptive selector health status
+- `GET /api/v1/bot/errors` - List recent bot errors with captures
+- `GET /api/v1/bot/errors/{id}` - Get specific bot error details
+- `GET /api/v1/bot/errors/{id}/screenshot` - Get error screenshot capture
+- `GET /api/v1/bot/errors/{id}/html-snapshot` - Get error HTML page snapshot
 
 **Appointments:**
 - `GET /api/v1/appointments/appointment-requests` - List appointment requests
@@ -579,6 +584,7 @@ The web dashboard exposes a REST API with versioned endpoints:
 **Audit:**
 - `GET /api/v1/audit/logs` - Get audit logs
 - `GET /api/v1/audit/stats` - Get audit statistics
+- `GET /api/v1/audit/logs/{id}` - Get specific audit log entry
 
 **Payment:**
 - `POST /api/v1/payment/payment-card` - Save payment card
@@ -599,6 +605,8 @@ The web dashboard exposes a REST API with versioned endpoints:
 **Dropdown Sync:**
 - `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
 - `POST /api/v1/dropdown-sync/all` - Trigger dropdown sync for all countries
+- `GET /api/v1/dropdown-sync/status` - Get sync status for all countries
+- `GET /api/v1/dropdown-sync/{country_code}/status` - Get sync status for specific country
 
 #### Non-Versioned Endpoints
 
