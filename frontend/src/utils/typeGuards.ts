@@ -12,6 +12,7 @@ export function isBotStatusData(data: unknown): data is {
   running?: boolean;
   status?: string;
   last_check?: string | null;
+  message?: string;
   stats?: {
     slots_found: number;
     appointments_booked: number;
@@ -34,6 +35,10 @@ export function isBotStatusData(data: unknown): data is {
   }
 
   if (obj.last_check !== undefined && obj.last_check !== null && typeof obj.last_check !== 'string') {
+    return false;
+  }
+
+  if (obj.message !== undefined && typeof obj.message !== 'string') {
     return false;
   }
 

@@ -5,6 +5,13 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface LoginResponse {
+  message: string;
+  user: {
+    username: string;
+  };
+}
+
 export type BotStatusType = (typeof BOT_STATUS)[keyof typeof BOT_STATUS];
 
 export interface BotStatus {
@@ -82,6 +89,7 @@ export interface BotStatusData {
   running?: boolean;
   status?: string;
   last_check?: string | null;
+  message?: string;
   stats?: {
     slots_found: number;
     appointments_booked: number;

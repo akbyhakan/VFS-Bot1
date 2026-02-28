@@ -2,7 +2,7 @@
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from loguru import logger
 from pydantic import BaseModel
 
@@ -89,6 +89,7 @@ async def add_proxy(
 
 @router.get("/list")
 async def list_proxies(
+    include_inactive: bool = Query(default=True),
     token_data: Dict[str, Any] = Depends(verify_jwt_token),
     proxy_repo: ProxyRepository = Depends(get_proxy_repository),
 ):
@@ -96,6 +97,7 @@ async def list_proxies(
     Get list of all proxies (passwords excluded).
 
     Args:
+        include_inactive: Whether to include inactive proxies (default: True)
         token_data: Verified token data
         proxy_repo: ProxyRepository instance
 
@@ -103,8 +105,11 @@ async def list_proxies(
         List of all proxies with metadata
     """
     try:
-        # Get all active proxies
-        proxies = await proxy_repo.get_active()
+        # Get proxies based on include_inactive flag
+        if include_inactive:
+            proxies = await proxy_repo.get_all_as_dicts()
+        else:
+            proxies = await proxy_repo.get_active()
 
         # Convert to response format (exclude passwords)
         proxy_list = [
