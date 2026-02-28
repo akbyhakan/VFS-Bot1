@@ -414,3 +414,17 @@ def test_pooled_account_from_dict_multiple_missing_fields():
     assert "email" in error_msg
     assert "password" in error_msg
     assert "phone" in error_msg
+
+
+def test_pooled_account_repr_hides_password(sample_account_dict):
+    """Test that repr(account) does not expose the password value."""
+    account = PooledAccount.from_dict(sample_account_dict)
+
+    account_repr = repr(account)
+
+    # The password value must not appear in the repr output
+    assert sample_account_dict["password"] not in account_repr
+    # The field name 'password' should not appear in repr either
+    assert "password" not in account_repr
+    # But the password is still accessible directly
+    assert account.password == sample_account_dict["password"]

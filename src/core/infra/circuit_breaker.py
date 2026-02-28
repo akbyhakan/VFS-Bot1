@@ -17,6 +17,7 @@ Features:
     - Decorator pattern for easy function wrapping
     - Async/await support throughout
     - Thread-safe with asyncio.Lock
+    - Atomic file persistence (write-to-temp-then-rename)
 
 Example:
     ```python
@@ -44,6 +45,8 @@ Example:
 
 import asyncio
 import json
+import os
+import tempfile
 import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -163,8 +166,8 @@ class CircuitBreaker:
         """Get current failure count."""
         return self._failure_count
 
-    def _save_state(self) -> None:
-        """Save circuit breaker state to JSON file (synchronous, non-blocking)."""
+    def _save_state_sync(self) -> None:
+        """Synchronous atomic state writer — writes to temp file then renames."""
         if not self._state_file:
             return
 
@@ -181,12 +184,24 @@ class CircuitBreaker:
             state_path = Path(self._state_file)
             state_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(state_path, "w") as f:
-                json.dump(state_data, f, indent=2)
-
-            logger.debug(f"{self.name}: State persisted to {self._state_file}")
+            fd, temp_path = tempfile.mkstemp(dir=state_path.parent, prefix=".cb_state_")
+            try:
+                with os.fdopen(fd, "w") as f:
+                    json.dump(state_data, f, indent=2)
+                os.replace(temp_path, state_path)
+                logger.debug(f"{self.name}: State persisted to {self._state_file}")
+            except Exception:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                raise
         except Exception as e:
             logger.warning(f"{self.name}: Failed to persist state to {self._state_file}: {e}")
+
+    async def _save_state(self) -> None:
+        """Save circuit breaker state atomically using asyncio.to_thread."""
+        if not self._state_file:
+            return
+        await asyncio.to_thread(self._save_state_sync)
 
     def _load_state(self) -> None:
         """Load circuit breaker state from JSON file (synchronous)."""
@@ -238,7 +253,7 @@ class CircuitBreaker:
                 if time_since_failure >= timedelta(seconds=self.timeout_seconds):
                     self._state = CircuitState.HALF_OPEN
                     self._half_open_successes = 0
-                    self._save_state()
+                    await self._save_state()
                     logger.info(f"{self.name}: Circuit half-open, testing recovery")
 
     async def record_success(self) -> None:
@@ -260,7 +275,7 @@ class CircuitBreaker:
                     state_changed = True
 
             if state_changed:
-                self._save_state()
+                await self._save_state()
 
     async def record_failure(self) -> None:
         """Record a failed call."""
@@ -302,7 +317,7 @@ class CircuitBreaker:
                     )
 
             if state_changed:
-                self._save_state()
+                await self._save_state()
 
     async def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt recovery."""
@@ -393,7 +408,7 @@ class CircuitBreaker:
             self._failure_count = 0
             self._last_failure_time = None
             self._error_timestamps.clear()
-            self._save_state()
+            await self._save_state()
             logger.info(f"{self.name}: Circuit manually reset to closed state")
 
     async def get_wait_time(self) -> float:
