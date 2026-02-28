@@ -530,6 +530,7 @@ if details.get("passport_number_encrypted"):
 2. Updated `get_encryption()` to use `time.monotonic()` for TTL checking
 3. Only check `os.getenv()` if 60 seconds have elapsed since last check
 4. Fast path: if instance exists and TTL not expired, return immediately without env check
+5. All `_last_key_check_time` writes happen inside `with _encryption_lock:` for thread safety
 
 **Code Changes**:
 ```python
@@ -539,17 +540,24 @@ _KEY_CHECK_INTERVAL: float = 60.0
 def get_encryption() -> PasswordEncryption:
     if _encryption_instance is not None:
         current_time = time.monotonic()
-        
+
         # Fast path: TTL not expired
         if current_time - _last_key_check_time < _KEY_CHECK_INTERVAL:
             return _encryption_instance
-        
-        # TTL expired - check env
-        current_key = os.getenv("ENCRYPTION_KEY")
-        if current_key and _normalize_key(current_key) == _encryption_instance._key:
-            _last_key_check_time = current_time
+
+        # TTL expired - fall through to locked section
+
+    with _encryption_lock:
+        current_time = time.monotonic()
+
+        # Re-check TTL inside lock (another thread may have updated it while we waited)
+        if _encryption_instance is not None and (
+            current_time - _last_key_check_time < _KEY_CHECK_INTERVAL
+        ):
             return _encryption_instance
-    # ... rest of logic
+
+        current_key = os.getenv("ENCRYPTION_KEY")
+        # ... key comparison and instance creation, with _last_key_check_time = current_time inside lock
 ```
 
 **Tests**: `test_encryption_ttl_cache` - verifies TTL caching behavior
