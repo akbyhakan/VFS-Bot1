@@ -71,6 +71,10 @@ The following endpoints require JWT authentication:
 - `PATCH /api/v1/vfs-accounts/{id}` - Toggle VFS account active status
 - `DELETE /api/v1/vfs-accounts/{id}` - Delete VFS account
 - `GET /api/v1/audit/logs` - View audit logs
+- `GET /api/v1/audit/logs/{id}` - Get specific audit log entry
+- `GET /api/v1/bot/selector-health` - Get adaptive selector health status
+- `GET /api/v1/bot/errors` - List recent bot errors
+- `GET /api/v1/bot/errors/{id}` - Get bot error details
 - `GET /api/v1/payment/payment-card` - View payment card
 - `POST /api/v1/bot/start` - Start the bot
 - `POST /api/v1/bot/stop` - Stop the bot
@@ -79,6 +83,11 @@ The following endpoints require JWT authentication:
 - `GET /api/v1/bot/logs` - Retrieve bot logs
 - `GET /api/v1/bot/settings` - Get bot settings
 - `PUT /api/v1/bot/settings` - Update bot settings
+- `GET /api/v1/config/runtime` - Get runtime configuration
+- `PUT /api/v1/config/runtime` - Update runtime configuration
+- `GET /api/v1/dropdown-sync/status` - Get dropdown sync statuses
+- `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync
+- `POST /api/v1/dropdown-sync/all` - Trigger all dropdown sync
 
 ## API Key Authentication
 

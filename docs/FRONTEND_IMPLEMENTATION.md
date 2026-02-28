@@ -224,6 +224,11 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `GET /api/v1/bot/logs` - Fetch logs
 - ✅ `GET /api/v1/bot/settings` - Get bot settings
 - ✅ `PUT /api/v1/bot/settings` - Update bot settings
+- ✅ `GET /api/v1/bot/selector-health` - Get adaptive selector health status
+- ✅ `GET /api/v1/bot/errors` - List recent bot errors with captures
+- ✅ `GET /api/v1/bot/errors/{id}` - Get specific bot error details
+- ✅ `GET /api/v1/bot/errors/{id}/screenshot` - Get error screenshot capture
+- ✅ `GET /api/v1/bot/errors/{id}/html-snapshot` - Get error HTML page snapshot
 - ✅ `GET /metrics` - Bot metrics (non-versioned)
 - ✅ `GET /health` - Health check
 - ✅ `GET /api/v1/vfs-accounts` - List VFS accounts
@@ -243,6 +248,7 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `GET /api/v1/appointments/countries/{code}/centres/{name}/categories/{cat}/subcategories` - List subcategories
 - ✅ `GET /api/v1/audit/logs` - Audit logs
 - ✅ `GET /api/v1/audit/stats` - Audit statistics
+- ✅ `GET /api/v1/audit/logs/{id}` - Get specific audit log entry
 - ✅ `POST /api/v1/payment/payment-card` - Save payment card
 - ✅ `GET /api/v1/payment/payment-card` - Get payment card
 - ✅ `DELETE /api/v1/payment/payment-card` - Delete payment card
@@ -263,6 +269,8 @@ npm run build  # Outputs to ../web/static/dist
 - ✅ `PUT /api/v1/config/runtime` - Update runtime configuration
 - ✅ `POST /api/v1/dropdown-sync/{country_code}` - Trigger dropdown sync for a specific country
 - ✅ `POST /api/v1/dropdown-sync/all` - Trigger dropdown sync for all countries
+- ✅ `GET /api/v1/dropdown-sync/status` - Get sync status for all countries
+- ✅ `GET /api/v1/dropdown-sync/{country_code}/status` - Get sync status for specific country
 - ✅ `WS /ws` - WebSocket for real-time updates (requires authentication via HttpOnly cookie)
 
 ## 🔄 Real-time Features
@@ -350,6 +358,19 @@ POST /api/v1/bot/check-now       → Trigger immediate check
 GET  /api/v1/bot/logs            → Get logs
 GET  /api/v1/bot/settings        → Get bot settings
 PUT  /api/v1/bot/settings        → Update bot settings
+
+# Bot diagnostic routes
+GET  /api/v1/bot/selector-health               → Selector health status
+GET  /api/v1/bot/errors                         → Recent bot errors
+GET  /api/v1/bot/errors/{id}                    → Error details
+GET  /api/v1/bot/errors/{id}/screenshot         → Error screenshot
+GET  /api/v1/bot/errors/{id}/html-snapshot      → Error HTML snapshot
+
+# Dropdown sync routes
+GET  /api/v1/dropdown-sync/status               → All countries sync status
+GET  /api/v1/dropdown-sync/{country_code}/status → Country sync status
+POST /api/v1/dropdown-sync/{country_code}        → Trigger country sync
+POST /api/v1/dropdown-sync/all                   → Trigger all sync
 
 # VFS account routes
 GET    /api/v1/vfs-accounts           → List VFS accounts

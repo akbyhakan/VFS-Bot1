@@ -221,6 +221,14 @@ API endpoints are rate-limited to prevent abuse:
                 "description": "Bot control and status operations",
             },
             {
+                "name": "config",
+                "description": "Runtime configuration management",
+            },
+            {
+                "name": "dropdown-sync",
+                "description": "VFS dropdown data synchronization and status monitoring",
+            },
+            {
                 "name": "proxy",
                 "description": "Proxy server management",
             },
