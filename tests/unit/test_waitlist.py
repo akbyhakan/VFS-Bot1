@@ -48,7 +48,6 @@ def notification_service():
     """Create NotificationService instance for testing."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
     return NotificationService(config)
 

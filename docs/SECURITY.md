@@ -70,25 +70,22 @@ app.add_middleware(SecurityHeadersMiddleware, strict_csp=False)
 
 ## Payment Security
 
-### Manual Payment Only
+### Automated Payment with Encrypted CVV
 
-**CRITICAL:** Only manual payment processing is supported for PCI-DSS compliance.
-
-```python
-config = {"payment": {"method": "manual"}}
-service = PaymentService(config)
-```
-
-### PCI-DSS Compliance
-
-See [docs/PCI_DSS_COMPLIANCE.md](./PCI_DSS_COMPLIANCE.md) for details on:
-- Why automated payments are disabled
-- Requirements for PCI-DSS Level 1 compliance
-- Alternative payment integration approaches
+VFS-Bot supports automated payment processing for personal use. Card data is encrypted at rest using Fernet (AES-128 CBC).
 
 ### CVV Security
 
-CVV is **NEVER stored** in the database and only exists in memory during transaction processing.
+CVV is stored **encrypted** (Fernet AES-128) in the database — this is optional and only used for automated payment support. The `SecureCVV` context manager handles in-memory cleanup to minimize the window during which CVV exists in cleartext memory.
+
+```python
+from src.utils.secure_memory import SecureCVV
+
+with SecureCVV(user_input_cvv) as cvv:
+    # cvv is available as string
+    result = payment_gateway.charge(cvv=cvv)
+# cvv is automatically cleared from memory
+```
 
 ---
 
@@ -124,8 +121,8 @@ Use the API endpoints to add proxies securely:
 
 ```bash
 # Add a single proxy
-curl -X POST https://your-api.com/api/proxy/add \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+curl -c cookies.txt -b cookies.txt \
+  -X POST https://your-api.com/api/v1/proxy/add \
   -H "Content-Type: application/json" \
   -d '{
     "server": "gw.netnut.net",
@@ -134,9 +131,15 @@ curl -X POST https://your-api.com/api/proxy/add \
     "password": "your_password"
   }'
 
+# Alternative: use Authorization header for non-browser clients
+# curl -X POST https://your-api.com/api/v1/proxy/add \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d '{ ... }'
+
 # Upload CSV file
-curl -X POST https://your-api.com/api/proxy/upload \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+curl -c cookies.txt -b cookies.txt \
+  -X POST https://your-api.com/api/v1/proxy/upload \
   -F "file=@proxies.csv"
 ```
 
@@ -357,7 +360,6 @@ The alert service supports multiple notification channels:
 
 - **LOG** - Always available, logs to application logs
 - **TELEGRAM** - Send alerts to Telegram bot
-- **EMAIL** - Send email notifications
 - **WEBHOOK** - POST alerts to custom webhook
 
 ### Configuration
@@ -614,7 +616,7 @@ Before deploying to production:
 - [ ] Configure strict CSP
 - [ ] Enable HSTS
 - [ ] Use HTTPS only
-- [ ] Configure alert service (Telegram/Email)
+- [ ] Configure alert service (Telegram/Webhook)
 - [ ] Set up monitoring and logging
 - [ ] Review and rotate all API keys
 - [ ] Enable rate limiting

@@ -255,7 +255,6 @@ async def test_send_notification_returns_bool():
     """Test send_notification returns bool indicating success."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
 
     with patch("telegram.Bot") as MockBot:
@@ -294,7 +293,6 @@ async def test_send_notification_high_priority_websocket_fallback():
     """Test high-priority notification with WebSocket as parallel channel when Telegram fails."""
     config = {
         "telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "test_chat_id"},
-        "email": {"enabled": False},
     }
 
     with patch("telegram.Bot") as MockBot:

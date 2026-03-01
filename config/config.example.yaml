@@ -49,7 +49,6 @@ otp:
 bot:
   check_interval: 30
   headless: false
-  proxy: null
   screenshot_on_error: true
   max_retries: 3
   
