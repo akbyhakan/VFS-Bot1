@@ -18,7 +18,7 @@ class ProxyManager:
         """
         self.config = config or {}
         self.enabled = self.config.get("enabled", False)
-        self.proxy_file = Path(self.config.get("file", "config/proxies.txt"))
+        self.proxy_file = Path(self.config.get("file", "config/proxy-endpoints.csv"))
         self.rotate_on_error = self.config.get("rotate_on_error", True)
 
         self.proxies: List[Dict[str, str]] = []

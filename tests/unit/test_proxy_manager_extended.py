@@ -19,7 +19,7 @@ def test_proxy_manager_initialization_disabled():
 
 def test_proxy_manager_initialization_enabled():
     """Test proxy manager initialization when enabled."""
-    config = {"enabled": True, "file": "config/proxies.txt"}
+    config = {"enabled": True, "file": "config/proxy-endpoints.csv"}
     with patch.object(Path, "exists", return_value=False):
         manager = ProxyManager(config)
         assert manager.enabled is True
@@ -199,7 +199,8 @@ def test_rotate_proxy_disabled():
 
 def test_rotate_proxy_no_proxies():
     """Test rotate proxy with no proxies."""
-    manager = ProxyManager({"enabled": True})
+    with patch.object(Path, "exists", return_value=False):
+        manager = ProxyManager({"enabled": True})
     proxy = manager.rotate_proxy()
 
     assert proxy is None
@@ -411,12 +412,19 @@ def test_clear_failed_proxies():
     assert len(manager.failed_proxies) == 0
 
 
+def test_proxy_file_path_default():
+    """Test default proxy file path is config/proxy-endpoints.csv."""
+    manager = ProxyManager()
+
+    assert str(manager.proxy_file) == "config/proxy-endpoints.csv"
+
+
 def test_proxy_file_path_custom():
     """Test custom proxy file path."""
-    config = {"enabled": True, "file": "custom/path/proxies.txt"}
+    config = {"enabled": True, "file": "custom/path/proxy-endpoints.csv"}
     manager = ProxyManager(config)
 
-    assert str(manager.proxy_file) == "custom/path/proxies.txt"
+    assert str(manager.proxy_file) == "custom/path/proxy-endpoints.csv"
 
 
 def test_rotate_on_error_config():
@@ -575,7 +583,8 @@ def test_allocate_next_disabled():
 
 def test_allocate_next_no_proxies():
     """Test allocate_next with no proxies loaded."""
-    manager = ProxyManager({"enabled": True})
+    with patch.object(Path, "exists", return_value=False):
+        manager = ProxyManager({"enabled": True})
 
     proxy = manager.allocate_next()
     assert proxy is None
