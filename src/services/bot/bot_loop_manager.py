@@ -91,6 +91,18 @@ class BotLoopManager:
                 except asyncio.CancelledError:
                     pass
 
+            # Drain exceptions from done tasks to prevent
+            # "Task exception was never retrieved" warnings
+            for task in done:
+                if task.cancelled():
+                    continue
+                exc = task.exception()
+                if exc is not None:
+                    logger.warning(
+                        f"Wait task completed with unexpected exception: {exc}",
+                        exc_info=exc,
+                    )
+
             if shutdown_task in done:
                 return True
 

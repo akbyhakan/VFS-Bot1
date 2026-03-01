@@ -678,6 +678,31 @@ class TestWaitOrShutdownEventBased:
         # there should be no warnings about unclosed tasks
         await asyncio.sleep(0.01)  # Give time for cleanup
 
+    @pytest.mark.asyncio
+    async def test_wait_drains_done_task_exceptions(self, bot_config, mock_db, mock_notifier):
+        """Test that _wait_or_shutdown drains exceptions from done tasks."""
+        from src.services.bot.vfs_bot import VFSBot
+
+        bot = VFSBot(bot_config, mock_db, mock_notifier)
+
+        # Monkeypatch shutdown_event.wait to raise
+        call_count = 0
+
+        async def failing_wait():
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("Simulated event error")
+
+        bot.shutdown_event.wait = failing_wait
+
+        # Should not produce "Task exception was never retrieved"
+        # and should handle the exception gracefully.
+        # shutdown_task raised RuntimeError so it lands in done — returns True.
+        result = await bot._loop_manager._wait_or_shutdown(0.1)
+
+        # shutdown_task is in done (completed with exception), so shutdown path returns True
+        assert result is True
+
 
 class TestTokenRefreshBufferSafeParsing:
     """Test safe parsing of TOKEN_REFRESH_BUFFER_MINUTES."""

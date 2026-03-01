@@ -64,3 +64,28 @@ def test_payment_method_enum_from_string():
     """Test creating PaymentMethod from string."""
     method = PaymentMethod("manual")
     assert method == PaymentMethod.MANUAL
+
+
+@pytest.mark.asyncio
+async def test_wait_for_payment_cancel_cleanup():
+    """Test that _wait_for_payment_confirmation cancels and awaits remaining tasks."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.services.payment_service import PaymentService
+
+    config = {"method": "manual", "timeout": 1}
+    service = PaymentService(config)
+
+    # Create mock page with selectors that time out
+    mock_page = MagicMock()
+
+    async def mock_wait_for_selector(sel, timeout=None):
+        if sel == ".payment-success":
+            return MagicMock()  # First one completes
+        await asyncio.sleep(100)  # Others would hang
+
+    mock_page.wait_for_selector = AsyncMock(side_effect=mock_wait_for_selector)
+
+    # Should complete without warnings
+    await service._wait_for_payment_confirmation(mock_page)
