@@ -134,6 +134,15 @@ def create_app(run_security_validation: bool = True, env_override: Optional[str]
     """
     from web.cors import get_validated_environment
 
+    # Guard: env_override must not bypass production security
+    if env_override is not None:
+        actual_env = get_validated_environment()
+        if actual_env not in ("development", "dev", "local", "testing", "test"):
+            logger.warning(
+                f"env_override='{env_override}' ignored in {actual_env} environment"
+            )
+            env_override = None
+
     # Determine environment for OpenAPI configuration
     env = env_override if env_override is not None else get_validated_environment()
     _is_dev = env in ("development", "dev", "local", "testing", "test")

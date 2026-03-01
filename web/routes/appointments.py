@@ -67,6 +67,15 @@ def _load_countries_from_yaml() -> Tuple[Dict[str, str], ...]:
         return tuple()
 
 
+def reload_countries_data() -> None:
+    """Invalidate countries cache and reload from YAML.
+    Call after YAML file changes without requiring restart."""
+    global COUNTRIES_DATA
+    _load_countries_from_yaml.cache_clear()
+    COUNTRIES_DATA = _load_countries_from_yaml()
+    logger.info(f"Countries data reloaded: {len(COUNTRIES_DATA)} countries")
+
+
 # Load countries data from YAML (replaces hardcoded list)
 COUNTRIES_DATA = _load_countries_from_yaml()
 
@@ -80,6 +89,15 @@ async def get_countries():
         List of countries with codes and names
     """
     return COUNTRIES_DATA
+
+
+@router.post("/reload-countries")
+async def reload_countries(
+    auth_data: Dict[str, Any] = Depends(verify_jwt_token),
+) -> Dict[str, str]:
+    """Reload countries data from YAML - requires authentication."""
+    reload_countries_data()
+    return {"status": "success", "message": f"{len(COUNTRIES_DATA)} countries reloaded"}
 
 
 @router.get("/countries/{country_code}/centres")
