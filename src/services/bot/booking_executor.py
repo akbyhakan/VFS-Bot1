@@ -1,5 +1,8 @@
 """Booking execution service for appointment bookings."""
 
+from datetime import datetime as dt_mod
+from datetime import timezone as tz_mod
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from loguru import logger
@@ -105,6 +108,19 @@ class BookingExecutor:
                     f"Using fallback reference: {reference}"
                 )
 
+            # Take booking confirmation screenshot
+            screenshot_path = None
+            try:
+                screenshots_dir = Path("screenshots")
+                screenshots_dir.mkdir(exist_ok=True)
+                timestamp = dt_mod.now(tz_mod.utc).strftime("%Y%m%d_%H%M%S")
+                screenshot_file = screenshots_dir / f"booking_success_{timestamp}.png"
+                await page.screenshot(path=str(screenshot_file), full_page=True)
+                screenshot_path = str(screenshot_file)
+                logger.info(f"Booking confirmation screenshot saved: {screenshot_path}")
+            except Exception as screenshot_error:
+                logger.warning(f"Could not take booking confirmation screenshot: {screenshot_error}")
+
             await self.appointment_repo.create(
                 {
                     "user_id": user["id"],
@@ -136,6 +152,7 @@ class BookingExecutor:
                     slot["date"],
                     slot.get("time", "UNKNOWN"),
                     reference,
+                    screenshot_path=screenshot_path,
                 )
             else:
                 logger.warning(

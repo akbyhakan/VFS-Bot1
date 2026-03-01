@@ -282,8 +282,22 @@ class BotLoopManager:
                     f"{session_summary['missions_processed']} mission(s) processed"
                 )
 
+                # Capture state BEFORE recording success to detect recovery
+                was_recovering = self.circuit_breaker.state in (
+                    CircuitState.HALF_OPEN, CircuitState.OPEN
+                )
+
                 # Record success for circuit breaker
                 await self.circuit_breaker.record_success()
+
+                # Send recovery notification if circuit just closed
+                if was_recovering and self.circuit_breaker.state == CircuitState.CLOSED:
+                    await send_alert_safe(
+                        alert_service=self.services.workflow.alert_service,
+                        message="✅ Circuit breaker recovered — bot is operating normally again",
+                        severity=AlertSeverity.INFO,
+                        metadata={"previous_state": "recovering", "new_state": "closed"},
+                    )
 
                 # Get pool status for monitoring
                 pool_status = await self.account_pool.get_pool_status()

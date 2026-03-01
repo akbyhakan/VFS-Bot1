@@ -184,7 +184,8 @@ class NotificationService:
         await self.send_notification(title, message, priority="high")
 
     async def notify_booking_success(
-        self, centre: str, date: str, time: str, reference: str
+        self, centre: str, date: str, time: str, reference: str,
+        screenshot_path: Optional[str] = None,
     ) -> None:
         """
         Send notification when booking is successful.
@@ -194,9 +195,13 @@ class NotificationService:
             date: Appointment date
             time: Appointment time
             reference: Booking reference number
+            screenshot_path: Optional path to screenshot file
         """
         title, message = NotificationTemplates.booking_success(centre, date, time, reference)
-        await self.send_notification(title, message, priority="high")
+        if self.telegram_enabled and screenshot_path:
+            await self._send_telegram_with_photo(title, message, screenshot_path)
+        else:
+            await self.send_notification(title, message, priority="high")
 
     async def notify_error(self, error_type: str, details: str) -> None:
         """

@@ -802,6 +802,20 @@ The bot uses a 3-phase startup process:
 
 The `--read-only` flag enables degraded operation when database migrations fail, allowing limited functionality without full database access.
 
+### Read-Only Mode Details
+
+When `--read-only` is active, the following applies:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Web Dashboard | ✅ View-only | Controls disabled, ReadOnlyBanner displayed |
+| `/api/status` endpoint | ✅ Active | Returns `read_only: true` |
+| `/health`, `/metrics` | ✅ Active | Monitoring endpoints remain operational |
+| Bot automation (start/stop) | ❌ Disabled | No booking attempts |
+| User management (CRUD) | ❌ Disabled | Database writes blocked |
+| Webhook processing | ❌ Disabled | SMS/OTP webhooks inactive |
+| Appointment booking | ❌ Disabled | Full booking pipeline offline |
+
 ## 📚 Documentation
 
 Comprehensive documentation is available in the `docs/` directory:

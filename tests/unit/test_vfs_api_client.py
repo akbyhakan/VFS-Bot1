@@ -233,6 +233,74 @@ class TestVFSApiClient:
             assert "Authorization" in client._http_session.headers
 
     @pytest.mark.asyncio
+    async def test_login_reuses_valid_session(self, client):
+        """Test that login reuses an existing valid session for the same email."""
+        existing_session = VFSSession(
+            access_token="existing-token",
+            refresh_token="existing-refresh",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            user_id="user123",
+            email="test@example.com",
+        )
+        client._auth.session = existing_session
+
+        with patch.object(client, "_init_http_session", new_callable=AsyncMock):
+            client._http_session = AsyncMock()
+            client._http_session.post = MagicMock()
+            client._http_session.headers = {}
+
+            result = await client.login(
+                email="test@example.com",
+                password="password123",
+                turnstile_token="turnstile-token",
+            )
+
+        # Should return existing session without making HTTP request
+        assert result is existing_session
+        client._http_session.post.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_login_new_request_for_different_email(self, client):
+        """Test that login makes a new request when email differs from existing session."""
+        existing_session = VFSSession(
+            access_token="existing-token",
+            refresh_token="existing-refresh",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            user_id="user123",
+            email="original@example.com",
+        )
+        client._auth.session = existing_session
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={
+                "accessToken": "new-token",
+                "refreshToken": "new-refresh",
+                "userId": "user456",
+            }
+        )
+        mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_response.__aexit__ = AsyncMock(return_value=None)
+
+        with patch.object(client, "_init_http_session", new_callable=AsyncMock):
+            client._http_session = AsyncMock()
+            client._http_session.post = MagicMock(return_value=mock_response)
+            client._http_session.headers = {}
+
+            result = await client.login(
+                email="different@example.com",
+                password="password123",
+                turnstile_token="turnstile-token",
+            )
+
+        # Should make new HTTP request for different email
+        client._http_session.post.assert_called_once()
+        assert result.email == "different@example.com"
+        assert result.access_token == "new-token"
+
+
+    @pytest.mark.asyncio
     async def test_login_failure(self, client):
         """Test failed login."""
         mock_response = AsyncMock()

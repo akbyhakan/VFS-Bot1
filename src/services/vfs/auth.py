@@ -83,6 +83,16 @@ class VFSAuth:
         Raises:
             VFSRateLimitError: If rate limited by VFS (429 response)
         """
+        # Reuse existing valid session to avoid unnecessary login requests
+        if self.session and email == self.session.email:
+            buffer = timedelta(minutes=int(os.getenv("TOKEN_REFRESH_BUFFER_MINUTES", "5")))
+            if datetime.now(timezone.utc) < (self.session.expires_at - buffer):
+                logger.info(
+                    f"Reusing existing valid session for {email[:3]}*** "
+                    f"(expires at {self.session.expires_at})"
+                )
+                return self.session
+
         # Apply rate limiting for login endpoint
         await self.endpoint_limiter.acquire("login")
 

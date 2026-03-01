@@ -160,6 +160,35 @@ async def test_notify_booking_success():
 
 
 @pytest.mark.asyncio
+async def test_notify_booking_success_with_screenshot():
+    """Test booking success notification sends photo when screenshot_path is provided."""
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123"}}
+    notifier = NotificationService(config)
+
+    with patch.object(notifier, "_send_telegram_with_photo", new_callable=AsyncMock) as mock_photo:
+        mock_photo.return_value = True
+        await notifier.notify_booking_success(
+            "Istanbul", "2024-01-15", "10:00", "REF123",
+            screenshot_path="/tmp/screenshot.png",
+        )
+        mock_photo.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_notify_booking_success_without_screenshot():
+    """Test booking success notification uses send_notification when no screenshot."""
+    config = {"telegram": {"enabled": True, "bot_token": "test_token", "chat_id": "123"}}
+    notifier = NotificationService(config)
+
+    with patch.object(notifier, "send_notification", new_callable=AsyncMock) as mock_send:
+        mock_send.return_value = True
+        await notifier.notify_booking_success(
+            "Istanbul", "2024-01-15", "10:00", "REF123",
+            screenshot_path=None,
+        )
+        mock_send.assert_called_once()
+
+@pytest.mark.asyncio
 async def test_notify_error():
     """Test error notification."""
     config = {"telegram": {"enabled": False}}
