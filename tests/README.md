@@ -11,7 +11,7 @@ tests/
 ├── __init__.py                  ← Package marker
 ├── .env.test.example            ← Example environment variables for tests
 │
-├── unit/                        ← Unit tests (115 files)
+├── unit/                        ← Unit tests (117 files)
 │   ├── __init__.py
 │   ├── test_alert_service.py
 │   ├── test_auth.py
