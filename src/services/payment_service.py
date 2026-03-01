@@ -136,10 +136,25 @@ class PaymentService:
         ]
 
         try:
-            # Race - first one to complete wins
-            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            # Drain exceptions from done tasks to prevent
+            # "Task exception was never retrieved" warnings
+            for task in done:
+                if task.cancelled():
+                    continue
+                exc = task.exception()
+                if exc is not None:
+                    logger.warning(
+                        f"Payment selector task completed with exception: {exc}",
+                        exc_info=exc,
+                    )
         finally:
-            # Cancel remaining tasks
+            # Cancel remaining tasks and await them
             for task in tasks:
                 if not task.done():
                     task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass

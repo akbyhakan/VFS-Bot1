@@ -412,14 +412,33 @@ self._trigger_event = asyncio.Event()
 async def _wait_or_shutdown(self, seconds: float) -> bool:
     shutdown_task = asyncio.create_task(self.shutdown_event.wait())
     trigger_task = asyncio.create_task(self._trigger_event.wait())
-    
+
     done, pending = await asyncio.wait(
         [shutdown_task, trigger_task],
         timeout=seconds,
         return_when=asyncio.FIRST_COMPLETED
     )
-    
-    # Cancel pending tasks and check which event was triggered
+
+    # Cancel pending tasks
+    for task in pending:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    # Drain exceptions from done tasks to prevent
+    # "Task exception was never retrieved" warnings
+    for task in done:
+        if task.cancelled():
+            continue
+        exc = task.exception()
+        if exc is not None:
+            logger.warning(
+                f"Wait task completed with unexpected exception: {exc}",
+                exc_info=exc,
+            )
+
     if shutdown_task in done:
         return True  # Shutdown requested
     elif trigger_task in done:
