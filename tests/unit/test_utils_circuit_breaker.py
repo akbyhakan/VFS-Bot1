@@ -305,6 +305,49 @@ async def test_circuit_breaker_handles_missing_state_file():
 
 
 @pytest.mark.asyncio
+async def test_circuit_breaker_atomic_write_no_corruption():
+    """Test that state is written atomically (temp file + rename, no partial writes)."""
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        state_file = Path(temp_dir) / "state.json"
+
+        cb = CircuitBreaker(
+            failure_threshold=2, timeout_seconds=5, state_file=str(state_file), name="TestCB"
+        )
+
+        # Trigger a save via record_failure
+        await cb.record_failure()
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        # The final state file must exist and be valid JSON (no partial writes)
+        assert state_file.exists()
+
+        import json
+
+        with open(state_file, "r") as f:
+            state_data = json.load(f)
+
+        assert state_data["state"] == CircuitState.OPEN.value
+        assert state_data["failure_count"] == 2
+
+        # No leftover temp files in the directory
+        temp_files = list(Path(temp_dir).glob(".cb_state_*"))
+        assert len(temp_files) == 0, f"Unexpected temp files left: {temp_files}"
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_save_state_is_async():
+    """Test that _save_state() is an async (coroutine) method."""
+    cb = CircuitBreaker(failure_threshold=2, timeout_seconds=5)
+    assert asyncio.iscoroutinefunction(
+        cb._save_state
+    ), "_save_state must be an async coroutine function"
+
+
+@pytest.mark.asyncio
 async def test_get_stats_includes_persistent_flag():
     """Test get_stats includes persistent flag."""
     import tempfile

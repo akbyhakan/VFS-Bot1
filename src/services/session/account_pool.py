@@ -1,7 +1,7 @@
 """Account pool management with LRU + cooldown strategy."""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -18,7 +18,7 @@ class PooledAccount:
 
     id: int
     email: str
-    password: str
+    password: str = field(repr=False)
     phone: str
     status: str
     last_used_at: Optional[datetime]
