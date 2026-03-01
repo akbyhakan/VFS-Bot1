@@ -2,6 +2,7 @@
 """Verify version synchronization between pyproject.toml and frontend/package.json."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -47,23 +48,48 @@ def get_frontend_version():
     return version
 
 
+def get_init_version():
+    """Get version from src/__init__.py."""
+    init_file = Path("src/__init__.py")
+    if not init_file.exists():
+        print("❌ src/__init__.py not found")
+        return None
+
+    with open(init_file) as f:
+        for line in f:
+            match = re.match(r'^__version__\s*=\s*["\']([^"\']+)["\']', line)
+            if match:
+                return match.group(1)
+
+    print("❌ __version__ not found in src/__init__.py")
+    return None
+
+
 def main():
     """Main function to verify version synchronization."""
     pyproject_version = get_pyproject_version()
     frontend_version = get_frontend_version()
+    init_version = get_init_version()
 
-    if pyproject_version is None or frontend_version is None:
+    if pyproject_version is None or frontend_version is None or init_version is None:
         return 1
 
-    if pyproject_version != frontend_version:
+    versions = {
+        "pyproject.toml": pyproject_version,
+        "frontend/package.json": frontend_version,
+        "src/__init__.py": init_version,
+    }
+    unique_versions = set(versions.values())
+
+    if len(unique_versions) > 1:
         print("❌ Version mismatch detected:")
-        print(f"   pyproject.toml:          {pyproject_version}")
-        print(f"   frontend/package.json:   {frontend_version}")
-        print("\n⚠️  Please ensure both files have the same version")
+        for source, version in versions.items():
+            print(f"   {source:<30} {version}")
+        print("\n⚠️  Please ensure all files have the same version")
         return 1
 
     print(
-        f"✅ Version {pyproject_version} is in sync across pyproject.toml and frontend/package.json"
+        f"✅ Version {pyproject_version} is in sync across pyproject.toml, frontend/package.json, and src/__init__.py"
     )
     return 0
 

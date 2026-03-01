@@ -50,6 +50,29 @@ def extract_constraint(dep_string):
     return constraint
 
 
+def compare_versions(v1, v2):
+    """Compare two version strings.
+
+    Returns -1 if v1 < v2, 0 if v1 == v2, or 1 if v1 > v2.
+    Returns 0 and prints a warning on ValueError (unparseable version).
+    """
+    try:
+        t1 = tuple(int(x) for x in v1.split("."))
+        t2 = tuple(int(x) for x in v2.split("."))
+        # Pad to same length
+        length = max(len(t1), len(t2))
+        t1 = t1 + (0,) * (length - len(t1))
+        t2 = t2 + (0,) * (length - len(t2))
+        if t1 < t2:
+            return -1
+        elif t1 > t2:
+            return 1
+        return 0
+    except ValueError:
+        print(f"⚠️  Unable to parse version strings for comparison: {v1!r} vs {v2!r}")
+        return 0
+
+
 def main():
     """Verify requirements.lock consistency with pyproject.toml."""
     # Read pyproject.toml
@@ -120,6 +143,13 @@ def main():
             base_version = expected_base.rsplit(".", 1)[0]
             if not lock_version.startswith(base_version):
                 errors.append(f"❌ {pkg}: ~={expected_base} not compatible with {lock_version}")
+        elif ">=" in constraint:
+            # Handle compound constraints like >=1.58.0,<2.0.0 — extract the >= part only
+            ge_part = next((c.strip() for c in constraint.split(",") if c.strip().startswith(">=")), None)
+            if ge_part:
+                min_version = ge_part.replace(">=", "")
+                if compare_versions(lock_version, min_version) < 0:
+                    errors.append(f"❌ {pkg}: >={min_version} not satisfied by {lock_version}")
 
     if errors:
         print("\n🔍 requirements.lock validation issues:")

@@ -418,10 +418,10 @@ The circuit breaker prevents cascading failures by temporarily blocking operatio
 
 ### Configuration
 
-Circuit breaker constants in `src/constants.py`:
+Circuit breaker constants in `src/constants/resilience.py`:
 
 ```python
-class CircuitBreaker:
+class CircuitBreakerConfig:
     FAIL_THRESHOLD = 5              # Consecutive errors to open
     MAX_ERRORS_PER_HOUR = 20        # Total errors in window
     ERROR_TRACKING_WINDOW = 3600    # Time window (seconds)

@@ -110,7 +110,7 @@ from src.services.slot_analyzer import SlotPatternAnalyzer
 analyzer = SlotPatternAnalyzer()
 
 # Record a found slot
-analyzer.record_slot_found(
+await analyzer.record_slot_found_async(
     country="nld",
     centre="Amsterdam",
     category="Tourism",
@@ -151,7 +151,7 @@ report = analyzer.generate_weekly_report()
 
 ### 4. 🔄 Session Recovery
 
-**Service:** `src/services/session_recovery.py`  
+**Service:** `src/services/session/session_recovery.py`  
 **Checkpoint File:** `data/session_checkpoint.json` (auto-created)
 
 Allows the bot to recover and continue from the last successful step if it crashes or is interrupted.

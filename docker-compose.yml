@@ -59,7 +59,7 @@ services:
       - ./config:/app/config:ro
       - ./logs:/app/logs
       - ./screenshots:/app/screenshots
-      - ./backups:/app/data/backups
+      - ./data:/app/data
     environment:
       # Docker-specific DATABASE_URL - overrides .env file
       # Uses 'postgres' as hostname (Docker service name) instead of 'localhost'

@@ -77,7 +77,7 @@ async def populate_pool():
 
 ### 3. Configure Account Pool Settings (Optional)
 
-Edit `src/constants.py` to adjust pool behavior:
+Edit `src/constants/resilience.py` to adjust pool behavior:
 
 ```python
 class AccountPoolConfig:
