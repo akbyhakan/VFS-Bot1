@@ -41,7 +41,9 @@ class TestAPIKeySaltSecurity:
         # Should work but log warning
         with patch("src.core.security.logger") as mock_logger:
             salt = APIKeyManager().get_salt()
-            assert salt == b"dev-only-insecure-salt-do-not-use-in-prod"
+            assert salt is not None
+            assert isinstance(salt, bytes)
+            assert len(salt) >= 32
             # Verify warning was logged via loguru
             mock_logger.warning.assert_called_once()
             warning_msg = mock_logger.warning.call_args[0][0]

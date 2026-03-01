@@ -68,13 +68,15 @@ class APIKeyManager:
         env = Environment.current()
 
         if not salt_env:
-            # In development, use a default insecure salt with warning
+            # In development, use a random ephemeral salt with warning
             if env in Environment._DEV_MODE:
+                ephemeral_salt = secrets.token_urlsafe(32)
                 logger.warning(
                     "SECURITY WARNING: API_KEY_SALT not set in development mode. "
-                    "Using default insecure salt. DO NOT USE IN PRODUCTION!"
+                    f"Using ephemeral salt (prefix: {ephemeral_salt[:8]}...). "
+                    "Salt changes on every restart — set API_KEY_SALT env variable for persistence."
                 )
-                salt_env = "dev-only-insecure-salt-do-not-use-in-prod"
+                salt_env = ephemeral_salt
             else:
                 # STRICT MODE: Salt is MANDATORY in production
                 raise ValueError(
