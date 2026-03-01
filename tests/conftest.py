@@ -152,7 +152,7 @@ def config() -> Dict[str, Any]:
             "subcategory": "Tourism",
         },
         "credentials": {"email": "test@example.com", "password": "testpass"},
-        "notifications": {"telegram": {"enabled": False}, "email": {"enabled": False}},
+        "notifications": {"telegram": {"enabled": False}},
         "captcha": {
             "api_key": "test_dummy_key_not_real",
         },

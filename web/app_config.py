@@ -121,7 +121,7 @@ def get_openapi_metadata(is_dev: bool) -> Dict[str, Any]:
 * 👥 **Multi-User Support** - Manage multiple user accounts and appointments
 * 🤖 **Automated Booking** - Smart bot with anti-detection features
 * 💳 **Payment Integration** - Secure payment card management (encrypted storage)
-* 📧 **Notifications** - Email and webhook notifications for appointments
+* 📧 **Notifications** - Telegram and webhook notifications for appointments
 * 🔌 **Webhook Support** - Real-time updates via webhooks
 * 🌐 **Proxy Support** - Rotating proxy management
 * 📊 **Monitoring** - Health checks and metrics endpoints

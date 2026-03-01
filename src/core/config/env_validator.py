@@ -46,9 +46,6 @@ class EnvValidator:
     OPTIONAL_VARS = {
         "TELEGRAM_BOT_TOKEN": "Telegram bot token for notifications",
         "TELEGRAM_CHAT_ID": "Telegram chat ID for notifications",
-        "EMAIL_SENDER": "Email sender address",
-        "EMAIL_PASSWORD": "Email password/app password",
-        "EMAIL_RECEIVER": "Email receiver address",
         "CAPTCHA_API_KEY": "Captcha solver API key",
         "VFS_ENCRYPTION_KEY": "VFS API encryption key",
         "API_SECRET_KEY": "JWT secret key for API authentication",

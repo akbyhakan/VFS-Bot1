@@ -338,11 +338,6 @@ ENV=production  # production or development
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 
-# Email Notifications (optional)
-EMAIL_SENDER=your_email@gmail.com
-EMAIL_PASSWORD=your_app_password
-EMAIL_RECEIVER=receiver@example.com
-
 # Captcha Service (optional)
 CAPTCHA_API_KEY=your_captcha_api_key
 
@@ -441,8 +436,6 @@ captcha:
 notifications:
   telegram:
     enabled: true
-  email:
-    enabled: false
 
 anti_detection:
   enabled: true  # Master switch
@@ -461,6 +454,7 @@ proxy:
   enabled: false
   provider: "netnut"
   file: "config/proxy-endpoints.csv"
+  rotate_on_error: true
 ```
 
 All anti-detection features are configurable via `config/config.yaml`:
