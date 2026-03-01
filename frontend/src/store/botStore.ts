@@ -19,6 +19,7 @@ export const useBotStore = create<BotState>((set) => ({
   running: false,
   status: BOT_STATUS.STOPPED,
   last_check: null,
+  read_only: false,
   stats: {
     slots_found: 0,
     appointments_booked: 0,

@@ -23,7 +23,11 @@
     "slotsFound": "Slots Found",
     "appointmentsBooked": "Appointments Booked",
     "activeUsers": "Active Users",
-    "lastCheck": "Last Check"
+    "lastCheck": "Last Check",
+    "refreshing": "Refreshing...",
+    "refresh": "Refresh",
+    "never": "Never",
+    "refreshData": "Refreshing data..."
   },
   "errors": {
     "generic": "An error occurred",
@@ -115,12 +119,6 @@
     "settings": "Settings",
     "systemHealth": "System Health",
     "closeMenu": "Close menu"
-  },
-  "dashboard": {
-    "refreshing": "Refreshing...",
-    "refresh": "Refresh",
-    "never": "Never",
-    "refreshData": "Refreshing data..."
   },
   "settings": {
     "pageTitle": "Settings",
@@ -427,5 +425,23 @@
     "appointmentFound": "🎉 Appointment Found!",
     "botError": "⚠️ Bot Error",
     "botStatus": "Bot {{status}}"
+  },
+  "slotAnalytics": {
+    "title": "Slot Analytics",
+    "bestHours": "Best Hours for Slots",
+    "bestDays": "Best Days",
+    "bestCentres": "Most Active Centres",
+    "totalSlots": "Total Slots",
+    "avgPerDay": "Daily Average",
+    "period7": "Last 7 Days",
+    "period14": "Last 14 Days",
+    "period30": "Last 30 Days",
+    "noData": "Not enough slot data collected yet",
+    "slots": "slots"
+  },
+  "readOnlyBanner": {
+    "title": "Read-Only Mode",
+    "message": "The bot is currently running in read-only mode. Write operations (booking appointments, editing accounts) are disabled due to limited database connectivity.",
+    "controlsDisabled": "Controls are disabled in read-only mode"
   }
 }

@@ -35,6 +35,7 @@ async def get_status() -> Dict[str, Any]:
         "running": bot_state.get_running(),
         "status": bot_state.get_status(),
         "last_check": bot_state.get_last_check(),
+        "read_only": bot_state.get_read_only(),
         "stats": {
             "slots_found": bot_state.get_slots_found(),
             "appointments_booked": bot_state.get_appointments_booked(),

@@ -55,6 +55,8 @@ def main() -> None:
             "⚠️  Running in READ-ONLY/DEGRADED mode - Database migrations failed. "
             "Bot functionality may be limited. Please check database connectivity."
         )
+        from web.dependencies import bot_state
+        bot_state.set_read_only(True)
 
     # Setup signal handlers for graceful shutdown
     setup_signal_handlers()

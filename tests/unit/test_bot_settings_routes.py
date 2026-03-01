@@ -244,3 +244,54 @@ class TestBotSettingsRoutes:
             data = response.json()
             assert data["type"] == "urn:vfsbot:error:service-unavailable"
             assert data["status"] == 503
+
+
+class TestSlotAnalyticsRoute:
+    """Tests for the /api/v1/bot/slot-analytics endpoint."""
+
+    def test_slot_analytics_requires_auth(self, client):
+        """Test that slot-analytics endpoint requires authentication."""
+        response = client.get("/api/v1/bot/slot-analytics")
+        assert response.status_code in (401, 403)
+
+    def test_slot_analytics_returns_data(self, client, mock_auth):
+        """Test slot-analytics endpoint returns analyzer output."""
+        mock_result = {
+            "message": "Insufficient data",
+        }
+        with patch("src.services.slot_analyzer.SlotPatternAnalyzer") as MockAnalyzer:
+            instance = MockAnalyzer.return_value
+            instance.analyze_patterns.return_value = mock_result
+
+            response = client.get("/api/v1/bot/slot-analytics")
+            assert response.status_code == 200
+            data = response.json()
+            assert data == mock_result
+
+    def test_slot_analytics_default_days(self, client, mock_auth):
+        """Test slot-analytics uses default days=7 when not specified."""
+        with patch("src.services.slot_analyzer.SlotPatternAnalyzer") as MockAnalyzer:
+            instance = MockAnalyzer.return_value
+            instance.analyze_patterns.return_value = {"message": "Insufficient data"}
+
+            client.get("/api/v1/bot/slot-analytics")
+            instance.analyze_patterns.assert_called_once_with(days=7)
+
+    def test_slot_analytics_custom_days(self, client, mock_auth):
+        """Test slot-analytics accepts custom days parameter."""
+        with patch("src.services.slot_analyzer.SlotPatternAnalyzer") as MockAnalyzer:
+            instance = MockAnalyzer.return_value
+            instance.analyze_patterns.return_value = {"message": "Insufficient data"}
+
+            client.get("/api/v1/bot/slot-analytics?days=30")
+            instance.analyze_patterns.assert_called_once_with(days=30)
+
+    def test_slot_analytics_days_validation_min(self, client, mock_auth):
+        """Test slot-analytics rejects days < 1."""
+        response = client.get("/api/v1/bot/slot-analytics?days=0")
+        assert response.status_code == 422
+
+    def test_slot_analytics_days_validation_max(self, client, mock_auth):
+        """Test slot-analytics rejects days > 90."""
+        response = client.get("/api/v1/bot/slot-analytics?days=91")
+        assert response.status_code == 422

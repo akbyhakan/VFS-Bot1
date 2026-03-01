@@ -18,6 +18,7 @@ export interface BotStatus {
   running: boolean;
   status: BotStatusType;
   last_check: string | null;
+  read_only: boolean;
   stats: {
     slots_found: number;
     appointments_booked: number;
@@ -90,11 +91,22 @@ export interface BotStatusData {
   status?: string;
   last_check?: string | null;
   message?: string;
+  read_only?: boolean;
   stats?: {
     slots_found: number;
     appointments_booked: number;
     active_users: number;
   };
+}
+
+export interface SlotAnalyticsData {
+  period_days: number;
+  total_slots_found: number;
+  best_hours: Array<{ hour: string; count: number }>;
+  best_days: Array<{ day: string; count: number }>;
+  best_centres: Array<{ centre: string; count: number }>;
+  avg_slots_per_day: number;
+  message?: string;
 }
 
 export interface StatsData {

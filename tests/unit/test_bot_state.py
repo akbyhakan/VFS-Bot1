@@ -61,6 +61,19 @@ class TestThreadSafeBotStateGettersSetters:
         state.set_active_users(15)
         assert state.get_active_users() == 15
 
+    def test_read_only_default_false(self):
+        """Test read_only defaults to False."""
+        state = ThreadSafeBotState()
+        assert state.get_read_only() is False
+
+    def test_set_read_only(self):
+        """Test set_read_only / get_read_only."""
+        state = ThreadSafeBotState()
+        state.set_read_only(True)
+        assert state.get_read_only() is True
+        state.set_read_only(False)
+        assert state.get_read_only() is False
+
 
 class TestThreadSafeBotStateAtomicOps:
     """Tests for atomic increment operations."""

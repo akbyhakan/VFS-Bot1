@@ -260,6 +260,28 @@ class TestApiStatusEndpoint:
         assert data["stats"]["slots_found"] == 5
         assert data["stats"]["appointments_booked"] == 2
 
+    def test_api_status_includes_read_only(self, client, reset_state):
+        """Test /api/status endpoint includes read_only field."""
+        bot_state.set_read_only(False)
+
+        response = client.get("/api/status")
+        data = response.json()
+
+        assert "read_only" in data
+        assert data["read_only"] is False
+
+    def test_api_status_read_only_true(self, client, reset_state):
+        """Test /api/status endpoint reflects read_only=True."""
+        bot_state.set_read_only(True)
+
+        response = client.get("/api/status")
+        data = response.json()
+
+        assert data["read_only"] is True
+
+        # Reset for other tests
+        bot_state.set_read_only(False)
+
 
 class TestWebSocketAuthentication:
     """Tests for WebSocket authentication."""
