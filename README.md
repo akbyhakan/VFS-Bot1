@@ -322,14 +322,14 @@ DB_WORKER_COUNT=4
 
 # Backup Configuration
 BACKUP_INTERVAL_HOURS=6
-BACKUP_RETENTION_DAYS=7
+BACKUP_RETENTION_DAYS=30
 
 # Token Management
 TOKEN_REFRESH_BUFFER_MINUTES=5
 
 # Logging
 LOG_LEVEL=INFO
-LOG_FORMAT=text  # text or json
+JSON_LOGGING=false  # Set to true for structured JSON logs (recommended for production)
 
 # Environment
 ENV=production  # production or development
@@ -420,7 +420,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 vfs:
   base_url: "https://visa.vfsglobal.com"
   country: "tur"  # Country code
-  mission: "deu"  # Mission code
+  language: "tr"
+  mission: "nld"  # Mission code
   centres:
     - "Istanbul"
     - "Ankara"
@@ -454,8 +455,9 @@ cloudflare:
   max_wait_time: 30  # seconds
   
 proxy:
-  enabled: false  # Set true to use proxies
-  file: "config/proxies.txt"
+  enabled: false
+  provider: "netnut"
+  file: "config/proxy-endpoints.csv"
 ```
 
 All anti-detection features are configurable via `config/config.yaml`:
@@ -476,7 +478,8 @@ cloudflare:
 
 proxy:
   enabled: false
-  file: "config/proxies.txt"
+  provider: "netnut"
+  file: "config/proxy-endpoints.csv"
   rotate_on_error: true
 
 human_behavior:
@@ -891,7 +894,7 @@ export JSON_LOGGING=true
 python main.py
 ```
 
-Logs are written to `logs/vfs_bot.jsonl` in JSON format for easy parsing.
+Logs are written to `logs/vfs_bot.log` in human-readable format by default. When running with `JSON_LOGGING=true`, logs are written to `logs/vfs_bot.jsonl` in JSON format for easy parsing.
 
 ### Rate Limiting
 Global rate limiting prevents overloading VFS servers:
@@ -1321,7 +1324,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ```
 MIT License
 
-Copyright (c) 2025 akbyhakan
+Copyright (c) 2025 akby.hakan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1336,7 +1339,7 @@ copies or substantial portions of the Software.
 
 ## 📧 Contact & Support
 
-- **Author**: akbyhakan
+- **Author**: akby.hakan
 - **GitHub**: [akbyhakan/VFS-Bot1](https://github.com/akbyhakan/VFS-Bot1)
 - **Issues**: [Report a bug](https://github.com/akbyhakan/VFS-Bot1/issues)
 

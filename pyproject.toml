@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "akbyhakan", email = "247059625+akbyhakan@users.noreply.github.com"}
+    {name = "akby.hakan", email = "akby.hakan@gmail.com"}
 ]
 keywords = ["vfs", "appointment", "booking", "automation", "bot"]
 classifiers = [

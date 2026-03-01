@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 # separately in src/core/config/config_version_checker.py and is intentionally
 # independent. It only changes when config.yaml schema has breaking changes.
 __version__ = "2.2.0"
-__author__ = "Md. Ariful Islam"
+__author__ = "akby.hakan"
 __license__ = "MIT"
 
 if TYPE_CHECKING:

@@ -69,7 +69,7 @@ class TestSetupStructuredLogging:
         for handler in logging.root.handlers:
             handler.flush()
 
-        log_file = tmp_path / "logs" / "vfs_bot.jsonl"
+        log_file = tmp_path / "logs" / "vfs_bot.log"
         content = log_file.read_text()
 
         # Should contain human-readable logs
