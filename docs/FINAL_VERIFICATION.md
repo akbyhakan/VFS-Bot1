@@ -113,17 +113,16 @@
 
 ### ✅ Special Case Files (4)
 
-#### 76. ✅ src/core/retry.py
-- **Status**: Partial migration (both stdlib + loguru)
+#### 76. ✅ src/core/infra/retry.py
+- **Status**: Stdlib only (no loguru needed — file has no app-level logging)
 - **Reason**: Tenacity's `before_sleep_log()` requires stdlib logger
 - **Implementation**:
   ```python
   import logging as stdlib_logging
-  from loguru import logger
   
   _stdlib_logger = stdlib_logging.getLogger(__name__)
   
-  # Use _stdlib_logger for tenacity, logger for app logging
+  # _stdlib_logger used only for tenacity's before_sleep_log()
   ```
 
 #### 77. ✅ src/core/logger.py

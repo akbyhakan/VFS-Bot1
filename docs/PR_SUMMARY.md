@@ -18,7 +18,7 @@ This PR implements 6 coordinated improvements to enhance code quality, security,
 - Eliminated function-local logger instantiation
 
 **Special Cases**:
-1. **src/core/retry.py**: Uses `import logging as stdlib_logging` because tenacity's `before_sleep_log()` requires a stdlib logger
+1. **src/core/infra/retry.py**: Uses `import logging as stdlib_logging` because tenacity's `before_sleep_log()` requires a stdlib logger
 
 **Documentation**:
 - Created `MIGRATION_SUMMARY.md` with migration guide
@@ -172,7 +172,7 @@ Redis-backed rate limiting via AuthRateLimiter with InMemoryBackend/RedisBackend
 ### For Developers
 1. Use `from loguru import logger` in new files (not `import logging`)
 2. Remove function-local logger instantiation
-3. For stdlib-dependent code, use special case patterns (see MIGRATION_SUMMARY.md)
+3. For stdlib-dependent code, use special case patterns (see FINAL_VERIFICATION.md)
 
 ### For Deployment
 1. Update `.env` file to use secure passwords (not CHANGE_ME)
