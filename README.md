@@ -290,7 +290,9 @@ Key variables needed for configuration (see `.env.example` for complete list):
 ```env
 # VFS Credentials
 VFS_EMAIL=your_email@example.com
-VFS_PASSWORD=your_password
+# ⚠️ VFS_PASSWORD is managed securely by the application
+# Manual setup: Set plain password and VFS_PASSWORD_ENCRYPTED=false
+# VFS_PASSWORD=your_plain_password
 VFS_PASSWORD_ENCRYPTED=false  # Set to true if password is Fernet-encrypted
 
 # Encryption Keys (CRITICAL)
@@ -450,29 +452,6 @@ cloudflare:
   max_retries: 3
   manual_captcha: false
   
-proxy:
-  enabled: false
-  provider: "netnut"
-  file: "config/proxy-endpoints.csv"
-  rotate_on_error: true
-```
-
-All anti-detection features are configurable via `config/config.yaml`:
-
-```yaml
-anti_detection:
-  enabled: true  # Master switch
-  tls_bypass: true
-  fingerprint_bypass: true
-  human_simulation: true
-  stealth_mode: true
-
-cloudflare:
-  enabled: true
-  max_wait_time: 30
-  max_retries: 3
-  manual_captcha: false
-
 proxy:
   enabled: false
   provider: "netnut"
@@ -670,7 +649,7 @@ VFS-Bot1/
 │   └── selectors.yaml               # Element selector configuration
 ├── src/
 │   ├── __init__.py                  # Lazy-loading module structure
-│   ├── constants.py                 # Constants
+│   ├── constants/                   # Application constants (timing, resilience, security, etc.)
 │   ├── core/                        # Core infrastructure
 │   │   ├── auth/                    # JWT token, encryption
 │   │   ├── config/                  # Configuration loading, validation
@@ -731,9 +710,7 @@ VFS-Bot1/
 │   │   ├── payment_service.py       # Payment processing
 │   │   ├── slot_analyzer.py         # Slot pattern analysis
 │   │   └── appointment_deduplication.py  # Duplicate prevention
-│   ├── middleware/                  # Request tracking & correlation
 │   ├── types/                       # TypedDict definitions
-│   ├── constants/                   # Application constants
 │   └── utils/                       # Utility modules
 │       ├── anti_detection/          # TLS, fingerprint, human simulation
 │       ├── security/                # Rate limiting, session, proxy
