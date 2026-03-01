@@ -449,10 +449,13 @@ anti_detection:
   tls_bypass: true
   fingerprint_bypass: true
   human_simulation: true
+  stealth_mode: true
 
 cloudflare:
   enabled: true
   max_wait_time: 30  # seconds
+  max_retries: 3
+  manual_captcha: false
   
 proxy:
   enabled: false
