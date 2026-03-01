@@ -42,6 +42,10 @@ export function isBotStatusData(data: unknown): data is {
     return false;
   }
 
+  if (obj.read_only !== undefined && typeof obj.read_only !== 'boolean') {
+    return false;
+  }
+
   if (obj.stats !== undefined) {
     if (!obj.stats || typeof obj.stats !== 'object') {
       return false;

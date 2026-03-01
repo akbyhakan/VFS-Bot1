@@ -28,6 +28,7 @@ class ThreadSafeBotState:
     appointments_booked: int = field(default=0, init=False)
     active_users: int = field(default=0, init=False)
     logs: deque = field(default_factory=lambda: deque(maxlen=500), init=False)
+    read_only: bool = field(default=False, init=False)
 
     # Typed getters
     def get_running(self) -> bool:
@@ -59,6 +60,11 @@ class ThreadSafeBotState:
         """Thread-safe get active users count."""
         with self._lock:
             return self.active_users
+
+    def get_read_only(self) -> bool:
+        """Thread-safe get read-only mode flag."""
+        with self._lock:
+            return self.read_only
 
     def get_logs(self) -> deque:
         """Thread-safe get logs deque reference."""
@@ -95,6 +101,11 @@ class ThreadSafeBotState:
         """Thread-safe set active users count."""
         with self._lock:
             self.active_users = value
+
+    def set_read_only(self, value: bool) -> None:
+        """Thread-safe set read-only mode flag."""
+        with self._lock:
+            self.read_only = value
 
     # Atomic operations
     def increment_slots_found(self, count: int = 1) -> None:

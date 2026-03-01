@@ -23,7 +23,11 @@
     "slotsFound": "Bulunan Slotlar",
     "appointmentsBooked": "Alınan Randevular",
     "activeUsers": "Aktif Kullanıcılar",
-    "lastCheck": "Son Kontrol"
+    "lastCheck": "Son Kontrol",
+    "refreshing": "Yenileniyor...",
+    "refresh": "Yenile",
+    "never": "Hiç",
+    "refreshData": "Veriler yenileniyor..."
   },
   "errors": {
     "generic": "Bir hata oluştu",
@@ -114,12 +118,6 @@
     "settings": "Ayarlar",
     "systemHealth": "Sistem Sağlığı",
     "closeMenu": "Menüyü kapat"
-  },
-  "dashboard": {
-    "refreshing": "Yenileniyor...",
-    "refresh": "Yenile",
-    "never": "Hiç",
-    "refreshData": "Veriler yenileniyor..."
   },
   "settings": {
     "pageTitle": "Ayarlar",
@@ -395,5 +393,23 @@
     "appointmentFound": "🎉 Randevu Bulundu!",
     "botError": "⚠️ Bot Hatası",
     "botStatus": "Bot {{status}}"
+  },
+  "slotAnalytics": {
+    "title": "Slot Analitikleri",
+    "bestHours": "En Olası Slot Saatleri",
+    "bestDays": "En İyi Günler",
+    "bestCentres": "En Aktif Merkezler",
+    "totalSlots": "Toplam Slot",
+    "avgPerDay": "Günlük Ortalama",
+    "period7": "Son 7 Gün",
+    "period14": "Son 14 Gün",
+    "period30": "Son 30 Gün",
+    "noData": "Henüz yeterli slot verisi toplanmadı",
+    "slots": "slot"
+  },
+  "readOnlyBanner": {
+    "title": "Salt Okunur Mod",
+    "message": "Bot şu anda salt okunur modda çalışıyor. Veritabanı bağlantısı sınırlı olduğundan yazma işlemleri (randevu alma, hesap düzenleme) devre dışıdır.",
+    "controlsDisabled": "Read-only modda kontroller devre dışıdır"
   }
 }

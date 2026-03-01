@@ -2,6 +2,8 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { LiveLogs } from '@/components/dashboard/LiveLogs';
 import { BotControls } from '@/components/dashboard/BotControls';
 import { HealthBanner } from '@/components/dashboard/HealthBanner';
+import { ReadOnlyBanner } from '@/components/dashboard/ReadOnlyBanner';
+import { SlotAnalytics } from '@/components/dashboard/SlotAnalytics';
 import { useBotStore } from '@/store/botStore';
 import { useBotStatus } from '@/hooks/useApi';
 import { Target, Calendar, Users as UsersIcon, Clock, RefreshCw } from 'lucide-react';
@@ -45,6 +47,9 @@ export function Dashboard() {
       {/* Health Banner */}
       <HealthBanner />
 
+      {/* Read-Only Mode Banner */}
+      <ReadOnlyBanner />
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
@@ -75,6 +80,9 @@ export function Dashboard() {
 
       {/* Bot Controls */}
       <BotControls />
+
+      {/* Slot Analytics */}
+      <SlotAnalytics />
 
       {/* Live Logs */}
       <LiveLogs />

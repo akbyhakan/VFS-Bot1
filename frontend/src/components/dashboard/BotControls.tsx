@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 export function BotControls() {
   const running = useBotStore((state) => state.running);
+  const read_only = useBotStore((state) => state.read_only);
   const startBot = useStartBot();
   const stopBot = useStopBot();
   const restartBot = useRestartBot();
@@ -60,7 +61,7 @@ export function BotControls() {
           <Button
             variant="primary"
             onClick={handleStart}
-            disabled={running || startBot.isPending}
+            disabled={running || startBot.isPending || read_only}
             isLoading={startBot.isPending}
             leftIcon={<Play className="w-4 h-4" />}
             className="flex-1"
@@ -70,7 +71,7 @@ export function BotControls() {
           <Button
             variant="danger"
             onClick={handleStop}
-            disabled={!running || stopBot.isPending}
+            disabled={!running || stopBot.isPending || read_only}
             isLoading={stopBot.isPending}
             leftIcon={<Square className="w-4 h-4" />}
             className="flex-1"
@@ -80,7 +81,7 @@ export function BotControls() {
           <Button
             variant="secondary"
             onClick={handleRestart}
-            disabled={!running || restartBot.isPending}
+            disabled={!running || restartBot.isPending || read_only}
             isLoading={restartBot.isPending}
             leftIcon={<RotateCcw className="w-4 h-4" />}
             className="flex-1"
@@ -90,7 +91,7 @@ export function BotControls() {
           <Button
             variant="outline"
             onClick={handleManualCheck}
-            disabled={!running || checkNow.isPending}
+            disabled={!running || checkNow.isPending || read_only}
             isLoading={checkNow.isPending}
             leftIcon={<Search className="w-4 h-4" />}
             className="flex-1"
@@ -98,6 +99,11 @@ export function BotControls() {
             {t('botControls.checkNow')}
           </Button>
         </div>
+        {read_only && (
+          <p className="mt-3 text-sm text-orange-400 text-center">
+            {t('readOnlyBanner.controlsDisabled')}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from loguru import logger
 from slowapi import Limiter
@@ -474,3 +474,14 @@ async def update_bot_settings(
         }
     else:
         return result
+
+
+@router.get("/slot-analytics")
+async def get_slot_analytics(
+    days: int = Query(default=7, ge=1, le=90, description="Number of days to analyze"),
+    auth_data: dict = Depends(verify_jwt_token),
+) -> Dict[str, Any]:
+    """Get slot pattern analytics for dashboard visualization."""
+    from src.services.slot_analyzer import SlotPatternAnalyzer
+    analyzer = SlotPatternAnalyzer()
+    return analyzer.analyze_patterns(days=days)

@@ -78,7 +78,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_json(
         {
             "type": "status",
-            "data": {"running": bot_state.get_running(), "status": bot_state.get_status()},
+            "data": {
+                "running": bot_state.get_running(),
+                "status": bot_state.get_status(),
+                "read_only": bot_state.get_read_only(),
+            },
         }
     )
 
