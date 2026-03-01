@@ -55,6 +55,11 @@ def main() -> None:
             "⚠️  Running in READ-ONLY/DEGRADED mode - Database migrations failed. "
             "Bot functionality may be limited. Please check database connectivity."
         )
+        logger.warning(
+            "READ-ONLY capabilities: "
+            "✅ Dashboard (view-only) | ✅ Health endpoints | ✅ Metrics | "
+            "❌ Bot start/stop | ❌ User CRUD | ❌ Booking | ❌ Webhooks"
+        )
         from web.dependencies import bot_state
         bot_state.set_read_only(True)
 
