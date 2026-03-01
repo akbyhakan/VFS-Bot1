@@ -146,6 +146,18 @@ async def test_random_delay_custom():
 
 
 @pytest.mark.asyncio
+async def test_random_delay_with_tuple_unpack():
+    """Test random_delay with tuple unpack pattern (used by Delays constants)."""
+    import time
+
+    delay_range = (0.1, 0.2)
+    start = time.time()
+    await random_delay(*delay_range)
+    elapsed = time.time() - start
+    assert 0.1 <= elapsed <= 0.3  # Small buffer for execution time
+
+
+@pytest.mark.asyncio
 async def test_safe_navigate_success(mock_page):
     """Test safe_navigate successful navigation."""
     result = await safe_navigate(mock_page, "https://example.com")

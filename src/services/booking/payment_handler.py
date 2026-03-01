@@ -8,6 +8,7 @@ from loguru import logger
 from playwright.async_api import Page
 
 from ..otp_manager.otp_webhook import get_otp_service
+from ...utils.helpers import random_delay
 from .selector_utils import get_selector, resolve_selector, try_selectors
 
 
@@ -114,7 +115,7 @@ class PaymentHandler:
         logger.info("CVV entered")
 
         # Random wait
-        await asyncio.sleep(random.uniform(1, 3))
+        await random_delay(1, 3)
 
         # Submit
         await page.click(get_selector("payment_submit"))
@@ -152,7 +153,7 @@ class PaymentHandler:
             logger.info("OTP entered successfully")
 
             # Small delay
-            await asyncio.sleep(random.uniform(0.5, 1.5))
+            await random_delay(0.5, 1.5)
 
             # Click Continue
             submit_selectors = resolve_selector("otp_submit")

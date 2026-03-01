@@ -1,7 +1,5 @@
 """Slot availability checking service for VFS appointments."""
 
-import asyncio
-import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 
@@ -15,7 +13,7 @@ from ...core.exceptions import VFSBotError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
-from ...utils.helpers import smart_click
+from ...utils.helpers import random_delay, smart_click
 from ...utils.spa_navigation import navigate_to_appointment_page
 
 if TYPE_CHECKING:
@@ -162,19 +160,19 @@ class SlotChecker:
             await page.select_option(
                 self._get_selector("appointment.centre_dropdown", "select#centres"), label=centre
             )
-            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
+            await random_delay(*Delays.AFTER_SELECT_OPTION)
 
             await page.select_option(
                 self._get_selector("appointment.category_dropdown", "select#categories"),
                 label=category,
             )
-            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
+            await random_delay(*Delays.AFTER_SELECT_OPTION)
 
             await page.select_option(
                 self._get_selector("appointment.subcategory_dropdown", "select#subcategories"),
                 label=subcategory,
             )
-            await asyncio.sleep(random.uniform(*Delays.AFTER_SELECT_OPTION))
+            await random_delay(*Delays.AFTER_SELECT_OPTION)
 
             # Click to check slots with human simulation using configured selector
             await smart_click(
@@ -182,7 +180,7 @@ class SlotChecker:
                 self._get_selector("appointment.check_slots_button", "button#check-slots"),
                 self.human_sim,
             )
-            await asyncio.sleep(random.uniform(*Delays.AFTER_CLICK_CHECK))
+            await random_delay(*Delays.AFTER_CLICK_CHECK)
 
             # Check if slots are available using configured selector
             slots_available = (

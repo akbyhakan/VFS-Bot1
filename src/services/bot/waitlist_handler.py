@@ -1,7 +1,5 @@
 """Waitlist handling service for VFS appointments."""
 
-import asyncio
-import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -11,7 +9,7 @@ from playwright.async_api import Page
 
 from ...constants import Delays
 from ...utils.anti_detection.human_simulator import HumanSimulator
-from ...utils.helpers import smart_click
+from ...utils.helpers import random_delay, smart_click
 
 
 class WaitlistHandler:
@@ -116,7 +114,7 @@ class WaitlistHandler:
             logger.info("Waitlist checkbox checked successfully")
 
             # Wait a bit for UI to update
-            await asyncio.sleep(random.uniform(*Delays.AFTER_CLICK_CHECK))
+            await random_delay(*Delays.AFTER_CLICK_CHECK)
 
             return True
 
@@ -213,7 +211,7 @@ class WaitlistHandler:
             logger.info(f"{name} checkbox checked")
 
             # Wait a bit for UI to update
-            await asyncio.sleep(random.uniform(0.3, 0.7))
+            await random_delay(0.3, 0.7)
 
             return True
 
@@ -264,7 +262,7 @@ class WaitlistHandler:
             logger.info("Confirm button clicked successfully")
 
             # Wait for navigation/processing
-            await asyncio.sleep(random.uniform(2.0, 3.0))
+            await random_delay(2.0, 3.0)
 
             return True
 
