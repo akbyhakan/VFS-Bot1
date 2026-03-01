@@ -3,38 +3,27 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
 from loguru import logger
 
-from src import __version__
 from src.core.auth import get_token_blacklist, init_token_blacklist
 from src.core.auth.token_blacklist import PersistentTokenBlacklist
 from src.core.config.settings import get_settings
 from src.core.infra.startup_validator import log_security_warnings
 from src.models.db_factory import DatabaseFactory
-from src.services.otp_manager.otp_webhook_routes import router as otp_router
 from web.api_versioning import setup_versioned_routes
+from web.app_config import (
+    configure_middleware,
+    get_openapi_metadata,
+    mount_static_files,
+    register_exception_handlers,
+    register_infrastructure_routers,
+    register_webhook_routers,
+    register_websocket_and_spa,
+)
 from web.cors import validate_cors_origins
-from web.middleware import (
-    ErrorHandlerMiddleware,
-    SecurityHeadersMiddleware,
-)
-from web.exception_handlers import http_exception_handler, validation_exception_handler
-from web.routes import (
-    dashboard_router,
-    health_router,
-    sms_webhook_router,
-    webhook_otp_router,
-)
-from web.routes.dashboard import serve_react_app
-from web.websocket.handler import websocket_endpoint
 
 
 @asynccontextmanager
@@ -147,216 +136,42 @@ def create_app(run_security_validation: bool = True, env_override: Optional[str]
     env = env_override if env_override is not None else get_validated_environment()
     _is_dev = env in ("development", "dev", "local", "testing", "test")
 
-    # Create FastAPI app with enhanced OpenAPI documentation and lifespan
-    app = FastAPI(
-        title="VFS-Bot Dashboard API",
-        version=__version__,
-        lifespan=lifespan,
-        docs_url="/docs" if _is_dev else None,
-        redoc_url="/redoc" if _is_dev else None,
-        openapi_url="/openapi.json" if _is_dev else None,
-        description="""
-## VFS Global Appointment Booking Bot API
-
-**VFS-Bot** is an automated appointment booking system for VFS Global visa application centers.
-
-### Features
-
-* 🔐 **Secure Authentication** - JWT-based authentication with token refresh
-* 👥 **Multi-User Support** - Manage multiple user accounts and appointments
-* 🤖 **Automated Booking** - Smart bot with anti-detection features
-* 💳 **Payment Integration** - Secure payment card management (encrypted storage)
-* 📧 **Notifications** - Email and webhook notifications for appointments
-* 🔌 **Webhook Support** - Real-time updates via webhooks
-* 🌐 **Proxy Support** - Rotating proxy management
-* 📊 **Monitoring** - Health checks and metrics endpoints
-
-### Authentication
-
-All protected endpoints require a Bearer token in the Authorization header:
-
-```
-Authorization: Bearer <your-token>
-```
-
-Obtain a token via the `/api/v1/auth/login` endpoint.
-
-### Rate Limiting
-
-API endpoints are rate-limited to prevent abuse:
-- Login: 5 requests per minute
-- General API: 100 requests per minute
-- WebSocket: 10 messages per second
-
-### Security
-
-- All sensitive data is encrypted at rest
-- HTTPS required in production
-- CORS protection enabled
-- SQL injection prevention
-- XSS protection headers
-- CSRF token validation
-    """,
-        contact={
-            "name": "VFS-Bot Support",
-            "url": "https://github.com/akbyhakan/VFS-Bot1",
-        },
-        license_info={
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT",
-        },
-        openapi_tags=[
-            {
-                "name": "auth",
-                "description": "Authentication and authorization operations",
-            },
-            {
-                "name": "vfs-accounts",
-                "description": "VFS account management operations",
-            },
-            {
-                "name": "appointments",
-                "description": "Appointment request and booking operations",
-            },
-            {
-                "name": "audit",
-                "description": "Audit log and security monitoring operations",
-            },
-            {
-                "name": "payment",
-                "description": "Payment card and transaction management",
-            },
-            {
-                "name": "bot",
-                "description": "Bot control and status operations",
-            },
-            {
-                "name": "config",
-                "description": "Runtime configuration management",
-            },
-            {
-                "name": "dropdown-sync",
-                "description": "VFS dropdown data synchronization and status monitoring",
-            },
-            {
-                "name": "proxy",
-                "description": "Proxy server management",
-            },
-            {
-                "name": "webhook-sms",
-                "description": "SMS OTP webhook endpoints for appointment and payment verification",
-            },
-            {
-                "name": "webhook-accounts",
-                "description": "Per-user webhook token management (CRUD)",
-            },
-            {
-                "name": "webhook-otp",
-                "description": "Per-user OTP receiver via unique webhook token",
-            },
-            {
-                "name": "webhook-sms-forwarder",
-                "description": "Dynamic SMS webhook endpoints via SMS Forwarder app",
-            },
-            {
-                "name": "health",
-                "description": "Service health and monitoring",
-            },
-        ],
-    )
+    # Create FastAPI app with OpenAPI documentation and lifespan
+    app = FastAPI(lifespan=lifespan, **get_openapi_metadata(_is_dev))
 
     # Run startup security validation if enabled
     if run_security_validation:
         log_security_warnings(strict=True)
 
     # Configure middleware (order matters!)
-
-    # 1. Error handling middleware (catches all errors)
-    app.add_middleware(ErrorHandlerMiddleware)
-
-    # 2. Security headers middleware
-    app.add_middleware(SecurityHeadersMiddleware)
-
-    # 3. Configure CORS
     allowed_origins = validate_cors_origins(get_settings().cors_allowed_origins)
+    configure_middleware(app, allowed_origins, _is_dev)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=[
-            "Accept",
-            "Accept-Language",
-            "Content-Type",
-            "Authorization",
-            "X-Requested-With",
-        ],
-        expose_headers=[
-            "X-Total-Count",
-            "X-Page",
-            "X-Per-Page",
-        ],
-        max_age=3600,  # Cache preflight requests for 1 hour
-    )
-
-    # Mount static files
-    static_dir = Path(__file__).parent / "static"
-    dist_dir = static_dir / "dist"
-
-    if dist_dir.exists():
-        # Serve React app static assets
-        app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+    # Mount React frontend static assets
+    mount_static_files(app)
 
     # ──────────────────────────────────────────────────────────────
     # EXTERNAL WEBHOOK RECEIVERS (Unversioned — Intentional)
     # ──────────────────────────────────────────────────────────────
-    # These routers are NOT under /api/v1 because:
-    # - They are called by external systems (SMS Forwarder, OTP providers)
-    # - Their URLs are hardcoded in 150+ field devices / external services
-    # - Versioning would break all existing integrations
-    # - Auth: Webhook HMAC signature (not JWT)
-    #
-    # Path map:
-    #   /api/webhook/sms/appointment  → otp_router          (SMS provider → appointment OTP)
-    #   /api/webhook/sms/payment      → otp_router          (SMS provider → payment OTP)
-    #   /api/webhook/otp/wait         → otp_router          (Long-polling OTP retrieval)
-    #   /api/webhook/otp/{token}      → webhook_otp_router   (Per-user OTP receiver)
-    #   /webhook/sms/{token}          → sms_webhook_router   (SMS Forwarder app)
-    #   /webhook/sms/{token}/status   → sms_webhook_router   (Webhook status check)
-    #   /webhook/sms/{token}/test     → sms_webhook_router   (Webhook connectivity test)
-    # ──────────────────────────────────────────────────────────────
-    app.include_router(otp_router)
-    app.include_router(webhook_otp_router)
-    app.include_router(sms_webhook_router)
+    # Not under /api/v1: URLs are hardcoded in 150+ field devices.
+    # Auth: Webhook HMAC signature (not JWT).
+    register_webhook_routers(app)
 
     # ──────────────────────────────────────────────────────────────
     # INFRASTRUCTURE (Unversioned — Standard practice)
     # ──────────────────────────────────────────────────────────────
-    app.include_router(health_router)       # /health, /ready, /metrics
-    app.include_router(dashboard_router)    # React SPA dashboard router
+    register_infrastructure_routers(app)
 
     # ──────────────────────────────────────────────────────────────
     # VERSIONED API (v1) — Used by the React frontend
     # ──────────────────────────────────────────────────────────────
-    # All frontend-facing, JWT-protected routes live under /api/v1.
-    # Includes webhook_accounts_router for CRUD (/api/v1/webhook/users/…).
-
     setup_versioned_routes(app)
 
-    # Register RFC 7807 exception handlers
-    app.exception_handler(HTTPException)(http_exception_handler)
-    app.exception_handler(RequestValidationError)(validation_exception_handler)
+    # RFC 7807 exception handlers
+    register_exception_handlers(app)
 
-    # WebSocket endpoint (must be added directly, not via router)
-    app.websocket("/ws")(websocket_endpoint)
-
-    # Catch-all route for React SPA - MUST be last!
-    @app.get("/", response_class=HTMLResponse)
-    @app.get("/{full_path:path}", response_class=HTMLResponse)
-    async def serve_frontend(request, full_path: str = ""):
-        """Serve React SPA for all non-API routes."""
-        return await serve_react_app(request, full_path)
+    # WebSocket endpoint + React SPA catch-all (MUST be last)
+    register_websocket_and_spa(app)
 
     return app
 

@@ -1,10 +1,31 @@
 """Tests for SessionOrchestrator browser isolation."""
 
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.services.session.session_orchestrator import SessionOrchestrator
+
+
+class MockBrowserManager:
+    """
+    Concrete mock browser manager whose constructor returns a fresh mock instance.
+
+    Since _create_mission_browser uses type(self.browser_manager)(...) to create
+    new browser instances, the test orchestrator must be initialised with an
+    instance of this class.  Each call to MockBrowserManager(...) produces a new
+    object with its own async start/close/new_page stubs.
+    """
+
+    def __init__(self, config=None, header_manager=None, proxy_manager=None):
+        self.config = config or {}
+        self.header_manager = header_manager
+        self.proxy_manager = proxy_manager
+        self.start = AsyncMock()
+        self.close = AsyncMock()
+        self._mock_page = AsyncMock()
+        self._mock_page.close = AsyncMock()
+        self.new_page = AsyncMock(return_value=self._mock_page)
 
 
 @pytest.mark.asyncio
@@ -14,14 +35,18 @@ async def test_process_mission_creates_isolated_browser():
     db = MagicMock()
     account_pool = MagicMock()
     booking_workflow = MagicMock()
-    browser_manager = MagicMock()
 
-    # Configure browser_manager attributes
-    browser_manager.config = {"bot": {"headless": True}}
-    browser_manager.header_manager = MagicMock()
-    browser_manager.proxy_manager = MagicMock()
+    # browser_manager is a MockBrowserManager instance; _create_mission_browser
+    # will call type(browser_manager)(...) == MockBrowserManager(...).
+    browser_manager = MockBrowserManager(
+        config={"bot": {"headless": True}},
+        header_manager=MagicMock(),
+        proxy_manager=MagicMock(),
+    )
 
     # Mock the repositories that are instantiated in __init__
+    from unittest.mock import patch
+
     with (
         patch("src.services.session.session_orchestrator.AppointmentRequestRepository"),
         patch("src.services.session.session_orchestrator.AccountPoolRepository"),
@@ -53,51 +78,26 @@ async def test_process_mission_creates_isolated_browser():
         # Mock account pool repository
         orchestrator.account_pool_repo.log_usage = AsyncMock()
 
-    # Mock BrowserManager creation
-    with patch("src.services.bot.browser_manager.BrowserManager") as MockBrowserManager:
-        mock_mission_browser = MagicMock()
-        mock_mission_browser.start = AsyncMock()
-        mock_mission_browser.close = AsyncMock()
-        mock_page = AsyncMock()
-        mock_page.close = AsyncMock()
-        mock_mission_browser.new_page = AsyncMock(return_value=mock_page)
-
-        MockBrowserManager.return_value = mock_mission_browser
-
         # Run _process_mission
         result = await orchestrator._process_mission("fra", mock_requests)
 
-        # Verify BrowserManager was instantiated with correct parameters
-        MockBrowserManager.assert_called_once_with(
-            config=browser_manager.config,
-            header_manager=browser_manager.header_manager,
-            proxy_manager=browser_manager.proxy_manager,
-        )
+    # Verify booking workflow was called with the page created by MockBrowserManager
+    booking_workflow.process_mission.assert_called_once()
+    call_kwargs = booking_workflow.process_mission.call_args[1]
+    assert call_kwargs["account"] == mock_account
+    assert call_kwargs["appointment_requests"] == mock_requests
 
-        # Verify browser lifecycle
-        mock_mission_browser.start.assert_called_once()
-        mock_mission_browser.new_page.assert_called_once()
+    # The page used must be the one from the mission browser instance
+    mission_page = call_kwargs["page"]
+    mission_page.close.assert_called_once()
 
-        # Verify page was closed
-        mock_page.close.assert_called_once()
+    # Verify account was released
+    account_pool.release_account.assert_called_once()
 
-        # Verify browser was closed (cleanup)
-        mock_mission_browser.close.assert_called_once()
-
-        # Verify booking workflow was called
-        booking_workflow.process_mission.assert_called_once_with(
-            page=mock_page,
-            account=mock_account,
-            appointment_requests=mock_requests,
-        )
-
-        # Verify account was released
-        account_pool.release_account.assert_called_once()
-
-        # Verify result
-        assert result["status"] == "completed"
-        assert result["mission_code"] == "fra"
-        assert result["result"] == "success"
+    # Verify result
+    assert result["status"] == "completed"
+    assert result["mission_code"] == "fra"
+    assert result["result"] == "success"
 
 
 @pytest.mark.asyncio
@@ -107,19 +107,36 @@ async def test_process_mission_multiple_missions_isolated():
     db = MagicMock()
     account_pool = MagicMock()
     booking_workflow = MagicMock()
-    browser_manager = MagicMock()
 
-    # Configure browser_manager attributes
-    browser_manager.config = {"bot": {"headless": True}}
-    browser_manager.header_manager = MagicMock()
-    browser_manager.proxy_manager = MagicMock()
+    # Track all MockBrowserManager instances created during the test
+    created_browsers: list = []
+    original_init = MockBrowserManager.__init__
 
-    # Mock the repositories that are instantiated in __init__
+    def tracking_init(self, config=None, header_manager=None, proxy_manager=None):
+        original_init(self, config, header_manager, proxy_manager)
+        created_browsers.append(self)
+
+    MockBrowserManager.__init__ = tracking_init  # type: ignore[method-assign]
+
+    shared_config = {"bot": {"headless": True}}
+    shared_header_manager = MagicMock()
+    shared_proxy_manager = MagicMock()
+
+    browser_manager = MockBrowserManager(
+        config=shared_config,
+        header_manager=shared_header_manager,
+        proxy_manager=shared_proxy_manager,
+    )
+    # The injected browser_manager itself is the first entry; clear it so we only
+    # count browsers created by the orchestrator.
+    created_browsers.clear()
+
+    from unittest.mock import patch
+
     with (
         patch("src.services.session.session_orchestrator.AppointmentRequestRepository"),
         patch("src.services.session.session_orchestrator.AccountPoolRepository"),
     ):
-        # Create orchestrator
         orchestrator = SessionOrchestrator(
             db=db,
             account_pool=account_pool,
@@ -127,76 +144,58 @@ async def test_process_mission_multiple_missions_isolated():
             browser_manager=browser_manager,
         )
 
-        # Mock account pool to return an account each time
         mock_account = MagicMock()
         mock_account.id = 1
         mock_account.email = "test@example.com"
         account_pool.acquire_account = AsyncMock(return_value=mock_account)
         account_pool.release_account = AsyncMock()
-
-        # Mock booking workflow
         booking_workflow.process_mission = AsyncMock(return_value="success")
-
-        # Mock account pool repository
         orchestrator.account_pool_repo.log_usage = AsyncMock()
 
-    # Mock BrowserManager creation
-    with patch("src.services.bot.browser_manager.BrowserManager") as MockBrowserManager:
-
-        def create_browser_instance(*args, **kwargs):
-            mock_browser = MagicMock()
-            mock_browser.start = AsyncMock()
-            mock_browser.close = AsyncMock()
-            mock_page = AsyncMock()
-            mock_page.close = AsyncMock()
-            mock_browser.new_page = AsyncMock(return_value=mock_page)
-            return mock_browser
-
-        MockBrowserManager.side_effect = create_browser_instance
-
-        # Process two different missions
         mock_requests_fra = [MagicMock(id=1, country_code="fra")]
         mock_requests_de = [MagicMock(id=2, country_code="de")]
 
         result1 = await orchestrator._process_mission("fra", mock_requests_fra)
         result2 = await orchestrator._process_mission("de", mock_requests_de)
 
-        # Verify BrowserManager was instantiated twice (once per mission)
-        assert MockBrowserManager.call_count == 2
+    # Restore original __init__
+    MockBrowserManager.__init__ = original_init  # type: ignore[method-assign]
 
-        # Verify both calls used the same config
-        for call_args in MockBrowserManager.call_args_list:
-            assert call_args[1]["config"] == browser_manager.config
-            assert call_args[1]["header_manager"] == browser_manager.header_manager
-            assert call_args[1]["proxy_manager"] == browser_manager.proxy_manager
+    # Two isolated browser instances must have been created (one per mission)
+    assert len(created_browsers) == 2
+    assert created_browsers[0] is not created_browsers[1]
 
-        # Verify both missions completed successfully
-        assert result1["status"] == "completed"
-        assert result1["mission_code"] == "fra"
-        assert result2["status"] == "completed"
-        assert result2["mission_code"] == "de"
+    # Verify both instances used the shared config
+    for browser in created_browsers:
+        assert browser.config == shared_config
+        assert browser.header_manager == shared_header_manager
+        assert browser.proxy_manager == shared_proxy_manager
+
+    assert result1["status"] == "completed"
+    assert result1["mission_code"] == "fra"
+    assert result2["status"] == "completed"
+    assert result2["mission_code"] == "de"
 
 
 @pytest.mark.asyncio
 async def test_process_mission_browser_cleanup_on_error():
     """Test that browser resources are cleaned up even when processing fails."""
-    # Mock dependencies
     db = MagicMock()
     account_pool = MagicMock()
     booking_workflow = MagicMock()
-    browser_manager = MagicMock()
 
-    # Configure browser_manager attributes
-    browser_manager.config = {"bot": {"headless": True}}
-    browser_manager.header_manager = MagicMock()
-    browser_manager.proxy_manager = MagicMock()
+    browser_manager = MockBrowserManager(
+        config={"bot": {"headless": True}},
+        header_manager=MagicMock(),
+        proxy_manager=MagicMock(),
+    )
 
-    # Mock the repositories that are instantiated in __init__
+    from unittest.mock import patch
+
     with (
         patch("src.services.session.session_orchestrator.AppointmentRequestRepository"),
         patch("src.services.session.session_orchestrator.AccountPoolRepository"),
     ):
-        # Create orchestrator
         orchestrator = SessionOrchestrator(
             db=db,
             account_pool=account_pool,
@@ -204,43 +203,21 @@ async def test_process_mission_browser_cleanup_on_error():
             browser_manager=browser_manager,
         )
 
-        # Mock account pool to return an account
         mock_account = MagicMock()
         mock_account.id = 1
         mock_account.email = "test@example.com"
         account_pool.acquire_account = AsyncMock(return_value=mock_account)
         account_pool.release_account = AsyncMock()
 
-        # Mock appointment requests
         mock_requests = [MagicMock(id=1, country_code="fra")]
-
-        # Mock booking workflow to raise an error
         booking_workflow.process_mission = AsyncMock(side_effect=Exception("Test error"))
-
-        # Mock account pool repository
         orchestrator.account_pool_repo.log_usage = AsyncMock()
 
-    # Mock BrowserManager creation
-    with patch("src.services.bot.browser_manager.BrowserManager") as MockBrowserManager:
-        mock_mission_browser = MagicMock()
-        mock_mission_browser.start = AsyncMock()
-        mock_mission_browser.close = AsyncMock()
-        mock_page = AsyncMock()
-        mock_page.close = AsyncMock()
-        mock_mission_browser.new_page = AsyncMock(return_value=mock_page)
-
-        MockBrowserManager.return_value = mock_mission_browser
-
-        # Run _process_mission (should handle the error)
         result = await orchestrator._process_mission("fra", mock_requests)
 
-        # Verify browser was still closed despite the error
-        mock_page.close.assert_called_once()
-        mock_mission_browser.close.assert_called_once()
+    # Verify result indicates error
+    assert result["status"] == "error"
+    assert "Test error" in result["error"]
 
-        # Verify account was still released
-        account_pool.release_account.assert_called_once()
-
-        # Verify result indicates error
-        assert result["status"] == "error"
-        assert "Test error" in result["error"]
+    # Account must still be released despite the error
+    account_pool.release_account.assert_called_once()

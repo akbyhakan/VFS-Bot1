@@ -198,3 +198,18 @@ class TelegramClient:
 
         logger.debug("Telegram photo sent successfully")
         return True
+
+    async def get_me(self):
+        """
+        Return the bot's own User object via the Telegram API.
+
+        This is a lightweight, read-only call suitable for health checks.
+        It validates the token and measures API latency without side effects.
+
+        Returns:
+            telegram.User object for this bot
+
+        Raises:
+            Exception: If the API call fails (e.g. invalid token, network error)
+        """
+        return await self._bot.get_me()
