@@ -6,17 +6,21 @@ the VFSBot instance from web dashboard endpoints.
 """
 
 import asyncio
-import threading
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from loguru import logger
 
 from src.constants import Delays
+from src.utils.singleton import get_instance as _registry_get_instance
+from src.utils.singleton import get_or_create_async, reset
 
 if TYPE_CHECKING:
     from src.models.database import Database
     from src.services.bot.vfs_bot import VFSBot
     from src.services.notification.notification import NotificationService
+
+# Sentinel to prevent direct BotController() instantiation
+_INIT_GUARD = object()
 
 
 class BotController:
@@ -26,11 +30,13 @@ class BotController:
     Provides thread-safe access to bot control operations from web endpoints.
     """
 
-    _instance: Optional["BotController"] = None
-    _init_lock = threading.Lock()  # Thread-safe guard for singleton creation
-
-    def __init__(self):
+    def __init__(self, _guard: object = None):
         """Initialize bot controller (use get_instance() instead)."""
+        if _guard is not _INIT_GUARD:
+            raise RuntimeError(
+                "BotController cannot be instantiated directly. "
+                "Use BotController.get_instance() instead."
+            )
         self._config: Optional[Dict[str, Any]] = None
         self._db: Optional["Database"] = None
         self._notifier: Optional["NotificationService"] = None
@@ -47,44 +53,40 @@ class BotController:
         """
         Get singleton instance of BotController.
 
-        Uses threading.Lock for thread-safe instance creation (synchronous operation).
-        Async operations within the instance use instance-level asyncio.Lock to
-        synchronize async operations.
+        Uses the centralized singleton registry for async-safe instance creation.
+        The registry uses an async lock to guard concurrent callers; the
+        BotController instance itself is created synchronously via a lambda
+        factory. Async operations within the instance use instance-level
+        asyncio.Lock to synchronize async operations.
 
         Returns:
             BotController instance
         """
-        if cls._instance is None:
-            # Synchronous lock is correct here - instance creation is synchronous
-            # and we need thread-safety across multiple threads
-            with cls._init_lock:
-                if cls._instance is None:
-                    cls._instance = cls()
-        return cls._instance
+        return await get_or_create_async(
+            "bot_controller", lambda: cls(_guard=_INIT_GUARD)
+        )
 
     @classmethod
     async def reset_instance(cls) -> None:
         """
         Reset singleton instance (for testing).
 
-        Stops any running bot and clears the singleton.
-        Uses threading.Lock to ensure thread-safe reset across multiple threads.
-        The lock is only held during instance nullification; stop_bot() is called
-        before acquiring the lock to avoid blocking.
+        Stops any running bot and clears the singleton from the registry.
+        Gets the instance reference first, removes it from the registry, then
+        stops the bot to avoid race conditions.
         """
-        # Get instance reference before acquiring lock
-        instance = cls._instance
+        # Get instance reference before removing from registry
+        instance = _registry_get_instance("bot_controller")
 
-        # Stop bot outside the lock to avoid blocking
+        # Remove from registry first so new callers get a fresh instance
+        reset("bot_controller")
+
+        # Stop bot after registry is cleared
         if instance is not None:
             try:
                 await instance.stop_bot()
             except Exception as e:
                 logger.error(f"Error stopping bot during reset: {e}")
-
-        # Only hold lock during instance nullification (fast operation)
-        with cls._init_lock:
-            cls._instance = None
 
     async def configure(
         self,
@@ -438,9 +440,11 @@ class BotController:
         Returns:
             True if bot is running, False otherwise
         """
+        bot = self._bot
+        task = self._bot_task
         return (
-            self._bot is not None
-            and self._bot.running
-            and self._bot_task is not None
-            and not self._bot_task.done()
+            bot is not None
+            and bot.running
+            and task is not None
+            and not task.done()
         )

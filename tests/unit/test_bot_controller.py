@@ -456,3 +456,10 @@ async def test_reset_instance():
 
     # Should be different instances after reset
     assert controller1 is not controller2
+
+
+@pytest.mark.asyncio
+async def test_direct_instantiation_raises():
+    """Test that direct BotController() instantiation raises RuntimeError."""
+    with pytest.raises(RuntimeError, match="BotController cannot be instantiated directly"):
+        BotController()
