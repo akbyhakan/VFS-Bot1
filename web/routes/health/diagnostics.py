@@ -106,26 +106,45 @@ async def check_encryption() -> Dict[str, Any]:
 
 async def check_notification_health() -> Dict[str, Any]:
     """
-    Check notification service health.
+    Check notification service health via a real Telegram API connectivity test.
+
+    Uses Bot.get_me() — a free, read-only Telegram API call — to validate the
+    token and measure latency, following the same real-connectivity pattern as
+    check_database() which runs SELECT 1 with latency measurement.
 
     Returns:
-        Dictionary with notification service status
+        Dictionary with status, telegram_configured flag, and optional
+        latency_ms / telegram_bot_username on success or error on failure.
+        Status values: "healthy", "not_configured", "degraded", "unhealthy"
     """
+    telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+
+    if not telegram_token:
+        return {"status": "not_configured", "telegram_configured": False}
+
     try:
-        from src.services.notification.notification import NotificationService
+        from src.services.notification.telegram_client import TelegramClient
 
-        # Check if notification service can be initialized
-        # We don't actually send a notification, just check the service is available
-        NotificationService(config={})
+        start_time = time.time()
+        client = TelegramClient(bot_token=telegram_token)
+        bot_info = await client.get_me()
+        latency_ms = (time.time() - start_time) * 1000
 
-        # Basic health check - service is available
         return {
             "status": "healthy",
-            "telegram_configured": bool(os.getenv("TELEGRAM_BOT_TOKEN")),
+            "telegram_configured": True,
+            "telegram_bot_username": bot_info.username,
+            "latency_ms": round(latency_ms, 2),
+        }
+    except ImportError:
+        return {
+            "status": "degraded",
+            "telegram_configured": True,
+            "error": "python-telegram-bot not installed",
         }
     except Exception as e:
         logger.error(f"Notification health check failed: {e}")
-        return {"status": "unhealthy", "error": str(e)}
+        return {"status": "unhealthy", "telegram_configured": True, "error": str(e)}
 
 
 async def check_proxy_health() -> Dict[str, Any]:
