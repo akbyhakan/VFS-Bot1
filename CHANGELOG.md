@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - No breaking changes affecting the codebase (FastAPI 0.129.0 only requires Python 3.10+, project uses 3.12)
   - All middleware, routes, and tests remain fully compatible
 - **Dependency Management**: Consolidated to single source of truth (`pyproject.toml`)
-  - Removed `requirements.txt` and `requirements-dev.txt` (now redundant)
   - Updated all CI/CD workflows to use `pip install -e ".[dev]"`
   - Updated Makefile to generate `requirements.lock` from isolated venv
   - Updated Dockerfile.dev to use pyproject.toml, run as non-root user (vfsbot), and removed hardcoded ENCRYPTION_KEY
@@ -31,8 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all AI repair tests to match new SDK interface
 
 ### Fixed
-- Removed `pytest.ini` - consolidated all pytest configuration into `pyproject.toml` (`[tool.pytest.ini_options]`)
 - Coverage threshold standardized to 80% (was conflicting between 68% in pytest.ini and 80% in pyproject.toml)
+
+### Removed
+- Removed `requirements.txt` and `requirements-dev.txt` (superseded by `pyproject.toml`)
+- Removed `pytest.ini` (consolidated into `pyproject.toml` `[tool.pytest.ini_options]`)
 
 ## [2.2.0] - 2026-01-24
 
@@ -175,7 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created `tests/test_encryption.py` - 15 password encryption tests
 - Created `tests/test_database.py` - 10 database tests with encryption
 - Created `tests/test_validators.py` - 15 environment validation tests
-- Created `pytest.ini` - Pytest configuration with 70% coverage target
+- Created `pytest.ini` - Pytest configuration with 68% coverage target
 - Added async test support
 - Coverage reporting (HTML, term, XML)
 
@@ -244,5 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker support
 - Multi-user and multi-centre support
 
-[Unreleased]: https://github.com/akbyhakan/VFS-Bot1/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/akbyhakan/VFS-Bot1/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/akbyhakan/VFS-Bot1/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/akbyhakan/VFS-Bot1/compare/v1.0.0...v2.1.0
 [1.0.0]: https://github.com/akbyhakan/VFS-Bot1/releases/tag/v1.0.0

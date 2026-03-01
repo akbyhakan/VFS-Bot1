@@ -51,7 +51,7 @@ An advanced, modern automated bot for checking and booking VFS Global visa appoi
 - **Navigator**: WebDriver flag hidden
 
 ### Human Behavior Simulation
-- **Mouse**: Bézier curve movements (15-30 steps)
+- **Mouse**: Bézier curve movements (~20 steps, configurable)
 - **Typing**: Variable speed (40-80 WPM)
 - **Clicking**: Random delays (0.1-0.5s) and position variance
 - **Scrolling**: Natural chunked scrolling
@@ -903,24 +903,6 @@ VFS-Bot implements a multi-tier caching strategy for resilience when the databas
 - Restores transparently decrypt backup files before feeding to `psql`
 - Legacy unencrypted `.sql` backups remain compatible for cleanup and listing
 
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-# Install test dependencies
-pip install -e ".[dev]"
-
-# Run all tests
-pytest tests/
-
-# Run with coverage
-pytest tests/ --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/unit/test_bot.py -v
-```
-
 ## 💳 Payment Security
 
 ### What We Store:
@@ -1085,7 +1067,7 @@ pytest
 pytest --cov=src --cov-report=html
 
 # Run specific test file
-pytest tests/test_encryption.py
+pytest tests/unit/test_encryption.py
 
 # Run tests matching pattern
 pytest -k "test_encrypt"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify version synchronization between pyproject.toml and frontend/package.json."""
+"""Verify version synchronization between pyproject.toml, frontend/package.json, and src/__init__.py."""
 
 import json
 import re

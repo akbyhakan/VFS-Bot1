@@ -11,7 +11,7 @@ tests/
 ├── __init__.py                  ← Package marker
 ├── .env.test.example            ← Example environment variables for tests
 │
-├── unit/                        ← Unit tests (117 files)
+├── unit/                        ← Unit tests
 │   ├── __init__.py
 │   ├── test_alert_service.py
 │   ├── test_auth.py
@@ -20,7 +20,7 @@ tests/
 │   ├── test_database.py
 │   └── ... (all isolated component tests)
 │
-├── integration/                 ← Integration tests (9 files)
+├── integration/                 ← Integration tests
 │   ├── __init__.py
 │   ├── conftest.py              ← Integration-specific fixtures
 │   ├── README.md                ← Detailed integration test docs
@@ -294,8 +294,8 @@ Install browser drivers:
 cd frontend
 npx playwright install
 
-# For Selenium (if used in backend E2E)
-pip install selenium
+# For Playwright (backend E2E)
+playwright install chromium
 ```
 
 ## Configuration Files
