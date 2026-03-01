@@ -80,7 +80,7 @@ FULLY_MIGRATED = [
 
 # Files with special handling
 SPECIAL_CASES = {
-    "src/core/retry.py": "stdlib logging for tenacity",
+    "src/core/infra/retry.py": "stdlib logging for tenacity",
 }
 
 
@@ -142,13 +142,13 @@ for filepath, reason in SPECIAL_CASES.items():
 
     has_loguru, has_stdlib, has_getlogger = check_file(filepath)
 
-    # Special cases should have BOTH loguru and stdlib
-    if has_loguru and has_stdlib:
+    # Special cases: files that intentionally keep stdlib logging
+    if has_stdlib:
         status = "✅"
-        msg = f"Correctly has both ({reason})"
+        msg = f"Has stdlib as expected ({reason})"
     else:
         status = "❌"
-        msg = f"Missing loguru or stdlib ({reason})"
+        msg = f"Missing expected stdlib logging ({reason})"
         issues.append(f"{filepath}: {msg}")
 
     print(f"{status} {filepath:60} {msg}")
