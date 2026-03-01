@@ -1,7 +1,5 @@
 """VFS authentication service for login and OTP handling."""
 
-import asyncio
-import random
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -12,7 +10,7 @@ from ...core.exceptions import LoginError
 from ...utils.anti_detection.cloudflare_handler import CloudflareHandler
 from ...utils.anti_detection.human_simulator import HumanSimulator
 from ...utils.error_capture import ErrorCapture
-from ...utils.helpers import safe_navigate, smart_click, smart_fill
+from ...utils.helpers import random_delay, safe_navigate, smart_click, smart_fill
 from ..captcha_solver import CaptchaSolver
 
 
@@ -123,7 +121,7 @@ class AuthService:
             # Fill login form with human simulation
             try:
                 await smart_fill(page, 'input[name="email"]', email, self.human_sim)
-                await asyncio.sleep(random.uniform(*Delays.AFTER_LOGIN_FIELD))
+                await random_delay(*Delays.AFTER_LOGIN_FIELD)
                 await smart_fill(page, 'input[name="password"]', password, self.human_sim)
             except Exception as e:
                 # Sanitize error message to prevent password leakage

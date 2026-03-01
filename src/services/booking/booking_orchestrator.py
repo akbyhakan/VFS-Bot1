@@ -1,7 +1,6 @@
 """Booking orchestrator - coordinates all booking steps."""
 
 import asyncio
-import random
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -10,6 +9,7 @@ from playwright.async_api import Page
 from ...constants import BookingOTPSelectors
 from ...core.sensitive import SensitiveDict
 from ..otp_manager.otp_webhook import get_otp_service
+from ...utils.helpers import random_delay
 from .booking_validator import BookingValidator
 from .form_filler import FormFiller
 from .payment_handler import PaymentHandler
@@ -114,9 +114,7 @@ class BookingOrchestrator:
         await page.click(get_selector("continue_button"))
 
         # Random wait 3-7 seconds
-        wait_time = random.uniform(3, 7)
-        logger.info(f"Waiting {wait_time:.1f} seconds...")
-        await asyncio.sleep(wait_time)
+        await random_delay(3, 7)
 
         await self.wait_for_overlay(page)
 
