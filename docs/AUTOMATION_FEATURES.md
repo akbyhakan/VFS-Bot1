@@ -9,7 +9,7 @@ This document describes the new maintenance-free automation features added to VF
 ### 1. 🌐 Country-Based Automatic Configuration
 
 **File:** `config/country_profiles.yaml`  
-**Service:** `src/services/country_profile_loader.py`
+**Service:** `src/services/data_sync/country_profile_loader.py`
 
 Automatically configures bot behavior based on the target country. Each country has a profile with:
 
