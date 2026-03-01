@@ -31,7 +31,7 @@ def _correlation_patcher(record: Dict[str, Any]) -> None:
         record["extra"]["correlation_id"] = corr_id
 
 
-def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> None:
+def setup_structured_logging(level: str = "INFO", json_format: bool = False) -> None:
     """
     Setup Loguru logging with structured output.
 
@@ -78,7 +78,7 @@ def setup_structured_logging(level: str = "INFO", json_format: bool = True) -> N
             "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | " "{name}:{function}:{line} - {message}"
         )
         logger.add(
-            logs_dir / "vfs_bot.jsonl",
+            logs_dir / "vfs_bot.log",
             format=text_format,
             level=level,
             rotation="10 MB",  # Rotate when file reaches 10MB

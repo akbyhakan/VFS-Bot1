@@ -46,7 +46,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Setup structured logging
-    json_logging = os.getenv("JSON_LOGGING", "true").lower() == "true"
+    json_logging = os.getenv("JSON_LOGGING", "false").lower() == "true"
     setup_structured_logging(args.log_level, json_format=json_logging)
 
     # Check if running in read-only mode
