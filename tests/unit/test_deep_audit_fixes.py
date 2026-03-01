@@ -106,7 +106,8 @@ class TestBotControllerSafeDictAccess:
         """restart_bot should not crash if stop_result has unexpected structure."""
         from src.core.bot_controller import BotController
 
-        controller = BotController()
+        await BotController.reset_instance()
+        controller = await BotController.get_instance()
         controller._configured = True
 
         # Mock stop_bot to return dict without expected keys
@@ -118,13 +119,15 @@ class TestBotControllerSafeDictAccess:
         # Should not raise KeyError
         result = await controller.restart_bot()
         assert result["status"] == "success"
+        await BotController.reset_instance()
 
     @pytest.mark.asyncio
     async def test_restart_bot_handles_stop_error_without_message(self):
         """restart_bot should handle stop error result missing 'message' key."""
         from src.core.bot_controller import BotController
 
-        controller = BotController()
+        await BotController.reset_instance()
+        controller = await BotController.get_instance()
         controller._configured = True
 
         # Mock stop_bot to return error without message key
@@ -138,6 +141,7 @@ class TestBotControllerSafeDictAccess:
         # stop_result has status "error" and message defaults to "" which doesn't
         # contain "not running", so it returns the stop_result
         assert result["status"] == "error"
+        await BotController.reset_instance()
 
 
 # ── audit_logger: Non-blocking async file write ─────────────────────────────
