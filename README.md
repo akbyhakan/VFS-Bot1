@@ -595,8 +595,12 @@ The web dashboard exposes a REST API with versioned endpoints:
 - `POST /api/v1/proxy/add` - Add proxy
 - `GET /api/v1/proxy/list` - List proxies
 - `GET /api/v1/proxy/stats` - Get proxy statistics
+- `GET /api/v1/proxy/{proxy_id}` - Get single proxy
+- `PUT /api/v1/proxy/{proxy_id}` - Update proxy
+- `DELETE /api/v1/proxy/{proxy_id}` - Delete single proxy
 - `DELETE /api/v1/proxy/clear-all` - Clear all proxies
 - `POST /api/v1/proxy/upload` - Upload proxy file
+- `POST /api/v1/proxy/reset-failures` - Reset proxy failure counts
 
 **Runtime Configuration:**
 - `GET /api/v1/config/runtime` - Get runtime configuration
@@ -623,6 +627,7 @@ The web dashboard exposes a REST API with versioned endpoints:
 **OTP Webhooks:**
 - `POST /api/v1/webhook/users/{user_id}/create` - Create webhook for user
 - `GET /api/v1/webhook/users/{user_id}` - Get webhook info
+- `DELETE /api/v1/webhook/users/{user_id}` - Delete user webhook
 - `POST /webhook/sms/{token}` - SMS OTP receiver endpoint
 
 #### Example Usage
@@ -670,6 +675,7 @@ VFS-Bot1/
 │   │   ├── auth/                    # JWT token, encryption
 │   │   ├── config/                  # Configuration loading, validation
 │   │   ├── infra/                   # Startup, shutdown, retry logic
+│   │   ├── rate_limiting/           # Rate limiting (sliding window, auth, adaptive, endpoint)
 │   │   ├── bot_controller.py        # Bot lifecycle management
 │   │   ├── exceptions.py            # Custom exception classes
 │   │   ├── environment.py           # Environment detection
@@ -745,6 +751,7 @@ VFS-Bot1/
 │   │   ├── payment.py               # Payment card
 │   │   ├── proxy.py                 # Proxy management
 │   │   ├── config.py                # Runtime configuration
+│   │   ├── dashboard.py             # Dashboard page serving
 │   │   ├── dropdown_sync.py         # Dropdown synchronization
 │   │   ├── health.py                # Health check
 │   │   ├── webhook_accounts.py      # Webhook token CRUD
@@ -918,7 +925,6 @@ VFS-Bot implements a multi-tier caching strategy for resilience when the databas
 - Both `BACKUP_ENCRYPTION_KEY` and `ENCRYPTION_KEY` environment variables are supported
 - Restores transparently decrypt backup files before feeding to `psql`
 - Legacy unencrypted `.sql` backups remain compatible for cleanup and listing
-```
 
 ## 🧪 Testing
 
@@ -935,7 +941,7 @@ pytest tests/
 pytest tests/ --cov=src --cov-report=html
 
 # Run specific test file
-pytest tests/test_bot.py -v
+pytest tests/unit/test_bot.py -v
 ```
 
 ## 💳 Payment Security
@@ -985,15 +991,13 @@ Metrics are exposed at `http://localhost:8000/metrics/prometheus` when the bot i
 
 ---
 
-## 🔐 Security Best Practices
+## 🔒 Security Best Practices
 
 1. **Never commit credentials** - Use `.env` file (gitignored)
 2. **Use app passwords** - For Gmail, generate an app-specific password
 3. **Secure your API keys** - Don't share captcha API keys
 4. **Run in Docker** - Isolate the bot environment
 5. **Update regularly** - Keep dependencies up to date
-
-## 🔒 Security Best Practices
 
 ### Password Encryption
 
@@ -1089,7 +1093,7 @@ VFS-Bot implements encrypted payment card storage for personal automated use:
 
 ## 🧪 Testing
 
-VFS-Bot includes a comprehensive test suite with >70% code coverage.
+VFS-Bot includes a comprehensive test suite with >80% code coverage.
 
 ### Running Tests
 
@@ -1133,12 +1137,22 @@ start htmlcov/index.html  # Windows
 ```
 tests/
 ├── conftest.py              # Shared fixtures
-├── test_database.py         # Database with encryption tests
-├── test_encryption.py       # Password encryption tests
-├── test_validators.py       # Environment validation tests
-├── test_bot.py             # Bot logic tests
-├── test_rate_limiter.py    # Rate limiting tests
-└── ...
+├── unit/                    # Unit tests
+│   ├── test_auth.py
+│   ├── test_bot.py
+│   ├── test_database.py
+│   ├── test_encryption.py
+│   ├── test_validators.py
+│   ├── test_rate_limiter.py
+│   └── ...
+├── integration/             # Integration tests
+│   ├── test_api_chain.py
+│   ├── test_database_integration.py
+│   └── ...
+├── e2e/                     # End-to-end tests
+│   └── test_booking_flow.py
+└── load/                    # Load tests
+    └── test_concurrent_load.py
 ```
 
 ### Writing Tests

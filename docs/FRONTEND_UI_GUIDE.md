@@ -68,7 +68,7 @@ This document provides a textual description of the visual design and user inter
 │  📋    │  │Slots │ │Rand. │ │Kulln.│ │Kontrol│  │
 │  ⚙️    │  └──────┘ └──────┘ └──────┘ └──────┘   │
 │        │                                          │
-│  v2.0  │  Bot Kontrolleri:                       │
+│  v2.2  │  Bot Kontrolleri:                       │
 │        │  [▶️ Başlat]  [⏹️ Durdur]              │
 │        │                                          │
 │        │  📋 Canlı Loglar:          [Temizle]   │
